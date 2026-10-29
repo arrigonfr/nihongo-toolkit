@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f5f1">
+  <title>日本語道具箱 · Japanese Toolkit · Nihongo Toolkit</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23356653'/%3E%3Ctext x='20' y='28' text-anchor='middle' font-size='25' fill='white'%3E活%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <div class="conjugator-shell">
+    <header>
+      <a class="brand" href="./index.html"><span class="brand-mark" aria-hidden="true">活</span><span class="brand-name">Katsuyō<span class="brand-note">at NihongoToolkit</span></span></a>
+      <button id="themeButton" type="button" aria-label="Change theme"></button>
+    </header>
+    <main>
+      <section class="intro">
+        <h1>Japanese Conjugator</h1>
+        <p>One word. Every ending. Explore verbs and adjectives, from your first ます to advanced forms.</p>
+        <p><a href="./#helper=活用練習.html" target="_top">Put the patterns into practice →</a></p>
+      </section>
+      <section class="panel search-panel" aria-label="Word search">
+        <form id="searchForm">
+          <label for="wordInput">Japanese word <span class="muted">· kana, kanji, or romaji</span></label>
+          <div class="search-line">
+            <input id="wordInput" name="word" lang="ja" maxlength="100" placeholder="食べる · たべる · taberu" autocomplete="off" spellcheck="false" aria-controls="suggestions">
+            <button class="primary" type="submit">Conjugate</button>
+            <button id="randomButton" type="button"><span class="random-icon" aria-hidden="true">🎲</span> Random word</button>
+          </div>
+        </form>
+        <div id="status" role="status" aria-live="polite"></div>
+        <div id="suggestions" aria-label="Word suggestions"></div>
+        <details id="manualPanel" hidden>
+          <summary>Word not found? Confirm its dictionary form and word type</summary>
+          <p>Only verbs and adjectives conjugate. Nouns may take だ / です, but are not automatically na-adjectives. Enter dictionary form, not an already conjugated phrase. Unlisted words need a confirmed reading and class; meaning and JLPT level will remain unknown.</p>
+          <form id="manualForm" class="settings-grid">
+            <label>Dictionary spelling<input id="manualWord" maxlength="100" required lang="ja"></label>
+            <label>Full kana reading<input id="manualReading" maxlength="100" required lang="ja"></label>
+            <label>Confirmed word type<select id="manualType" required><option value="">Choose a type…</option></select></label>
+            <button type="submit">Use confirmed type</button>
+          </form>
+        </details>
+      </section>
+      <details class="panel" id="settingsPanel">
+        <summary>Display & study settings</summary>
+        <div id="settings" class="settings-grid"></div>
+      </details>
+      <section id="result" hidden aria-label="Conjugation results">
+        <div class="panel word-heading">
+          <div><h2 id="baseWord"></h2><p id="wordSummary"></p></div>
+          <div class="actions"><button id="saveWord" type="button">Save word</button><button id="copyTable" type="button">Copy table</button></div>
+        </div>
+        <details class="panel" id="wordInfo">
+          <summary>Word information, related words & examples</summary>
+          <div id="wordInfoContent"></div>
+        </details>
+        <p id="formCount" class="muted" role="status" aria-live="polite"></p>
+        <div id="tables"></div>
+      </section>
+      <section class="panel" id="emptyState">
+        <h2>Start with a word you know</h2>
+        <p>Try an everyday verb or an adjective. Readings and conjugation rules are included.</p>
+        <div class="actions" id="starterWords"><button data-query="食べる">食べる · eat</button><button data-query="行く">行く · go</button><button data-query="する">する · do</button><button data-query="いい">いい · good</button><button data-query="静か">静か · quiet</button></div>
+      </section>
+      <details class="panel" open>
+        <summary>Recent words</summary>
+        <div class="actions word-list" id="history"></div>
+        <button id="clearHistory" type="button">Clear history</button>
+      </details>
+      <details class="panel">
+        <summary>Saved words</summary>
+        <div class="word-list" id="savedWords"></div>
+        <div class="actions"><button id="exportWords" type="button">Export saved words</button><label class="file-button">Import saved words<input id="importWords" type="file" accept=".json,application/json"></label></div>
+      </details>
+      <footer>Dictionary: JMdict. JLPT levels are study-list estimates, not official assignments. <a href="./data-sources.html">Data sources & licenses</a>. Conjugations follow modern standard Japanese; grammatical forms are not equally natural for every meaning.</footer>
+    </main>
+  </div>
+  <noscript>Enable JavaScript to use the Japanese Conjugator.</noscript>
+  <script type="module" src="./src/conjugator.js"></script>
+</body>
+</html>

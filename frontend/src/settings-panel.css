@@ -1,0 +1,44 @@
+@import "./chips.css";
+.settings-sections { display: block !important; }
+.settings-section {
+  display: block;
+  min-width: 0;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.settings-section legend { padding: 0 6px; font-weight: 700; }
+.settings-section-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  align-items: end;
+  gap: 16px;
+}
+.setting-unavailable { color: var(--muted); }
+.setting-unavailable input, .setting-unavailable select { opacity: .55; cursor: not-allowed; }
+.setting-availability {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.setting.check:has(.setting-availability),
+.check-label:has(.setting-availability),
+.cw-switch:has(.setting-availability) { flex-wrap: wrap; }
+.setting.check > .setting-availability,
+.check-label > .setting-availability,
+.cw-switch > .setting-availability { flex-basis: 100%; }
+.settings-section-grid > label { min-width: 0; margin: 0; }
+.settings-section-grid > :is(.check-label, .setting.check, .cw-switch) { min-height: 44px; align-self: end; align-content: center; }
+#answerOptions.study-pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+#answerOptions.study-pills button { border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); padding: 8px 14px; font: inherit; cursor: pointer; }
+#answerOptions.study-pills button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); font-weight: 700; }
+#answerOptions.study-pills button:disabled { opacity: .5; cursor: not-allowed; }
+.study-confirm-dialog { width: min(520px, calc(100vw - 32px)); max-height: 85vh; overflow: auto; box-sizing: border-box; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); color: var(--ink); }
+.study-confirm-dialog::backdrop { background: rgb(0 0 0 / .6); }
+.study-confirm-dialog h2 { font-size: 20px; margin: 0 0 12px; }
+.reset-defaults { display: flex; justify-content: flex-end; padding: 10px 14px 12px; border-top: 1px solid var(--line, #e5e7eb); }
+.reset-defaults-button { min-height: 34px; font-size: 13px; }
+.reset-defaults.reset-defaults-inline { display: inline-flex; padding: 0; border: 0; background: none; justify-content: flex-end; }

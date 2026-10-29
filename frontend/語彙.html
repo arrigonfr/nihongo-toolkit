@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171a17">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Sawarabi+Mincho&family=Zen+Kurenaido&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23356653'/%3E%3Ctext x='20' y='28' text-anchor='middle' font-size='25' fill='white'%3E%E8%AA%9E%3C/text%3E%3C/svg%3E">
+  <title>日本語道具箱 · Japanese Toolkit · Nihongo Toolkit</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f6f5f1; --surface: #fff; --soft: #f1f0eb; --ink: #23251f;
+      --muted: #777970; --line: #e7e6df; --accent: #356653; --accent-strong: #254d3e;
+      --accent-soft: #e5eee8; --danger: #a34336; --success: #356653;
+      --shadow: 0 16px 45px rgb(42 45 35 / 7%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark; --page: #171a17; --surface: #202520; --soft: #292e29;
+      --ink: #e9eee7; --muted: #a1a99f; --line: #363d36; --accent: #9ac8a9;
+      --accent-strong: #c1e1c9; --accent-soft: #2d3d32; --danger: #efa094;
+      --success: #9ac8a9; --shadow: 0 16px 45px rgb(0 0 0 / 18%);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--page); color: var(--ink); transition: background .2s,color .2s; }
+    button, input, select { font: inherit; } button { color: inherit; }
+    button:focus-visible, input:focus-visible, select:focus-visible, label:focus-within { outline: 3px solid #6caa83; outline-offset: 2px; }
+    .shell { width: min(100% - 36px, 980px); margin: auto; }
+    header { height: 72px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; }
+    .brand-mark { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; color: #fff; background: var(--accent); font: 23px Georgia,serif; }
+    .brand-name { font-size: 19px; font-weight: 750; letter-spacing: -.04em; }
+    .brand-sub { margin-left: 6px; color: var(--muted); font-size: .72em; font-weight: 500; letter-spacing: 0; }
+    .icon-button,.button,.option,.answer-input,.select { border: 1px solid var(--line); background: var(--surface); }
+    .icon-button { width: 39px; height: 39px; display: grid; place-items: center; border-radius: 10px; color: var(--muted); cursor: pointer; }
+    .icon-button:hover,.button:hover,.option:hover { border-color: var(--accent); color: var(--accent-strong); }
+    main { padding: 37px 0 54px; }
+    .intro { text-align: center; margin: 0 auto 25px; }
+    .eyebrow { margin: 0 0 10px; color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: .17em; text-transform: uppercase; }
+    h1 { margin: 0; font: 500 clamp(34px,6vw,48px)/1.08 Georgia,"Times New Roman",serif; letter-spacing: -.055em; }
+    .intro p { margin: 10px auto 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+    .layout { display: block; }
+    .panel { border: 1px solid var(--line); border-radius: 15px; background: var(--surface); box-shadow: var(--shadow); }
+    .quiz-panel { min-height: 450px; padding: 20px; }
+    details.settings-panel { margin-bottom: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 11px; background: var(--soft); }
+    .settings-panel summary { padding: 10px 12px; color: var(--accent-strong); cursor: pointer; font-size: 12px; font-weight: 750; }
+    .settings-panel[open] summary { border-bottom: 1px solid var(--line); }
+    .settings { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; align-items: end; padding: 10px; }
+    .field-label { display: block; margin: 0 0 6px; color: var(--muted); font-size: 11px; font-weight: 700; }
+    .select,.number-input { width: 100%; height: 39px; padding: 0 10px; border-radius: 8px; color: var(--ink); }
+    .number-input { border: 1px solid var(--line); background: var(--surface); }
+    .limit-field[hidden] { display: none; }
+    .font-preview { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 58px; margin-top: 5px; padding: 5px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+    .font-preview[hidden] { display: none; }
+    .font-preview-sample { font: 17px/1.35 var(--preview-font,"Noto Sans JP"),sans-serif; text-align: center; white-space: nowrap; }
+    .font-preview-name { color: var(--muted); font-size: 9px; text-align: center; }
+    .button { min-height: 38px; padding: 8px 12px; border-radius: 8px; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 700; transition: .15s ease; }
+    .button.primary { border-color: var(--accent); background: var(--accent); color: white; }
+    :root[data-theme="dark"] .button.primary { color: #17231b; }
+    .button.primary:hover { background: var(--accent-strong); }
+    .button:disabled { opacity: .48; cursor: not-allowed; }
+    .switch-option { display: flex; gap: 7px; align-items: center; color: var(--ink); font-size: 12px; cursor: pointer; }
+    .review-option { margin-bottom: 12px; }
+    input[type="checkbox"] { accent-color: var(--accent); }
+    .stats-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    .stats-heading h2 { margin: 0; font-size: 13px; }
+    .stats-toggle { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; cursor: pointer; }
+    .failed-terms { margin: 12px 0 0; padding: 10px 12px; border-radius: 9px; background: var(--surface); text-align: left; font-size: 12px; line-height: 1.6; }
+    .failed-terms h3 { margin: 0 0 6px; font-size: 12px; }
+    .failed-terms ul { margin: 0; padding-left: 20px; }
+    .failed-terms li + li { margin-top: 4px; }
+    .failed-terms[hidden] { display: none; }
+    .shortcut-hint { color: var(--muted); font-size: 10px; }
+    .shortcut-hint[hidden] { display: none; }
+    .banner { display: none; margin: 14px 0 0; padding: 10px 12px; border: 1px solid #e4c98a; border-radius: 8px; background: #fff8e7; color: #72551b; font-size: 12px; line-height: 1.5; }
+    :root[data-theme="dark"] .banner { background: #39311e; color: #ecd99f; border-color: #65542e; }
+    .banner.visible { display: block; }
+    .question { margin-top: 20px; padding-top: 17px; border-top: 1px solid var(--line); }
+    .question[hidden] { display: none; }
+    .session-stats { margin: 0 0 16px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); }
+    .session-stats[hidden] { display: none; }
+    .session-stats h2 { margin: 0 0 8px; font-size: 13px; }
+    .stats-breakdowns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 9px; }
+    .stats-breakdowns .stats-section { margin-top: 0; }
+    .session-stats { position: static; }
+    .session-stats-content[hidden] { display: none; }
+    .session-stats-content[hidden] { display: none; }
+    .example { margin: 0 0 12px; padding: 11px 12px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; background: var(--soft); font-size: 12px; line-height: 1.6; }
+    .example[hidden] { display: none; }
+    .example-definition { margin-bottom: 6px; font-weight: 750; }
+    .example-ja { font: 14px/1.7 var(--jp-font,"Noto Sans JP"),"Yu Gothic",Meiryo,sans-serif; }
+    .example-en { margin-top: 4px; color: var(--muted); }
+    .option.correct-answer { border-color: var(--success); background: var(--accent-soft); color: var(--accent-strong); }
+    .option.incorrect-answer { border-color: var(--danger); background: color-mix(in srgb,var(--danger) 16%,var(--surface)); color: var(--danger); }
+    .results-panel { padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--soft); text-align: center; }
+    .results-panel[hidden] { display: none; }
+    .results-panel h2 { margin: 0; font: 500 28px/1.2 Georgia,"Times New Roman",serif; }
+    .results-panel p { color: var(--muted); font-size: 13px; }
+    .result-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin: 14px 0; text-align: left; }
+    .result-metric { padding: 10px; border-radius: 8px; background: var(--surface); }
+    .result-metric strong { display: block; font-size: 18px; }
+    .result-metric span { color: var(--muted); font-size: 10px; }
+    .timer-badge { font-variant-numeric: tabular-nums; }
+    .question-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .question-label { color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .11em; text-transform: uppercase; }
+    .badge { padding: 5px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-strong); font-size: 10px; font-weight: 750; white-space: nowrap; }
+    .word { margin: 22px 0 3px; text-align: center; font: 650 clamp(36px,8vw,54px)/1.3 var(--jp-font,"Noto Sans JP"),"Yu Gothic",Meiryo,sans-serif; }
+    .reading { min-height: 22px; color: var(--muted); text-align: center; font: 14px/1.5 var(--jp-font,"Noto Sans JP"),"Yu Gothic",Meiryo,sans-serif; }
+    .reading:not(.visible) { visibility: hidden; }
+    .reading-tools { display: flex; justify-content: center; margin: 7px 0 17px; }
+    .text-button { padding: 4px 7px; border: 0; background: transparent; color: var(--accent); cursor: pointer; font-size: 12px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+    .prompt { margin: 18px 0 12px; color: var(--muted); text-align: center; font-size: 13px; }
+    .prompt strong { display: block; margin-top: 6px; color: var(--ink); font-size: 19px; font-weight: 650; line-height: 1.55; }
+    .prompt .japanese { font: 20px/1.8 var(--jp-font,"Noto Sans JP"),"Yu Gothic",Meiryo,sans-serif; }
+    .answer-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 14px auto; max-width: 560px; }
+    .option { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 40px; padding: 8px 10px; border-radius: 9px; cursor: pointer; text-align: left; font-size: 13px; line-height: 1.4; }
+    .option-key { flex: 0 0 auto; display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 11px; font-weight: 800; }
+    .option.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+    .option:disabled { cursor: default; }
+    .answer-input { display: block; width: min(100%,440px); height: 45px; margin: 14px auto; padding: 0 13px; border-radius: 9px; color: var(--ink); font-size: 16px; }
+    .answer-input[hidden] { display: none; }
+    .feedback { margin: 13px 0 0; padding: 12px; border-radius: 9px; background: var(--soft); font-size: 13px; line-height: 1.55; }
+    .feedback[hidden] { display: none; }
+    .feedback.correct { border: 1px solid color-mix(in srgb,var(--success) 40%,var(--line)); color: var(--success); }
+    .feedback.incorrect { border: 1px solid color-mix(in srgb,var(--danger) 40%,var(--line)); color: var(--danger); }
+    .feedback strong { display: block; margin-bottom: 3px; }
+    .meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 15px; }
+    .meta span { padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 10px; }
+    .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 17px; }
+    .stat-cards { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 7px; }
+    .stat-card { padding: 9px 7px; border-radius: 9px; background: var(--soft); }
+    .stat-value { display: block; font-size: 20px; font-weight: 750; letter-spacing: -.04em; }
+    .stat-value.timer-value { font-size: 12px; letter-spacing: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .stat-label { color: var(--muted); font-size: 10px; }
+    .stats-section { margin-top: 17px; }
+    .stats-title { margin: 0 0 8px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .breakdown { display: grid; grid-template-columns: 1fr auto auto; gap: 6px 10px; align-items: center; font-size: 11px; }
+    .breakdown .head { color: var(--muted); font-size: 9px; }
+    .breakdown .value { text-align: right; font-variant-numeric: tabular-nums; }
+    .status { min-height: 21px; margin-top: 10px; color: var(--muted); font-size: 11px; text-align: center; }
+    .status.error { color: var(--danger); }
+    footer { padding: 17px 0 0; color: var(--muted); text-align: center; font-size: 10px; line-height: 1.6; }
+    footer a { color: inherit; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    @media(max-width:760px) {
+      .shell { width: min(100% - 28px,570px); } header { height: 64px; }
+      main { padding: 29px 0 38px; }
+      .intro { margin-bottom: 20px; }
+      .quiz-panel { min-height: 0; padding: 15px; }
+    }
+    @media(max-width:430px) {
+      .settings { grid-template-columns: 1fr 1fr; }
+      .settings .start-button { grid-column: 1 / -1; }
+      .word { margin-top: 16px; }
+      .question-top { align-items: flex-start; }
+      .actions .button { flex: 1 1 30%; padding: 8px 7px; }
+      .answer-options { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .option { min-height: 37px; padding: 6px 7px; font-size: 12px; }
+      .quiz-options { align-items: flex-start; }
+      .shortcut-hint { width: 100%; }
+    }
+    @media(min-width:761px) {
+      html,body { height: 100%; overflow: hidden; }
+      body { min-height: 0; }
+      .shell { display: flex; flex-direction: column; height: 100dvh; }
+      header { flex: 0 0 56px; height: 56px; }
+      main { display: flex; flex: 1; flex-direction: column; min-height: 0; padding: 8px 0; }
+      .intro { flex: 0 0 auto; margin: 0 auto 9px; }
+      .intro .eyebrow { margin-bottom: 3px; font-size: 9px; }
+      h1 { font-size: 30px; line-height: 1.05; }
+      h1 br { display: none; }
+      .intro p { margin-top: 3px; font-size: 11px; }
+      .layout { flex: 1; min-height: 0; }
+      .quiz-panel { height: 100%; min-height: 0; overflow-y: auto; padding: 13px; }
+      .settings { grid-template-columns: repeat(4,minmax(0,1fr)); }
+      .stat-card { padding: 8px 6px; }
+      .stat-value { font-size: 18px; }
+      .stats-section { margin-top: 11px; }
+      .quiz-options { margin-top: 7px; }
+      .question { margin-top: 11px; padding-top: 10px; }
+      .word { margin: 8px 0 0; font-size: 40px; line-height: 1.15; }
+      .reading { min-height: 18px; font-size: 12px; }
+      .reading-tools { margin: 1px 0 7px; }
+      .prompt { margin: 8px 0; font-size: 12px; }
+      .prompt strong { margin-top: 3px; font-size: 16px; }
+      .prompt .japanese { font-size: 17px; }
+      .answer-options { gap: 6px; margin: 8px auto; }
+      .option { min-height: 35px; padding: 6px 8px; font-size: 12px; }
+      .answer-input { height: 39px; margin: 8px auto; }
+      .example { margin-top: 8px; padding: 8px 10px; }
+      .meta { margin-top: 8px; }
+      .meta span { padding: 4px 7px; }
+      .actions { gap: 6px; margin-top: 9px; }
+      .actions .button { min-height: 34px; padding: 6px 9px; }
+      footer { display: none; }
+    }
+    @media(min-width:901px) {
+      .settings { grid-template-columns: repeat(4,minmax(0,1fr)); }
+    }
+    @media(max-height:760px) and (min-width:761px) {
+      header { flex-basis: 48px; height: 48px; }
+      .intro { margin-bottom: 5px; }
+      .intro .eyebrow,.intro p { display: none; }
+      h1 { font-size: 25px; }
+      .quiz-panel { padding: 10px; }
+      .question { margin-top: 7px; padding-top: 7px; }
+      .word { margin-top: 3px; font-size: 34px; }
+      .reading-tools { margin-bottom: 3px; }
+      .prompt { margin: 5px 0; }
+      .answer-options { gap: 4px; margin: 5px auto; }
+      .option { min-height: 31px; padding: 4px 6px; }
+      .meta { margin-top: 5px; }
+      .actions { margin-top: 5px; }
+    }
+    @media(max-width:760px) {
+      html,body { height: auto; min-height: 100%; overflow-x: hidden; overflow-y: auto; }
+      body { min-height: 100dvh; }
+      .shell { display: flex; flex-direction: column; height: auto; min-height: 100dvh; }
+      header { flex: 0 0 52px; height: 52px; }
+      main { display: flex; flex: 0 0 auto; flex-direction: column; min-height: auto; padding: 7px 0; }
+      .intro { display: block; margin: 3px auto 10px; }
+      .intro .eyebrow { margin-bottom: 3px; font-size: 8px; }
+      .intro h1 { font-size: 22px; }
+      .intro h1 br { display: none; }
+      .intro p { margin-top: 3px; font-size: 10px; line-height: 1.35; }
+      .layout { display: block; flex: 0 0 auto; min-height: auto; overflow: visible; }
+      .quiz-panel { min-height: 0; overflow: visible; padding: 10px; }
+      .settings { gap: 7px; }
+      .settings { grid-template-columns: 1fr 1fr; }
+      .select { height: 35px; padding: 0 7px; font-size: 12px; }
+      .button { min-height: 33px; padding: 6px 8px; font-size: 11px; }
+      .field-label { margin-bottom: 4px; font-size: 10px; }
+      .quiz-options { margin-top: 6px; gap: 5px 8px; }
+      .auto-toggle { font-size: 10px; }
+      .auto-toggle small { font-size: 9px; }
+      .shortcut-hint { font-size: 9px; }
+      .question { margin-top: 8px; padding-top: 7px; }
+      .word { margin: 6px 0 0; font-size: 36px; line-height: 1.1; }
+      .reading { min-height: 16px; font-size: 11px; }
+      .reading-tools { margin: 0 0 4px; }
+      .prompt { margin: 5px 0; font-size: 11px; }
+      .prompt strong { margin-top: 3px; font-size: 15px; }
+      .prompt .japanese { font-size: 16px; }
+      .answer-options { gap: 5px; margin: 6px auto; }
+      .option { min-height: 34px; padding: 5px 6px; font-size: 11px; }
+      .option-key { width: 19px; height: 19px; font-size: 10px; }
+      .answer-input { height: 38px; margin: 6px auto; }
+      .example { margin-top: 6px; padding: 7px 8px; }
+      .meta { gap: 4px; margin-top: 5px; }
+      .meta span { padding: 3px 5px; }
+      .actions { gap: 5px; margin-top: 7px; }
+      .actions .button { flex: 1 1 30%; min-height: 31px; padding: 5px; font-size: 10px; }
+      .session-stats { margin-bottom: 10px; padding: 8px; }
+      .session-stats h2 { margin-bottom: 6px; font-size: 12px; }
+      .stat-cards { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 4px; }
+      .stat-card { padding: 5px 4px; }
+      .stat-value { font-size: 15px; }
+      .stat-label { font-size: 8px; }
+      .stats-breakdowns { gap: 8px; margin-top: 6px; }
+      .stats-section { margin-top: 6px; }
+      .stats-title { margin-bottom: 4px; font-size: 8px; }
+      .breakdown { gap: 2px 5px; font-size: 9px; }
+      .breakdown .head { font-size: 8px; }
+      .result-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      footer { display: none; }
+    }
+    @media(max-height:700px) and (max-width:760px) {
+      header { flex-basis: 44px; height: 44px; }
+      .brand-mark { width: 30px; height: 30px; font-size: 20px; }
+      .brand-name { font-size: 16px; }
+      .quiz-panel { padding: 7px; }
+      .word { font-size: 31px; }
+      .reading-tools { margin-bottom: 1px; }
+      .answer-options { gap: 4px; margin: 4px auto; }
+      .option { min-height: 30px; }
+      .actions { margin-top: 4px; }
+
+      .session-stats { padding: 6px; }
+    }
+    .settings.session-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 18px; padding: 0 0 12px; }
+    .settings.session-controls > .limit-field { flex: 0 0 150px; }
+    .settings.session-controls > .start-button { flex: 0 0 auto; min-width: 150px; }
+    .question-top .stop-session { margin-left: auto; min-height: 34px; padding: 5px 14px; font-size: 13px; color: #b3261e; border-color: color-mix(in srgb, #b3261e 45%, transparent); }
+    .start-error { margin: -4px 0 10px; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, #d93025 12%, transparent); border: 1px solid color-mix(in srgb, #d93025 40%, transparent); color: #b3261e; font-size: 13px; font-weight: 600; }
+    .start-error[hidden] { display: none; }
+    .level-note { margin: -10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .settings.session-controls .practice-mode-chips { min-height: 38px; }
+    /* Goi quiz modes: two rows of three on desktop */
+    .chips-field:has(#modeSelect) .chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    @media (max-width: 640px) { .chips-field:has(#modeSelect) .chips { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .english-prompt { font-size: .6em; font-weight: 700; }
+    .goi-settings { display: grid; gap: 18px; padding: 16px 18px 18px; }
+    .goi-settings > * { min-width: 0; }
+    .goi-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px 32px; }
+    .goi-row > .goi-field { flex: 0 1 auto; }
+    .goi-settings .chips-field > .chips-title { margin-bottom: 6px; }
+    .settings-panel .study-settings-note { margin: 0; padding: 12px 18px 0; }
+    @media(max-width:430px) { .settings.session-controls > .limit-field, .settings.session-controls > .start-button { flex: 1 1 140px; } .goi-settings { padding: 12px; gap: 14px; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <a class="brand" href="#" aria-label="Goi at NihongoToolkit home"><span class="brand-mark" aria-hidden="true">語</span><span class="brand-name">goi<span class="brand-sub">at NihongoToolkit</span></span></a>
+      <button class="icon-button" id="themeButton" type="button" aria-label="Switch to dark mode" title="Toggle dark mode">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.2 15.2A8.6 8.6 0 0 1 8.8 3.8 8.7 8.7 0 1 0 20.2 15.2Z"/></svg>
+      </button>
+    </header>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">Small words, steady progress</p>
+        <h1>Make vocabulary <br>second nature.</h1>
+        <p>Choose a level, set a practice goal, and build your Japanese vocabulary one word at a time.</p>
+      </section>
+      <div class="layout">
+        <section class="panel quiz-panel" aria-label="Vocabulary quiz">
+          <details class="settings-panel" id="settingsPanel" open>
+            <summary>Quiz settings</summary>
+            <p class="study-settings-note">Settings save automatically and apply to your next session. The top study controls stay live.</p>
+            <div class="goi-settings">
+              <div class="goi-row">
+                <label class="goi-field"><span class="field-label">Quiz mode</span>
+                  <select class="select" id="modeSelect">
+                    <option value="multiple-ej">Multiple choice (E→J)</option><option value="typing-ej">Typing (E→J)</option><option value="cloze-ej">Cloze (E→J)</option><option value="multiple-je" selected>Multiple choice (J→E)</option><option value="typing-je">Typing (J→E)</option><option value="cloze-je">Cloze (J→E)</option>
+                  </select>
+                </label>
+                <label class="goi-field"><span class="field-label">Kana direction</span>
+                  <select class="select" id="kanaDirection">
+                    <option value="to-romaji">Kana → romaji</option><option value="to-kana">Romaji → kana</option><option value="random">Randomize</option>
+                  </select>
+                </label>
+              </div>
+              <label><span class="field-label">JLPT level</span>
+                <select class="select" id="levelSelect">
+                  <option value="N5" selected>N5</option><option value="N4">N4</option><option value="N3">N3</option>
+                  <option value="N2">N2</option><option value="N1">N1</option><option value="Random">Random</option>
+                </select>
+              </label>
+              <p class="level-note">Levels are estimates; Non-JLPT means unrated.</p>
+              <div class="font-field"><select class="select" id="fontChoice"><option value="random">Rotate</option><option value="Noto Sans JP" selected>Noto Sans JP</option></select></div>
+            </div>
+          </details>
+          <div class="banner" id="warning" role="status"></div>
+          <div class="status" id="status" aria-live="polite"></div>
+          <section class="question" id="question">
+            <div class="session-stats" id="sessionStats">
+              <div class="stats-heading">
+                <h2>Session stats</h2>
+                <label class="stats-toggle"><input id="showStatsToggle" type="checkbox" checked> Show stats</label>
+              </div>
+              <div class="settings session-controls">
+                <label><span class="field-label">Practice mode</span>
+                  <select class="select" id="sessionType">
+                    <option value="free">Free</option><option value="questions">Question count</option><option value="time">Timed</option><option value="sudden">Sudden Death</option>
+                  </select>
+                </label>
+                <label class="limit-field" id="questionLimitField" hidden><span class="field-label">Questions</span>
+                  <input class="number-input" id="questionLimit" type="number" min="1" max="200" step="1" value="10" inputmode="numeric">
+                </label>
+                <label class="limit-field" id="timeLimitField" hidden><span class="field-label">Minutes</span>
+                  <input class="number-input" id="timeLimit" type="number" min="1" max="180" step="1" value="10" inputmode="numeric">
+                </label>
+                <button class="button primary start-button" id="startButton" type="button">Start quiz</button>
+              </div>
+              <div class="start-error" id="startError" role="alert" hidden></div>
+              <div class="session-stats-content" id="sessionStatsContent">
+                <div class="stat-cards">
+                  <div class="stat-card"><span class="stat-value" id="answeredStat">0</span><span class="stat-label">answered</span></div>
+                  <div class="stat-card"><span class="stat-value" id="accuracyStat">—</span><span class="stat-label">accuracy</span></div>
+                  <div class="stat-card"><span class="stat-value" id="averageTimeStat">—</span><span class="stat-label">avg. answer</span></div>
+                  <div class="stat-card"><span class="stat-value timer-value" id="totalTimeStat">00:00.000</span><span class="stat-label">total time</span></div>
+                </div>
+                <div class="stats-breakdowns">
+                  <div class="stats-section"><p class="stats-title">By JLPT level</p><div class="breakdown" id="levelBreakdown"></div></div>
+                  <div class="stats-section"><p class="stats-title">By quiz mode</p><div class="breakdown" id="modeBreakdown"></div></div>
+                </div>
+              </div>
+            </div>
+            <label class="switch-option review-option"><input id="showExampleToggle" type="checkbox" checked> Show example and definition</label>
+            <div class="example" id="example" hidden>
+              <div class="example-definition" id="exampleDefinition"></div>
+              <div class="example-ja" id="exampleJa"></div>
+              <div class="example-en" id="exampleEn"></div>
+            </div>
+            <div class="question-top" id="questionTop" hidden>
+                <span class="question-label" id="questionLabel">Question 1</span>
+                <span class="badge" id="levelBadge">N3</span>
+                <span class="badge timer-badge" id="sessionTimer" hidden></span>
+                <button class="button stop-session" id="stopSessionButton" type="button" hidden>Stop session</button>
+              </div>
+            <div id="questionContent" hidden>
+              <div class="word" id="word"></div>
+              <div class="meta" id="meta"></div>
+              <div class="prompt" id="prompt"></div>
+              <div class="answer-options" id="options" role="group" aria-label="Choose the meaning"></div>
+              <label class="sr-only" for="answerInput">Type the Japanese word</label>
+              <input class="answer-input" id="answerInput" type="text" autocorrect="off" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Type the Japanese word" hidden>
+              <div class="actions">
+                <button class="button primary" id="checkButton" type="button">Check</button>
+                <button class="button" id="showButton" type="button">Show answer <span class="quiz-shortcut" aria-hidden="true">(S)</span></button>
+                <button class="button" id="skipButton" type="button">Skip <span class="quiz-shortcut" aria-hidden="true">(Space)</span></button>
+                <button class="button" id="nextButton" type="button" aria-keyshortcuts="Enter N" hidden>Next question <span class="quiz-shortcut" aria-hidden="true">(Enter / N)</span></button>
+              </div>
+              <div class="feedback" id="feedback" role="status" hidden></div>
+            </div>
+            <div class="results-panel" id="resultsPanel" hidden>
+              <h2>Quiz complete</h2>
+              <p id="resultsSummary"></p>
+              <div class="result-metrics">
+                <div class="result-metric"><strong id="resultAnswered">0 / 0</strong><span>answered</span></div>
+                <div class="result-metric"><strong id="resultAccuracy">—</strong><span>accuracy</span></div>
+                <div class="result-metric"><strong id="resultAverage">—</strong><span>average answer</span></div>
+                <div class="result-metric"><strong id="resultTotal">00:00.000</strong><span>total time</span></div>
+              </div>
+                <div class="failed-terms" id="failedTerms"></div>
+            </div>
+          </section>
+        </section>
+      </div>
+      <footer>JLPT levels are community estimates. <a href="data-sources.html">Data sources and licenses</a></footer>
+    </main>
+  </div>
+  <script type="module" src="./src/goi.js"></script>
+</body>
+</html>

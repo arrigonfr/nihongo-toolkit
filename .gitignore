@@ -1,0 +1,13 @@
+node_modules/
+frontend/dist/
+backend/.cache/
+backend/data/*.building*
+backend/data/*.sqlite-*
+backend/data/*.import-lock
+backend/data/nihon.sqlite
+# Original database is preserved locally, not used by either deploy.
+kanjidb.sqlite
+.env.local
+backend/.env
+.env.*.local
+.DS_Store

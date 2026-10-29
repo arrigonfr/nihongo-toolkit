@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171b18">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23356653'/%3E%3Ctext x='20' y='28' text-anchor='middle' font-size='25' fill='white'%3E%E6%97%A5%3C/text%3E%3C/svg%3E">
+  <title>日本語道具箱 · Japanese Toolkit · Nihongo Toolkit</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --surface: #fff;
+      --ink: #23251f;
+      --muted: #777970;
+      --line: #e7e6df;
+      --accent: #356653;
+      --shadow: 0 12px 30px rgb(42 45 35 / 14%);
+      --selected: #eaf1ec;
+      --selected-ink: #254d3e;
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --surface: #222923;
+      --ink: #edf1eb;
+      --muted: #a5afa5;
+      --line: #3a443b;
+      --accent: #9dceab;
+      --shadow: 0 12px 30px rgb(0 0 0 / 35%);
+      --selected: #2e4033;
+      --selected-ink: #bee4c7;
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body { overflow: hidden; background: #f6f5f1; color: var(--ink); }
+    button, a { font: inherit; }
+    button:focus-visible, a:focus-visible { outline: 3px solid #6caa83; outline-offset: 2px; }
+    .navigation {
+      position: fixed;
+      z-index: 2;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .menu-button {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .menu-button:hover, .helper-link:hover { border-color: var(--accent); }
+    .menu-icon { display: grid; gap: 4px; }
+    .menu-icon span { width: 18px; height: 2px; border-radius: 2px; background: currentColor; }
+    .menu {
+      position: absolute;
+      top: 48px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(280px, calc(100vw - 24px));
+      max-height: calc(100vh - 68px);
+      max-height: calc(100dvh - 68px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .menu[hidden] { display: none; }
+    .menu-group + .menu-group { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 6px; }
+    .menu-group h2 { margin: 8px 12px 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .helper-link {
+      display: block;
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+    }
+    .helper-link[aria-current="page"] { background: var(--selected); color: var(--selected-ink); }
+    .helper-name { display: block; font-size: 14px; font-weight: 700; }
+    .helper-description { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .helper-icon {
+      display: inline-grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font: 18px/1 "Sawarabi Mincho", serif;
+      vertical-align: middle;
+    }
+    :root[data-theme="dark"] .helper-icon { color: #17231b; }
+    .helper-frame {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navigation" aria-label="Helper navigation">
+    <button class="menu-button" id="menuButton" type="button" aria-label="Open helper menu" aria-expanded="false" aria-controls="helperMenu">
+      <span class="menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+    <div class="menu" id="helperMenu" hidden>
+      <section class="menu-group" aria-label="Practice">
+      <h2>Practice</h2>
+      <button class="helper-link" type="button" data-file="仮名.html">
+        <span class="helper-name">Kana · <span class="helper-icon" aria-hidden="true">あ</span> · 仮名</span>
+        <span class="helper-description">(Hiragana and katakana practice)</span>
+      </button>
+      <button class="helper-link" type="button" data-file="読み.html">
+        <span class="helper-name">Yomi · <span class="helper-icon" aria-hidden="true">読</span> · 読み</span>
+        <span class="helper-description">(Kanji reading practice)</span>
+      </button>
+      <button class="helper-link" type="button" data-file="意味.html">
+        <span class="helper-name">Imi · <span class="helper-icon" aria-hidden="true">意</span> · 意味</span>
+        <span class="helper-description">(Kanji meaning practice)</span>
+      </button>
+      <button class="helper-link" type="button" data-file="語彙.html">
+        <span class="helper-name">Goi · <span class="helper-icon" aria-hidden="true">語</span> · 語彙</span>
+        <span class="helper-description">(JLPT vocabulary practice)</span>
+      </button>
+      <button class="helper-link" type="button" data-file="活用練習.html">
+        <span class="helper-name">Katsuyō Renshuu · <span class="helper-icon" aria-hidden="true">練</span> · 活用練習</span>
+        <span class="helper-description">(Focused Japanese conjugation practice)</span>
+      </button>
+      </section>
+      <section class="menu-group" aria-label="Reference">
+      <h2>Reference</h2>
+      <button class="helper-link" type="button" data-file="言葉.html">
+        <span class="helper-name">Kotoba · <span class="helper-icon" aria-hidden="true">言</span> · 言葉</span>
+        <span class="helper-description">(Japanese dictionary)</span>
+      </button>
+      <button class="helper-link" type="button" data-file="漢字地図帳.html">
+        <span class="helper-name">Kanji Chizuchō · <span class="helper-icon" aria-hidden="true">漢</span> · 漢字地図帳</span>
+        <span class="helper-description">(Explore kanji and compounds)</span>
+      </button>
+      <button class="helper-link" type="button" data-file="活用.html">
+        <span class="helper-name">Katsuyō · <span class="helper-icon" aria-hidden="true">活</span> · 活用</span>
+        <span class="helper-description">(Japanese verb and adjective conjugator)</span>
+      </button>
+      <button class="helper-link" type="button" data-file="文解き.html">
+        <span class="helper-name">Fumitoki · <span class="helper-icon" aria-hidden="true">文</span> · 文解き</span>
+        <span class="helper-description">(Japanese sentence breakdown)</span>
+      </button>
+      <button class="helper-link" type="button" data-file="資料.html">
+        <span class="helper-name">Shiryō · <span class="helper-icon" aria-hidden="true">資</span> · 資料</span>
+        <span class="helper-description">(Printable kana and conjugation cheatsheets)</span>
+      </button>
+      </section>
+      <section class="menu-group" aria-label="Games">
+      <h2>Games</h2>
+      <button class="helper-link" type="button" data-file="絵合わせ.html">
+        <span class="helper-name">Eawase · <span class="helper-icon" aria-hidden="true">合</span> · 絵合わせ</span>
+        <span class="helper-description">(Japanese word and kana memory matching)</span>
+      </button>
+      <button class="helper-link" type="button" data-file="言葉探し.html">
+        <span class="helper-name">Kotoba Sagashi · <span class="helper-icon" aria-hidden="true">探</span> · 言葉探し</span>
+        <span class="helper-description">(Japanese vocabulary word search)</span>
+      </button>
+      <button class="helper-link" type="button" data-file="パズル.html">
+        <span class="helper-name">Pazuru · <span class="helper-icon" aria-hidden="true">謎</span> · パズル</span>
+        <span class="helper-description">(Japanese vocabulary crossword)</span>
+      </button>
+      <button class="helper-link" type="button" data-file="しりとり.html">
+        <span class="helper-name">Shiritori · <span class="helper-icon" aria-hidden="true">し</span> · しりとり</span>
+        <span class="helper-description">(Japanese word-chain game)</span>
+      </button>
+      </section>
+    </div>
+  </nav>
+  <iframe class="helper-frame" id="helperFrame" title="Japanese helper"></iframe>
+
+  <script type="module" src="./src/index.js"></script>
+</body>
+</html>

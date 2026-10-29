@@ -1,0 +1,88 @@
+/* Shared look for every settings panel: one scale for titles, controls and buttons. */
+body :is(details, .ui-panel) {
+  --ui-fs: 13px;
+  --ui-title-fs: 12.5px;
+  --ui-ctl-h: 38px;
+  --ui-btn-h: 34px;
+  --ui-gap: 16px;
+  --ui-title-h: 24px;
+}
+body :is(details, .ui-panel) :is(label, legend, summary, p, small, span, div, button, select, input) { font-size: var(--ui-fs); }
+body :is(details, .ui-panel) :is(.small, small, .setting-availability, .study-settings-note, .font-chip-name small) { font-size: 11.5px; }
+body :is(details, .ui-panel) :is(legend, summary) { font-weight: 700; color: var(--accent-strong); letter-spacing: 0; }
+body :is(details, .ui-panel) legend { padding: 0 8px; }
+
+/* Input titles: the same size and weight everywhere */
+body :is(details, .ui-panel) :is(
+  label:has(> :is(select, input:not([type=checkbox]):not([type=radio]), textarea)) > span:not(.setting-availability),
+  .font-field > label, .level-field > label, .field-label, .cw-field > span
+) {
+  display: block; margin: 0 0 6px; font-size: var(--ui-title-fs); font-weight: 650; line-height: 1.4; color: var(--muted); letter-spacing: .01em;
+}
+body :is(details, .ui-panel) label:has(> :is(select, input:not([type=checkbox]):not([type=radio]), textarea)) { display: block; min-width: 0; }
+
+/* Controls */
+body :is(details, .ui-panel) :is(select, input:not([type=checkbox]):not([type=radio]), textarea) {
+  width: 100%; min-width: 0; height: var(--ui-ctl-h); min-height: var(--ui-ctl-h); padding: 0 12px; border: 1px solid var(--line);
+  border-radius: 10px; background-color: var(--card); color: var(--ink); font-weight: 500; line-height: 1.3; box-sizing: border-box;
+}
+body :is(details, .ui-panel) :is(select, input):focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 1px; border-color: var(--accent); }
+body :is(details, .ui-panel) input[type=checkbox], body :is(details, .ui-panel) input[type=radio] { width: 17px; height: 17px; margin: 0; flex: 0 0 auto; accent-color: var(--accent); }
+body :is(details, .ui-panel) :is(.check, .setting.check, .check-label, .cw-switch, label:has(> input[type=checkbox])) {
+  display: inline-flex; align-items: center; gap: 9px; min-height: var(--ui-ctl-h); margin: 0; font-weight: 500; line-height: 1.35; cursor: pointer;
+}
+
+/* Grids: every cell starts on the same line; check items line up with the controls beside them */
+body :is(details, .ui-panel) :is(.settings-grid, .settings-section-grid) {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  align-items: start; gap: var(--ui-gap); row-gap: 22px;
+}
+body :is(details, .ui-panel) :is(.settings-grid, .settings-section-grid):has(> :is(label, div):not(.check):not(.setting.check) > :is(select, input:not([type=checkbox]), .chips))
+  > :is(.check, .setting.check, .check-label, .cw-switch, label:has(> input[type=checkbox])) { margin-top: var(--ui-title-h); }
+body :is(details, .ui-panel) :is(.settings-grid, .settings-section-grid) > :is(.check, .setting.check, .check-label, .cw-switch) { position: relative; flex-wrap: nowrap; align-self: start; }
+body :is(details, .ui-panel) :is(.check, .setting.check, .check-label, .cw-switch):has(> .setting-availability) { position: relative; }
+body :is(details, .ui-panel) :is(.check, .setting.check, .check-label, .cw-switch) > .setting-availability {
+  position: static; flex: 1 0 calc(100% - 26px); margin: 2px 0 0 26px; line-height: 1.25;
+}
+body :is(details, .ui-panel) :is(.settings-grid, .settings-section-grid) > :is(.check, .setting.check, .check-label, .cw-switch):has(> .setting-availability) { flex-wrap: wrap; align-content: center; }
+body :is(details, .ui-panel) :is(.settings-grid, .settings-section-grid) > :is(.font-field, .level-field, .chips-field.wide) { grid-column: 1 / -1; }
+body :is(details, .ui-panel) :is(.settings-grid, .settings-section-grid) > .settings-section { margin: 0; }
+body :is(details, .ui-panel) .settings-section {
+  padding: 14px 16px 16px; border: 1px solid var(--line); border-radius: 14px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 38%, var(--card)), var(--card));
+}
+body :is(details, .ui-panel) .settings-section > h3 { margin: 0 0 12px; font-size: var(--ui-fs); font-weight: 700; color: var(--accent-strong); }
+body :is(details, .ui-panel) fieldset { min-width: 0; border-radius: 14px; }
+
+.chips-field { display: block; min-width: 0; }
+
+/* Buttons and accents */
+body :is(details, .ui-panel) button:not(.primary):hover:not(:disabled) { border-color: var(--accent); }
+
+/* Kana / Yomi / Imi settings body */
+body :is(details, .ui-panel).settings .settings-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 16px 18px 18px; }
+body :is(details, .ui-panel).settings .settings-body > .study-settings-note { margin: 0; }
+body :is(details, .ui-panel) .settings-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px 28px; min-width: 0; }
+body :is(details, .ui-panel) .settings-row > * { min-width: 0; }
+body :is(details, .ui-panel) .settings-row.has-level { flex-direction: row-reverse; justify-content: flex-end; }
+body :is(details, .ui-panel) .settings-row.has-level > .level-field { flex: 0 1 auto; }
+body :is(details, .ui-panel) .settings-row.has-level > label { flex: 1 1 220px; max-width: 340px; }
+@media (max-width: 900px) { body :is(details, .ui-panel) .settings-row.has-level { flex-direction: column; } body :is(details, .ui-panel) .settings-row.has-level > label { max-width: none; width: 100%; } }
+
+/* Pazuru: switches look like every other check item */
+body :is(details, .ui-panel) .cw-switch { padding: 0; border: 0; background: none; }
+body :is(details, .ui-panel) .cw-switch strong { font-weight: 500; }
+body :is(details, .ui-panel) .cw-settings-grid { padding: 0; background: none; }
+body :is(details, .ui-panel) .cw-toggle-group { display: flex; flex-wrap: wrap; gap: 8px 28px; }
+body :is(details, .ui-panel) .cw-reset-setting { padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+
+/* Level chips with a neighbouring select: one wrapping row, tops aligned */
+body :is(details, .ui-panel) .level-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px 28px; }
+body :is(details, .ui-panel) .level-row > .level-field { flex: 0 1 auto; }
+body :is(details, .ui-panel) .level-row > label { flex: 1 1 220px; max-width: 340px; }
+
+body :is(details, .ui-panel) fieldset > .settings-grid > .settings-section { display: grid; gap: 14px; align-content: start; }
+body :is(details, .ui-panel) fieldset > .settings-grid > .settings-section > h3 { margin: 0; }
+body :is(details, .ui-panel) :is(.cw-switch, .cw-reset-setting) { min-height: 48px !important; min-width: 200px; }
+
+.stats-heading .stats-toggle { min-height: 24px !important; }

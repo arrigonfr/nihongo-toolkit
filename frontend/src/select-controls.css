@@ -1,0 +1,49 @@
+@supports (appearance: base-select) {
+  @media (max-width: 850px) {
+    body select:not([multiple]):not([size]),
+    body select:not([multiple]):not([size])::picker(select) {
+      appearance: base-select;
+    }
+    body select:not([multiple]):not([size]) {
+      align-items: center;
+      gap: 8px;
+      white-space: normal;
+    }
+    body select:not([multiple]):not([size])::picker(select) {
+      position: fixed;
+      inset: auto;
+      position-area: block-end span-inline-end;
+      position-try-order: most-block-size;
+      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+      margin: 6px 0;
+      min-inline-size: anchor-size(inline);
+      max-inline-size: min(28rem, calc(100vw - 16px));
+      max-block-size: min(20rem, calc(100% - 12px));
+      overflow: auto;
+      overscroll-behavior: contain;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--ink);
+      box-shadow: var(--shadow);
+      font: 400 16px/1.4 system-ui, sans-serif;
+    }
+    body select:not([multiple]):not([size]) option {
+      min-block-size: 44px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    body select:not([multiple]):not([size]) option:checked,
+    body select:not([multiple]):not([size]) option:focus {
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+    }
+    body select:not([multiple]):not([size]) option:disabled {
+      color: var(--muted);
+      opacity: .6;
+    }
+  }
+}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f5f1">
+  <title>日本語道具箱 · Japanese Toolkit · Nihongo Toolkit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Sawarabi+Mincho&family=Zen+Kurenaido&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23356653'/%3E%3Ctext x='20' y='28' text-anchor='middle' font-size='25' fill='white'%3E練%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <div class="practice-shell">
+    <header>
+      <a class="brand" href="./" target="_top"><span class="brand-mark" aria-hidden="true">練</span><span class="brand-name">Katsuyō Renshuu<span class="brand-note">at NihongoToolkit</span></span></a>
+      <button id="themeButton" type="button" aria-label="Change theme"></button>
+    </header>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">A LITTLE PRACTICE, EVERY DAY</p>
+        <h1>Conjugation Practice</h1>
+        <p>Find your rhythm. One word, one ending, one step closer to fluency.</p>
+      </section>
+      <div id="notice" role="status" aria-live="polite"></div>
+      <div class="practice-layout">
+        <div>
+          <section id="practiceDisplay" class="panel" aria-label="Practice display">
+            <p class="muted small">Settings save automatically and apply to your next session. The top study controls stay live.</p>
+            <div class="settings-grid" id="displaySettings"></div>
+          </section>
+          <section id="setup" class="panel">
+            <div class="section-heading"><h2>Your practice, your pace</h2><span class="badge">活用練習</span></div>
+            <p class="muted">Start small. Your missed forms will return more often as you practice.</p>
+            <div class="settings-grid" id="quickSettings"></div>
+            <fieldset id="levelSettings"><legend>JLPT study level</legend></fieldset>
+            <p class="muted small">Select one level or several for a range. Question difficulty combines the word and the form; advanced forms can use familiar words.</p>
+            <details id="settingsPanel">
+              <summary>Customize your practice <span class="muted">· forms, input & more</span></summary>
+              <fieldset id="typeSettings"><legend>Word types</legend></fieldset>
+              <fieldset id="formSettings"><legend>Conjugation forms</legend></fieldset>
+              <div class="settings-grid" id="questionSettings"></div>
+              <h3>Hints & learning support</h3>
+              <div class="settings-grid" id="supportSettings"></div>
+            </details>
+            <div class="start-line"><button id="startButton" class="primary" type="button">Start practice →</button></div>
+            <p id="startError" class="start-error" role="alert"></p>
+          </section>
+          <section id="practice" class="panel question-panel" hidden aria-label="Conjugation question">
+            <div class="session-bar"><span id="sessionMode" class="badge"></span><span id="questionCount"></span><span id="clock" role="timer"></span><button id="endButton" type="button">End session</button></div>
+            <progress id="sessionProgress" max="10" value="0" aria-label="Session progress"></progress>
+            <div id="questionBody"></div>
+            <form id="answerForm">
+              <label id="answerLabel" for="answerInput">Your answer</label>
+              <input id="answerInput" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="160" aria-describedby="inputHelp">
+              <select id="answerChoice" hidden aria-label="Your answer"></select>
+              <div id="answerOptions" class="study-pills" role="group" aria-label="Your answer" hidden></div>
+              <p id="answerNotice" role="status" aria-live="polite"></p>
+              <p id="inputHelp" class="muted small"></p>
+              <p class="practice-shortcut small muted">1–9: choose · H: hint · R: reveal · C: check · N: next (outside the typing field)</p>
+              <div class="answer-actions"><button id="checkButton" class="primary" type="submit">Check answer <kbd>↵</kbd></button><button id="hintButton" type="button">Hint</button><button id="revealButton" type="button">Reveal answer</button></div>
+            </form>
+            <p id="hintText" class="hint" role="status" hidden></p>
+            <div id="feedback" role="status" aria-live="polite" tabindex="-1" hidden></div>
+            <div id="followup" class="answer-actions" hidden><button id="nextButton" type="button" class="primary">Next question →</button><button id="retryButton" type="button">Try again</button></div>
+            <details id="ruleCard" class="rule-card" hidden><summary>Rule card</summary><div id="ruleContent"></div></details>
+          </section>
+          <section id="results" class="panel" hidden aria-labelledby="resultsTitle">
+            <p class="eyebrow">PRACTICE MAKES PROGRESS</p><h2 id="resultsTitle" tabindex="-1">Session complete</h2>
+            <div id="resultContent"></div>
+            <button id="restartButton" class="primary" type="button">Practice again →</button>
+          </section>
+        </div>
+        <aside class="practice-sidebar">
+          <section class="panel progress-panel">
+            <span class="eyebrow">YOUR LEARNING JOURNEY</span>
+            <div class="streak-number"><span id="streak">0</span><span>day streak</span></div>
+            <p class="muted small">Complete Daily Practice to keep your streak going.</p>
+            <div id="lifetime"></div>
+            <h3>Give these another try</h3><div id="weakForms"></div>
+            <details><summary>Missed-word log</summary><ul id="missedWords" class="small"></ul></details>
+          </section>
+          <section class="panel quiet-panel">
+            <h3>Understand the ending</h3>
+            <p class="muted">Mistakes are part of learning. Take a hint, try again, and read the rule before moving on.</p>
+            <a href="./#helper=活用.html" target="_top">Explore the conjugation reference ↗</a>
+          </section>
+          <button id="resetButton" class="text-button" type="button">Reset practice progress</button>
+        </aside>
+      </div>
+      <footer>Offline study bank · JLPT levels are estimates, not official assignments. Original teaching examples use standard modern Japanese. <a href="./data-sources.html">Data sources & licenses</a>.</footer>
+    </main>
+  </div>
+  <dialog id="kanjiDialog" aria-labelledby="kanjiTitle"><h2 id="kanjiTitle"></h2><div id="kanjiContent"></div><form method="dialog"><button>Close</button></form></dialog>
+  <noscript>Enable JavaScript to practice Japanese conjugations.</noscript>
+  <script type="module" src="./src/conjugation-practice.js"></script>
+</body>
+</html>

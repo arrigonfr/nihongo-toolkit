@@ -1,0 +1,54 @@
+.resources-shell { width: min(100% - 40px, 1180px); }
+.resources-shell main { padding: 20px 0 40px; }
+.resources-shell .intro { margin-bottom: 18px; }
+.sheet-picker { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
+.sheet-tab {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 16px 0 8px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--card); color: var(--ink); font: 700 13px/1 system-ui, sans-serif;
+}
+.sheet-tab-icon {
+  display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: #fff; font: 500 15px/1 "Noto Sans JP", sans-serif;
+  background: hsl(var(--tab-hue) 50% 40%);
+}
+.sheet-tab:hover { border-color: hsl(var(--tab-hue) 50% 50%); }
+.sheet-tab[aria-pressed="true"] { border-color: hsl(var(--tab-hue) 50% 45%); background: hsl(var(--tab-hue) 50% 45% / 16%); }
+.resources-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.sheet-stage { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--soft); box-shadow: var(--shadow); }
+.sheet-paper { width: min(100%, 794px); margin: 0 auto; background: #fff; box-shadow: 0 8px 28px rgb(0 0 0 / 22%); aspect-ratio: 210 / 297; }
+.sheet-paper svg { display: block; width: 100%; height: auto; }
+.download-panel { position: sticky; top: 16px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: var(--shadow); }
+.download-panel h2 { margin: 0 0 6px; font-size: 18px; line-height: 1.3; }
+.download-summary { margin: 0 0 14px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.download-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.download-button {
+  display: grid; align-content: center; gap: 2px; min-height: 52px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--page); color: var(--ink);
+}
+body .download-button { text-align: left !important; justify-items: start !important; justify-content: start !important; }
+.download-button strong { font-size: 13px; }
+.download-button small { color: var(--muted); font-size: 11px; line-height: 1.3; }
+.download-button:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.download-button:disabled { opacity: .6; cursor: progress; }
+.download-button[data-format="print"], .download-button[data-format="png"] { grid-column: 1 / -1; }
+.download-status:empty { display: none; }
+.download-status { margin: 12px 0 0; color: var(--accent-strong); font-size: 13px; }
+
+@media (max-width: 960px) {
+  .resources-layout { grid-template-columns: 1fr; }
+  .download-panel { position: static; order: -1; }
+}
+@media (max-width: 520px) {
+  .resources-shell { width: min(100% - 24px, 1180px); }
+  .sheet-stage { padding: 8px; }
+  .sheet-picker { gap: 6px; }
+  .sheet-tab { padding-right: 12px; }
+}
+
+@media print {
+  @page { size: A4; margin: 0; }
+  body[data-printing] .study-header, body[data-printing] .intro, body[data-printing] .sheet-picker, body[data-printing] .download-panel { display: none !important; }
+  body[data-printing], body[data-printing] .resources-shell, body[data-printing] main { margin: 0; padding: 0; width: auto; background: #fff; }
+  body[data-printing] .resources-layout { display: block; }
+  body[data-printing] .sheet-stage { padding: 0; border: 0; box-shadow: none; background: #fff; }
+  body[data-printing] .sheet-paper { width: 210mm; height: 297mm; box-shadow: none; }
+}

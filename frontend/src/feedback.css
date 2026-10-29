@@ -1,0 +1,30 @@
+.feedback-title { margin-bottom: 1rem; font-size: 1.08rem; font-weight: 800; }
+.feedback-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: .9rem 1.4rem; margin: 0; }
+.feedback-details > div { min-width: 0; }
+.feedback-details .wide { grid-column: 1 / -1; }
+.feedback-details dt, .feedback-section h3 { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; opacity: .72; font-weight: 700; margin: 0 0 .3rem; }
+.feedback-details dd { margin: 0; font-size: 1rem; line-height: 1.65; overflow-wrap: anywhere; }
+.feedback-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); }
+.feedback-note { margin-top: .8rem; font-size: .85rem; opacity: .8; }
+.example-word-list { list-style: none; margin: .6rem 0 0; padding: 0; }
+.example-word-list li { display: grid; grid-template-columns: minmax(3rem, 1fr) minmax(4rem, 1fr) 2fr; gap: .3rem .8rem; padding: .5rem 0; align-items: baseline; }
+.example-word-list li + li, .sentence-item + .sentence-item { border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+.example-word { font-size: 1.1rem; font-weight: 700; }
+.example-reading { opacity: .8; }
+.example-definition { font-size: .9rem; }
+.sentence-item { padding: .7rem 0; line-height: 1.7; }
+.sentence-japanese { font-size: 1.1rem; margin-bottom: .2rem; }
+.sentence-credit { display: block; font-size: .72rem; color: inherit; opacity: .75; }
+.example-word-list span { overflow-wrap: anywhere; }
+.sentence-panel { color: var(--ink); font: 400 14px/1.7 system-ui, sans-serif; }
+.sentence-japanese { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sentence-japanese .study-japanese { overflow-wrap: anywhere; }
+.sentence-japanese .study-romaji { flex-basis: 100%; }
+.sentence-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.sentence-next { display: inline-flex; padding: 7px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--accent-soft); color: var(--accent-strong); font: 600 12px/1.4 system-ui, sans-serif; cursor: pointer; }
+.sentence-next:disabled { opacity: .6; cursor: wait; }
+.sentence-status { color: var(--muted); font-size: 12px; }
+@media (max-width: 480px) {
+  .example-word-list li { grid-template-columns: 1fr 1fr; }
+  .example-definition { grid-column: 1 / -1; }
+}

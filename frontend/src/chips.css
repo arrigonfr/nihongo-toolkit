@@ -1,0 +1,56 @@
+/* Shared chip groups: levels, fonts, modes and any other small choice list. */
+.chips-field { display: block; min-width: 0; }
+.chips-field > .chips-title {
+  display: block; margin: 0 0 6px; font-size: 12.5px; font-weight: 650; line-height: 1.4; color: var(--muted); letter-spacing: .01em;
+}
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.chips-vertical { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+.chips-vertical .chip-option { width: 100%; }
+.chips.is-disabled { opacity: .55; }
+
+.chips .chip-option {
+  position: relative; display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-width: 0; min-height: 34px; margin: 0; padding: 4px 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink);
+  font: inherit; font-size: 13px; font-weight: 600; line-height: 1.3; cursor: pointer; box-sizing: border-box;
+  transition: background .15s, border-color .15s, box-shadow .15s, transform .15s;
+}
+.chips .chip-option:hover:not(.is-disabled) { border-color: var(--accent); transform: translateY(-1px); }
+.chips .chip-option:focus-within, .chips button.chip-option:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 40%, transparent); outline-offset: 1px; }
+.chips .chip-option.is-active {
+  border-color: var(--accent); color: var(--accent-strong);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, var(--card)), var(--accent-soft));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 30%, transparent), 0 3px 10px -6px var(--accent);
+}
+.chips .chip-option.is-disabled { opacity: .5; cursor: not-allowed; }
+.chips .chip-option input { flex: 0 0 auto; width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.chips .chip-body { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.chips .chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chips .chip-label small { margin-left: 6px; font-size: 11px; font-weight: 400; color: var(--muted); }
+.chips .chip-exclusive { border-style: dashed; }
+.chips .chip-exclusive.is-active { border-style: solid; }
+
+/* Cards: a preview above the label */
+.chips-card .chip-option { flex-direction: column; align-items: stretch; gap: 6px; padding: 8px 10px; min-width: 96px; }
+.chips-card .chip-option input { position: absolute; top: 8px; left: 8px; }
+.chips-card .chip-body { flex-direction: column; align-items: stretch; gap: 6px; }
+.chips-card .chip-preview { display: grid; place-items: center; min-height: 44px; border-radius: 8px; overflow: hidden; }
+.chips-card .chip-label { text-align: center; font-size: 12px; }
+
+/* Fonts: sample next to the name, one line each */
+.chips.font-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.chips.font-picker .chip-option { padding: 6px 12px; }
+.chips.font-picker .chip-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; min-width: 0; }
+.chips.font-picker .chip-preview { display: block; min-height: 0; font-size: 20px; line-height: 1.3; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chips.font-picker .chip-label { font-size: 12px; font-weight: 650; }
+
+/* Buttons that accompany the chips: the same height as the chips */
+.chip-actions { display: inline-flex; flex: 0 0 auto; flex-wrap: nowrap; gap: 8px; align-items: center; }
+.chips[data-actions="below"] + .chip-actions { display: flex; margin-top: 8px; }
+.chip-actions .chip-action {
+  min-height: 34px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+  color: var(--ink); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer;
+}
+.chip-actions .chip-action:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+.chip-actions .chip-action:disabled { opacity: .5; cursor: not-allowed; }
+
+@media (prefers-reduced-motion: reduce) { .chips .chip-option { transition: none; } .chips .chip-option:hover:not(.is-disabled) { transform: none; } }

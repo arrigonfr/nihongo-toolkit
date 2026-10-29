@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ef">
+  <title>日本語道具箱 · Japanese Toolkit · Nihongo Toolkit</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23356653'/%3E%3Ctext x='20' y='28' text-anchor='middle' font-size='25' fill='white'%3E%E8%B3%87%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="shell resources-shell">
+    <header class="study-header">
+      <a class="brand" href="./index.html"><span class="brand-mark" aria-hidden="true">資</span><span class="brand-name">Shiryō<span class="brand-note">at NihongoToolkit</span></span></a>
+      <button id="themeButton" type="button" aria-label="Change theme"></button>
+    </header>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">Resources · 資料</p>
+        <h1>Printable cheatsheets</h1>
+        <p>One A4 page each. Pick a sheet, preview it, then download it in the format you need. Everything is generated in your browser.</p>
+      </section>
+      <div id="sheetPicker" class="sheet-picker" role="group" aria-label="Cheatsheet"></div>
+      <div class="resources-layout">
+        <section class="sheet-stage" aria-live="polite">
+          <div id="sheetPreview" class="sheet-paper"></div>
+        </section>
+        <aside class="download-panel" aria-label="Downloads">
+          <h2 id="sheetTitle"></h2>
+          <p id="sheetSummary" class="download-summary"></p>
+          <div id="downloadList" class="download-list"></div>
+          <p id="downloadStatus" class="download-status" role="status"></p>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <noscript>Enable JavaScript to preview and download the cheatsheets.</noscript>
+  <script type="module" src="./src/resources.js"></script>
+</body>
+</html>

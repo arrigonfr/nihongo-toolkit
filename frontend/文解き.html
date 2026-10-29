@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171a17">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23356653'/%3E%3Ctext x='20' y='28' text-anchor='middle' font-size='25' fill='white'%3E%E6%96%87%3C/text%3E%3C/svg%3E">
+  <title>日本語道具箱 · Japanese Toolkit · Nihongo Toolkit</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f6f5f1; --surface: #fff; --soft: #f1f0eb; --ink: #23251f;
+      --muted: #777970; --line: #e7e6df; --accent: #356653; --accent-strong: #254d3e;
+      --accent-soft: #e5eee8; --danger: #a34336; --warning-bg: #fff8e7;
+      --warning-ink: #72551b; --shadow: 0 16px 45px rgb(42 45 35 / 7%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark; --page: #171a17; --surface: #202520; --soft: #292e29;
+      --ink: #e9eee7; --muted: #a1a99f; --line: #363d36; --accent: #9ac8a9;
+      --accent-strong: #c1e1c9; --accent-soft: #2d3d32; --danger: #efa094;
+      --warning-bg: #39311e; --warning-ink: #ecd99f; --shadow: 0 16px 45px rgb(0 0 0 / 18%);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--page); color: var(--ink); transition: background .2s,color .2s; }
+    button,textarea,input { font: inherit; } button { color: inherit; }
+    button:focus-visible,a:focus-visible,textarea:focus-visible,input:focus-visible { outline: 3px solid #6caa83; outline-offset: 2px; }
+    .shell { width: min(100% - 36px,1120px); margin: auto; }
+    header { height: 72px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; }
+    .brand-mark { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; background: var(--accent); color: #fff; font: 23px Georgia,serif; }
+    .brand-name { font-size: 19px; font-weight: 750; letter-spacing: -.04em; }
+    .brand-sub { margin-left: 6px; color: var(--muted); font-size: .72em; font-weight: 500; letter-spacing: 0; }
+    .icon-button,.button,.lookup-input { border: 1px solid var(--line); background: var(--surface); }
+    .icon-button { width: 39px; height: 39px; display: grid; place-items: center; border-radius: 10px; color: var(--muted); cursor: pointer; }
+    .icon-button svg { width: 18px; height: 18px; }
+    .icon-button:hover,.button:hover { border-color: var(--accent); color: var(--accent-strong); }
+    main { padding: 31px 0 40px; }
+    .intro { margin: 0 auto 22px; text-align: center; }
+    .eyebrow { margin: 0 0 9px; color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: .17em; text-transform: uppercase; }
+    h1 { margin: 0; font: 500 clamp(34px,6vw,49px)/1.08 Georgia,"Times New Roman",serif; letter-spacing: -.055em; }
+    .intro p { margin: 10px auto 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .input-panel,.card,.history-panel,.notice { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+    .input-panel { padding: 14px; box-shadow: var(--shadow); }
+    textarea { display: block; width: 100%; min-height: 135px; max-height: 360px; resize: vertical; padding: 7px; border: 0; outline: 0; background: transparent; color: var(--ink); font: 20px/1.8 "Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif; }
+    textarea::placeholder,.lookup-input::placeholder { color: var(--muted); opacity: .7; }
+    .input-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 4px 0; border-top: 1px solid var(--line); }
+    .input-options,.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .toggle { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); cursor: pointer; font-size: 12px; }
+    .toggle input { margin: 0; accent-color: var(--accent); }
+    .hint,.muted { color: var(--muted); font-size: 11px; }
+    .button { min-height: 36px; padding: 8px 11px; border-radius: 8px; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 700; }
+    .button.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+    :root[data-theme="dark"] .button.primary { color: #17231b; }
+    .button.primary:hover { background: var(--accent-strong); }
+    .button:disabled { cursor: not-allowed; opacity: .48; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 19px 0 11px; }
+    .status { min-height: 18px; color: var(--muted); font-size: 12px; }
+    .status.error { color: var(--danger); }
+    .toolbar-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+    .layout { display: grid; grid-template-columns: minmax(0,1fr) 290px; gap: 15px; align-items: start; }
+    .card { min-width: 0; padding: 17px; }
+    .card-title,.history-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13px; font-weight: 800; }
+    .parsed-text { min-height: 100px; font-size: 22px; line-height: 2.3; }
+    .token { display: inline; padding: 4px 3px; border: 0; border-radius: 5px; background: transparent; color: var(--ink); cursor: pointer; font: inherit; text-decoration: underline; text-decoration-color: color-mix(in srgb,var(--accent) 38%,transparent); text-decoration-thickness: 1px; text-underline-offset: 4px; }
+    .token:hover,.token[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-strong); text-decoration-color: var(--accent); }
+    .token.punctuation { cursor: default; text-decoration: none; }
+    .translation-box { margin-top: 14px; padding: 12px 14px; border-top: 1px solid var(--line); border-radius: 0 0 10px 10px; background: var(--soft); color: var(--ink); font-size: 14px; line-height: 1.6; }
+    .translation-box[hidden] { display: none; }
+    .translation-label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+    ruby { ruby-position: over; }
+    rt { color: var(--accent); font-size: .48em; line-height: 1; }
+    .empty { padding: 24px 8px; color: var(--muted); font-size: 12px; line-height: 1.6; text-align: center; }
+    .side-panel { position: sticky; top: 14px; max-height: calc(100vh - 28px); overflow-y: auto; }
+    .side-panel[hidden] { display: none; }
+    .detail-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .detail-word { margin: 0; font: 600 25px/1.35 "Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif; overflow-wrap: anywhere; }
+    .close-button { width: 29px; height: 29px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--muted); cursor: pointer; }
+    .lookup-form { display: flex; gap: 6px; margin: 11px 0; }
+    .lookup-input { width: 100%; min-width: 0; height: 36px; padding: 0 9px; border-radius: 8px; color: var(--ink); font-size: 13px; }
+    .reading { margin-top: 2px; color: var(--muted); font-size: 13px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 5px; margin: 12px 0; }
+    .tag { padding: 5px 7px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font-size: 10px; }
+    .tag.jlpt { border-color: transparent; background: var(--accent-soft); color: var(--accent-strong); font-weight: 750; }
+    .meanings { margin: 0; padding-left: 19px; font-size: 13px; line-height: 1.7; }
+    .meanings li::marker { color: var(--accent); }
+    .detail-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .section-label { margin: 0 0 8px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+    .example { padding: 8px 0; font-size: 12px; line-height: 1.6; }
+    .example+.example { border-top: 1px dashed var(--line); }
+    .example-ja { font: 13px/1.7 "Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif; }
+    .example-en,.small-note { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .audio-link,.jisho-link { color: var(--accent-strong); font-size: 12px; }
+    .notice { margin: 13px 0; padding: 9px 11px; background: var(--warning-bg); color: var(--warning-ink); font-size: 11px; line-height: 1.55; }
+    .history-panel { margin-top: 15px; padding: 13px; }
+    .history-title { margin-bottom: 8px; }
+    .history-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .history-item { max-width: 100%; overflow: hidden; padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--soft); color: var(--ink); cursor: pointer; font: 12px/1.4 "Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+    .history-item:hover { border-color: var(--accent); }
+    .loading { display: flex; align-items: center; gap: 9px; padding: 17px 0; color: var(--muted); font-size: 12px; }
+    .spinner { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    footer { padding: 17px 0 0; color: var(--muted); text-align: center; font-size: 10px; line-height: 1.7; }
+    footer a { color: inherit; }
+    #importFile { display: none; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    @media(max-width:760px) {
+      .shell { width: min(100% - 26px,600px); } header { height: 62px; }
+      main { padding: 25px 0 32px; }
+      .layout { grid-template-columns: 1fr; }
+      .side-panel { position: static; max-height: none; grid-row: 1; }
+      .toolbar { align-items: flex-start; flex-direction: column; }
+      .input-footer { align-items: flex-start; flex-direction: column; }
+      .input-options { justify-content: space-between; width: 100%; }
+      .toolbar-actions { width: 100%; }
+    }
+    @media(max-width:400px) {
+      .toolbar-actions .button { flex: 1; padding: 7px 5px; font-size: 10px; }
+      textarea { min-height: 115px; font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <a class="brand" href="#" aria-label="Fumitoki at NihongoToolkit home"><span class="brand-mark" aria-hidden="true">文</span><span class="brand-name">fumitoki<span class="brand-sub">at NihongoToolkit</span></span></a>
+      <button class="icon-button" id="themeButton" type="button" aria-label="Switch to light mode" title="Toggle dark mode">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+      </button>
+    </header>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">Read between the characters</p>
+        <h1>Unpack a Japanese sentence.</h1>
+        <p>Parse text into clickable pieces, then look up readings, meanings, grammar, and more.</p>
+      </section>
+      <section class="input-panel" aria-label="Japanese text input">
+        <label class="sr-only" for="sourceText">Japanese text to analyze</label>
+        <textarea id="sourceText" rows="4" spellcheck="false" placeholder="今日はいい天気ですね。&#10;Paste a sentence, paragraph, or dialogue here."></textarea>
+        <div class="input-footer">
+          <div class="input-options">
+            <label class="toggle"><input id="translationToggle" type="checkbox"><span>Show translation</span></label>
+            <span class="hint">Enter to parse · Shift+Enter for a new line</span>
+          </div>
+          <button class="button primary" id="parseButton" type="button">Parse</button>
+        </div>
+      </section>
+      <div class="toolbar">
+        <div class="status" id="status" aria-live="polite">Enter Japanese text to begin.</div>
+        <div class="toolbar-actions">
+          <button class="button" id="copyButton" type="button" disabled>Copy analysis</button>
+        </div>
+      </div>
+      <div class="layout">
+        <section class="card" aria-labelledby="parsedTitle">
+          <h2 class="card-title" id="parsedTitle"><span>Parsed text</span><span class="muted" id="tokenCount"></span></h2>
+          <div class="parsed-text" id="parsedText" lang="ja" aria-live="polite"><div class="empty">Your parsed sentence will appear here. Click any word or particle to look it up.</div></div>
+          <div class="translation-box" id="translationBox" hidden>
+            <span class="translation-label" id="translationLabel">Sentence translation</span>
+            <div id="translationText"></div>
+          </div>
+        </section>
+        <aside class="side-panel" id="detailPanel" aria-label="Dictionary entry" hidden>
+          <section class="card">
+            <div class="detail-header"><h2 class="detail-word" id="detailWord">Lookup</h2><button class="close-button" id="closePanel" type="button" aria-label="Close dictionary panel">×</button></div>
+            <form class="lookup-form" id="lookupForm">
+              <label class="sr-only" for="lookupInput">Look up another word</label>
+              <input class="lookup-input" id="lookupInput" type="search" autocomplete="off" placeholder="Look up another word">
+              <button class="button" type="submit">Search</button>
+            </form>
+            <div id="detailContent" aria-live="polite"><div class="small-note">Select a token to see its dictionary entry.</div></div>
+          </section>
+        </aside>
+      </div>
+      <aside class="history-panel" aria-label="Analysis history">
+        <h2 class="history-title"><span>Recent analyses</span><span class="muted">Last 10</span></h2>
+        <div class="history-list" id="historyList"><span class="muted">No saved analyses yet.</span></div>
+      </aside>
+    </main>
+    <footer><a href="data-sources.html">Data sources and licenses</a></footer>
+  </div>
+  <script type="module" src="./src/fumitoki.js"></script>
+</body>
+</html>
