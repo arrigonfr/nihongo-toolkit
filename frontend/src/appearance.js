@@ -20,7 +20,8 @@ function render() {
   root.dataset.theme = mode;
   const toggle = document.querySelector("#themeButton, #themeCycleBtn");
   if (toggle) {
-    toggle.dataset.icon = mode === "dark" ? "☼" : "☾";
+    toggle.dataset.mode = mode;
+    toggle.setAttribute("aria-pressed", String(mode === "dark"));
     toggle.setAttribute("aria-label", `Switch to ${mode === "dark" ? "light" : "dark"} mode`);
     toggle.title = toggle.getAttribute("aria-label");
   }
@@ -65,6 +66,8 @@ export function initializeAppearance() {
 
 export function mountAppearance(header, toggle) {
   initializeAppearance();
+  const dashboardBack = document.querySelector(".dashboard-back");
+  if (dashboardBack) header.prepend(dashboardBack);
   const file = decodeURIComponent(location.pathname.split("/").pop());
   const menuItem = [...document.querySelectorAll(".helper-link[data-file]")].find((item) => item.dataset.file === file);
   const description = menuItem?.querySelector(".helper-description")?.textContent.trim().replace(/^\(|\)$/g, "");
@@ -85,6 +88,7 @@ export function mountAppearance(header, toggle) {
   controls.append(label);
   if (toggle) {
     toggle.classList.add("study-theme");
+    toggle.innerHTML = '<span class="theme-switch-label" aria-hidden="true"></span><span class="theme-switch-knob" aria-hidden="true"></span>';
     toggle.addEventListener("click", () => setAppearance({ mode: document.documentElement.dataset.theme === "dark" ? "light" : "dark" }));
     controls.append(toggle);
   }

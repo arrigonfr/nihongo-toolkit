@@ -33,7 +33,7 @@ try {
     return copy.textContent;
   });
   page.on("pageerror", (error) => errors.push(error.message));
-  const url = `${base}/活用練習.html`;
+  const url = `${base}/katsuyo-renshuu.html`;
   const storageKey = "nihon:conjugation-practice-v1";
   async function configure(settings) {
     await page.goto(url);
@@ -315,9 +315,9 @@ try {
 
   await page.goto(base);
   await page.click("#menuButton");
-  await page.click('[data-file="活用練習.html"]');
-  assert.equal(await page.getAttribute("#helperFrame", "src"), "活用練習.html");
-  await page.frameLocator("#helperFrame").locator("#startButton").waitFor();
+  await page.click('#helperMenu [data-file="katsuyo-renshuu.html"]');
+  await page.waitForURL(`${base}/katsuyo-renshuu.html`);
+  await page.locator("#startButton").waitFor();
   assert.deepEqual(errors, []);
   console.log("Conjugation practice browser checks passed: typing, grading, no auto-reveal, retry scoring, assistance limits, kanji, every recognition task, daily streak, sudden death, marathon, timer, filters, persistence, mobile, reset and launcher.");
 } finally {

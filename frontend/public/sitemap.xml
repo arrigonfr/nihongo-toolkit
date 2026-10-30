@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://nihongo-toolkit.pages.dev/</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/仮名.html</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/読み.html</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/意味.html</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/語彙.html</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/活用練習.html</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/言葉.html</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/漢字地図帳.html</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/活用.html</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/資料.html</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/文解き.html</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/絵合わせ.html</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/言葉探し.html</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/パズル.html</loc></url>
-  <url><loc>https://nihongo-toolkit.pages.dev/しりとり.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/kana.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/yomi.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/imi.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/goi.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/katsuyo-renshuu.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/kotoba.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/kanji-chizucho.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/katsuyo.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/shiryo.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/fumitoki.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/eawase.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/kotoba-sagashi.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/pazuru.html</loc></url>
+  <url><loc>https://nihongo-toolkit.pages.dev/shiritori.html</loc></url>
   <url><loc>https://nihongo-toolkit.pages.dev/data-sources.html</loc></url>
 </urlset>

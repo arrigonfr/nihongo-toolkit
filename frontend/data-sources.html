@@ -8,9 +8,13 @@
   <style>
     body { max-width: 780px; margin: 3rem auto; padding: 0 1.2rem; font: 17px/1.7 system-ui, sans-serif; color: #25382d; background: #f5f4ef; }
     a { color: #356653; } li { margin-block: 1rem; }
+    .support-slot { float: right; }
+    .support-slot button { display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 8px; padding: 9px 12px; background: #ffd140; color: #000; font-weight: 700; cursor: pointer; }
+    .support-slot img { width: 20px; height: 20px; }
   </style>
 </head>
 <body>
+  <div class="support-slot"></div>
   <a href="./" target="_top">Back to Nihon</a>
   <h1>Dictionary data and licenses</h1>
   <p>NihonTools uses open Japanese dictionary, vocabulary, example sentence, and stroke-order
@@ -57,5 +61,6 @@
     (EDRDG dictionary attribution applies). Its thematic categories use
     approximate English-gloss filters, not a curated taxonomy. Kana input
     conversion uses <a href="https://wanakana.com">WanaKana</a> (MIT).</p>
+  <script type="module">import { createSupportButton } from "./src/support.js"; document.querySelector(".support-slot").append(createSupportButton());</script>
 </body>
 </html>

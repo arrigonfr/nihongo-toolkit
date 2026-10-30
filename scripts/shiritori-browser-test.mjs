@@ -22,7 +22,10 @@ try {
   await acceptStudyDialogs(page);
   await page.route("**/*", (route) => ["127.0.0.1", "localhost"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
   await page.addInitScript(() => localStorage.setItem("nihon:study-controls-v1", JSON.stringify({ audio: false, furigana: true, romaji: false })));
-  const go = () => page.goto("http://127.0.0.1:5181/しりとり.html");
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("nihon:shiritori-settings-v1")) localStorage.setItem("nihon:shiritori-settings-v1", JSON.stringify({ level: "N5" }));
+  });
+  const go = () => page.goto("http://127.0.0.1:5181/shiritori.html");
   await go();
   await page.click("#helpButton");
   assert.equal(await page.locator("#helpDialog").isVisible(), true);
@@ -54,10 +57,15 @@ try {
   await page.waitForSelector("#settingsForm:visible");
   await page.selectOption("#setting-opponent", "local");
   await page.fill("#setting-players", "3");
-  await page.selectOption("#setting-level", "N5", { force: true });
   assert.equal(await page.locator("#settingsForm [type=submit]").count(), 0);
-  assert.equal(await page.locator("#setting-level").inputValue(), "N5");
+  assert.equal(await page.locator("#setting-level").count(), 0);
+  const wordRules = page.locator("#settingsForm > fieldset").filter({ has: page.locator("legend", { hasText: "Word Rules" }) });
+  assert.equal(await wordRules.count(), 1);
+  for (const setting of ["category", "entry", "wordType", "proper"]) assert.equal(await wordRules.locator(`[data-setting="${setting}"]`).count(), 1);
+  assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem("nihon:shiritori-settings-v1"))).level, "all");
+  const openingRequest = page.waitForRequest((request) => new URL(request.url()).pathname === "/api/shiritori/words");
   await page.click("#newGame");
+  assert.equal(JSON.parse(new URL((await openingRequest).url()).searchParams.get("rules")).level, "all");
   await page.waitForFunction(() => !document.querySelector("#wordInput").disabled || !document.querySelector("#results").hidden);
   assert.equal(await page.locator("#results").isVisible(), false, "Real dictionary should provide a playable opening");
   assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), false, "Starting a game collapses settings");
@@ -163,6 +171,33 @@ try {
   await play("コーヒー");
   assert.ok((await page.locator("#results").textContent()).includes(READING_ENDING_RULE));
   assert.match(await page.locator("#results").textContent(), /Player 1 loses/);
+  assert.equal(await page.locator("#results .game-export-open").count(), 1);
+  assert.equal(await page.locator("#chain").locator("..").locator(".game-export-open").count(), 0);
+  await page.locator("#results .game-export-open").click();
+  const exportDialog = page.locator("#results .game-export-dialog");
+  assert.equal(await exportDialog.locator('[data-option="layout"]').count(), 0);
+  assert.doesNotMatch(decodeURIComponent(await exportDialog.locator("img").getAttribute("src")), /spacingAndGlyphs/);
+  const cardPreview = async () => exportDialog.locator("img").evaluate((image) => {
+    const svg = new DOMParser().parseFromString(decodeURIComponent(image.getAttribute("src").split(",")[1]), "image/svg+xml");
+    const line = [...svg.querySelectorAll("text")].find((item) => item.textContent.includes("____"));
+    const card = svg.querySelector('rect[rx="8"]');
+    return { size: line.getAttribute("font-size"), fill: line.getAttribute("fill"), card: card.getAttribute("fill"), border: card.getAttribute("stroke"), viewBox: svg.documentElement.getAttribute("viewBox") };
+  });
+  const filledCard = await cardPreview();
+  await exportDialog.locator('[data-option="cardFill"]').uncheck();
+  const initialCard = await cardPreview();
+  assert.equal(initialCard.border, filledCard.border);
+  assert.notEqual(initialCard.border, "#000");
+  await exportDialog.locator('[data-option="grayscale"]').check();
+  assert.equal((await cardPreview()).border, "#000");
+  await exportDialog.locator('[data-option="grayscale"]').uncheck();
+  await exportDialog.locator('[data-option="fontScale"]').fill("140");
+  assert.equal((await cardPreview()).size, initialCard.size);
+  assert.equal(initialCard.fill, "#000");
+  assert.equal(initialCard.card, "#fff");
+  await exportDialog.locator('[data-option="orientation"]').selectOption("landscape");
+  assert.equal((await cardPreview()).viewBox, "0 0 1123 794");
+  await exportDialog.locator('button[aria-label="Close"]').click();
 
   for (const settings of [{ entry: "kanji" }, { mode: "kanji" }]) {
     await reset(settings);
@@ -207,7 +242,12 @@ try {
   assert.equal(await page.locator("#chainCount").textContent(), "3 words", "Rejected endings never enter the chain");
   assert.equal(await page.locator("#results").isVisible(), false, "Repeated invalid entries do not turn into accepted losing words");
   await page.click("#stopGame");
-  assert.match(await page.locator("#results").textContent(), /New Word Discovery/);
+  assert.match(await page.locator("#results").textContent(), /Words in this round/);
+  assert.equal(await page.locator("#results .discovery-list button").last().locator("strong").textContent(), "ラッパ");
+  await page.locator("#results .game-export-open").click();
+  await page.locator('#results [data-option="answers"]').check();
+  assert.match(decodeURIComponent(await page.locator("#results .game-export-preview").getAttribute("src")), /ラッパ/);
+  await page.locator('#results .game-export-dialog button[aria-label="Close"]').click();
   await page.click("#saveWord");
   await page.click("#reviewButton");
   assert.match(await page.locator("#reviewBody").textContent(), /trumpet/);
@@ -257,6 +297,14 @@ try {
   await play("御社");
   assert.match(await page.locator("#results").textContent(), /no available continuation/);
   assert.match(await page.locator("#startOptions li:first-child span").textContent(), /ゃ/);
+  await reset();
+  await play("御社");
+  assert.match(await page.locator("#results").textContent(), /no available continuation/);
+  assert.equal(await page.locator("#results .discovery-list strong").last().textContent(), "御社");
+  await page.locator("#results .game-export-open").click();
+  await page.locator('#results [data-option="answers"]').check();
+  assert.match(decodeURIComponent(await page.locator("#results .game-export-preview").getAttribute("src")), /御社/);
+  await page.locator('#results .game-export-dialog button[aria-label="Close"]').click();
   await reset({ mode: "relaxed" });
   await play("ごりら"); await play("らっぱ"); await play("ぱん");
   assert.equal(await page.locator("#results").isVisible(), false, "Relaxed retries forbidden endings");

@@ -47,7 +47,7 @@ try {
     await page.click("#startSessionButton");
     assert.equal(await page.locator("#settingsPanel").evaluate((node) => node.open), false);
     assert.equal(await page.locator("#questionSection").isVisible(), true);
-    if (file !== "仮名.html") {
+    if (file !== "kana.html") {
       assert.equal(await page.locator("#settingsPanel #reviewKanjiToggle").count(), 0);
       assert.equal(await page.locator("#reviewKanjiToggle").isVisible(), true);
       await page.check("#reviewKanjiToggle");
@@ -55,7 +55,7 @@ try {
     }
     await page.click("#settingsPanel summary");
   };
-  await go("語彙.html");
+  await go("goi.html");
   await page.selectOption("#levelSelect", "N5", { force: true });
   await page.click("#startButton");
   await page.waitForFunction(() => document.querySelector("#questionLabel").textContent === "Question 1");
@@ -98,7 +98,7 @@ try {
   assert.equal(await page.locator("#startButton").isVisible(), true);
 
   const beforeKana = requests.filter((url) => url.includes("/kanji/batch")).length;
-  await beginPractice("仮名.html");
+  await beginPractice("kana.html");
   assert.equal(await page.locator("#levelSelect, #reviewKanjiToggle, #setHiragana, #setKatakana").count(), 0);
   await page.evaluate(() => { Math.random = () => 0; });
   await page.click("#skipButton");
@@ -143,7 +143,7 @@ try {
   assert.equal(await page.locator("#feedback").isVisible(), false, "Correct Kana answers need no feedback banner");
   await page.setViewportSize({ width: 1280, height: 720 });
 
-  await go("仮名.html");
+  await go("kana.html");
   await page.evaluate(() => {
     Math.random = () => 0;
     window.spokenJapanese = [];
@@ -218,7 +218,7 @@ try {
     assert.ok(!["ぁ", "ぃ", "ぅ", "ぇ", "ぉ", "っ", "ゃ", "ゅ", "ょ", "ァ", "ッ", "ヵ", "ヶ"].includes(term));
   }
 
-  await beginPractice("意味.html");
+  await beginPractice("imi.html");
   await page.waitForFunction(() => document.querySelector("#typeTag").textContent.startsWith("kanji"));
   assert.equal(await page.locator("#settingsPanel").evaluate((element) => Boolean(element.closest(".quiz-card"))), true);
   assert.equal(await page.locator("#sessionStats #sessionMode").count(), 1);
@@ -243,7 +243,7 @@ try {
     headers: { "Access-Control-Allow-Origin": "http://127.0.0.1:5179" },
     body: JSON.stringify({ items: Array.from({ length: 40 }, (_, i) => ({ ...daily, id: i })) })
   }));
-  await go("意味.html");
+  await go("imi.html");
   await page.check("#reviewKanjiToggle");
   await page.click("#startSessionButton");
   await page.waitForFunction(() => document.querySelector("#glyph").textContent === "日");
@@ -262,7 +262,7 @@ try {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.unroute(mojiBatch);
 
-  for (const file of ["意味.html", "読み.html"]) {
+  for (const file of ["imi.html", "yomi.html"]) {
     await beginPractice(file);
     for (const level of ["5", "4", "3", "2", "1", "unrated"]) {
       await page.selectOption("#levelSelect", level, { force: true });
@@ -292,7 +292,7 @@ try {
     assert.equal(await page.locator("#answerInput").isDisabled(), true);
   }
 
-  await go("読み.html");
+  await go("yomi.html");
   await page.selectOption("#readingDirection", "reading-hiragana", { force: true });
   await page.check("#reviewKanjiToggle");
   await page.click("#startSessionButton");
@@ -301,7 +301,7 @@ try {
   await page.click("#showButton");
   assert.ok((await page.locator("#feedback").textContent()).includes("On-yomi"));
 
-  await go("語彙.html");
+  await go("goi.html");
   await page.selectOption("#sessionType", "questions", { force: true });
   await page.fill("#questionLimit", "4");
   await page.click("#startButton");
@@ -314,8 +314,8 @@ try {
   await page.click("#stopSessionButton");
   await page.waitForSelector("#resultsPanel");
 
-  for (const file of ["意味.html", "読み.html", "語彙.html"]) {
-    const vocabulary = file === "語彙.html";
+  for (const file of ["imi.html", "yomi.html", "goi.html"]) {
+    const vocabulary = file === "goi.html";
     const pattern = vocabulary ? "**/api/words/batch?*" : mojiBatch;
     const resultSelector = vocabulary ? "#resultsPanel" : "#sessionResults";
     const startSelector = vocabulary ? "#startButton" : "#startSessionButton";
@@ -346,7 +346,7 @@ try {
   await go("index.html");
   assert.equal(await page.title(), "日本道具 · NihonTools");
 
-  await go("漢字地図帳.html");
+  await go("kanji-chizucho.html");
   await page.fill("#query", "日");
   await page.click("#searchButton");
   await page.waitForSelector("#strokeOrderButton");
@@ -373,7 +373,7 @@ try {
   await page.waitForSelector(".result-card");
   assert.equal(await page.locator(".result-card").count(), 84);
 
-  await go("言葉.html");
+  await go("kotoba.html");
   assert.equal(await page.locator("#exportButton").count(), 0);
   await page.check("#kanjiMode");
   await page.fill("#query", "water");
@@ -430,7 +430,7 @@ try {
   assert.ok((await page.locator("#compoundList rt").allTextContents()).includes("きじつ"));
   assert.ok((await page.locator("#compoundList rt").allTextContents()).includes("きにち"));
 
-  await go("言葉.html");
+  await go("kotoba.html");
   await page.uncheck("#kanjiMode");
   await page.fill("#query", "日本");
   await page.click("#searchButton");
@@ -438,7 +438,7 @@ try {
   assert.ok((await page.locator(".result-card").first().textContent()).includes("日本"));
   await page.waitForSelector(".result-card .sentence-item");
 
-  await go("文解き.html");
+  await go("fumitoki.html");
   assert.equal(await page.locator("#exportButton").count(), 0);
   assert.equal(await page.locator("#importButton").count(), 0);
   assert.doesNotMatch(await page.locator("body").textContent(), /SQLite|Node\.js/i);
@@ -494,15 +494,15 @@ try {
     body: JSON.stringify({ data: [{ id: 123, text: "日本の例文です。", owner: "test-author",
       license: "CC BY 2.0 FR", translations: [{ id: 456, lang: "eng", text: "A fallback example.", owner: "test-translator" }] }] })
   }));
-  await go("文解き.html");
+  await go("fumitoki.html");
   await page.fill("#sourceText", "日本");
   await page.click("#parseButton");
   await page.locator("#parsedText button").first().click();
   await page.waitForFunction(() => document.querySelector("#detailContent").textContent.includes("A fallback example."));
   assert.ok((await page.locator("#detailContent").textContent()).includes("test-translator"));
-  await go("言葉.html");
+  await go("kotoba.html");
   await page.evaluate(() => localStorage.clear());
-  await go("言葉.html");
+  await go("kotoba.html");
   await page.fill("#query", "日本");
   await page.click("#searchButton");
   await page.waitForFunction(() => document.querySelector(".result-card")?.textContent.includes("A fallback example."));
@@ -510,7 +510,7 @@ try {
   await page.unroute(analyzeRoute);
   await page.unroute(sentencesRoute);
 
-  await go("語彙.html");
+  await go("goi.html");
   const blocked = "**/api/words/batch?*";
   await page.route(blocked, (route) => route.fulfill({
     status: 503,
@@ -533,13 +533,13 @@ try {
     assert.equal(await item.locator(".helper-icon").count(), 1);
     assert.equal(await item.evaluate((node) => getComputedStyle(node).textAlign), "center");
   }
-  await page.click('[data-file="しりとり.html"]');
-  await page.frameLocator("#helperFrame").locator("#newGame").waitFor();
+  await page.click('#helperMenu [data-file="shiritori.html"]');
+  await page.locator("#newGame").waitFor();
   await page.click("#menuButton");
-  await page.click('[data-file="語彙.html"]');
-  await page.frameLocator("#helperFrame").locator("#startButton").waitFor();
+  await page.click('#helperMenu [data-file="goi.html"]');
+  await page.locator("#startButton").waitFor();
 
-  await go("パズル.html");
+  await go("pazuru.html");
   await page.click("#newPuzzleBtn");
   await page.waitForSelector("#crosswordGrid .cw-cell:not(.block)");
   assert.equal(await page.locator(".cw-clue-item.active .cw-clue-selected").isVisible(), true);
@@ -684,10 +684,9 @@ try {
   assert.equal(await page.locator("#revealPuzzleBtn").isDisabled(), true, "Round should end immediately in Sudden Death mode");
   await page.evaluate(() => localStorage.setItem("nihon:last-helper", "文字.html"));
   await go("index.html");
-  await page.frameLocator("#helperFrame").locator("#kanaDirection").waitFor({ state: "attached" });
-  assert.equal(await page.evaluate(() => localStorage.getItem("nihon:last-helper")), "仮名.html");
+  assert.equal(await page.locator(".dashboard-link").count(), 14);
   await go("文字.html");
-  await page.waitForURL(/%E4%BB%AE%E5%90%8D\.html/);
+  await page.waitForURL(/kana\.html/);
   await page.waitForSelector("#startSessionButton");
   await page.selectOption("#sessionMode", "questions", { force: true });
   await page.fill("#sessionTarget", "1");
@@ -702,10 +701,10 @@ try {
   await page.clock.fastForward(60001);
   await page.waitForSelector("#sessionResults");
   assert.ok((await page.locator("#sessionResults").textContent()).includes("Time is up."));
-  for (const file of ["仮名.html", "意味.html", "読み.html", "語彙.html", "index.html"]) {
+  for (const file of ["kana.html", "imi.html", "yomi.html", "goi.html", "index.html"]) {
     await page.setViewportSize({ width: 375, height: 812 });
     await go(file);
-    if (["仮名.html", "意味.html", "読み.html"].includes(file)) {
+    if (["kana.html", "imi.html", "yomi.html"].includes(file)) {
       assert.equal(await page.locator("#questionSection").isVisible(), false);
       await page.selectOption("#sessionMode", "free", { force: true });
       await page.click("#startSessionButton");
@@ -714,7 +713,7 @@ try {
     }
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${file} must fit mobile width`);
   }
-  const tools = ["仮名.html", "意味.html", "読み.html", "語彙.html", "言葉.html", "文解き.html", "漢字地図帳.html", "パズル.html"];
+  const tools = ["kana.html", "imi.html", "yomi.html", "goi.html", "kotoba.html", "fumitoki.html", "kanji-chizucho.html", "pazuru.html"];
   for (const width of [375, 768, 1280]) {
     await page.setViewportSize({ width, height: 812 });
     for (const file of tools) {
@@ -724,7 +723,7 @@ try {
       assert.equal(await page.locator(".study-support button").isVisible(), true, `${file} ${width}`);
       assert.equal(await page.locator("#audioQuickToggle").count(), 1);
       for (const id of ["furiganaQuickToggle", "romajiQuickToggle"]) {
-        assert.equal(await page.locator(`#${id}`).isVisible(), file !== "仮名.html");
+        assert.equal(await page.locator(`#${id}`).isVisible(), file !== "kana.html");
       }
       assert.equal(await page.locator("#compoundFurigana, #compoundRomaji, #furiganaToggle, #readingButton").count(), 0);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth ? [] :
@@ -736,19 +735,19 @@ try {
       assert.equal(await page.locator("#audioQuickToggle").getAttribute("aria-pressed"), String(before !== "true"));
       await page.click("#audioQuickToggle");
       const theme = page.locator(".study-theme");
-      const icon = await theme.getAttribute("data-icon");
-      assert.ok(["☼", "☾"].includes(icon));
+      const mode = await theme.getAttribute("data-mode");
+      assert.ok(["light", "dark"].includes(mode));
       await theme.click();
-      await page.waitForFunction((previous) => document.querySelector(".study-theme").dataset.icon !== previous, icon);
-      assert.equal(await theme.evaluate((button) => getComputedStyle(button, "::after").content), `"${icon === "☼" ? "☾" : "☼"}"`);
+      await page.waitForFunction((previous) => document.querySelector(".study-theme").dataset.mode !== previous, mode);
+      assert.equal(await theme.getAttribute("aria-pressed"), String(mode === "light"));
       const bounds = await page.locator(".study-toolbar").boundingBox();
       assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width);
     }
   }
-  await go("言葉.html");
+  await go("kotoba.html");
   const preference = await page.locator("#romajiQuickToggle").getAttribute("aria-pressed");
   await page.click("#romajiQuickToggle");
-  await go("文解き.html");
+  await go("fumitoki.html");
   assert.equal(await page.locator("#romajiQuickToggle").getAttribute("aria-pressed"), String(preference !== "true"));
   await page.fill("#sourceText", "食べました。");
   await page.click("#parseButton");
@@ -780,8 +779,8 @@ try {
     await go("index.html");
     for (const file of tools) {
       await page.click("#menuButton");
-      await page.click(`[data-file="${file}"]`);
-      const frame = page.frameLocator("#helperFrame");
+      await page.click(`#helperMenu [data-file="${file}"]`);
+      const frame = page;
       await frame.locator(".study-toolbar").waitFor();
       await page.waitForTimeout(400);
       const menu = await page.locator("#menuButton").boundingBox();

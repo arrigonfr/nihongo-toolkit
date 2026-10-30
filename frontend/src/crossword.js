@@ -1,4 +1,5 @@
 import "./crossword.css";
+import { mountGameExport } from "./game-export.js";
 import { mountChips } from "./chips.js";
 import { groupSettings, setSettingAvailability } from "./settings-panel.js";
 import { mountStudyControls, study, speakJapanese } from "./study-controls.js";
@@ -2308,6 +2309,20 @@ import {
   }
 
   renderShell();
+  mountGameExport(document.getElementById("crosswordGrid").parentElement, () => {
+    const puzzle = state.puzzle;
+    if (!puzzle?.entries.length) return null;
+    const solution = new Map();
+    puzzle.entries.forEach((entry) => entry.cells.forEach(({ row, col }, index) => solution.set(`${row},${col}`, entry.chars[index])));
+    return {
+      title: "Pazuru", filename: "pazuru",
+      grid: puzzle.grid.map((row, rowIndex) => row.map((cell, columnIndex) => cell ? { number: cell.number, answer: solution.get(`${rowIndex},${columnIndex}`) } : null)),
+      sections: [["Across", puzzle.across], ["Down", puzzle.down]].map(([title, entries]) => ({ title, lines: entries.map((entry) => ({
+        text: `${entry.number}. ${entry.clue.text}`,
+        answer: `${entry.number}. ${entry.clue.text} — ${entry.answer}`
+      })) }))
+    };
+  });
   Object.assign(state.settings, { audio: study.audio, furigana: study.furigana, romanization: study.romaji });
   mountStudyControls({ onChange: (options) => {
     const drafts = [...document.querySelectorAll("#popoverAnswerInput, .cw-clue-inline-input")].map((input) => ({

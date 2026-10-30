@@ -33,6 +33,7 @@
 .worksheet-controls input[type="range"] { width: 100%; }
 .worksheet-controls select { width: 100%; min-width: 0; min-height: 36px; }
 .worksheet-pages { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink); font-size: 13px; }
+.worksheet-pages[hidden] { display: none; }
 .worksheet-pages button { min-width: 36px; min-height: 36px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink); }
 .worksheet-pages button:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
 .worksheet-pages button:disabled { opacity: .4; }

@@ -13,6 +13,7 @@ import { mountChips } from "./chips.js";
 import { plainSelect, plainCheck, removeChipsTooltip } from "./plain-fields.js";
 import { mountConjugationFilters } from "./conjugation-filters.js";
 import { validFilter } from "./conjugation-filter-match.js";
+import { mountGameExport } from "./game-export.js";
 
 const $ = (id) => document.getElementById(id);
 const key = "nihon:conjugator-v1";
@@ -336,16 +337,25 @@ async function copy(text) {
   catch (error) { console.warn("Clipboard copy failed.", error); status("Copy was blocked by the browser. Select the table text and copy manually.", true); }
 }
 $("copyTable").addEventListener("click", () => copy(copyTable(visibleRows(), { ...settings, romaji: study.romaji }, romanizeKana)));
-$("exportConjugations").addEventListener("click", () => {
+mountGameExport($("exportConjugations").parentElement, () => {
   const rows = visibleRows();
-  if (!current || !rows.length) return;
-  const table = rows.map((row) => `<tr><th scope="row">${escape(row.label)} · ${escape(row.politeness)}</th><td lang="ja">${escape(row.word)}<br><small>${escape(row.reading)}</small></td><td>${escape(row.gloss)}</td></tr>`).join("");
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${escape(current.word)} · Conjugations</title><style>@page{size:A4;margin:12mm}body{font:14px sans-serif;color:#202720}h1{font-size:22px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:6px;text-align:left}th{width:28%}small{color:#555}tr{break-inside:avoid}</style></head><body><h1>${escape(current.word)} · Conjugations</h1><p>${escape(current.reading)} · ${escape(typeNames[current.type])}</p><table><thead><tr><th>Form</th><th>Conjugation</th><th>Meaning</th></tr></thead><tbody>${table}</tbody></table></body></html>`;
-  const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
-  const link = document.createElement("a");
-  link.href = url; link.download = `${current.word}-conjugations.html`; link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-});
+  if (!current || !rows.length) return null;
+  const grouped = new Map();
+  for (const row of rows) {
+    let key = row.id;
+    if (/^(desire-)?negative-(plain|polite)$/.test(key)) key = key.replace(/negative-(plain|polite)$/, "present-$1");
+    else if (/^(desire-)?pastNegative-(plain|polite)$/.test(key)) key = key.replace(/pastNegative-(plain|polite)$/, "past-$1");
+    else if (/(?:-plain|-polite)$/.test(key)) key = key.replace(/-negative(?=-(?:plain|polite)$)/, "");
+    if (!grouped.has(key)) grouped.set(key, {});
+    grouped.get(key)[row.polarity] = row;
+  }
+  const table = [...grouped.values()].map(({ affirmative, negative }) => {
+    const row = affirmative || negative;
+    const value = (form) => form ? `${form.word}${form.reading !== form.word ? ` (${form.reading})` : ""}\n${form.gloss}` : "";
+    return { label: `${row.label.replace(/\s*(?:affirmative|negative)/gi, "").replace(/\s*·\s*$/, "")} · ${row.politeness}`, affirmative: value(affirmative), negative: value(negative) };
+  });
+  return { title: `${current.word} · Conjugations`, filename: `${current.word}-conjugations`, table };
+}, { button: $("exportConjugations"), label: "Export conjugations", answers: false });
 $("tables").addEventListener("click", (event) => {
   const button = event.target.closest("[data-copy], [data-example]");
   if (!button) return;

@@ -407,13 +407,17 @@ export function createHandler({
           if (exactRows.length >= limit) break;
         }
         if (exactRows.length < limit) {
-          const substringRows = await db.prepare(`SELECT * FROM words WHERE
+          const substringRows = await db.prepare(`SELECT words.* FROM words CROSS JOIN (SELECT lower(?) AS q) AS search WHERE
             instr(lower(kanji_forms), lower(?)) > 0 OR instr(lower(kana_forms), lower(?)) > 0 OR instr(lower(meanings), lower(?)) > 0
             OR id IN (SELECT word_id FROM vocabulary WHERE romaji = ?)
-            ORDER BY (word = ? OR reading = ?) DESC,
-              EXISTS (SELECT 1 FROM json_each(words.meanings) WHERE lower(value) = lower(?) OR lower(value) LIKE lower(?) || ' (%') DESC,
+            ORDER BY COALESCE((SELECT MIN(CASE
+              WHEN lower(value) = search.q THEN 0
+              WHEN substr(lower(value), 1, length(search.q) + 2) = search.q || ' (' THEN 1
+              WHEN substr(lower(value), 1, length(search.q) + 1) = search.q || ' ' THEN 2
+              WHEN instr(' ' || replace(replace(replace(replace(lower(value), '(', ' '), ')', ' '), ',', ' '), '-', ' ') || ' ', ' ' || search.q || ' ') > 0 THEN 3
+              ELSE 4 END) FROM json_each(words.meanings)), 4),
               is_common DESC, length(word), id LIMIT ?`)
-            .all(query, query, query, query, query, query, query, query, limit);
+            .all(query, query, query, query, query, limit);
           for (const row of substringRows) {
             if (!seenIds.has(row.id)) {
               seenIds.add(row.id);

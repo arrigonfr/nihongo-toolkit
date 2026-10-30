@@ -77,6 +77,14 @@ test("API serves SQLite batches, search, relations and strokes with validation a
       { id: "3", kanji: [{ text: "水", common: false, tags: [] }], kana: [{ text: "みず", common: false, tags: [], appliesToKanji: ["水"] }], sense: [{ gloss: [{ lang: "eng", text: "water (cold)" }], partOfSpeech: ["n"], misc: [], field: [], dialect: [], appliesToKanji: [], appliesToKana: [], related: [], antonym: [], info: [] }] }
     ] });
     assert.equal((await (await get("/api/words?keyword=Water&limit=1")).json()).data[0].slug, "水");
+    db.prepare("DELETE FROM metadata WHERE key = 'jmdict_tags'").run();
+    insertWords(db, { tags: { n: "noun" }, words: [
+      ["4", "露", "つゆ", "water", false], ["5", "井戸", "いど", "water well", true], ["6", "深水", "しんすい", "deep water", true]
+    ].map(([id, word, reading, meaning, common]) => ({
+      id, kanji: [{ text: word, common, tags: [] }], kana: [{ text: reading, common, tags: [], appliesToKanji: [word] }],
+      sense: [{ gloss: [{ lang: "eng", text: meaning }], partOfSpeech: ["n"], misc: [], field: [], dialect: [], appliesToKanji: [], appliesToKana: [], related: [], antonym: [], info: [] }]
+    })) });
+    assert.deepEqual((await (await get("/api/words?keyword=Water&limit=5")).json()).data.map((item) => item.slug), ["露", "水", "井戸", "深水", "海中"]);
     const response = await get("/api/kanji/batch?limit=40&mode=both&level=5", { headers: { Origin: "http://localhost:5173" } });
     assert.equal(response.headers.get("access-control-allow-origin"), "http://localhost:5173");
     const { items } = await response.json();

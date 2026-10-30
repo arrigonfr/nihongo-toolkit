@@ -1,6 +1,9 @@
 import { initializeAppearance } from "./appearance.js";
+import { createSupportButton } from "./support.js";
+import { legacyRoutes } from "./routes.js";
 
 initializeAppearance();
+document.querySelector(".dashboard")?.prepend(createSupportButton());
 const menuButton = document.getElementById("menuButton");
 const helperMenu = document.getElementById("helperMenu");
 const helperFrame = document.getElementById("helperFrame");
@@ -81,7 +84,8 @@ let requestedHelper = null;
 if (location.hash.startsWith("#helper=")) {
   try {
     requestedHelper = decodeURIComponent(location.hash.slice("#helper=".length));
-    if (requestedHelper === "文字.html") requestedHelper = "仮名.html";
+    requestedHelper = legacyRoutes[requestedHelper] || requestedHelper;
+    if (!helperFrame && helpers.has(requestedHelper)) location.replace(new URL(requestedHelper, location.href));
   } catch (error) {
     console.warn("Could not read the requested helper.", error);
   }
@@ -97,7 +101,7 @@ if (location.hash.startsWith("#helper=") || location.pathname.endsWith("/index.h
 let storedHelper = null;
 try {
   storedHelper = localStorage.getItem(lastHelperKey);
-  if (storedHelper === "文字.html") storedHelper = "仮名.html";
+  if (storedHelper === "文字.html") storedHelper = "kana.html";
 } catch (error) {
   console.warn("Could not read the last helper from local storage.", error);
 }

@@ -155,8 +155,8 @@ export function toCSV(sheet) {
 const ascii = (text) => new TextEncoder().encode(text);
 
 // One-page A4 PDF holding a JPEG (DCT) image; JPEG bytes are embedded unchanged.
-export function buildPdf(jpeg, pixelWidth, pixelHeight, title = "Cheatsheet") {
-  const pageW = 595.28, pageH = 841.89;
+export function buildPdf(jpeg, pixelWidth, pixelHeight, title = "Cheatsheet", dimensions = [794, 1123]) {
+  const [pageW, pageH] = dimensions.map((value) => value * .75);
   const content = `q ${pageW} 0 0 ${pageH} 0 0 cm /Im0 Do Q`;
   const objects = [];
   const chunks = [];

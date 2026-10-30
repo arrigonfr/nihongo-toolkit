@@ -13,8 +13,20 @@ try {
   await page.route("**/*", (route) => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
   const base = `http://127.0.0.1:${server.httpServer.address().port}`;
   let switches = 0, chips = 0;
-  for (const file of ["仮名.html", "意味.html", "読み.html", "語彙.html", "言葉.html", "文解き.html", "漢字地図帳.html", "活用.html", "活用練習.html", "パズル.html", "しりとり.html", "言葉探し.html", "絵合わせ.html", "資料.html"]) {
-    await page.goto(`${base}/${encodeURIComponent(file)}${file === "資料.html" ? "#worksheet" : ""}`);
+  for (const file of ["kana.html", "imi.html", "yomi.html", "goi.html", "kotoba.html", "fumitoki.html", "kanji-chizucho.html", "katsuyo.html", "katsuyo-renshuu.html", "pazuru.html", "shiritori.html", "kotoba-sagashi.html", "eawase.html", "shiryo.html"]) {
+    await page.goto(`${base}/${encodeURIComponent(file)}${file === "shiryo.html" ? "#worksheet" : ""}`);
+    if (["kana.html", "imi.html", "yomi.html", "katsuyo.html", "katsuyo-renshuu.html"].includes(file)) {
+      const eyebrow = page.locator(".study-intro-content > .eyebrow, .study-intro-content > .cw-eyebrow");
+      await eyebrow.waitFor();
+      assert.equal(await eyebrow.evaluate((node) => {
+        const probe = document.createElement("span");
+        probe.style.color = "var(--text-warm)";
+        node.append(probe);
+        const matches = getComputedStyle(node).color === getComputedStyle(probe).color;
+        probe.remove();
+        return matches;
+      }), true, `${file}: shared eyebrow color`);
+    }
     await page.evaluate(() => document.querySelectorAll("details").forEach((details) => { details.open = true; }));
     const result = await page.evaluate(() => {
       const inputs = [...document.querySelectorAll('input[type="checkbox"]')];

@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
+  <meta name="google-site-verification" content="cVpmfqP3jEgwMwW8zz2nX8rgiOUL8QfnO_Z_griCgf8">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#171b18">
@@ -31,8 +32,9 @@
       --selected-ink: #bee4c7;
     }
     * { box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; margin: 0; }
-    body { overflow: hidden; background: #f6f5f1; color: var(--ink); }
+    html, body { width: 100%; min-height: 100%; margin: 0; }
+    body { background: #f6f5f1; color: var(--ink); }
+    :root[data-theme="dark"] body { background: #171b18; }
     button, a { font: inherit; }
     button:focus-visible, a:focus-visible { outline: 3px solid #6caa83; outline-offset: 2px; }
     .navigation {
@@ -112,6 +114,27 @@
       border: 0;
       background: #fff;
     }
+    .dashboard { max-width: 1080px; margin: 0 auto; padding: 60px 24px 24px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .dashboard > h1, .dashboard > p, .dashboard .menu-group h2 { grid-column: 1 / -1; }
+    .dashboard h1 { margin: 0 0 8px; font-size: 30px; }
+    .dashboard > p { color: var(--muted); margin: 0 0 6px; }
+    .dashboard .menu-group { display: contents; }
+    .dashboard .menu-group h2 { margin: 6px 0 0; font-size: 12px; }
+    .dashboard-link { display: block; min-height: 64px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); text-decoration: none; }
+    .dashboard-link:hover { border-color: var(--accent); }
+    .dashboard-link .helper-name { font-size: 16px; }
+    .dashboard-link .helper-description { font-size: 13px; }
+    .dashboard .study-support { grid-column: 1 / -1; justify-self: end; }
+    .dashboard .study-support button { display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 8px; padding: 9px 12px; background: #ffd140; color: #000; font-weight: 700; cursor: pointer; }
+    .dashboard .study-support img { width: 20px; height: 20px; object-fit: contain; }
+    @media (max-width: 650px) {
+      .dashboard { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 58px 12px 12px; gap: 5px; }
+      .dashboard h1 { font-size: 22px; }
+      .dashboard > p, .dashboard-link .helper-description { display: none; }
+      .dashboard-link { min-height: 48px; padding: 6px; }
+      .dashboard-link .helper-name { font-size: 12px; line-height: 1.25; }
+      .dashboard-link .helper-icon { width: 22px; height: 22px; font-size: 15px; }
+    }
   </style>
 </head>
 <body>
@@ -122,72 +145,72 @@
     <div class="menu" id="helperMenu" hidden>
       <section class="menu-group" aria-label="Practice">
       <h2>Practice</h2>
-      <button class="helper-link" type="button" data-file="仮名.html">
+      <button class="helper-link" type="button" data-file="kana.html">
         <span class="helper-name">Kana · <span class="helper-icon" aria-hidden="true">あ</span> · 仮名</span>
         <span class="helper-description">(Hiragana and katakana practice)</span>
       </button>
-      <button class="helper-link" type="button" data-file="読み.html">
+      <button class="helper-link" type="button" data-file="yomi.html">
         <span class="helper-name">Yomi · <span class="helper-icon" aria-hidden="true">読</span> · 読み</span>
         <span class="helper-description">(Kanji reading practice)</span>
       </button>
-      <button class="helper-link" type="button" data-file="意味.html">
+      <button class="helper-link" type="button" data-file="imi.html">
         <span class="helper-name">Imi · <span class="helper-icon" aria-hidden="true">意</span> · 意味</span>
         <span class="helper-description">(Kanji meaning practice)</span>
       </button>
-      <button class="helper-link" type="button" data-file="語彙.html">
+      <button class="helper-link" type="button" data-file="goi.html">
         <span class="helper-name">Goi · <span class="helper-icon" aria-hidden="true">語</span> · 語彙</span>
         <span class="helper-description">(JLPT vocabulary practice)</span>
       </button>
-      <button class="helper-link" type="button" data-file="活用練習.html">
+      <button class="helper-link" type="button" data-file="katsuyo-renshuu.html">
         <span class="helper-name">Katsuyō Renshuu · <span class="helper-icon" aria-hidden="true">練</span> · 活用練習</span>
         <span class="helper-description">(Focused Japanese conjugation practice)</span>
       </button>
       </section>
       <section class="menu-group" aria-label="Reference">
       <h2>Reference</h2>
-      <button class="helper-link" type="button" data-file="言葉.html">
+      <button class="helper-link" type="button" data-file="kotoba.html">
         <span class="helper-name">Kotoba · <span class="helper-icon" aria-hidden="true">言</span> · 言葉</span>
         <span class="helper-description">(Japanese dictionary)</span>
       </button>
-      <button class="helper-link" type="button" data-file="漢字地図帳.html">
+      <button class="helper-link" type="button" data-file="kanji-chizucho.html">
         <span class="helper-name">Kanji Chizuchō · <span class="helper-icon" aria-hidden="true">漢</span> · 漢字地図帳</span>
         <span class="helper-description">(Explore kanji and compounds)</span>
       </button>
-      <button class="helper-link" type="button" data-file="活用.html">
+      <button class="helper-link" type="button" data-file="katsuyo.html">
         <span class="helper-name">Katsuyō · <span class="helper-icon" aria-hidden="true">活</span> · 活用</span>
         <span class="helper-description">(Japanese verb and adjective conjugator)</span>
       </button>
-      <button class="helper-link" type="button" data-file="文解き.html">
+      <button class="helper-link" type="button" data-file="fumitoki.html">
         <span class="helper-name">Fumitoki · <span class="helper-icon" aria-hidden="true">文</span> · 文解き</span>
         <span class="helper-description">(Japanese sentence breakdown)</span>
       </button>
-      <button class="helper-link" type="button" data-file="資料.html">
+      <button class="helper-link" type="button" data-file="shiryo.html">
         <span class="helper-name">Shiryō · <span class="helper-icon" aria-hidden="true">資</span> · 資料</span>
         <span class="helper-description">(Printable Japanese cheatsheets)</span>
       </button>
       </section>
       <section class="menu-group" aria-label="Games">
       <h2>Games</h2>
-      <button class="helper-link" type="button" data-file="絵合わせ.html">
+      <button class="helper-link" type="button" data-file="eawase.html">
         <span class="helper-name">Eawase · <span class="helper-icon" aria-hidden="true">合</span> · 絵合わせ</span>
         <span class="helper-description">(Japanese word and kana memory matching)</span>
       </button>
-      <button class="helper-link" type="button" data-file="言葉探し.html">
+      <button class="helper-link" type="button" data-file="kotoba-sagashi.html">
         <span class="helper-name">Kotoba Sagashi · <span class="helper-icon" aria-hidden="true">探</span> · 言葉探し</span>
         <span class="helper-description">(Japanese vocabulary word search)</span>
       </button>
-      <button class="helper-link" type="button" data-file="パズル.html">
+      <button class="helper-link" type="button" data-file="pazuru.html">
         <span class="helper-name">Pazuru · <span class="helper-icon" aria-hidden="true">謎</span> · パズル</span>
         <span class="helper-description">(Japanese vocabulary crossword)</span>
       </button>
-      <button class="helper-link" type="button" data-file="しりとり.html">
+      <button class="helper-link" type="button" data-file="shiritori.html">
         <span class="helper-name">Shiritori · <span class="helper-icon" aria-hidden="true">し</span> · しりとり</span>
         <span class="helper-description">(Japanese word-chain game)</span>
       </button>
       </section>
     </div>
   </nav>
-  <iframe class="helper-frame" id="helperFrame" title="Japanese helper"></iframe>
+  <main class="dashboard"><h1>日本語道具箱 · Nihongo Toolkit</h1><p>Japanese practice, reference and games</p><!-- dashboard-tools --></main>
 
   <script type="module" src="./src/index.js"></script>
 </body>

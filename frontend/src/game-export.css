@@ -1,0 +1,17 @@
+.game-export-open { margin: 12px 0; }
+body .game-export-open, body .game-export-actions button, body .game-export-dialog header button { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px; background: var(--soft); color: var(--ink); font: 700 13px/1.4 system-ui, sans-serif; cursor: pointer; }
+body .game-export-open:hover, body .game-export-actions button:hover { background: var(--accent-soft); border-color: var(--accent); }
+.game-export-dialog { width: min(94vw, 720px); max-height: 90vh; overflow: auto; padding: 20px; border: 1px solid #87978d; border-radius: 8px; background: var(--card, #fff); color: var(--ink, #202421); }
+.game-export-dialog::backdrop { background: rgb(0 0 0 / 55%); }
+.game-export-dialog header, .game-export-options, .game-export-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.game-export-dialog header { justify-content: space-between; }
+.game-export-dialog h2 { font-size: 20px; margin: 0 0 12px; }
+.game-export-options label { display: flex; align-items: center; gap: 6px; }
+.game-export-theme { display: inline-flex; align-items: center; gap: 8px; }
+.game-export-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); align-items: center; }
+.game-export-options label { min-width: 0; margin: 0; }
+.game-export-options label[hidden] { display: none; }
+.game-export-options input[type="range"] { min-width: 60px; max-width: 125px; }
+.game-export-options output { min-width: 3em; font-variant-numeric: tabular-nums; }
+.game-export-preview { display: block; width: min(100%, 380px); height: auto; margin: 16px auto; border: 1px solid #87978d; }
+.game-export-actions button { min-width: 62px; min-height: 40px; }

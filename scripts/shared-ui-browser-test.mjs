@@ -25,7 +25,7 @@ try {
   context.on("page", (tab) => tab.on("pageerror", (error) => errors.push(error.message)));
   page.on("pageerror", (error) => errors.push(error.message));
   const go = (file) => page.goto(`${origin}/${encodeURIComponent(file)}`);
-  await go("仮名.html");
+  await go("kana.html");
   await page.locator("#colorThemeSelect").waitFor();
   assert.equal(await page.locator("#colorThemeSelect").inputValue(), "sumi");
   assert.equal(await page.locator('#colorThemeSelect option[value="sumi"]').textContent(), "Sumi");
@@ -41,7 +41,7 @@ try {
   await page.locator("#colorThemeSelect").waitFor();
   assert.equal(await page.locator("#colorThemeSelect").inputValue(), "sumi");
   assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
-  const tools = ["仮名.html", "意味.html", "読み.html", "語彙.html", "言葉.html", "文解き.html", "漢字地図帳.html", "パズル.html", "しりとり.html", "活用.html", "活用練習.html", "言葉探し.html", "絵合わせ.html"];
+  const tools = ["kana.html", "imi.html", "yomi.html", "goi.html", "kotoba.html", "fumitoki.html", "kanji-chizucho.html", "pazuru.html", "shiritori.html", "katsuyo.html", "katsuyo-renshuu.html", "kotoba-sagashi.html", "eawase.html"];
   for (const width of [375, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     let reference;
@@ -49,13 +49,13 @@ try {
       await go(file);
       await page.locator("#colorThemeSelect").waitFor();
       const support = page.locator(".study-support");
-      assert.equal(await support.locator(".study-support-brand").isVisible(), width <= 600);
-      assert.equal(await support.locator("form > img").evaluate((image) => getComputedStyle(image).display !== "none"), width > 600);
-      assert.equal(await support.locator("form > span").isVisible(), width > 600);
+      assert.equal(await support.locator("form > img, form > span, .study-support-brand").count(), 0);
+      assert.equal(await page.locator(".study-toolbar .study-support").count(), 1);
       assert.equal(await support.locator("form").getAttribute("action"), "https://www.paypal.com/ncp/payment/BGUN4RBRVZKKJ");
       assert.equal(await support.locator("form").getAttribute("method"), "post");
       assert.equal(await support.locator("form").getAttribute("target"), "_blank");
-      const supportButton = support.getByRole("button", { name: "Buy me a coffee with PayPal" });
+      const supportButton = support.locator("button");
+      assert.equal(await supportButton.locator('img[alt="PayPal"]').count(), 1);
       assert.equal(await supportButton.getAttribute("type"), "submit");
       if (width <= 600) {
         const bounds = await supportButton.boundingBox();
@@ -64,6 +64,7 @@ try {
       const contribution = page.locator(".study-contribute");
       assert.equal(await contribution.count(), 1, `${file}: one shared contribution message`);
       assert.equal(await contribution.isVisible(), true, `${file}: contribution message is visible`);
+      assert.notEqual(await contribution.locator("a").first().evaluate((link) => getComputedStyle(link).color), await contribution.locator("a").last().evaluate((link) => getComputedStyle(link).color));
       assert.deepEqual(await contribution.locator("a").evaluateAll((links) => links.map((link) =>
         [link.href, link.target, link.rel])), [
         ["https://github.com/arrigonfr/nihongo-toolkit/issues", "_blank", "noopener noreferrer"],
@@ -92,7 +93,10 @@ try {
       const help = page.locator(".study-setting-name:visible").first();
       if (await help.count()) {
         assert.notEqual((await help.textContent()).trim(), "?");
+        await help.scrollIntoViewIfNeeded();
+        await page.mouse.move(0, 0);
         await help.hover();
+        await page.locator("#studySettingTooltip").waitFor({ state: "visible" });
         assert.equal(await page.locator("#studySettingTooltip").isVisible(), true);
         assert.ok((await page.locator("#studySettingTooltip").textContent()).length > 10, `${file}: ${await help.textContent()} => ${await page.locator("#studySettingTooltip").textContent()}`);
         const bubble = await page.locator("#studySettingTooltip").evaluate((node) => {
@@ -105,7 +109,7 @@ try {
         await page.keyboard.press("Escape");
         assert.equal(await page.locator("#studySettingTooltip").isVisible(), false);
       }
-      if (file === "しりとり.html") {
+      if (file === "shiritori.html") {
         assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), true, "Escape dismisses the tooltip without collapsing settings");
         await page.click("#settingsPanel > summary");
       }
@@ -118,7 +122,7 @@ try {
     }
   }
 
-  await go("語彙.html");
+  await go("goi.html");
   const checkboxLabel = page.locator('label:has(#showStatsToggle) .study-setting-name');
   const wasChecked = await page.locator("#showStatsToggle").isChecked();
   await checkboxLabel.click();
@@ -161,7 +165,7 @@ try {
     await title.tap();
     const input = await title.evaluateHandle((node) => {
       const control = node.closest("label").control;
-      return control.hidden ? control.nextElementSibling.querySelector("input, button") : control;
+      return control.hidden ? control.nextElementSibling.querySelector(".chip-option") : control;
     });
     await input.asElement().tap();
     assert.equal(await touch.locator("#studySettingTooltip").isVisible(), false, `${file}: input tap dismisses help`);
@@ -174,8 +178,8 @@ try {
   await touchContext.close();
 
   const other = await context.newPage();
-  await other.goto(`${origin}/index.html`);
-  const frame = other.frameLocator("#helperFrame");
+  await other.goto(`${origin}/kana.html`);
+  const frame = other;
   await frame.locator("#colorThemeSelect").waitFor();
   const palettes = new Set();
   for (const palette of ["matcha", "sakura", "ocean", "wisteria", "amber", "sumi"]) {
@@ -193,7 +197,7 @@ try {
     }
   }
   assert.equal(palettes.size, 12, "Six distinct palettes each have light and dark accents");
-  await go("文解き.html");
+  await go("fumitoki.html");
   assert.equal(await page.locator("#colorThemeSelect").inputValue(), "sumi");
   await page.reload();
   assert.equal(await page.locator("#colorThemeSelect").inputValue(), "sumi");
@@ -219,7 +223,7 @@ try {
     for (const item of data.items) { item.examples = []; item.example = ""; item.exampleMeaning = ""; }
     await route.fulfill({ response, json: data });
   });
-  await go("パズル.html");
+  await go("pazuru.html");
   await page.click("#newPuzzleBtn");
   await page.locator("#crosswordGrid .cw-cell:not(.block)").first().waitFor();
   await page.locator("#crosswordGrid .cw-cell.is-active").click();
@@ -238,7 +242,7 @@ try {
   failSentences = false;
   await page.click("#cwSentenceExamples .sentence-next");
   await page.waitForFunction(() => document.querySelector("#cwSentenceExamples .sentence-next").textContent === "Another example");
-  await go("語彙.html");
+  await go("goi.html");
   await page.selectOption("#modeSelect", "cloze-ej", { force: true });
   const beforeCloze = sentenceCalls;
   await page.click("#startButton");

@@ -22,7 +22,7 @@
     "test:conjugator": "node --test backend/test/conjugator.test.js frontend/test/conjugation.test.js && node scripts/conjugator-browser-test.mjs",
     "test:conjugation-practice": "node --test frontend/test/conjugation-practice.test.js frontend/test/conjugation.test.js && node scripts/conjugation-practice-browser-test.mjs",
     "test:e2e": "node scripts/browser-test.mjs && node scripts/shared-ui-browser-test.mjs",
-    "test:tool-fixes": "npm run build && node scripts/tool-fixes-browser-test.mjs",
+    "test:tool-fixes": "VITE_SITE_URL=https://nihongo-toolkit.pages.dev npm run build && node scripts/tool-fixes-browser-test.mjs",
     "test:settings": "node scripts/settings-browser-test.mjs && node scripts/settings-availability-browser-test.mjs",
     "test:study-improvements": "node scripts/study-improvements-browser-test.mjs",
     "test:selects": "node scripts/select-browser-test.mjs",
@@ -30,6 +30,7 @@
     "test:word-search": "node --test frontend/test/word-search.test.js backend/test/database.test.js && node scripts/word-search-browser-test.mjs",
     "test:memory": "node --test frontend/test/memory.test.js && node scripts/memory-browser-test.mjs",
     "test:crossword": "node --test frontend/test/crossword.test.js && node scripts/crossword-browser-test.mjs",
+    "test:game-exports": "node scripts/game-export-browser-test.mjs",
     "seed:vocab": "npm run seed:vocab -w backend --"
   },
   "devDependencies": { "playwright": "^1.58.2", "wrangler": "^4.0.0", "miniflare": "^4.0.0", "esbuild": "^0.25.0" }

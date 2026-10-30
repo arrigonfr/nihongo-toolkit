@@ -7,7 +7,7 @@ import "./navigation.js";
 import { mountAppearance } from "./appearance.js";
 import { mountSupport } from "./study-controls.js";
 import { SHEETS, buildSheet } from "./cheatsheet-data.js";
-import { FORMATS, buildPdf, drawToCanvas, fileName, textExporters, toSVG } from "./cheatsheet-export.js";
+import { FORMATS, buildPdf, fileName, textExporters, toSVG } from "./cheatsheet-export.js";
 import { PDFDocument } from "pdf-lib";
 import { strToU8, zipSync } from "fflate";
 import { FONT_STACK, PAGE, paginateReference } from "./cheatsheet-layout.js";
@@ -56,16 +56,17 @@ function dimensions() {
 }
 function pageSVG(item, standalone = true) {
   const svg = toSVG(item, { standalone, grayscale: grayscale.checked });
-  if (!paginated()) return svg;
   const [width, height] = dimensions();
-  return `<svg${standalone ? ' xmlns="http://www.w3.org/2000/svg"' : ""} viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="${sheet.title} cheatsheet"><rect width="100%" height="100%" fill="white"/><svg x="0" y="0" width="${width}" height="${height}" viewBox="0 0 ${PAGE.w} ${PAGE.h}" font-family='${FONT_STACK.replace(/'/g, "")}'>${svg.slice(svg.indexOf(">") + 1, svg.lastIndexOf("</svg>"))}</svg></svg>`;
+  const title = sheet.title.replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
+  return `<svg${standalone ? ' xmlns="http://www.w3.org/2000/svg"' : ""} viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="${title} cheatsheet"><rect width="100%" height="100%" fill="white"/><svg x="0" y="0" width="${width}" height="${height}" viewBox="0 0 ${PAGE.w} ${PAGE.h}" font-family='${FONT_STACK.replace(/'/g, "")}'>${svg.slice(svg.indexOf(">") + 1, svg.lastIndexOf("</svg>"))}</svg></svg>`;
 }
 function render() {
   const all = pages();
   page = Math.max(0, Math.min(page, all.length - 1));
   preview.innerHTML = pageSVG(all[page], false);
-  preview.style.aspectRatio = paginated() ? dimensions().join(" / ") : "";
-  controls.hidden = !paginated();
+  preview.style.aspectRatio = dimensions().join(" / ");
+  controls.hidden = false;
+  controls.querySelector(".worksheet-pages").hidden = !paginated();
   controls.querySelector("[data-reference-page]").textContent = `${page + 1} / ${all.length}`;
   controls.querySelector('[data-reference-action="previous"]').disabled = page === 0;
   controls.querySelector('[data-reference-action="next"]').disabled = page === all.length - 1;
@@ -160,7 +161,7 @@ async function prepareSheetPrint() {
   frame.title = "Print cheatsheet";
   frame.style.cssText = "position:fixed;width:0;height:0;border:0;";
   const stylesheets = [...document.querySelectorAll('link[rel="stylesheet"]')].map((link) => `<link rel="stylesheet" href="${link.href}">`).join("");
-  const size = paginated() ? `${paper()} ${orientation()}` : "A4";
+  const size = `${paper()} ${orientation()}`;
   frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8">${stylesheets}<style>@page{size:${size};margin:0}body{margin:0}body>svg{display:block;width:100%;height:auto;break-after:page}body>svg:last-child{break-after:auto}</style></head><body>${pages().map((item) => pageSVG(item)).join("")}</body></html>`;
   const loaded = new Promise((resolve, reject) => { frame.onload = resolve; frame.onerror = reject; });
   document.body.append(frame);
@@ -197,9 +198,13 @@ async function renderCanvas(scale) {
   try { await Promise.all([400, 500, 700, 800].map((weight) => document.fonts.load(`${weight} 16px "Noto Sans JP"`, "あ漢"))); }
   catch { /* fall back to system fonts */ }
   const canvas = document.createElement("canvas");
-  canvas.width = Math.round(PAGE.w * scale);
-  canvas.height = Math.round(PAGE.h * scale);
-  drawToCanvas(canvas.getContext("2d"), sheet, scale, { grayscale: grayscale.checked });
+  const [width, height] = dimensions();
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
+  const image = new Image();
+  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(pageSVG(sheet))}`;
+  await image.decode();
+  canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
   return canvas;
 }
 
@@ -251,8 +256,10 @@ async function download(id, button) {
     else if (id === "pdf") {
       const canvas = await renderCanvas(2.5);
       const jpeg = new Uint8Array(await (await toBlob(canvas, "image/jpeg", 0.93)).arrayBuffer());
-      blob = new Blob([buildPdf(jpeg, canvas.width, canvas.height, sheet.title)], { type: format.mime });
-    } else blob = new Blob([textExporters[id](sheet, { grayscale: grayscale.checked })], { type: `${format.mime};charset=utf-8` });
+      blob = new Blob([buildPdf(jpeg, canvas.width, canvas.height, sheet.title, dimensions())], { type: format.mime });
+    } else if (id === "svg") blob = new Blob([pageSVG(sheet)], { type: format.mime });
+    else if (id === "html") blob = new Blob([`<!doctype html><meta charset="utf-8"><title>${sheet.title}</title><style>@page{size:${paper()} ${orientation()};margin:0}body{margin:0}svg{display:block;width:100%;height:auto}</style>${pageSVG(sheet)}`], { type: format.mime });
+    else blob = new Blob([textExporters[id](sheet, { grayscale: grayscale.checked })], { type: `${format.mime};charset=utf-8` });
     save(blob, fileName(sheet, id));
     status.textContent = `Saved ${fileName(sheet, id)}.`;
   } catch (error) {
