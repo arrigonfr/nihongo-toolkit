@@ -7,10 +7,10 @@ export function shuffleExamples(items, random = Math.random) {
   return result;
 }
 
-export function localExamples(db, { wordId, query, limit = 3, random = false }) {
+export async function localExamples(db, { wordId, query, limit = 3, random = false }) {
   const rows = wordId !== undefined
-    ? db.prepare("SELECT examples FROM vocabulary WHERE word_id = ?").all(wordId)
-    : db.prepare(`SELECT examples FROM vocabulary WHERE instr(word, ?) > 0
+    ? await db.prepare("SELECT examples FROM vocabulary WHERE word_id = ?").all(wordId)
+    : await db.prepare(`SELECT examples FROM vocabulary WHERE instr(word, ?) > 0
         OR reading = ? OR romaji = ? OR EXISTS
         (SELECT 1 FROM json_each(other_forms) WHERE value = ?)
         ORDER BY (word = ? OR reading = ?) DESC LIMIT 40`)

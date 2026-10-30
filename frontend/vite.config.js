@@ -1,12 +1,11 @@
 import { defineConfig, loadEnv } from "vite";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const toolFiles = readdirSync(root).filter((file) => file.endsWith(".html") && !["index.html", "data-sources.html", "文字.html"].includes(file));
-const site = "https://nihon-tools.netlify.app/";
 
-function toolNavigation() {
+function toolNavigation(site) {
   return {
     name: "tool-navigation",
     transformIndexHtml: {
@@ -14,8 +13,8 @@ function toolNavigation() {
       handler(html, context) {
         const file = context.filename.split("/").pop();
         if (file === "文字.html") return html;
-        const canonical = new URL(file === "index.html" ? "" : file, site).href;
-        const tags = [{ tag: "link", attrs: { rel: "canonical", href: canonical }, injectTo: "head" }];
+        const canonical = site ? new URL(file === "index.html" ? "" : file, site).href : null;
+        const tags = canonical ? [{ tag: "link", attrs: { rel: "canonical", href: canonical }, injectTo: "head" }] : [];
         if (file === "index.html" || toolFiles.includes(file)) {
           const launcher = readFileSync(new URL("./index.html", import.meta.url), "utf8");
           const originalMenu = launcher.match(/<nav class="navigation"[\s\S]*?<\/nav>/)[0];
@@ -48,14 +47,22 @@ function toolNavigation() {
 }
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, root, ""), ...process.env };
-  if (env.NETLIFY === "true") {
-    const backend = new URL(env.VITE_API_BASE_URL);
-    if (backend.protocol !== "https:" || ["localhost", "127.0.0.1", "[::1]"].includes(backend.hostname)) {
-      throw new Error("Set VITE_API_BASE_URL to your deployed HTTPS Vercel URL in Netlify before building.");
-    }
+  const site = env.VITE_SITE_URL ? new URL("/", env.VITE_SITE_URL).href : undefined;
+  if (site && !site.startsWith("https://")) {
+    throw new Error("VITE_SITE_URL must be the public HTTPS site URL.");
   }
   return {
-  plugins: [toolNavigation()],
+  plugins: [toolNavigation(site), {
+    name: "deployment-seo",
+    writeBundle(options) {
+      const directory = options.dir || `${root}/dist`;
+      writeFileSync(`${directory}/robots.txt`, `User-agent: *\nAllow: /\n${site ? `\nSitemap: ${site}sitemap.xml\n` : ""}`);
+      if (!site) { rmSync(`${directory}/sitemap.xml`, { force: true }); return; }
+      const pages = ["", ...toolFiles, "data-sources.html"];
+      writeFileSync(`${directory}/sitemap.xml`, `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages.map((file) =>
+        `  <url><loc>${new URL(file, site).href}</loc></url>`).join("\n")}\n</urlset>\n`);
+    }
+  }],
   server: { port: 5173, strictPort: true },
   build: {
     rollupOptions: {

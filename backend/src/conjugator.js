@@ -1,4 +1,5 @@
 import { selectedLevels, matchesLevel } from "../../frontend/src/jlpt-levels.js";
+import { rowsByWordIds } from "./async-database.js";
 
 const parse = JSON.parse;
 const supports = (values, value) => values.includes("*") || values.includes(value);
@@ -66,11 +67,10 @@ export function conjugationEntries(row, levels = []) {
   return entries;
 }
 
-export function findConjugationEntries(db, { query, random = false, level = "all", category = "all", exclude = [] }) {
+export async function findConjugationEntries(db, { query, random = false, level = "all", category = "all", exclude = [] }) {
   const selected = selectedLevels(level);
   if (!selected.length) return [];
   if (!["all", "verb", "adjective"].includes(category)) throw new Error("Choose verbs, adjectives, or all words.");
-  const levels = db.prepare("SELECT word, reading, jlpt FROM vocabulary WHERE word_id = ?");
   let rows;
   if (random) {
     const conditions = ["w.is_common = 1"];
@@ -79,22 +79,22 @@ export function findConjugationEntries(db, { query, random = false, level = "all
       conditions.push(`EXISTS (SELECT 1 FROM vocabulary v WHERE v.word_id = w.id AND v.jlpt IN (${selected.map(() => "?").join(",")}))`);
       args.push(...selected);
     }
-    rows = db.prepare(`SELECT w.* FROM words w WHERE ${conditions.join(" AND ")} ORDER BY random() LIMIT 400`).all(...args);
+    rows = await db.prepare(`SELECT w.* FROM words w WHERE ${conditions.join(" AND ")} ORDER BY random() LIMIT 400`).all(...args);
   } else {
     const search = db.prepare(`SELECT * FROM words WHERE word = ? OR reading = ? OR word = ? OR reading = ?
-      OR word LIKE ? ESCAPE '\\' OR reading LIKE ? ESCAPE '\\'
-      OR kanji_forms LIKE ? ESCAPE '\\' OR kana_forms LIKE ? ESCAPE '\\'
+      OR instr(lower(word), lower(?)) = 1 OR instr(lower(reading), lower(?)) = 1
+      OR instr(lower(kanji_forms), lower(?)) > 0 OR instr(lower(kana_forms), lower(?)) > 0
       ORDER BY (word = ? OR reading = ? OR word = ? OR reading = ?) DESC, is_common DESC, id LIMIT 100`);
     const byId = new Map();
     for (const variant of new Set([query, katakana(query)])) {
-      const escaped = variant.replace(/[\\%_]/g, "\\$&");
       const stem = /(?:する|スル)$/.test(variant) ? variant.slice(0, -2) : variant;
-      for (const row of search.all(variant, variant, stem, stem, `${escaped}%`, `${escaped}%`,
-        `%"text":"${escaped}"%`, `%"text":"${escaped}"%`, variant, variant, stem, stem)) byId.set(row.id, row);
+      for (const row of await search.all(variant, variant, stem, stem, variant, variant,
+        `"text":"${variant}"`, `"text":"${variant}"`, variant, variant, stem, stem)) byId.set(row.id, row);
     }
     rows = [...byId.values()];
   }
-  const entries = rows.flatMap((row) => conjugationEntries(row, levels.all(row.id)))
+  const levels = await rowsByWordIds(db, rows.map((row) => row.id));
+  const entries = rows.flatMap((row) => conjugationEntries(row, levels.get(row.id) ?? []))
     .filter((entry) => matchesLevel(entry.level, level)
       && (category === "all" || (category === "adjective") === entry.type.endsWith("adjective")));
   if (random) {

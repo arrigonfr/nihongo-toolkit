@@ -31,7 +31,7 @@ test("suru nouns attach する but nouns alone are not conjugatable", () => {
   assert.equal(conjugationEntries(row("猫", "ねこ", [sense(["n"], ["cat"])] )).length, 0);
   assert.equal(conjugationEntries(row("為る", "する", [sense(["vs-i"], ["to do"])]))[0].word, "為る");
 });
-test("lookup offers ambiguous classes, treats wildcard input literally, and random avoids recent readings", () => {
+test("lookup offers ambiguous classes, treats wildcard input literally, and random avoids recent readings", async () => {
   const db = new DatabaseSync(":memory:");
   db.exec(`CREATE TABLE words (id INTEGER, word TEXT, reading TEXT, is_common INTEGER, kanji_forms TEXT, kana_forms TEXT, senses TEXT);
     CREATE TABLE vocabulary (word_id INTEGER, word TEXT, reading TEXT, jlpt INTEGER);`);
@@ -42,11 +42,11 @@ test("lookup offers ambiguous classes, treats wildcard input literally, and rand
     row("食べる", "たべる", [sense(["v1"], ["eat"])], 3),
     row("ハンサム", "ハンサム", [sense(["adj-na"], ["handsome"])], 4)
   ]) { insert.run(data.id, data.word, data.reading, data.is_common, data.kanji_forms, data.kana_forms, data.senses); db.prepare("INSERT INTO vocabulary VALUES (?, ?, ?, 5)").run(data.id, data.word, data.reading); }
-  assert.equal(findConjugationEntries(db, { query: "きる" }).length, 2);
-  assert.equal(findConjugationEntries(db, { query: "%" }).length, 0);
-  assert.equal(findConjugationEntries(db, { random: true, exclude: ["きる"], level: "5", category: "verb" })[0].word, "食べる");
-  assert.equal(findConjugationEntries(db, { query: "はんさむ" })[0].word, "ハンサム");
-  assert.equal(findConjugationEntries(db, { random: true, category: "adjective" })[0].word, "ハンサム");
-  assert.throws(() => findConjugationEntries(db, { random: true, level: "0" }), /JLPT/);
+  assert.equal((await findConjugationEntries(db, { query: "きる" })).length, 2);
+  assert.equal((await findConjugationEntries(db, { query: "%" })).length, 0);
+  assert.equal((await findConjugationEntries(db, { random: true, exclude: ["きる"], level: "5", category: "verb" }))[0].word, "食べる");
+  assert.equal((await findConjugationEntries(db, { query: "はんさむ" }))[0].word, "ハンサム");
+  assert.equal((await findConjugationEntries(db, { random: true, category: "adjective" }))[0].word, "ハンサム");
+  await assert.rejects(findConjugationEntries(db, { random: true, level: "0" }), /JLPT/);
   db.close();
 });

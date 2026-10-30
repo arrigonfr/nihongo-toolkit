@@ -1,5 +1,5 @@
 {
-  "name": "nihon",
+  "name": "nihongo-toolkit",
   "private": true,
   "type": "module",
   "engines": { "node": "24.x" },
@@ -10,7 +10,14 @@
     "dev:frontend": "npm run dev -w frontend",
     "db:init": "npm run db:init -w backend",
     "db:import": "npm run db:import -w backend",
+    "db:export-d1": "node backend/scripts/export-d1.js",
+    "db:import-d1": "node backend/scripts/import-d1.js",
     "build": "npm run build -w frontend",
+    "build:cloudflare": "VITE_API_BASE_URL= npm run build && node backend/scripts/build-tokenizer.js",
+    "dev:cloudflare": "npm run build:cloudflare && wrangler dev",
+    "deploy:cloudflare": "npm run build:cloudflare && wrangler deploy",
+    "check:cloudflare": "npm run build:cloudflare && wrangler deploy --dry-run",
+    "test:cloudflare": "npm run build:cloudflare && node --test backend/test/cloudflare.integration.js",
     "test": "node --test backend/test/*.test.js frontend/test/*.test.js",
     "test:conjugator": "node --test backend/test/conjugator.test.js frontend/test/conjugation.test.js && node scripts/conjugator-browser-test.mjs",
     "test:conjugation-practice": "node --test frontend/test/conjugation-practice.test.js frontend/test/conjugation.test.js && node scripts/conjugation-practice-browser-test.mjs",
@@ -25,5 +32,5 @@
     "test:crossword": "node --test frontend/test/crossword.test.js && node scripts/crossword-browser-test.mjs",
     "seed:vocab": "npm run seed:vocab -w backend --"
   },
-  "devDependencies": { "playwright": "^1.58.2" }
+  "devDependencies": { "playwright": "^1.58.2", "wrangler": "^4.0.0", "miniflare": "^4.0.0", "esbuild": "^0.25.0" }
 }

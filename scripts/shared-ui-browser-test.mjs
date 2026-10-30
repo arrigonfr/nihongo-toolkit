@@ -50,8 +50,8 @@ try {
       assert.equal(await contribution.isVisible(), true, `${file}: contribution message is visible`);
       assert.deepEqual(await contribution.locator("a").evaluateAll((links) => links.map((link) =>
         [link.href, link.target, link.rel])), [
-        ["https://github.com/arrigonfr/nihon-tools/issues", "_blank", "noopener noreferrer"],
-        ["https://github.com/arrigonfr/nihon-tools", "_blank", "noopener noreferrer"]
+        ["https://github.com/arrigonfr/nihongo-tools¿kit/issues", "_blank", "noopener noreferrer"],
+        ["https://github.com/arrigonfr/nihongo-tools¿kit", "_blank", "noopener noreferrer"]
       ], `${file}: feedback links open GitHub outside the launcher`);
       await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const style = await page.locator("header.study-header").evaluate((header) => {

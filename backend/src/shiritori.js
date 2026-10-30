@@ -3,6 +3,8 @@ import { localExamples } from "./examples.js";
 import { findConjugationEntries } from "./conjugator.js";
 import { segmentText } from "./tokenizer.js";
 import { isPlaceName } from "./proper-nouns.js";
+import { rowsByWordIds } from "./async-database.js";
+import { selectedLevels } from "../../frontend/src/jlpt-levels.js";
 
 const unique = (values) => [...new Set(values)];
 export function dictionaryForms(row, tags, levels = []) {
@@ -112,16 +114,16 @@ const katakanaOf = (text) => text.replace(/[ぁ-ゖ]/g, (c) => String.fromCharCo
 const wordPattern = /^[\p{Script=Han}ぁ-ゖァ-ヶー]+$/u;
 
 // Conjugated verbs and adjectives are not dictionary headwords: analyse the surface form and look up its base.
-async function inflectedForms(db, tags, query) {
+async function inflectedForms(db, tags, query, segment = segmentText) {
   let tokens;
-  try { tokens = (await segmentText(query)).filter((token) => token.type !== "space"); }
+  try { tokens = (await segment(query)).filter((token) => token.type !== "space"); }
   catch (error) { console.error("Shiritori inflection analysis failed:", error); return []; }
   if (!tokens.length || tokens.length > 2 || tokens.some((token) => token.type !== "word" || !token.reading)) return [];
   const base = tokens.length === 1 ? tokens[0].base : tokens[1].base === "する" ? `${tokens[0].text}する` : "";
   if (!base || base === query) return [];
   const reading = tokens.map((token) => token.reading).join("");
   const byEntry = new Map();
-  for (const entry of findConjugationEntries(db, { query: base })) {
+  for (const entry of await findConjugationEntries(db, { query: base })) {
     if (entry.word !== base && kana(entry.reading) !== kana(base)) continue;
     if (!byEntry.has(entry.wordId)) byEntry.set(entry.wordId, {
       id: `jm-${entry.wordId}`, word: query, reading,
@@ -134,7 +136,7 @@ async function inflectedForms(db, tags, query) {
   return [...byEntry.values()];
 }
 
-export async function shiritoriWords(db, params, tags, fallback) {
+export async function shiritoriWords(db, params, tags, fallback, segment = segmentText) {
   const rules = parseRules(JSON.parse(params.get("rules") || "{}"));
   const query = (params.get("q") || "").trim().normalize("NFKC");
   const previous = params.get("prev") ? JSON.parse(params.get("prev")) : null;
@@ -155,24 +157,41 @@ export async function shiritoriWords(db, params, tags, fallback) {
   } else if (previous && !rules.voicing) {
     const options = startOptions(previous, rules);
     const clauses = [];
-    for (const { text } of options.kana) {
-      clauses.push("EXISTS (SELECT 1 FROM json_each(kana_forms) WHERE json_extract(value, '$.text') LIKE ? OR json_extract(value, '$.text') LIKE ?)");
-      args.push(`${kana(text)}%`, `${katakanaOf(kana(text))}%`);
+    if (options.kana.length) {
+      clauses.push("EXISTS (SELECT 1 FROM json_each(kana_forms) f, json_each(?) p WHERE instr(json_extract(f.value, '$.text'), p.value) = 1)");
+      args.push(JSON.stringify(unique(options.kana.flatMap(({ text }) => [kana(text), katakanaOf(kana(text))]))));
     }
-    for (const { text } of options.kanji) {
-      clauses.push("EXISTS (SELECT 1 FROM json_each(kanji_forms) WHERE json_extract(value, '$.text') LIKE ?)");
-      args.push(`${text}%`);
+    if (options.kanji.length) {
+      clauses.push("EXISTS (SELECT 1 FROM json_each(kanji_forms) f, json_each(?) p WHERE instr(json_extract(f.value, '$.text'), p.value) = 1)");
+      args.push(JSON.stringify(options.kanji.map(({ text }) => text)));
     }
     where = clauses.length ? `(${clauses.join(" OR ")})` : "0=1";
   }
-  const levels = db.prepare("SELECT word, reading, jlpt FROM vocabulary WHERE word_id = ?");
+  if (!query) {
+    const selected = selectedLevels(rules.level);
+    if (!selected.includes("unrated")) {
+      where += " AND id IN (SELECT word_id FROM vocabulary WHERE jlpt IN (SELECT value FROM json_each(?)))";
+      args.push(JSON.stringify(selected));
+    }
+  }
   const items = [];
   const excluded = new Set(used);
   const seen = new Set();
-  const order = randomOpening ? "is_common DESC, RANDOM()" : "is_common DESC, id";
-  for (const row of db.prepare(`SELECT * FROM words WHERE ${where} ORDER BY ${order}`).iterate(...args)) {
+  const seed = Math.floor(Math.random() * 2147483647);
+  const order = randomOpening ? `is_common DESC, ((id * 1103515245 + ${seed}) & 2147483647), id` : "is_common DESC, id";
+  pages: for (let page = 0; ; page++) {
+    if (db.d1 && page >= 12) {
+      if (items.length) break;
+      const error = new Error("This selection is too broad to search right now. Try a different starting word.");
+      error.status = 502;
+      throw error;
+    }
+    const rows = await db.prepare(`SELECT * FROM words WHERE ${where} ORDER BY ${order} LIMIT 500 OFFSET ?`).all(...args, page * 500);
+    if (!rows.length) break;
+    const levels = await rowsByWordIds(db, rows.map((row) => row.id));
+    for (const row of rows) {
     if (!query && excluded.has(`jm-${row.id}`)) continue;
-    for (const word of dictionaryForms(row, tags, levels.all(row.id))) {
+    for (const word of dictionaryForms(row, tags, levels.get(row.id) ?? [])) {
       const key = `${word.word}:${word.reading}`;
       if (seen.has(key)) continue;
       if (query) {
@@ -181,12 +200,14 @@ export async function shiritoriWords(db, params, tags, fallback) {
       seen.add(key);
       items.push(word);
     }
-    if (items.length >= (query ? 40 : 60)) break;
+    if (items.length >= (query ? 40 : 60)) break pages;
+    }
+    if (rows.length < 500) break;
   }
   if (query && !items.length) {
-    items.push(...await inflectedForms(db, tags, query));
+    items.push(...await inflectedForms(db, tags, query, segment));
     if (items.length) {
-      for (const item of items) item.examples = localExamples(db, { wordId: Number(item.id.slice(3)) });
+      await Promise.all(items.map(async (item) => { item.examples = await localExamples(db, { wordId: Number(item.id.slice(3)) }); }));
       return { items, fallback: false };
     }
   }
@@ -199,6 +220,6 @@ export async function shiritoriWords(db, params, tags, fallback) {
       throw failure;
     }
   }
-  if (query) for (const item of items) item.examples = localExamples(db, { wordId: Number(item.id.slice(3)) });
+  if (query) await Promise.all(items.map(async (item) => { item.examples = await localExamples(db, { wordId: Number(item.id.slice(3)) }); }));
   return { items, fallback: false };
 }

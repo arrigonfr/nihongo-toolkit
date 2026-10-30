@@ -3,11 +3,12 @@
 NihonTools is a browser-based collection of Japanese learning tools: practice
 hiragana, katakana, kanji, vocabulary and conjugation; look up words and sentence
 breakdowns; and learn through memory, word-search, crossword and shiritori games.
-The project lives at [arrigonfr/nihon-tools](https://github.com/arrigonfr/nihon-tools).
+The project lives at [arrigonfr/nihongo-toolkit](https://github.com/arrigonfr/nihongo-toolkit).
 
-Node.js 24 backend (`backend/`, Vercel) and Vite multi-page frontend
-(`frontend/`, Netlify). The existing helper pages, filenames, and local preferences
-are preserved. Dictionary data is served from SQLite. Sentence lookups use SQLite
+Node.js 24 backend (`backend/`) and Vite multi-page frontend (`frontend/`).
+Local development uses SQLite; production can run as **one Cloudflare Worker
+with static assets and a D1 database**. The existing helper pages, filenames,
+and local preferences are preserved. Sentence lookups use the dictionary database
 first, with an optional server-side Tatoeba API fallback when no local examples exist
 or when you request another random example.
 
@@ -16,8 +17,8 @@ or when you request another random example.
 Install **Node.js 24** with npm, then run:
 
 ```sh
-git clone https://github.com/arrigonfr/nihon-tools.git
-cd nihon-tools
+git clone https://github.com/arrigonfr/nihongo-toolkit.git
+cd nihongo-toolkit
 npm ci
 cp frontend/.env.example frontend/.env.local
 npm run db:import
@@ -33,7 +34,7 @@ Audio requires a Japanese speech voice on your device. Settings and supported
 progress are stored in your browser, not in an account or across devices.
 
 Jump to [local development](#local-development), [data sources](#importing-data),
-[automatic deployment](#deploy), or [checks](#checks) for technical details.
+[Cloudflare deployment](#deploy), or [checks](#checks) for technical details.
 
 ## Support
 
@@ -47,12 +48,12 @@ than an embedded form. Payments are handled by PayPal, not by this application.
 ## Contributing
 
 Suggestions, bug reports and pull requests are welcome at
-[arrigonfr/nihon-tools](https://github.com/arrigonfr/nihon-tools).
+[arrigonfr/nihongo-toolkit](https://github.com/arrigonfr/nihongo-toolkit).
 
 ### Reporting bugs and suggesting improvements
 
-Search [existing issues](https://github.com/arrigonfr/nihon-tools/issues) first.
-If there is no matching report, [open an issue](https://github.com/arrigonfr/nihon-tools/issues/new)
+Search [existing issues](https://github.com/arrigonfr/nihongo-toolkit/issues) first.
+If there is no matching report, [open an issue](https://github.com/arrigonfr/nihongo-toolkit/issues/new)
 with the tool name, steps to reproduce, expected and actual behavior, browser
 and device details, and relevant screenshots or console errors. For Japanese
 data problems, include the exact word, reading or sentence and a reliable source
@@ -78,7 +79,7 @@ changes in an issue before implementing them.
    private environment files out of the commit. Review [DATA-LICENSES.md](DATA-LICENSES.md)
    before changing imported data, and preserve source attribution and licenses.
 6. Push your branch to your fork and
-   [open a pull request](https://github.com/arrigonfr/nihon-tools/compare) against
+   [open a pull request](https://github.com/arrigonfr/nihongo-toolkit/compare) against
    the repository's default branch. Explain the change, link related issues,
    describe verification and include screenshots for visible changes.
 
@@ -104,7 +105,7 @@ On standalone pages, links and browser Back/Forward navigate normally.
 Legacy `/#helper=...` launcher links and the old `文字.html` entry remain supported.
 
 `frontend/public/robots.txt` permits crawling and points to
-`https://nihon-tools.netlify.app/sitemap.xml`. The sitemap includes the homepage,
+`https://nihongo-toolkit.workers.dev/sitemap.xml`. The sitemap includes the homepage,
 all thirteen tools and data-source credits, excluding the legacy redirect and API.
 Every current page has an absolute canonical URL. If the production domain changes,
 update `site` in `frontend/vite.config.js` and both public crawler files.
@@ -768,8 +769,8 @@ npm run dev
 ```
 
 Open http://localhost:5173. The backend runs at http://localhost:3000.
-An imported database is already present at `backend/data/nihon.sqlite`, so importing
-is only needed after a fresh checkout or to regenerate it.
+If an imported database is already present at `backend/data/nihon.sqlite`, importing
+is only needed to regenerate it. The database is not committed.
 
 Copy `frontend/.env.example` to `frontend/.env.local` for the local API URL,
 or set a build environment variable. Vite exposes this public URL
@@ -794,8 +795,8 @@ result is smaller. JSON and SVG responses are both supported.
 
 `API_COMPRESSION=true` enables compression locally; `false` disables application
 compression. The default is on in production and off locally. A hosting CDN may
-also compress responses independently. Set it in `backend/.env` or Vercel's
-environment settings. `SENTENCE_API_FALLBACK=false` disables all live sentence
+also compress responses independently. Set it in `backend/.env` for Node hosting.
+The Worker leaves transport compression to Cloudflare. `SENTENCE_API_FALLBACK=false` disables all live sentence
 requests; it defaults to enabled. Only the searched Japanese term is sent to
 Tatoeba, not quiz answers or full pasted text. The fallback has a six-second timeout,
 four concurrent upstream requests per function instance, request deduplication,
@@ -824,7 +825,107 @@ An exclusive import lock prevents concurrent writers. If a process is forcibly k
 remove only its stale `backend/data/nihon.sqlite.import-lock` after confirming no import
 is running. Restart a running backend after replacing its database.
 
-### Schema and data caveats
+`npm run db:export-d1 -- --output backend/data/d1-export-initial` reads a consistent
+SQLite snapshot without modifying it. It exports the core tables, any optional
+seed tables, and a derived `practice_kanjis` table replacing SQLite's custom
+practice predicate in D1. SQL chunks contain primary-key existence checks, not
+replacement writes. Each chunk is at most 500 rows / approximately 2 MiB;
+individual statements are checked against D1's 100,000-byte SQL limit.
+`manifest.json` and `snapshot.json` record checksums and conservative write estimates.
+The output directory must be new; a failed export is incomplete until its final
+manifest and snapshot exist. Keep exports uncommitted.
+
+`npm run db:import-d1 -- --input backend/data/d1-export-initial --remote` loads
+that snapshot after applying migrations. It verifies checksums, refuses a different
+snapshot or an untracked populated destination, checkpoints completed chunks in
+D1, and verifies final counts and foreign keys. Re-run the **same command and
+unchanged export** to resume. Omitting `--remote` imports into Wrangler's local D1,
+not the Node SQLite database. This is **not a synchronizer**: regenerated snapshots
+can reuse numeric IDs for different words. Use a new D1 database for new snapshots,
+even if only some source records changed.
+
+The default write budget is 90,000 estimated writes per UTC day, tracked for this
+database/import (not other account activity). Index writes are included, with
+headroom. A budget stop exits with code 2; resume after UTC midnight. Check actual
+D1 metrics too, run only one importer per database, and lower the budget if other
+applications share the account. Paid accounts can explicitly raise `--budget`.
+The current seeded local snapshot exports 843,360 rows, with approximately
+3.31 million conservatively estimated writes; the default budget takes roughly
+37 days, not a single Free-plan import.
+
+## Deploy
+
+The implemented production path is **Workers Static Assets + D1**, with `/api/*`
+served by `backend/src/worker.js`. No Vercel/Netlify service, Pages project, R2,
+SQLite file upload, or separate frontend API URL is required. Existing legacy
+hosting configuration is not used by the Cloudflare commands.
+
+1. Install Node 24 and run `npm ci`. Import/seed SQLite locally if needed.
+2. Run `npx wrangler login`, then `npx wrangler d1 create nihon`.
+3. Copy the returned database UUID into `wrangler.jsonc` → `d1_databases[0].database_id`.
+   Keep the binding name `DB`; the all-zero value is only a placeholder.
+4. Run `npx wrangler d1 migrations apply DB --remote`. This creates the schema;
+   it does not import the dictionary.
+5. Export and import the data using the commands above. On Workers Paid, an
+   explicit `--budget 4000000` covers the current seeded export; verify your
+   account's included usage and billing first.
+6. Run `npm run test:cloudflare` and `npm run check:cloudflare`.
+7. Run `npm run deploy:cloudflare`. Wrangler prints your HTTPS `workers.dev` URL.
+   Open `/api/health` there and confirm `ready: true`, then try the practice,
+   dictionary, analysis and shiritori pages.
+8. Optionally set `VITE_SITE_URL` to that URL (or your custom domain) when building
+   and deploy again. Canonical links, robots and sitemap then use your own origin;
+   without it the build does not advertise the old Netlify origin.
+
+**Cost and limits:** Workers Paid (currently starting at $5/month, plus usage
+overages) is the supported plan for the complete app. Workers Free allows only
+10 ms CPU per invocation; loading/tokenizing with the complete Japanese dictionary
+cannot reliably fit that budget. The Worker is configured for a 30-second CPU cap.
+D1 Free currently allows 10 databases, **500 MB per database** and 5 GB aggregate,
+5 million rows read/day and 100,000 rows written/day. The approximately 233 MB local
+SQLite file fits the per-database limit, but measure D1 size including indexes.
+Wide substring searches and random samples still scan data and consume read quota;
+Free storage capacity does not imply Free production viability.
+See [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/),
+[D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/) and
+[D1 limits](https://developers.cloudflare.com/d1/platform/limits/) before provisioning.
+
+**Runtime parity:** both backends share an asynchronous handler and parameterized
+queries. D1 batches concurrent enrichment, deduplicates request-local lookups and
+fetches vocabulary metadata in bounded sets; it never replays synchronous code or
+loads the entire SQL database into an isolate. JSON list parameters avoid the
+100-bind limit and literal string matching avoids D1's 50-byte LIKE-pattern limit.
+Shiritori reads bounded pages; unusually broad selections that exhaust its search
+budget surface a retryable error, not an incorrect rejection.
+Workers use the same Kuromoji tokenizer and complete IPADIC dictionary as Node.
+The build strips unused binary padding, uses compact typed lookup maps and serves
+compressed dictionary assets with the upstream licenses. Loading is lazy,
+shared and retryable; there is no fallback that silently drops morphological analysis.
+
+To preview on your own computer: `npm run build:cloudflare`, apply migrations
+with `--local`, import the same export without `--remote`, then `npx wrangler dev`.
+This local D1 is independent of `npm run dev`'s SQLite file.
+`DEPLOYMENT.md` is an intentionally gitignored, step-by-step operator guide in this
+workspace; these public instructions are sufficient for fresh clones.
+
+## Checks
+
+```sh
+npm test
+npm run test:cloudflare
+npm run check:cloudflare
+```
+
+The first command runs the existing Node/SQLite and frontend unit tests.
+The Cloudflare integration suite builds all pages and dictionary assets, runs the
+real workerd/Miniflare D1 runtime, exercises the API families and tokenizer against
+SQLite output, checks 100-item enriched batches/parameter limits, and tests
+Wrangler migration/import budgeting, resume and snapshot refusal locally.
+The last command builds and performs a Worker dry-run; it does not deploy.
+An imported local SQLite database is required by the dictionary regression tests.
+Browser checks remain available through the `test:*` scripts in `package.json`.
+
+## Schema and data caveats
 
 - `kanjis`: character, `U+` Unicode notation and numeric code point; full reading arrays;
   multilingual meanings; stroke count and known miscounts; nullable modern `jlpt`
@@ -853,7 +954,7 @@ are never relabeled as modern N levels.
 The original root `kanjidb.sqlite` is **untouched and unused**. Its provenance/license
 was not supplied, so it is not merged into or bundled with the new backend.
 
-### Seeding more vocabulary and example sentences
+## Seeding more vocabulary and example sentences
 
 `npm run seed:vocab` (after `npm run db:import`) adds tables to the local SQLite
 database without touching existing ones: `vocabulary_words` (word, reading, meaning,

@@ -190,7 +190,7 @@ export function createSentenceTranslator({
   };
 }
 
-export async function analyzeSentence(db, text, { toWord, translateSentence = createSentenceTranslator() } = {}) {
+export async function analyzeSentence(db, text, { toWord, translateSentence = createSentenceTranslator(), segment = segmentText } = {}) {
   const trimmed = String(text || "").trim();
   const findExact = db.prepare(`
     SELECT * FROM words
@@ -199,16 +199,19 @@ export async function analyzeSentence(db, text, { toWord, translateSentence = cr
     LIMIT 6
   `);
 
-  const rawTokens = await segmentText(text);
-  const enriched = rawTokens.map((token) => {
+  const rawTokens = await segment(text);
+  const candidatesByToken = rawTokens.map((token) => [...new Set([token.base, token.text, ...deinflectCandidates(token.text)].filter(Boolean))]);
+  const matches = new Map(await Promise.all([...new Set(candidatesByToken.flat())].map(async (candidate) =>
+    [candidate, await findExact.all(candidate, candidate, candidate)])));
+  const enriched = await Promise.all(rawTokens.map(async (token, index) => {
     if (token.type !== "word" && token.type !== "particle") {
       return { ...token, reading: "", base: "", result: null, results: [] };
     }
-    const candidates = [...new Set([token.base, token.text, ...deinflectCandidates(token.text)].filter(Boolean))];
+    const candidates = candidatesByToken[index];
     for (const candidate of candidates) {
-      const rows = findExact.all(candidate, candidate, candidate);
+      const rows = matches.get(candidate);
       if (rows.length) {
-        const mapped = rows.map((row) => toWord(row));
+        const mapped = await Promise.all(rows.map((row) => toWord(row)));
         const primary = mapped[0];
         const form = (primary.japanese || []).find((f) => f.word === candidate || f.reading === candidate)
           || primary.japanese?.[0] || {};
@@ -222,7 +225,7 @@ export async function analyzeSentence(db, text, { toWord, translateSentence = cr
       }
     }
     return { ...token, result: null, results: [] };
-  });
+  }));
 
   let translation = "";
   let translationSource = "";

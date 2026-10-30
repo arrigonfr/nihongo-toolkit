@@ -1,5 +1,4 @@
-const configured = import.meta.env.VITE_API_BASE_URL;
-if (!configured) throw new Error("Set VITE_API_BASE_URL before starting or building the frontend.");
+const configured = import.meta.env.VITE_API_BASE_URL || window.location.origin;
 const base = new URL(configured);
 if (!["http:", "https:"].includes(base.protocol)) throw new Error("Backend URL must use HTTP or HTTPS.");
 if (import.meta.env.PROD && base.protocol !== "https:"

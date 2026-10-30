@@ -6,21 +6,21 @@ import { once } from "node:events";
 import { createDatabase } from "../src/database.js";
 import { createHandler } from "../src/app.js";
 
-test("local examples retain source furigana", () => {
+test("local examples retain source furigana", async () => {
   const db = { prepare: () => ({ all: () => [{ examples: JSON.stringify([
     { ja: "食べる", furigana: "{食|た}べる", en: "Eat.", tatoeba_id: 1 }
   ]) }] }) };
-  assert.equal(localExamples(db, { wordId: 1 })[0].furigana, "{食|た}べる");
+  assert.equal((await localExamples(db, { wordId: 1 }))[0].furigana, "{食|た}べる");
 });
 
-test("local query examples must contain the requested spelling or annotated reading", () => {
+test("local query examples must contain the requested spelling or annotated reading", async () => {
   const db = { prepare: () => ({ all: () => [{ examples: JSON.stringify([
     { ja: "猫です。", en: "A cat." },
     { ja: "日本です。", furigana: "{日本|にほん}です。", en: "Japan." }
   ]) }] }) };
-  assert.deepEqual(localExamples(db, { query: "日本" }).map((item) => item.japanese), ["日本です。"]);
-  assert.deepEqual(localExamples(db, { query: "にほん" }).map((item) => item.japanese), ["日本です。"]);
-  assert.deepEqual(localExamples(db, { query: "犬" }), []);
+  assert.deepEqual((await localExamples(db, { query: "日本" })).map((item) => item.japanese), ["日本です。"]);
+  assert.deepEqual((await localExamples(db, { query: "にほん" })).map((item) => item.japanese), ["日本です。"]);
+  assert.deepEqual(await localExamples(db, { query: "犬" }), []);
 });
 
 test("sentence fallback validates matches, keeps attribution, caches and coalesces requests", async () => {

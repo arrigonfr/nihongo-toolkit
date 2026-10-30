@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://nihon-tools.netlify.app/sitemap.xml
+Sitemap: https://nihongo-toolkit.workers.dev/sitemap.xml

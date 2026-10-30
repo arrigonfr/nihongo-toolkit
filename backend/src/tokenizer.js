@@ -1,23 +1,8 @@
-import kuromoji from "kuromoji";
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
-
-const require = createRequire(import.meta.url);
-let loading;
-function tokenizer() {
-  loading ??= new Promise((resolve, reject) => {
-    kuromoji.builder({ dicPath: join(dirname(require.resolve("kuromoji/package.json")), "dict") })
-      .build((error, result) => error ? reject(error) : resolve(result));
-  }).catch((error) => {
-    loading = undefined;
-    throw error;
-  });
-  return loading;
-}
+import { tokenizer } from "#tokenizer-loader";
 const hiragana = (text) => text.replace(/[ァ-ヶ]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
 
-export async function segmentText(text) {
-  const analyzer = await tokenizer();
+export async function segmentText(text, load = tokenizer) {
+  const analyzer = await load();
   const raw = analyzer.tokenize(text);
   const tokens = [];
   for (let i = 0; i < raw.length; i++) {

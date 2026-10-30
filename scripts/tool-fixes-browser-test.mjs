@@ -186,7 +186,7 @@ try {
       await navigationPage.locator("#colorThemeSelect").waitFor();
       assert.equal(decodeURIComponent(new URL(navigationPage.url()).pathname), `/${file}`);
       assert.equal(await navigationPage.locator("#helperFrame").count(), 0);
-      assert.equal(await navigationPage.locator('link[rel="canonical"]').getAttribute("href"), new URL(file, "https://nihon-tools.netlify.app/").href);
+      assert.equal(await navigationPage.locator('link[rel="canonical"]').getAttribute("href"), new URL(file, "https://nihongo-toolkit.workers.dev/").href);
       for (const width of [375, 1280]) {
         await navigationPage.setViewportSize({ width, height: 900 });
         assert.equal(await navigationPage.locator("#menuButton").isVisible(), true);
@@ -208,7 +208,7 @@ try {
     const sitemap = await (await navigationPage.request.get(`${origin}/sitemap.xml`)).text();
     const locations = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => decodeURIComponent(new URL(match[1]).pathname));
     assert.deepEqual(locations.sort(), ["/", "/data-sources.html", ...files.map((file) => `/${file}`)].sort());
-    assert.match(await (await navigationPage.request.get(`${origin}/robots.txt`)).text(), /Sitemap: https:\/\/nihon-tools.netlify.app\/sitemap.xml/);
+    assert.match(await (await navigationPage.request.get(`${origin}/robots.txt`)).text(), /Sitemap: https:\/\/nihongo-toolkit.workers.dev\/sitemap.xml/);
     await navigationPage.goto(`${origin}/index.html`);
     await navigationPage.waitForURL(`${origin}/`);
     await navigationPage.frameLocator("#helperFrame").locator("#colorThemeSelect").waitFor();

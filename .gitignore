@@ -11,3 +11,6 @@ kanjidb.sqlite
 backend/.env
 .env.*.local
 .DS_Store
+DEPLOYMENT.md
+.wrangler/
+backend/data/d1-export*/
