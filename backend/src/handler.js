@@ -410,8 +410,10 @@ export function createHandler({
           const substringRows = await db.prepare(`SELECT * FROM words WHERE
             instr(lower(kanji_forms), lower(?)) > 0 OR instr(lower(kana_forms), lower(?)) > 0 OR instr(lower(meanings), lower(?)) > 0
             OR id IN (SELECT word_id FROM vocabulary WHERE romaji = ?)
-            ORDER BY (word = ? OR reading = ?) DESC, is_common DESC, id LIMIT ?`)
-            .all(query, query, query, query, query, query, limit);
+            ORDER BY (word = ? OR reading = ?) DESC,
+              EXISTS (SELECT 1 FROM json_each(words.meanings) WHERE lower(value) = lower(?) OR lower(value) LIKE lower(?) || ' (%') DESC,
+              is_common DESC, length(word), id LIMIT ?`)
+            .all(query, query, query, query, query, query, query, query, limit);
           for (const row of substringRows) {
             if (!seenIds.has(row.id)) {
               seenIds.add(row.id);

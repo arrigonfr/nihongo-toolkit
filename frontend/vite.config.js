@@ -14,7 +14,8 @@ function toolNavigation(site) {
         const file = context.filename.split("/").pop();
         if (file === "文字.html") return html;
         const canonical = site ? new URL(file === "index.html" ? "" : file, site).href : null;
-        const tags = canonical ? [{ tag: "link", attrs: { rel: "canonical", href: canonical }, injectTo: "head" }] : [];
+        const tags = [{ tag: "link", attrs: { rel: "apple-touch-icon", sizes: "180x180", href: "./apple-touch-icon.png?v=2" }, injectTo: "head" }];
+        if (canonical) tags.push({ tag: "link", attrs: { rel: "canonical", href: canonical }, injectTo: "head" });
         if (file === "index.html" || toolFiles.includes(file)) {
           const launcher = readFileSync(new URL("./index.html", import.meta.url), "utf8");
           const originalMenu = launcher.match(/<nav class="navigation"[\s\S]*?<\/nav>/)[0];
@@ -54,6 +55,21 @@ export default defineConfig(({ mode }) => {
   return {
   plugins: [toolNavigation(site), {
     name: "deployment-seo",
+    configureServer(server) {
+      if (!site) return;
+      server.middlewares.use((request, response, next) => {
+        const path = request.url?.split("?")[0];
+        if (path === "/robots.txt") {
+          response.setHeader("Content-Type", "text/plain; charset=utf-8");
+          response.end(`User-agent: *\nAllow: /\n\nSitemap: ${site}sitemap.xml\n`);
+        } else if (path === "/sitemap.xml") {
+          const pages = ["", ...toolFiles, "data-sources.html"];
+          response.setHeader("Content-Type", "application/xml; charset=utf-8");
+          response.end(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages.map((file) =>
+            `  <url><loc>${new URL(file, site).href}</loc></url>`).join("\n")}\n</urlset>\n`);
+        } else next();
+      });
+    },
     writeBundle(options) {
       const directory = options.dir || `${root}/dist`;
       writeFileSync(`${directory}/robots.txt`, `User-agent: *\nAllow: /\n${site ? `\nSitemap: ${site}sitemap.xml\n` : ""}`);

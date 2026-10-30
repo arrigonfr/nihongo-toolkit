@@ -65,6 +65,15 @@ export function initializeAppearance() {
 
 export function mountAppearance(header, toggle) {
   initializeAppearance();
+  const file = decodeURIComponent(location.pathname.split("/").pop());
+  const menuItem = [...document.querySelectorAll(".helper-link[data-file]")].find((item) => item.dataset.file === file);
+  const description = menuItem?.querySelector(".helper-description")?.textContent.trim().replace(/^\(|\)$/g, "");
+  if (description && !header.querySelector(".study-header-description")) {
+    const subtitle = document.createElement("p");
+    subtitle.className = "study-header-description";
+    subtitle.textContent = description;
+    header.append(subtitle);
+  }
   const controls = document.createElement("div");
   controls.className = "study-appearance";
   const label = document.createElement("label");

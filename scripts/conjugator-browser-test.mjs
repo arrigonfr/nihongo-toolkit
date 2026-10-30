@@ -60,6 +60,11 @@ try {
   await page.evaluate(([sel, value]) => { const el = document.querySelector(sel); el.value = value; el.dispatchEvent(new Event("change", { bubbles: true })); }, ["#setting-tense", "past"]);
   await page.evaluate(([sel, value]) => { const el = document.querySelector(sel); el.value = value; el.dispatchEvent(new Event("change", { bubbles: true })); }, ["#setting-politeness", "polite"]);
   assert.equal(await page.locator('[data-form="basic-plain"]').count(), 0);
+  const cheatsheetDownload = page.waitForEvent("download");
+  await page.click("#exportConjugations");
+  const cheatsheet = await readFile(await (await cheatsheetDownload).path(), "utf8");
+  assert.match(cheatsheet, /食べませんでした/);
+  assert.doesNotMatch(cheatsheet, /<td lang="ja">食べる</);
   await page.click("#copyTable");
   assert.match(await page.evaluate(() => navigator.clipboard.readText()), /食べませんでした/);
   await page.check("#setting-compact");

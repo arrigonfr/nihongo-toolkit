@@ -71,6 +71,12 @@ test("API serves SQLite batches, search, relations and strokes with validation a
     const health = await get("/api/health");
     assert.equal(health.status, 200);
     assert.equal((await health.json()).counts.words, 1);
+    db.prepare("DELETE FROM metadata WHERE key = 'jmdict_tags'").run();
+    insertWords(db, { tags: { n: "noun" }, words: [
+      { id: "2", kanji: [{ text: "海中", common: true, tags: [] }], kana: [{ text: "かいちゅう", common: true, tags: [], appliesToKanji: ["海中"] }], sense: [{ gloss: [{ lang: "eng", text: "underwater" }], partOfSpeech: ["n"], misc: [], field: [], dialect: [], appliesToKanji: [], appliesToKana: [], related: [], antonym: [], info: [] }] },
+      { id: "3", kanji: [{ text: "水", common: false, tags: [] }], kana: [{ text: "みず", common: false, tags: [], appliesToKanji: ["水"] }], sense: [{ gloss: [{ lang: "eng", text: "water (cold)" }], partOfSpeech: ["n"], misc: [], field: [], dialect: [], appliesToKanji: [], appliesToKana: [], related: [], antonym: [], info: [] }] }
+    ] });
+    assert.equal((await (await get("/api/words?keyword=Water&limit=1")).json()).data[0].slug, "水");
     const response = await get("/api/kanji/batch?limit=40&mode=both&level=5", { headers: { Origin: "http://localhost:5173" } });
     assert.equal(response.headers.get("access-control-allow-origin"), "http://localhost:5173");
     const { items } = await response.json();

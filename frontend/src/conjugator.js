@@ -183,6 +183,7 @@ function renderResult() {
       </tr>`).join("")}</tbody></table></div></section>`;
   }).join("") : '<div class="panel">No forms match these filters. Enable a form group or broaden the filters.</div>';
   $("copyTable").disabled = !rows.length;
+  $("exportConjugations").disabled = !rows.length;
   markEndings(rows);
   renderInformation();
 }
@@ -335,6 +336,16 @@ async function copy(text) {
   catch (error) { console.warn("Clipboard copy failed.", error); status("Copy was blocked by the browser. Select the table text and copy manually.", true); }
 }
 $("copyTable").addEventListener("click", () => copy(copyTable(visibleRows(), { ...settings, romaji: study.romaji }, romanizeKana)));
+$("exportConjugations").addEventListener("click", () => {
+  const rows = visibleRows();
+  if (!current || !rows.length) return;
+  const table = rows.map((row) => `<tr><th scope="row">${escape(row.label)} · ${escape(row.politeness)}</th><td lang="ja">${escape(row.word)}<br><small>${escape(row.reading)}</small></td><td>${escape(row.gloss)}</td></tr>`).join("");
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${escape(current.word)} · Conjugations</title><style>@page{size:A4;margin:12mm}body{font:14px sans-serif;color:#202720}h1{font-size:22px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:6px;text-align:left}th{width:28%}small{color:#555}tr{break-inside:avoid}</style></head><body><h1>${escape(current.word)} · Conjugations</h1><p>${escape(current.reading)} · ${escape(typeNames[current.type])}</p><table><thead><tr><th>Form</th><th>Conjugation</th><th>Meaning</th></tr></thead><tbody>${table}</tbody></table></body></html>`;
+  const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url; link.download = `${current.word}-conjugations.html`; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
 $("tables").addEventListener("click", (event) => {
   const button = event.target.closest("[data-copy], [data-example]");
   if (!button) return;

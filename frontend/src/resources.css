@@ -49,7 +49,7 @@ body .download-button { text-align: left !important; justify-items: start !impor
 .download-button small { color: var(--muted); font-size: 11px; line-height: 1.3; }
 .download-button:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
 .download-button:disabled { opacity: .6; cursor: progress; }
-.download-button[data-format="print"], .download-button[data-format="png"] { grid-column: 1 / -1; }
+.download-button[data-format="print"] { grid-column: 1 / -1; }
 .download-panel[data-worksheet] .download-button[data-format="png"] { grid-column: auto; }
 .download-status:empty { display: none; }
 .download-status { margin: 12px 0 0; color: var(--accent-strong); font-size: 13px; }
