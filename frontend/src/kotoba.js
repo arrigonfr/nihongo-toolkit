@@ -8,7 +8,7 @@ import { toHiragana } from "wanakana";
   const WORDS_API = `${API_BASE}/api/words?keyword=`;
   const KANJI_API = `${API_BASE}/api/kanji/`;
   const HISTORY_KEY = "kotoba-history-v1";
-  const CACHE_KEY = `kotoba-sqlite-cache-v8:${API_BASE}`;
+  const CACHE_KEY = `kotoba-sqlite-cache-v10:${API_BASE}`;
   const COMPOUND_OPTIONS_KEY = "kotoba-compound-options-v1";
   const DEBOUNCE_MS = 350;
   const MAX_HISTORY = 20;
@@ -136,7 +136,7 @@ import { toHiragana } from "wanakana";
   function renderWordResults(items, sentenceData, query, fromCache = false) {
     if (!items.length) {
       resultLabel.textContent = `No results for “${query}”`;
-      showMessage("No matches found", "Try another spelling, a shorter phrase, or search in Japanese, kana, romaji, or English.");
+      showMessage("No matches found", "Try another Japanese spelling, kana, or romaji.");
       return;
     }
     resultLabel.textContent = `${items.length} ${items.length === 1 ? "match" : "matches"}${fromCache ? " · cached for offline use" : ""}`;
@@ -184,7 +184,7 @@ import { toHiragana } from "wanakana";
     const character = pickKanji(query);
     if (!character) {
       resultLabel.textContent = "Kanji mode";
-      showMessage("No kanji found in your search", "Enter a word or phrase containing a kanji character, or turn off Kanji mode to search in kana, romaji, or English.");
+      showMessage("No kanji found in your search", "Enter a word or phrase containing a kanji character, or turn off Kanji mode to search in kana or romaji.");
       return;
     }
     const key = `kanji:${character}`;
@@ -236,7 +236,7 @@ import { toHiragana } from "wanakana";
   }
   async function search(requestedQuery = null, requestedMode = null) {
     clearTimeout(debounceTimer);
-    const query = (requestedQuery ?? input.value).trim();
+    const query = toHiragana((requestedQuery ?? input.value).trim());
     const isKanji = requestedMode ?? kanjiMode.checked;
     const searchKey = `${isKanji}:${query}`;
     if (activeSearchKey === searchKey) return;
@@ -248,9 +248,14 @@ import { toHiragana } from "wanakana";
       showMessage("Your next discovery starts here","Search a word, paste a sentence, or switch on Kanji mode to explore a character.");
       return;
     }
-    input.value = requestedQuery ?? input.value;
+    input.value = query;
     if (!isKanji && query.length > 100) {
       showMessage("Search is too long", "Use up to 100 characters. Shorten your search to a word or phrase; use Fumitoki to analyze longer Japanese text.", true);
+      return;
+    }
+    if (/[a-z]/i.test(query)) {
+      showMessage("Finish your romaji", "Enter a complete Japanese spelling in kana, kanji, or romaji.");
+      setIdle();
       return;
     }
     const controller = new AbortController(); activeController = controller; activeSearchKey = searchKey;
@@ -263,17 +268,7 @@ import { toHiragana } from "wanakana";
       let words;
       if (cached) words = cached;
       else {
-        const kana = /^[a-z]{1,32}$/i.test(query) ? toHiragana(query.toLowerCase()) : "";
-        const reading = kana && /^[\u3041-\u3096ー]+$/.test(kana) ? kana : "";
-        let response = reading ? await fetchJSON(WORDS_API + encodeURIComponent(reading),controller.signal) : null;
-        const exactReadings = response?.data?.filter((item) => item.japanese?.some((form) => toHiragana(form.reading || "") === reading));
-        if (exactReadings?.length) response = { ...response, data: exactReadings };
-        if (!response?.data?.length) response = await fetchJSON(WORDS_API + encodeURIComponent(query),controller.signal);
-        if (!reading && /^[a-z]+$/i.test(query)) {
-          const wholeWord = new RegExp(`\\b${query}\\b`, "i");
-          const matches = response.data?.filter((item) => item.senses?.some((sense) => sense.english_definitions?.some((definition) => wholeWord.test(definition))));
-          response = { ...response, data: matches || [] };
-        }
+        const response = await fetchJSON(WORDS_API + encodeURIComponent(query),controller.signal);
         words = response.data || []; cacheWrite(key,words);
       }
       if (token !== requestNumber) return;
@@ -302,7 +297,15 @@ import { toHiragana } from "wanakana";
     clearTimeout(debounceTimer);
     if (input.value.trim()) debounceTimer = setTimeout(() => search(),DEBOUNCE_MS);
   }
-  input.addEventListener("input",scheduleSearch);
+  input.addEventListener("input", (event) => {
+    if (event.isComposing) return;
+    const position = input.selectionStart;
+    const before = toHiragana(input.value.slice(0, position), { IMEMode: true });
+    input.value = before + toHiragana(input.value.slice(position), { IMEMode: true });
+    input.setSelectionRange(before.length, before.length);
+    scheduleSearch();
+  });
+  input.addEventListener("compositionend", scheduleSearch);
   input.addEventListener("keydown",(event) => {
     if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); search(); return; }
     if (event.key === "Escape") {

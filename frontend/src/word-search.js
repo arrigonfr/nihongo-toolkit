@@ -1,4 +1,5 @@
 import "./word-search.css";
+import { mountGameExport } from "./game-export.js";
 import { setSettingAvailability } from "./settings-panel.js";
 import { pillSelect } from "./choice-controls.js";
 import { confirmAction } from "./confirm-dialog.js";
@@ -383,6 +384,16 @@ function renderBoard() {
   $("selectionStatus").textContent = "Select the first character, then follow the word.";
   paintGrid();
 }
+mountGameExport($("grid").parentElement, () => {
+  if (!game?.puzzle) return null;
+  const { puzzle } = game;
+  const answers = new Set(puzzle.entries.flatMap((entry) => entry.cells));
+  return {
+    title: "Kotoba Sagashi", filename: "kotoba-sagashi",
+    grid: Array.from({ length: puzzle.size }, (_, row) => puzzle.grid.slice(row * puzzle.size, (row + 1) * puzzle.size).map((text, col) => ({ text, highlight: answers.has(row * puzzle.size + col) }))),
+    lines: puzzle.entries.map((entry, index) => ({ text: `${index + 1}. ${entry.meaning}`, answer: `${index + 1}. ${entry.meaning} — ${entry.answer}` }))
+  };
+});
 function paintGrid() {
   if (!game) return;
   const foundCells = new Set(game.paths.flat());

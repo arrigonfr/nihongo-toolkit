@@ -9,6 +9,7 @@ import { mountAppearance } from "./appearance.js";
 import { mountToolHelp } from "./tool-help.js";
 import { mountFontControls } from "./japanese-fonts.js";
 import { mountLevelControls } from "./jlpt-levels.js";
+import { createSupportButton } from "./support.js";
 
 const key = "nihon:study-controls-v1";
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
@@ -56,7 +57,7 @@ export function speakJapanese(text) {
 
 export function mountSupport() {
   const intro = document.querySelector(".intro, .cw-intro");
-  if (!intro || intro.querySelector(".study-support")) return;
+  if (!intro || document.querySelector(".study-support")) return;
   const content = document.createElement("div");
   content.className = "study-intro-content";
   content.append(...intro.childNodes);
@@ -66,13 +67,16 @@ export function mountSupport() {
   </p>`);
   intro.append(content);
   intro.classList.add("study-intro");
-  intro.insertAdjacentHTML("beforeend", `<aside class="study-support" aria-label="Support these tools">
-    <form action="https://www.paypal.com/ncp/payment/BGUN4RBRVZKKJ" method="post" target="_blank" rel="noopener noreferrer">
-      <button class="pp-BGUN4RBRVZKKJ" type="submit" aria-label="Buy me a coffee with PayPal"><span class="study-support-brand" aria-hidden="true">PayPal</span><span class="study-support-label">Buy me a coffee</span></button>
-      <img src="https://www.paypalobjects.com/images/Debit_Credit.svg" alt="Accepted payment cards" loading="lazy">
-      <span>Con la tecnología de <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="PayPal" loading="lazy"></span>
-    </form>
-  </aside>`);
+  const header = document.querySelector("header");
+  let toolbar = header.querySelector(".study-toolbar");
+  if (!toolbar) {
+    toolbar = document.createElement("div");
+    toolbar.className = "study-toolbar";
+    toolbar.setAttribute("aria-label", "Study options");
+    header.classList.add("study-header");
+    header.append(toolbar);
+  }
+  toolbar.append(createSupportButton());
 }
 export function sentenceHTML(text, markup) {
   const reading = markup?.replace(/\{[^{}|]+\|([^{}]+)\}/g, "$1");
@@ -87,9 +91,7 @@ export function mountStudyControls({ furigana = true, romaji = true, onChange = 
   const theme = document.querySelector("#themeButton, #themeCycleBtn");
   header.classList.add("study-header");
   header.classList.add("study-embedded");
-  const toolbar = document.createElement("div");
-  toolbar.className = "study-toolbar";
-  toolbar.setAttribute("aria-label", "Study options");
+  const toolbar = header.querySelector(".study-toolbar");
   for (const [name, visible] of Object.entries({ audio: true, furigana, romaji })) {
     const button = document.createElement("button");
     button.type = "button";
@@ -102,7 +104,7 @@ export function mountStudyControls({ furigana = true, romaji = true, onChange = 
       refresh();
       onChange(study);
     });
-    toolbar.append(button);
+    toolbar.insertBefore(button, toolbar.querySelector(".study-support"));
   }
   header.append(toolbar);
   mountAppearance(header, theme);

@@ -90,26 +90,16 @@ requests on GitHub, alongside the PayPal support button.
 
 ### Discoverable tools and shared navigation
 
-Open the site at `/`. `index.html` is the launcher, but its filename is removed
-from the address bar. Each tool also opens directly at its own HTML URL with the
-same top-center navigation menu linking to all thirteen tools. Direct visits stay
-on that URL after refresh, so tools can be bookmarked, shared and indexed.
-The menu uses real HTML links, included by Vite in development and production;
-the homepage retains its embedded launcher and hides the duplicate menu inside frames.
-Click or tap outside an open menu to close it, including inside an embedded tool.
-Clicks within the menu keep it open until you choose a tool; Escape also closes it.
-Data-source credits remain independently accessible.
-Links between Katsuyō and Katsuyō Renshuu switch the launcher frame without changing
-the address bar. Command/Ctrl-click opens the selected tool directly in a new tab.
-On standalone pages, links and browser Back/Forward navigate normally.
-Legacy `/#helper=...` launcher links and the old `文字.html` entry remain supported.
+Open the site at `/` to browse the dashboard. Each of the fourteen tools has a
+bookmarkable romaji URL and a shared navigation menu. Links and browser Back/Forward
+navigate between pages; old Japanese filenames and `/#helper=...` links redirect to
+their corresponding tools. Click or tap outside the menu, or press Escape, to close it.
 
-`frontend/public/robots.txt` permits crawling and points to
-`https://nihongo-toolkit.workers.dev/sitemap.xml`. The sitemap includes the homepage,
-all thirteen tools and data-source credits, excluding the legacy redirect and API.
-Every current page has an absolute canonical URL. If the production domain changes,
-update `site` in `frontend/vite.config.js` and both public crawler files.
-When adding a tool, update the launcher menu and sitemap together.
+Set `VITE_SITE_URL` to the public HTTPS origin at build time to generate canonical
+URLs, robots.txt and a sitemap containing the homepage, tools and data-source credits.
+When adding a tool, update the dashboard menu; Vite discovers its HTML page for the
+sitemap. The Google Tag Manager container is included in generated pages; configure
+tags and any required consent settings in the container.
 `npm run test:tool-fixes` checks direct pages, navigation, canonical URLs and
 crawler files in development and the production build.
 
@@ -120,12 +110,12 @@ controls. The palette selector beside the light/dark toggle offers Matcha, Sakur
 Ocean, Wisteria, Amber and Sumi, each with light and dark styles. Sumi combines a
 nearly-black dark palette with a paper-like light palette; Sakura has pinker accents.
 Preferences are stored
-under `nihon:appearance-v1` and synchronized across the tool launcher, embedded
-tools and other open tabs on the same origin. New users default to Sumi in dark
+under `nihon:appearance-v1` and synchronized across tools and other open tabs on
+the same origin. New users default to Sumi in dark
 mode; the appearance setting can follow the system, and the top-bar toggle
 chooses light or dark mode. Existing saved preferences are preserved.
 
-All thirteen tools automatically save valid settings to `localStorage`, including
+Tools automatically save valid settings to `localStorage`, including
 quiz modes, directions, levels, fonts, session lengths, review/stat toggles,
 dictionary Kanji mode, sentence translation, game rules and hint type.
 Kana, Imi and Yomi keep independent preferences; Audio, Furigana, Romaji and
@@ -199,12 +189,11 @@ quiz engine and stylesheet:
 
 | Tool | Internal page | Practice |
 | --- | --- | --- |
-| Kana · 仮名 | `仮名.html` | Script-specific or mixed kana/romaji directions |
-| Imi · 意味 | `意味.html` | Kanji meanings; kanji/English directions |
-| Yomi · 読み | `読み.html` | Kanji readings; romaji, hiragana, katakana, or either kana script |
+| Kana · 仮名 | `kana.html` | Script-specific or mixed kana/romaji directions |
+| Imi · 意味 | `imi.html` | Kanji meanings; kanji/English directions |
+| Yomi · 読み | `yomi.html` | Kanji readings; romaji, hiragana, katakana, or either kana script |
 
-The index migrates the old stored `文字.html` “last helper” choice to Kana.
-The legacy Moji URL returns to the launcher. Each tool has one quiz panel containing its relevant settings.
+The legacy Moji URL redirects to Kana. Each tool has one quiz panel containing its relevant settings.
 Practice-set checkboxes are removed. Imi and Yomi retain “Pause to review kanji
 details” outside the collapsible settings, above the question, so it remains
 accessible during practice. All three tools use a fixed question display size
@@ -241,7 +230,7 @@ Explicitly revealing a Kana answer replaces its prompt instead of showing a bann
 Stopping a free, question-count, or timed session shows results without claiming
 the target was completed, cancels advancement/timers, and ignores late question
 responses. Session controls remain visible when numerical stats are hidden.
-The main menu includes all thirteen tools, centered icon separators, and short descriptions.
+The main menu includes all fourteen tools, centered icon separators, and short descriptions.
 
 ## Eawase · Japanese Memory
 
@@ -392,7 +381,7 @@ and browser interaction coverage.
 
 ## Shiryō resources (cheatsheets)
 
-Open **Shiryō · 資料** (`frontend/資料.html`) for single-page A4 cheatsheets:
+Open **Shiryō · 資料** (`frontend/shiryo.html`) for single-page A4 cheatsheets:
 Hiragana & Katakana, Verb conjugation, Adjective conjugation, Particles, Counters,
 and focused word, kanji and grammar contrast sheets. Everything is
 generated in the browser (no backend): preview, then download as PNG, PDF (image
@@ -402,7 +391,12 @@ PDF** for vector text. Content lives in `src/cheatsheet-data.js`, page layout in
 in `frontend/test/cheatsheets.test.js`.
 
 The grayscale option applies to the preview, printing, and visual exports (PNG,
-PDF, SVG, and HTML). Text, Markdown, and CSV exports are unaffected.
+PDF, SVG, and HTML). Markdown and CSV exports are unaffected.
+
+Pazuru, Kotoba Sagashi, Eawase and Shiritori can export the current game as a
+single-page PDF, PNG, SVG or HTML document, or print it. The export dialog offers
+answer keys, independent light/dark and grayscale styling, and zoom. Katsuyō can
+export the currently filtered conjugations as a printable HTML cheatsheet.
 
 The handwriting worksheet uses locally generated KanjiVG stroke diagrams and
 JLPT lists. Choose characters, paper, orientation, font size, stroke opacity and
@@ -559,7 +553,7 @@ JMdict, rather than only the first reading. Shared header buttons control Audio,
 Furigana (on by default), and Romaji across tools, with preferences saved locally.
 Kana practice only shows Audio because revealing romaji would give away answers.
 The toolbar is defined once in `frontend/src/study-controls.js` and mounted in each
-tool so it works both inside the index iframe and at standalone URLs. Theme icons
+tool at its standalone URL. Theme icons
 are consistent, and controls wrap onto a second header row on narrow screens.
 Furigana aligns readings above kanji runs, leaving surrounding kana unannotated.
 Contiguous compounds retain a combined reading; ambiguous readings are not split

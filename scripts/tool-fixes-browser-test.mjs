@@ -13,6 +13,7 @@ const api = createServer(createHandler({ origins, sentenceFallback: async () => 
 api.listen(0, "127.0.0.1");
 await once(api, "listening");
 process.env.VITE_API_BASE_URL = `http://127.0.0.1:${api.address().port}`;
+process.env.VITE_SITE_URL = "https://nihongo-toolkit.pages.dev";
 let vite, built, browser;
 try {
   vite = await createVite({ root, server: { host: "127.0.0.1", port: 0, strictPort: false } });
@@ -26,11 +27,11 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
-  const frame = page.frameLocator("#helperFrame");
+  const frame = page;
   async function select(file) {
     await page.click("#menuButton");
-    await page.locator(`[data-file="${file}"]`).click();
-    await page.waitForFunction((file) => decodeURIComponent(document.querySelector("#helperFrame").contentWindow.location.pathname).endsWith(`/${file}`), file);
+    await page.locator(`#helperMenu [data-file="${file}"]`).click();
+    await page.waitForURL(`${base}/${file}`);
     await frame.locator("#colorThemeSelect").waitFor();
   }
   async function checkMenuDismissal(tab, content = tab, touch = false) {
@@ -45,7 +46,7 @@ try {
         event.stopPropagation();
       }, { once: true });
     });
-    if (touch) await tab.touchscreen.tap(6, 180);
+    if (touch) await tab.touchscreen.tap(350, 10);
     else await tab.mouse.click(6, 180);
     await menu.waitFor({ state: "hidden" });
     assert.equal(await button.getAttribute("aria-expanded"), "false");
@@ -66,7 +67,7 @@ try {
     { query: "A long search without spaces ".repeat(15), kanji: false },
     { query: "漢".repeat(100), kanji: true }
   ])));
-  await select("言葉.html");
+  await select("kotoba.html");
   for (const width of [1280, 375]) {
     await page.setViewportSize({ width, height: 900 });
     assert.equal(await frame.locator(".history-panel").evaluate((panel) => {
@@ -89,18 +90,19 @@ try {
   await frame.locator("#results .empty-state").waitFor();
   assert.equal(wordRequests, 1, "The full 100-character limit is accepted");
   await page.route("**/api/words?**", (route) => route.fulfill({ status: 400, json: { error: "Please use a shorter dictionary query." } }));
-  await frame.locator("#query").fill("invalid");
+  await frame.locator("#query").fill("無効");
   await frame.locator("#searchButton").click();
   await frame.locator(".error-state").waitFor();
   assert.match(await frame.locator(".error-state").textContent(), /Check your search.*shorter dictionary query/);
   await page.unroute("**/api/words?**");
   await frame.locator("#query").fill("iku");
+  assert.equal(await frame.locator("#query").inputValue(), "いく");
   await frame.locator("#searchButton").click();
   await frame.locator(".result-card").first().waitFor();
   assert.ok(await frame.locator('.word-button[data-search-word="行く"]').count() > 0, "Romaji searches find matching Japanese readings");
 
   await page.setViewportSize({ width: 1280, height: 900 });
-  await select("語彙.html");
+  await select("goi.html");
   await frame.locator("#startButton").click();
   await frame.locator(".option").first().waitFor();
   const firstOptions = await frame.locator(".option").evaluateAll((buttons) => buttons.map((button) => button.dataset.meaning));
@@ -121,13 +123,11 @@ try {
   await page.setViewportSize({ width: 375, height: 900 });
   assert.equal(await frame.locator("#nextButton .quiz-shortcut").isVisible(), false);
 
-  await select("活用.html");
+  await select("katsuyo.html");
   assert.equal(await frame.locator("#setting-romaji, #setting-furigana, #setting-audio").count(), 0);
-  const urlBefore = page.url();
   await frame.getByRole("link", { name: /Put the patterns into practice/ }).click();
   await frame.locator("#startButton").waitFor();
-  assert.equal(await page.locator("#helperFrame").getAttribute("src"), "活用練習.html");
-  assert.equal(page.url(), urlBefore, "Ordinary tool links leave the address bar unchanged");
+  assert.equal(new URL(page.url()).pathname, "/katsuyo-renshuu.html");
   await frame.getByRole("link", { name: /Explore the conjugation reference/ }).click();
   await frame.locator("#wordInput").waitFor();
   const newTabEvent = context.waitForEvent("page");
@@ -135,11 +135,11 @@ try {
   const tab = await newTabEvent;
   await tab.locator("#startButton").waitFor();
   assert.equal(await tab.locator("#helperFrame").count(), 0);
-  assert.equal(decodeURIComponent(new URL(tab.url()).pathname), "/活用練習.html");
+  assert.equal(decodeURIComponent(new URL(tab.url()).pathname), "/katsuyo-renshuu.html");
   assert.equal(await tab.locator("#menuButton").isVisible(), true);
   await tab.close();
 
-  await select("パズル.html");
+  await select("pazuru.html");
   await frame.locator("#settingsDrawer summary").click();
   for (const width of [1280, 375]) {
     await page.setViewportSize({ width, height: 900 });
@@ -156,13 +156,13 @@ try {
     settings: { directions: "forward", count: 5 },
     progress: { known: [], review: [], recent: ["retained"], days: [], completed: 3, daily: null }
   })));
-  await select("言葉探し.html");
+  await select("kotoba-sagashi.html");
   const migrated = await page.evaluate(() => JSON.parse(localStorage.getItem("nihon:word-search-v1")));
   assert.equal(migrated.settings.directions, "all");
   assert.equal(migrated.directionDefaultsVersion, 1);
   assert.equal(migrated.progress.completed, 3);
   assert.deepEqual(migrated.progress.recent, ["retained"]);
-  await select("絵合わせ.html");
+  await select("eawase.html");
   assert.equal(await frame.locator("#settingsDialog, #settingsButton, #setting-appearance").count(), 0);
   assert.equal(await frame.locator("#settingsPanel").evaluate((panel) => panel.open && panel.previousElementSibling.classList.contains("intro")), true);
   for (const width of [1280, 375]) {
@@ -203,8 +203,8 @@ try {
       }
     }
     await navigationPage.click("#menuButton");
-    await navigationPage.locator('.helper-link[data-file="仮名.html"]').click();
-    await navigationPage.waitForURL(`${origin}/${encodeURIComponent("仮名.html")}`);
+    await navigationPage.locator('.helper-link[data-file="kana.html"]').click();
+    await navigationPage.waitForURL(`${origin}/${encodeURIComponent("kana.html")}`);
     await navigationPage.reload();
     await navigationPage.locator("#colorThemeSelect").waitFor();
     await navigationPage.goBack();
@@ -215,18 +215,16 @@ try {
     assert.match(await (await navigationPage.request.get(`${origin}/robots.txt`)).text(), /Sitemap: https:\/\/nihongo-toolkit.pages.dev\/sitemap.xml/);
     await navigationPage.goto(`${origin}/index.html`);
     await navigationPage.waitForURL(`${origin}/`);
-    await navigationPage.frameLocator("#helperFrame").locator("#colorThemeSelect").waitFor();
-    assert.equal(await navigationPage.frameLocator("#helperFrame").locator(".navigation").isVisible(), false);
-    const embedded = navigationPage.frameLocator("#helperFrame");
+    assert.equal(await navigationPage.locator(".dashboard-link").count(), 14);
     for (const file of files) {
       await navigationPage.click("#menuButton");
-      await navigationPage.locator(`.helper-link[data-file="${file}"]`).click();
-      await navigationPage.waitForFunction((name) => decodeURIComponent(document.querySelector("#helperFrame").contentWindow.location.pathname).endsWith(`/${name}`), file);
-      await embedded.locator("#colorThemeSelect").waitFor();
+      await navigationPage.locator(`#helperMenu .helper-link[data-file="${file}"]`).click();
+      await navigationPage.waitForURL(`${origin}/${file}`);
+      await navigationPage.locator("#colorThemeSelect").waitFor();
       for (const width of [375, 1280]) {
         await navigationPage.setViewportSize({ width, height: 900 });
         await navigationPage.click("#menuButton");
-        await checkMenuDismissal(navigationPage, embedded);
+        await checkMenuDismissal(navigationPage);
       }
     }
     const source = await (await navigationPage.request.get(`${origin}/${encodeURIComponent(files[0])}`)).text();
@@ -238,15 +236,14 @@ try {
     await touchContext.route("**/*", (route) => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
     const touch = await touchContext.newPage();
     touch.on("pageerror", (error) => errors.push(error.message));
-    await touch.goto(`${origin}/${encodeURIComponent("しりとり.html")}`);
+    await touch.goto(`${origin}/${encodeURIComponent("shiritori.html")}`);
     await touch.locator("#colorThemeSelect").waitFor();
     await touch.locator("#menuButton").tap();
     await checkMenuDismissal(touch, touch, true);
     await touch.goto(origin);
-    const touchFrame = touch.frameLocator("#helperFrame");
-    await touchFrame.locator("#colorThemeSelect").waitFor();
+    await touch.locator(".dashboard-link").first().waitFor();
     await touch.locator("#menuButton").tap();
-    await checkMenuDismissal(touch, touchFrame, true);
+    await checkMenuDismissal(touch, touch, true);
     await touchContext.close();
   }
   assert.deepEqual(errors, []);

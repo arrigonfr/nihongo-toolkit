@@ -13,15 +13,17 @@ try {
   await server.listen();
   browser = await chromium.launch();
   const page = await browser.newPage();
-  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/資料.html#worksheet`);
+  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/shiryo.html#worksheet`);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.locator(".study-header-description").textContent(), "Printable Japanese cheatsheets");
   assert.equal(await page.locator('link[rel="apple-touch-icon"]').count(), 1);
-  assert.equal(await page.locator("header").evaluate((header) => {
+  const headerGeometry = await page.locator("header").evaluate((header) => {
     const brand = header.querySelector(".brand").getBoundingClientRect();
     const appearance = header.querySelector(".study-appearance").getBoundingClientRect();
-    return Math.abs(brand.top - appearance.top) < 10 && brand.right <= appearance.left;
-  }), true);
+    const back = header.querySelector(".dashboard-back").getBoundingClientRect();
+    return { aligned: Math.abs(brand.top - appearance.top) < 10 && Math.abs(back.top - appearance.top) < 10 && back.right <= brand.left && brand.right <= appearance.left, back: back.toJSON(), brand: brand.toJSON(), appearance: appearance.toJSON() };
+  });
+  assert.equal(headerGeometry.aligned, true, JSON.stringify(headerGeometry));
   await page.setViewportSize({ width: 1280, height: 720 });
   const geometry = await page.evaluate(async () => {
     const { worksheetLayout, worksheetSVG } = await import("/src/worksheet.js");
@@ -99,6 +101,21 @@ try {
   assert.equal(normalPrint.theme, normalPrint.originalTheme);
   assert.equal(normalPrint.printing, undefined);
   assert.equal(normalPrint.cleaned, true);
+  await page.locator('[data-reference="orientation"]').selectOption("landscape");
+  assert.equal(await page.locator('#sheetPreview > svg').getAttribute("viewBox"), "0 0 1123 794");
+  const svgError = await page.evaluate(async () => {
+    const { buildSheet } = await import("/src/cheatsheet-data.js");
+    const { toSVG } = await import("/src/cheatsheet-export.js");
+    return new DOMParser().parseFromString(toSVG(buildSheet("kana")), "image/svg+xml").querySelector("parsererror")?.textContent;
+  });
+  assert.equal(svgError, undefined);
+  const kanaPdfDownload = page.waitForEvent("download").catch(() => null);
+  await page.locator('[data-format="pdf"]').click();
+  await page.waitForFunction(() => /Saved|Could not/.test(document.querySelector("#downloadStatus").textContent));
+  assert.match(await page.locator("#downloadStatus").textContent(), /Saved/);
+  const kanaPdf = await PDFDocument.load(await readFile(await (await kanaPdfDownload).path()));
+  assert.deepEqual(kanaPdf.getPage(0).getSize(), { width: 842.25, height: 595.5 });
+  await page.locator('[data-reference="orientation"]').selectOption("portrait");
   await page.locator('[data-sheet="counters"]').click();
   const pageIndicator = page.locator('[data-reference-page]');
   const pageCount = Number((await pageIndicator.textContent()).split(" / ")[1]);

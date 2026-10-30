@@ -14,23 +14,23 @@ await once(api, "listening");
 process.env.VITE_API_BASE_URL = `http://127.0.0.1:${api.address().port}`;
 let vite, browser;
 const cases = [
-  ["仮名.html", { kanaDirection: "romaji-katakana", fontChoice: "Sawarabi Mincho", sessionMode: "questions", sessionTarget: 37, showStatsToggle: false }],
-  ["意味.html", { levelSelect: "3", meaningDirection: "meaning-reverse", fontChoice: "Zen Kurenaido", sessionMode: "timed", sessionTarget: 7, showStatsToggle: false, reviewKanjiToggle: true }],
-  ["読み.html", { levelSelect: "unrated", readingDirection: "reading-katakana", fontChoice: "M PLUS Rounded 1c", sessionMode: "questions", sessionTarget: 18, showStatsToggle: true, reviewKanjiToggle: true }],
-  ["語彙.html", { levelSelect: "N2", modeSelect: "cloze-ej", kanaDirection: "to-kana", fontChoice: "Noto Sans JP", sessionType: "time", questionLimit: 27, timeLimit: 6, showStatsToggle: false, showExampleToggle: false }],
-  ["言葉.html", { kanjiMode: true }],
-  ["文解き.html", { translationToggle: true }],
-  ["漢字地図帳.html", {}],
-  ["活用.html", { "setting-politeness": "polite", "setting-polarity": "negative", "setting-tense": "past", "setting-fontSize": "30", "setting-level": "3", "setting-category": "adjective", "setting-compact": true, "setting-examples": false, "setting-kanji": false, "setting-contrast": true }],
-  ["活用練習.html", { "setting-mode": "reverse", "setting-questions": "20", "setting-language": "both", "setting-input": "kanji", "setting-seconds": 73, "setting-mistakes": 4, "setting-hints": "limited", "setting-hintLimit": 8, "setting-revealLimit": 6, "setting-meaning": false, "setting-type": false, "setting-repeat": false, "setting-timer": true, "setting-fontSize": "48" }],
-  ["パズル.html", { answerModeSelect: "kanji", levelSelect: "4", sizeSelect: "custom", customWordsInput: 6, fontScaleSelect: "large", checkAvailSelect: "limited", revealAvailSelect: "disabled", hintLimitInput: 7, timedMinutesInput: 9, layoutDirSelect: "rtl", inputStyleSelect: "clues", kanjiFocusToggle: true }],
-  ["しりとり.html", { "setting-mode": "timed", "setting-opponent": "local", "setting-players": 3, "setting-entry": "both", "setting-level": "N4", "setting-bonus": true, "setting-reveal": true, "setting-voicing": true, "setting-hints": "disabled", "setting-timer": "60", "setting-fontSize": "large", "setting-contrast": true }],
-  ["言葉探し.html", { "setting-mode": "timed", sizePreset: "custom", "setting-size": 10, "setting-overlap": false, "setting-meanings": false, "setting-seconds": 73, "setting-fontSize": 38, "setting-contrast": true, "setting-animation": false, hintType: "length" }],
-  ["絵合わせ.html", { "setting-examples": false, "setting-content": "kana", "setting-pairing": "same-katakana", "setting-grid": "custom", "setting-count": 7, "setting-mode": "moves", "setting-flips": 23, "setting-players": "2", "setting-shuffle": "all", "setting-disappear": true, "setting-learning": false, "setting-fontSize": 36, "setting-contrast": true, hintType: "reading" }]
+  ["kana.html", { kanaDirection: "romaji-katakana", fontChoice: "Sawarabi Mincho", sessionMode: "questions", sessionTarget: 37, showStatsToggle: false }],
+  ["imi.html", { levelSelect: "3", meaningDirection: "meaning-reverse", fontChoice: "Zen Kurenaido", sessionMode: "timed", sessionTarget: 7, showStatsToggle: false, reviewKanjiToggle: true }],
+  ["yomi.html", { levelSelect: "unrated", readingDirection: "reading-katakana", fontChoice: "M PLUS Rounded 1c", sessionMode: "questions", sessionTarget: 18, showStatsToggle: true, reviewKanjiToggle: true }],
+  ["goi.html", { levelSelect: "N2", modeSelect: "cloze-ej", kanaDirection: "to-kana", fontChoice: "Noto Sans JP", sessionType: "time", questionLimit: 27, timeLimit: 6, showStatsToggle: false, showExampleToggle: false }],
+  ["kotoba.html", { kanjiMode: true }],
+  ["fumitoki.html", { translationToggle: true }],
+  ["kanji-chizucho.html", {}],
+  ["katsuyo.html", { "setting-politeness": "polite", "setting-polarity": "negative", "setting-tense": "past", "setting-fontSize": "30", "setting-level": "3", "setting-category": "adjective", "setting-compact": true, "setting-examples": false, "setting-kanji": false, "setting-contrast": true }],
+  ["katsuyo-renshuu.html", { "setting-mode": "reverse", "setting-questions": "20", "setting-language": "both", "setting-input": "kanji", "setting-seconds": 73, "setting-mistakes": 4, "setting-hints": "limited", "setting-hintLimit": 8, "setting-revealLimit": 6, "setting-meaning": false, "setting-type": false, "setting-repeat": false, "setting-timer": true, "setting-fontSize": "48" }],
+  ["pazuru.html", { answerModeSelect: "kanji", levelSelect: "4", sizeSelect: "custom", customWordsInput: 6, fontScaleSelect: "large", checkAvailSelect: "limited", revealAvailSelect: "disabled", hintLimitInput: 7, timedMinutesInput: 9, layoutDirSelect: "rtl", inputStyleSelect: "clues", kanjiFocusToggle: true }],
+  ["shiritori.html", { "setting-mode": "timed", "setting-opponent": "local", "setting-players": 3, "setting-entry": "both", "setting-level": "N4", "setting-bonus": true, "setting-reveal": true, "setting-voicing": true, "setting-hints": "disabled", "setting-timer": "60", "setting-fontSize": "large", "setting-contrast": true }],
+  ["kotoba-sagashi.html", { "setting-mode": "timed", sizePreset: "custom", "setting-size": 10, "setting-overlap": false, "setting-meanings": false, "setting-seconds": 73, "setting-fontSize": 38, "setting-contrast": true, "setting-animation": false, hintType: "length" }],
+  ["eawase.html", { "setting-examples": false, "setting-content": "kana", "setting-pairing": "same-katakana", "setting-grid": "custom", "setting-count": 7, "setting-mode": "moves", "setting-flips": 23, "setting-players": "2", "setting-shuffle": "all", "setting-disappear": true, "setting-learning": false, "setting-fontSize": 36, "setting-contrast": true, hintType: "reading" }]
 ];
 const fonts = new Map([
-  ["活用練習.html", "Sawarabi Mincho"], ["しりとり.html", "Zen Kurenaido"],
-  ["言葉探し.html", "Noto Sans JP"], ["絵合わせ.html", "M PLUS Rounded 1c"]
+  ["katsuyo-renshuu.html", "Sawarabi Mincho"], ["shiritori.html", "Zen Kurenaido"],
+  ["kotoba-sagashi.html", "Noto Sans JP"], ["eawase.html", "M PLUS Rounded 1c"]
 ]);
 for (const [file, values] of cases) if (fonts.has(file)) values["setting-font"] = fonts.get(file);
 
@@ -81,17 +81,17 @@ try {
       if (await toggle.isVisible() && await toggle.getAttribute("aria-pressed") !== pressed) await toggle.click();
     }
     for (const [id, value] of Object.entries(values)) await change(id, value);
-    if (file === "活用.html") {
+    if (file === "katsuyo.html") {
       await page.locator("#list-groups ~ .chips .chip-action:text-is(\"Clear\")").evaluate((node) => node.click());
     }
-    if (file === "活用練習.html") {
+    if (file === "katsuyo-renshuu.html") {
       await page.locator("#levelSettings .chip-action:text-is(\"All\")").evaluate((node) => node.click());
       await page.locator("#formSettings .chip-action:text-is(\"Clear\")").evaluate((node) => node.click());
     }
-    if (file === "絵合わせ.html") {
+    if (file === "eawase.html") {
       await page.locator("#setting-groups").evaluate((node) => { node.value = "voiced"; node.dispatchEvent(new Event("change", { bubbles: true })); });
     }
-    if (file === "パズル.html") await page.click('[data-mode="kanjiChallenge"]');
+    if (file === "pazuru.html") await page.click('[data-mode="kanjiChallenge"]');
     const expected = await snapshot(page);
     await page.reload();
     assert.deepEqual(await snapshot(page), expected, `${file}: every control restores on reload without clicking Save`);
@@ -100,14 +100,14 @@ try {
     const reopened = toolPage(reopenedRaw);
     await reopened.goto(`${base}/${encodeURIComponent(file)}`);
     assert.deepEqual(await snapshot(reopened), expected, `${file}: preferences survive in a new tab`);
-    if (["仮名.html", "意味.html", "読み.html"].includes(file)) {
+    if (["kana.html", "imi.html", "yomi.html"].includes(file)) {
       assert.equal(await reopened.locator("#questionSection").isVisible(), false, "Restoring settings does not start a quiz");
       assert.equal(await reopened.locator("#sessionStatsContent").isVisible(), values.showStatsToggle);
     }
     await reopenedRaw.close();
   }
 
-  await go("言葉.html");
+  await go("kotoba.html");
   await page.fill("#query", "国");
   await page.click("#searchButton");
   await page.locator("#compoundMeaning").waitFor();
@@ -123,7 +123,7 @@ try {
   await page.reload();
   assert.equal(await page.locator("#kanjiMode").isChecked(), false, "Compound navigation saves the resulting search mode");
 
-  await go("仮名.html");
+  await go("kana.html");
   assert.equal(await page.inputValue("#sessionTarget"), "37", "Practice settings remain isolated across Kana, Imi and Yomi");
   await page.locator("#sessionTarget").fill("");
   await change("showStatsToggle", true);
@@ -139,13 +139,13 @@ try {
   assert.equal(await page.locator("#showStatsToggle").isChecked(), true);
   assert.match(await page.textContent("#apiWarning"), /invalid/);
   await page.evaluate(() => localStorage.setItem("nihon:goi-settings-v1", "{"));
-  await go("語彙.html");
+  await go("goi.html");
   assert.match(await page.textContent("#warning"), /could not be restored/);
   await change("modeSelect", "typing-ej");
   await page.reload();
   assert.equal(await page.inputValue("#modeSelect"), "typing-ej", "A valid change repairs malformed preference storage");
 
-  await go("仮名.html");
+  await go("kana.html");
   await page.evaluate(() => {
     const write = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key, value) {
@@ -155,7 +155,7 @@ try {
   });
   await change("fontChoice", "Zen Kurenaido");
   assert.match(await page.textContent("#apiWarning"), /could not save/);
-  await go("パズル.html");
+  await go("pazuru.html");
   await page.locator("#customWordsInput").fill("");
   await change("fontScaleSelect", "medium");
   await page.reload();
@@ -188,9 +188,9 @@ try {
     }
   }
   for (const [file, direction, initial, next] of [
-    ["仮名.html", "kanaDirection", "hiragana-romaji", "romaji-katakana"],
-    ["意味.html", "meaningDirection", "meaning-forward", "meaning-reverse"],
-    ["読み.html", "readingDirection", "reading-romaji", "reading-katakana"]
+    ["kana.html", "kanaDirection", "hiragana-romaji", "romaji-katakana"],
+    ["imi.html", "meaningDirection", "meaning-forward", "meaning-reverse"],
+    ["yomi.html", "readingDirection", "reading-romaji", "reading-katakana"]
   ]) {
     await sessionGo(file);
     await sessionPage.selectOption(`#${direction}`, initial, { force: true });
@@ -224,7 +224,7 @@ try {
     assert.match(await sessionPage.getAttribute("html", "style"), /Sawarabi Mincho/);
   }
 
-  await sessionGo("語彙.html");
+  await sessionGo("goi.html");
   await sessionPage.selectOption("#modeSelect", "multiple-je", { force: true });
   await sessionPage.click("#startButton");
   await sessionPage.locator(".option").first().waitFor();
@@ -247,7 +247,7 @@ try {
   assert.equal(await sessionPage.locator("#options").isVisible(), false);
   assert.equal(await sessionPage.textContent("#questionLabel"), "Question 1 / 2");
 
-  await sessionGo("活用練習.html");
+  await sessionGo("katsuyo-renshuu.html");
   await sessionPage.click("#startButton");
   await sessionPage.fill("#answerInput", "たべ");
   const question = await sessionPage.textContent("#questionBody");
@@ -265,7 +265,7 @@ try {
   assert.equal(await sessionPage.evaluate(() => document.documentElement.style.getPropertyValue("--jp-size")), "48px");
   assert.match(await sessionPage.locator(".base-word [lang=ja]").first().evaluate((node) => getComputedStyle(node).fontFamily), /Sawarabi Mincho/);
 
-  await sessionGo("パズル.html");
+  await sessionGo("pazuru.html");
   await sessionPage.click("#newPuzzleBtn");
   await sessionPage.locator("#crosswordGrid .cw-cell").first().waitFor();
   await sessionPage.locator(".cw-cell.is-active").click();
@@ -289,13 +289,13 @@ try {
   assert.equal(await sessionPage.locator("#timerMetricWrap").isVisible(), true);
 
   for (const [file, start, progressId, mode, contrast] of [
-    ["絵合わせ.html", "startButton", "progressText", "timed", "setting-contrast"],
-    ["言葉探し.html", "startButton", "progressText", "timed", "setting-contrast"],
-    ["しりとり.html", "newGame", "chainCount", "relaxed", "setting-contrast"]
+    ["eawase.html", "startButton", "progressText", "timed", "setting-contrast"],
+    ["kotoba-sagashi.html", "startButton", "progressText", "timed", "setting-contrast"],
+    ["shiritori.html", "newGame", "chainCount", "relaxed", "setting-contrast"]
   ]) {
     await sessionGo(file);
-    if (file === "絵合わせ.html") await sessionPage.selectOption("#setting-content", "kana", { force: true });
-    if (file === "しりとり.html") {
+    if (file === "eawase.html") await sessionPage.selectOption("#setting-content", "kana", { force: true });
+    if (file === "shiritori.html") {
       await sessionPage.selectOption("#setting-opponent", "local");
       await sessionPage.fill("#setting-players", "1");
     }
@@ -323,9 +323,9 @@ try {
     assert.notEqual((await snapshot())[1], before[1], `${file}: the next game adopts the new mode`);
     assert.equal(await sessionPage.getAttribute("html", "data-contrast"), "true");
     assert.equal(await sessionPage.getAttribute("html", "data-japanese-font"), fonts.get(file));
-    if (file === "絵合わせ.html") await sessionPage.locator("[data-card]").first().click();
-    const japanese = file === "絵合わせ.html" ? ".memory-card .study-japanese"
-      : file === "言葉探し.html" ? "#grid [data-cell]" : "#previousWord";
+    if (file === "eawase.html") await sessionPage.locator("[data-card]").first().click();
+    const japanese = file === "eawase.html" ? ".memory-card .study-japanese"
+      : file === "kotoba-sagashi.html" ? "#grid [data-cell]" : "#previousWord";
     assert.ok((await sessionPage.locator(japanese).first().evaluate((node) => getComputedStyle(node).fontFamily)).includes(fonts.get(file)));
   }
   await liveContext.close();

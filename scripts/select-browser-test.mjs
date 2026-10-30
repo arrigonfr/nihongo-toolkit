@@ -22,19 +22,19 @@ try {
   browser = await chromium.launch();
   const errors = [];
   const cases = [
-    ["仮名.html", ["sessionMode"]],
-    ["読み.html", ["readingDirection", "sessionMode"]],
-    ["意味.html", ["meaningDirection"]],
-    ["語彙.html", ["modeSelect"]],
-    ["パズル.html", ["sizeSelect", "levelSelect"]],
-    ["活用.html", ["setting-fontSize"]],
-    ["活用練習.html", ["setting-mode"]],
-    ["絵合わせ.html", ["setting-players"]],
-    ["言葉探し.html", ["setting-category"]],
-    ["しりとり.html", ["setting-opponent"]],
-    ["言葉.html", ["colorThemeSelect"]],
-    ["文解き.html", ["colorThemeSelect"]],
-    ["漢字地図帳.html", ["colorThemeSelect"]]
+    ["kana.html", ["sessionMode"]],
+    ["yomi.html", ["readingDirection", "sessionMode"]],
+    ["imi.html", ["meaningDirection"]],
+    ["goi.html", ["modeSelect"]],
+    ["pazuru.html", ["sizeSelect", "levelSelect"]],
+    ["katsuyo.html", ["setting-fontSize"]],
+    ["katsuyo-renshuu.html", ["setting-mode"]],
+    ["eawase.html", ["setting-players"]],
+    ["kotoba-sagashi.html", ["setting-category"]],
+    ["shiritori.html", ["setting-opponent"]],
+    ["kotoba.html", ["colorThemeSelect"]],
+    ["fumitoki.html", ["colorThemeSelect"]],
+    ["kanji-chizucho.html", ["colorThemeSelect"]]
   ];
   for (const viewport of [{ width: 390, height: 844 }, { width: 760, height: 420 }]) {
     const context = await browser.newContext({ viewport, hasTouch: true, isMobile: true, deviceScaleFactor: 2, reducedMotion: "reduce" });
@@ -72,7 +72,7 @@ try {
         assert.ok(geometry.gap <= 8, `${file} #${id}: picker stays beside the select: ${JSON.stringify(geometry)}`);
         assert.ok(geometry.overlaps && geometry.fits, `${file} #${id}: picker fits the viewport: ${JSON.stringify(geometry)}`);
         assert.equal(await page.locator("#studySettingTooltip").isVisible(), false, "Opening a select does not open help");
-        if (process.env.SELECT_SCREENSHOT && file === "読み.html" && id === "readingDirection" && viewport.width === 390) {
+        if (process.env.SELECT_SCREENSHOT && file === "yomi.html" && id === "readingDirection" && viewport.width === 390) {
           await page.screenshot({ path: process.env.SELECT_SCREENSHOT });
         }
         await select.locator("option:enabled").nth(1).tap();
@@ -108,22 +108,22 @@ try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await context.route("**/*", (route) => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
   const raw = await context.newPage(), page = toolPage(raw);
-  await page.goto(`${base}/読み.html`);
+  await page.goto(`${base}/yomi.html`);
   assert.notEqual(await page.locator("#readingDirection").evaluate((node) => getComputedStyle(node).appearance), "base-select", "Desktop retains its native select");
   await page.goto(base);
   await page.click("#menuButton");
-  assert.deepEqual(await page.locator(".menu-group").evaluateAll((groups) => groups.map((group) => [
+  assert.deepEqual(await page.locator("#helperMenu .menu-group").evaluateAll((groups) => groups.map((group) => [
     group.getAttribute("aria-label"), [...group.querySelectorAll("[data-file]")].map((node) => node.dataset.file)
   ])), [
-    ["Practice", ["仮名.html", "読み.html", "意味.html", "語彙.html", "活用練習.html"]],
-    ["Reference", ["言葉.html", "漢字地図帳.html", "活用.html", "文解き.html", "資料.html"]],
-    ["Games", ["絵合わせ.html", "言葉探し.html", "パズル.html", "しりとり.html"]]
+    ["Practice", ["kana.html", "yomi.html", "imi.html", "goi.html", "katsuyo-renshuu.html"]],
+    ["Reference", ["kotoba.html", "kanji-chizucho.html", "katsuyo.html", "fumitoki.html", "shiryo.html"]],
+    ["Games", ["eawase.html", "kotoba-sagashi.html", "pazuru.html", "shiritori.html"]]
   ]);
-  for (const [file, name] of [["活用練習.html", "Katsuyō Renshuu"], ["言葉探し.html", "Kotoba Sagashi"]]) {
+  for (const [file, name] of [["katsuyo-renshuu.html", "Katsuyō Renshuu"], ["kotoba-sagashi.html", "Kotoba Sagashi"]]) {
     await page.goto(`${base}/${encodeURIComponent(file)}`);
-    assert.equal(await page.textContent(".brand-name"), name);
+    assert.equal(await page.locator(".brand-name").evaluate((node) => node.firstChild.textContent.trim()), name);
     assert.match(await page.evaluate(() => document.title), new RegExp(name));
-    assert.match(await raw.locator("#helperFrame").getAttribute("title"), new RegExp(name));
+    assert.equal(new URL(raw.url()).pathname, `/${file}`);
     await page.click("#helpButton");
     assert.equal(await page.textContent("#studyHelpTitle"), `About ${name}`);
     await page.keyboard.press("Escape");

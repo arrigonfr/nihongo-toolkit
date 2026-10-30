@@ -55,6 +55,16 @@ body button, body [role="button"]:not(.study-setting-name), body input[type="sub
   vertical-align: middle;
 }
 .study-appearance { display: flex; align-items: center; gap: 8px; grid-row: 1; grid-column: 2; }
+body .study-theme { position: relative; align-self: center; display: inline-flex; flex: 0 0 82px; width: 82px; min-width: 82px; height: 36px; min-height: 36px; padding: 3px; border: 1px solid #e6ca70; border-radius: 22px; background: #f9e8a7; color: #80621b; cursor: pointer; box-shadow: inset 0 2px 4px #a37d2430; }
+body .study-theme[data-mode="dark"] { border-color: #244b60; background: #103449; color: #c9e8f5; }
+.study-theme .theme-switch-label { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); font: 700 10px/1.05 system-ui, sans-serif; text-transform: uppercase; }
+.study-theme .theme-switch-label::after { content: "Light"; }
+.study-theme[data-mode="dark"] .theme-switch-label { right: auto; left: 7px; }
+.study-theme[data-mode="dark"] .theme-switch-label::after { content: "Dark"; }
+.study-theme .theme-switch-knob { position: absolute; left: 3px; top: 3px; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #f1bd28; color: white; box-shadow: 0 2px 4px #0003; transition: left .2s ease; }
+.study-theme .theme-switch-knob::after { content: "☀"; font: 22px/1 system-ui, sans-serif; }
+.study-theme[data-mode="dark"] .theme-switch-knob { left: 49px; background: #24a6e2; }
+.study-theme[data-mode="dark"] .theme-switch-knob::after { content: "☾"; }
 .study-palette { display: flex !important; align-items: center; gap: 8px; margin: 0; padding: 0 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); height: 40px; }
 .study-palette-dot { width: 12px; height: 12px; flex: 0 0 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .study-palette select { width: auto; min-width: 0; max-width: 112px; height: 100%; border: 0; padding: 0 3px; background: transparent; color: var(--ink); font: 600 12px/1.4 system-ui, sans-serif; cursor: pointer; }

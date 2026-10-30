@@ -1,4 +1,5 @@
 import "./shiritori.css";
+import { mountGameExport } from "./game-export.js";
 import { bind, toKana } from "wanakana";
 import { API_BASE } from "./api.js";
 import { mountChips } from "./chips.js";
@@ -25,7 +26,7 @@ const modeDescriptions = {
   katakana: "Use words written in katakana.", beginner: "Words up to four morae, unlimited hints and furigana.",
   marathon: "Build a long chain and earn extra points as it grows."
 };
-const defaults = { ...DEFAULT_RULES, opponent: "computer", players: 2, level: "N5", fontSize: "normal", font: "Noto Sans JP", contrast: false, translations: false };
+const defaults = { ...DEFAULT_RULES, opponent: "computer", players: 2, fontSize: "normal", font: "Noto Sans JP", contrast: false, translations: false };
 let settings = { ...defaults };
 let progress = { known: [], review: [], daily: { last: "", streak: 0, attempted: "" } };
 let restoreError = "";
@@ -39,6 +40,7 @@ function validateSettings(value) {
 }
 try {
   const saved = JSON.parse(localStorage.getItem(settingsKey) || "{}");
+  delete saved.level;
   validateSettings(saved);
   settings = { ...defaults, ...saved };
   delete settings.appearance;
@@ -94,9 +96,6 @@ function checkboxSetting(key, label, description) {
   return `<div class="setting check"><label class="check-label" for="setting-${key}"${tip(description)}><input id="setting-${key}" data-setting="${key}" type="checkbox">${label}</label></div>`;
 }
 function settingsMarkup() {
-  const levels = { all: "All (including unrated)" };
-  for (let n = 5; n >= 1; n--) levels[`N${n}`] = `N${n}`;
-  for (let from = 5; from > 1; from--) for (let to = from - 1; to >= 1; to--) levels[`N${from}-N${to}`] = `N${from}–N${to}`;
   return `<p class="small">Valid settings save automatically and apply to your next game. The top reading, audio and appearance controls stay live.</p>
   <form id="settingsForm">
   <div class="mode-pills" id="modePills" role="group" aria-label="Game mode">${Object.entries(modes).map(([key, label]) => `<button class="mode-pill" type="button" data-mode="${key}" data-setting-description="${escape(modeDescriptions[key])}" aria-pressed="false">${label}</button>`).join("")}</div>
@@ -106,16 +105,11 @@ function settingsMarkup() {
   ${numberSetting("players", "Local players", 1, 6, "Number of players taking turns on this device. Ignored when playing the computer. A losing move ends the round for everyone.")}
   ${selectSetting("timer", "Seconds per turn", { 10: "10 seconds", 20: "20 seconds", 30: "30 seconds", 60: "60 seconds" }, "Only Timed mode uses a countdown. It includes checks, hints, dictionary requests and time in dialogs. Other modes have no timer.")}
   </div></fieldset>
-  <fieldset><legend>Vocabulary</legend><div class="settings-grid">
-<div class="settings-section"><h3>Study words</h3>
-  ${selectSetting("level", "JLPT study levels", levels)}
+  <fieldset class="settings-section"><legend>Word Rules</legend><div class="settings-grid">
   ${selectSetting("category", "Vocabulary category", CATEGORIES)}
-</div>
-<div class="settings-section"><h3>Word rules</h3>
   ${selectSetting("entry", "Word entry", { kana: "Kana", kanji: "Kanji", both: "Both" }, `Romaji converts automatically to kana. Kana accepts either script. Kanji entry confirms a dictionary spelling and links by kanji. Both accepts either form. For Kana entry and kanji chains: ${READING_ENDING_RULE}`)}
   ${selectSetting("wordType", "Allowed word types", { all: "All", nouns: "Nouns", verbs: "Verbs", adjectives: "Adjectives" }, "Use dictionary parts of speech to limit playable vocabulary. All includes expressions, verbs, adjectives and other dictionary words. Verbs and Adjectives also allow nouns.")}
   ${selectSetting("proper", "Proper nouns allowed", { names: "Yes", none: "No" }, "Names must have dictionary evidence. Only names identified by the dictionary are available.")}
-</div>
   </div></fieldset>
   <fieldset class="settings-section"><legend>Scoring and rules</legend><div class="settings-grid">
   ${checkboxSetting("voicing", "Allow voiced / unvoiced variation", "Treat か / が and は / ば / ぱ as equivalent at the connection. Off by default. Does not affect kanji connections.")}
@@ -173,7 +167,7 @@ $("shiritoriRoot").innerHTML = `<div class="shell">
     <p><strong>Shiritori means “taking the tail”.</strong> Start your word with the last syllable of the previous word, or with more of it: the last two or three syllables, or its last kanji or kanji compound. The answer must be longer than the overlap, so it can never begin with the entire previous word. Small kana stay attached (しょ needs しょ, and しょう works). Hiragana and katakana are equivalent. Submit with Enter or Play. Words ending in <strong>ん / ン</strong> and the particle <strong>を / ヲ</strong> are not accepted. Stuck? Use <strong>Pass</strong> to skip your turn; if everyone passes in a row, the round ends.</p>
     <h3>Play your way</h3><p>Play the computer, practice alone, or share this device with up to six local players. Classic retries invalid entries. Sudden Death loses on any invalid submission. Relaxed has unlimited hints and no timer: an invalid connection ends the round. Timed includes dictionary-check time. Beginner caps words at four morae and enables furigana. Marathon adds points for every word.</p>
     <p>Category and Katakana challenges filter the vocabulary. Advanced Kanji Shiritori only accepts overlaps made of the last kanji or kanji compound. Daily uses a date-seeded match with fixed rules: play ten valid human words to win. Only your first attempt each local calendar day counts toward your streak; repeat attempts are practice.</p>
-    <h3>Make the rules yours</h3><p>Choose Kana, Kanji or Both, any combination of JLPT levels, a category, parts of speech. Conjugated verbs and adjectives are accepted. Romaji converts as you type; pick the right spelling when a reading is ambiguous. Kanji entry accepts a typed reading only after you confirm its spelling.</p>
+    <h3>Make the rules yours</h3><p>Choose Kana, Kanji or Both, a category and parts of speech. Conjugated verbs and adjectives are accepted. Romaji converts as you type; pick the right spelling when a reading is ambiguous. Kanji entry accepts a typed reading only after you confirm its spelling.</p>
     <p>For Kana entry and kanji chains: ${escape(READING_ENDING_RULE)} Dictionary readings are checked even when you type kanji. A long-vowel mark inside a word is fine, as in ケーキ. Outside Kanji Shiritori, Both entry keeps a final ー attached to its syllable (コーヒー requires ヒー). Repeated words and words ending in ん / ン are never accepted. You can allow voiced/unvoiced pairs. No available dictionary continuation ends the round with an explanation, not an invented word.</p>
     <h3>Learn, don’t just guess</h3><p>Hints cycle through first kana, morae, category and a hidden word; Reveal gives a legal word and meaning. Hover, focus or tap chain words to explore them. Kanji buttons show meanings, on’yomi, kun’yomi and compounds. Audio uses an installed Japanese device voice. Sentence availability depends on the dictionary and Tatoeba.</p>
     <h3>Points &amp; progress</h3><p>N5 / N4 / N3 / N2 / N1 earn 10 / 20 / 30 / 40 / 50 points. Unrated words earn 10 and appear only in All. Bonus kana earns 15; extra overlap earns 5 per additional syllable or character. Marathon adds 5 per valid word. Statistics reset for each new game. Save words to a local review list and export/import it in Settings.</p>
@@ -407,7 +401,6 @@ async function startGame() {
   startError();
   try {
     rules = parseRules(settings);
-    if (rules.mode !== "daily" && rules.level === "none") throw new Error("Choose at least one JLPT level to start a game.");
   } catch (error) { startError(error.message); return; }
   const token = ++generation;
   clearInterval(timerHandle);
@@ -691,9 +684,10 @@ function finish(reason, explanation, loser = null, dailyGoal = false) {
   }
   const title = dailyWin ? "Daily challenge complete!" : loser === null ? "A chain worth remembering" : game.players.length === 1 ? "Round lost" : game.players[loser].computer ? "You win!" : `${game.players[loser].name} ${game.players[loser].name === "You" ? "lose" : "loses"}`;
   const winners = loser === null ? "" : game.players.filter((_, i) => i !== loser).map((p) => p.name).join(", ");
-  const discoveries = game.chain.filter((word, i, list) => !game.knownBefore.has(word.id) && list.findIndex((w) => w.id === word.id) === i);
+  const discoveries = game.chain.filter((word, i, list) => list.findIndex((item) => item.id === word.id) === i);
   const missed = Object.entries(game.stats.missed).sort((a, b) => b[1] - a[1]).map(([k, count]) => `${escape(k)} (${count})`).join(" · ");
-  $("results").innerHTML = `<span class="eyebrow">${escape(reason)}</span><h2>${title}</h2><p>${escape(explanation)}${winners ? ` Winner${game.players.length > 2 ? "s" : ""}: ${escape(winners)}.` : ""}</p><p class="small">${game.stats.words} words played · ${game.stats.unique.size} unique words · longest chain ${game.stats.longest}<br>${game.stats.hints} hints · ${game.stats.revealed} reveals${missed ? `<br>Starting kana to practice: ${missed}` : ""}</p><h3>New Word Discovery</h3><p class="small">${discoveries.length ? "New words encountered this round. Tap one to revisit it and save it for later." : "You revisited familiar words this round. That counts as practice, too."}</p><div class="discovery-list">${discoveries.map((word) => `<button type="button" data-player="${word.playerIndex === undefined ? "starter" : word.playerIndex % 6}" data-word-index="${game.chain.indexOf(word)}"><strong>${escape(word.word)}</strong>${escape(word.reading)}<br><span class="small">${escape(word.meaning.split(";")[0])}</span></button>`).join("")}</div>`;
+  $("results").innerHTML = `<span class="eyebrow">${escape(reason)}</span><h2>${title}</h2><p>${escape(explanation)}${winners ? ` Winner${game.players.length > 2 ? "s" : ""}: ${escape(winners)}.` : ""}</p><p class="small">${game.stats.words} words played · ${game.stats.unique.size} unique words · longest chain ${game.stats.longest}<br>${game.stats.hints} hints · ${game.stats.revealed} reveals${missed ? `<br>Starting kana to practice: ${missed}` : ""}</p><h3>Words in this round</h3><p class="small">${discoveries.length ? "Tap a word to revisit it and save it for later." : "No words were played this round."}</p><div class="discovery-list">${discoveries.map((word) => `<button type="button" data-player="${word.playerIndex === undefined ? "starter" : word.playerIndex % 6}" data-word-index="${game.chain.indexOf(word)}"><strong>${escape(word.word)}</strong>${escape(word.reading)}<br><span class="small">${escape(word.meaning.split(";")[0])}</span></button>`).join("")}</div>`;
+  mountGameExport($("results"), () => ({ title: "Shiritori", filename: "shiritori", chain: discoveries.map((word) => ({ ...word, meaning: word.meaning.split(";")[0] })) }));
   $("results").hidden = false; render(); $("results").focus();
 }
 

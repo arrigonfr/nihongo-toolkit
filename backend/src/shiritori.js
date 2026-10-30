@@ -11,9 +11,15 @@ export function dictionaryForms(row, tags, levels = []) {
   const spellings = JSON.parse(row.kanji_forms);
   return JSON.parse(row.kana_forms).flatMap((reading) => {
     const forms = spellings.filter((form) => reading.appliesToKanji.includes("*") || reading.appliesToKanji.includes(form.text));
-    return (forms.length ? forms : [{ text: reading.text }]).map((form) => {
+    const kanaForms = levels.filter((level) => /^[ぁ-ゖァ-ヶー]+$/.test(level.word)
+      && kana(level.word) === kana(reading.text) && kana(level.reading) === kana(reading.text))
+      .map((level) => ({ text: level.word, kanaOnly: true }));
+    const candidates = forms.length ? [...forms] : [{ text: reading.text }];
+    candidates.push(...kanaForms.filter((form) => !candidates.some((item) => item.text === form.text)));
+    return candidates.map((form) => {
       const senses = JSON.parse(row.senses).filter((sense) =>
-        (sense.appliesToKanji.includes("*") || sense.appliesToKanji.includes(form.text))
+        (sense.appliesToKanji.includes("*") || sense.appliesToKanji.includes(form.text)
+          || form.kanaOnly && forms.some((spelling) => sense.appliesToKanji.includes(spelling.text)))
         && (sense.appliesToKana.includes("*") || sense.appliesToKana.includes(reading.text)));
       const pos = unique(senses.flatMap((s) => s.partOfSpeech));
       const misc = senses.flatMap((s) => s.misc || []);

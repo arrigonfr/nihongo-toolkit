@@ -244,6 +244,28 @@ test("candidate endpoint respects filters, exact matches, exclusions and fallbac
     assert.deepEqual(kanji.items.map((w) => w.word), ["校庭"]);
   } finally { server.close(); await once(server, "close"); db.close(); }
 });
+test("ru continuations respect selected JLPT levels and used words", async () => {
+  const db = createDatabase(":memory:");
+  const entries = [["留守", "るす", "absence", "N4"], ["ルール", "ルール", "rule", "N1"]];
+  insertWords(db, { tags: { n: "noun" }, words: entries.map(([spelling, reading, meaning], index) => ({
+    id: String(100 + index), kanji: [{ text: spelling, common: true, tags: [] }],
+    kana: [{ text: reading, common: true, tags: [], appliesToKanji: ["*"] }],
+    sense: [{ gloss: [{ lang: "eng", text: meaning }], partOfSpeech: ["n"], misc: [], field: [], dialect: [], appliesToKanji: ["*"], appliesToKana: ["*"], related: [], antonym: [], info: [] }]
+  })) });
+  insertVocabulary(db, entries.map(([spelling, reading, meaning, level], index) => ({
+    id: `ru${index}`, jmdict_id: 100 + index, word: spelling, reading, romaji: "", meanings: [meaning], level, examples: []
+  })));
+  try {
+    const params = new URLSearchParams({ prev: JSON.stringify({ word: "猿", reading: "さる" }), rules: JSON.stringify({ level: "N5-N3" }) });
+    const search = () => shiritoriWords(db, params, { n: "noun" }, async () => []);
+    const candidates = (await search()).items;
+    assert.deepEqual(candidates.map((item) => item.word), ["留守"]);
+    params.set("used", JSON.stringify([candidates[0].id]));
+    assert.deepEqual((await search()).items, []);
+    params.set("rules", JSON.stringify({ level: "all" }));
+    assert.deepEqual((await search()).items.map((item) => item.word), ["ルール"]);
+  } finally { db.close(); }
+});
 test("Kana opening and continuation pools exclude every forbidden ending but exact lookups remain inspectable", async () => {
   const db = fixture(), kanaRules = rules({ entry: "kana" });
   const query = (params) => shiritoriWords(db, new URLSearchParams({
@@ -300,6 +322,29 @@ test("dictionary forms preserve reading restrictions and do not assign JLPT to u
   assert.equal(forms.find((w) => w.word === "姓").level, null);
   assert.equal(forms.find((w) => w.word === "姓").meaning, "surname");
   assert.ok(!forms.some((w) => w.word === "姓" && w.reading === "なま"));
+});
+test("rated kana spellings remain playable without rating unrelated homographs", async () => {
+  const db = createDatabase(":memory:");
+  const entries = [["為る", "to do"], ["刷る", "to print"]];
+  insertWords(db, { tags: { v: "verb" }, words: entries.map(([spelling, meaning], index) => ({
+    id: String(index + 1), kanji: [{ text: spelling, common: true, tags: [] }],
+    kana: [{ text: "する", common: true, tags: [], appliesToKanji: ["*"] }],
+    sense: [{ gloss: [{ lang: "eng", text: meaning }], partOfSpeech: ["v"], misc: [], field: [], dialect: [], appliesToKanji: [spelling], appliesToKana: ["*"] , related: [], antonym: [], info: [] }]
+  })) });
+  insertVocabulary(db, [
+    { id: "suru", jmdict_id: 1, word: "する", reading: "する", romaji: "suru", meanings: ["to do"], level: "N5", examples: [] },
+    { id: "suru-print", jmdict_id: 2, word: "刷る", reading: "する", romaji: "suru", meanings: ["to print"], level: "N2", examples: [] }
+  ]);
+  try {
+    const lookup = await shiritoriWords(db, new URLSearchParams({ q: "する" }), { v: "verb" }, async () => []);
+    const rated = lookup.items.find((item) => item.word === "する");
+    assert.equal(rated.level, 5);
+    assert.equal(rated.meaning, "to do");
+    assert.equal(lookup.items.find((item) => item.word === "刷る").level, 2);
+    assert.equal(lookup.items.find((item) => item.word === "為る").level, null);
+    const params = new URLSearchParams({ prev: JSON.stringify({ word: "椅子", reading: "いす" }), rules: JSON.stringify({ level: "N5" }) });
+    assert.deepEqual((await shiritoriWords(db, params, { v: "verb" }, async () => [])).items.map((item) => item.word), ["する"]);
+  } finally { db.close(); }
 });
 test("fallback accepts only exact reading/spelling and surfaces malformed providers", async () => {
   let calls = 0;

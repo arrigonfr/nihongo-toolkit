@@ -32,7 +32,7 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await acceptStudyDialogs(page);
-  const url = `${base}/絵合わせ.html`;
+  const url = `${base}/eawase.html`;
   const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem("nihon:memory-v1")));
   const card = (id) => page.locator(`[data-card="${id}"]`);
   async function confirmedClick(selector) {
@@ -116,6 +116,9 @@ try {
     ]) {
       const input = page.locator(`#setting-groups ~ .chips [data-value="${group}"] input`);
       const checked = await input.isChecked();
+      await page.locator(`#setting-groups ~ .chips [data-value="${group}"]`).scrollIntoViewIfNeeded();
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await page.mouse.move(0, 0);
       await page.locator(`#setting-groups ~ .chips [data-value="${group}"]`).hover();
       const tooltip = page.locator("#studySettingTooltip");
       assert.equal(await tooltip.isVisible(), true);
@@ -379,9 +382,9 @@ try {
   }
   await page.goto(`${base}/index.html`);
   await page.click("#menuButton");
-  await page.click('[data-file="絵合わせ.html"]');
-  await page.frameLocator("#helperFrame").locator("#startButton").waitFor();
-  assert.equal(await page.getAttribute("#helperFrame", "src"), "絵合わせ.html");
+  await page.click('#helperMenu [data-file="eawase.html"]');
+  await page.waitForURL(`${base}/eawase.html`);
+  await page.locator("#startButton").waitFor();
   assert.deepEqual(errors, []);
   console.log("Memory browser checks passed: matching, keyboard, turn locking, assistance, persistence, daily, challenges, audio, dictionary, mobile, notebook, shared controls, launcher.");
 } finally {

@@ -27,7 +27,7 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await acceptStudyDialogs(page);
-  const url = `${base}/言葉探し.html`;
+  const url = `${base}/kotoba-sagashi.html`;
   const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem("nihon:word-search-v1")));
   const cell = (index) => page.locator(`[data-cell="${index}"]`);
   async function configure(values) {
@@ -261,8 +261,9 @@ try {
   await page.goto(`${base}/index.html`);
   await page.click("#menuButton");
   assert.equal(await page.locator(".helper-link").count(), 14);
-  await page.click('[data-file="言葉探し.html"]');
-  await page.frameLocator("#helperFrame").locator("#startButton").waitFor();
+  await page.click('#helperMenu [data-file="kotoba-sagashi.html"]');
+  await page.waitForURL(`${base}/kotoba-sagashi.html`);
+  await page.locator("#startButton").waitFor();
   assert.deepEqual(errors, []);
   console.log("Word Search browser checks passed: pointer, keyboard, touch, modes, daily persistence, notebook, and display.");
 } finally {
