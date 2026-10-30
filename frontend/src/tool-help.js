@@ -12,6 +12,7 @@ const tools = {
   "言葉.html": ["Kotoba", "Look up Japanese words, readings, romaji or English meanings. Kanji mode explores individual characters, readings, components and compounds. Example sentences include translations and source credits; request another example to see the word in a different context."],
   "文解き.html": ["Fumitoki", "Enter Japanese text and analyze it into words and particles. Select a token for its dictionary form, readings, definitions and examples. Enable translation for a sentence-level translation. Analysis and translation can be imperfect; use the dictionary details to check them."],
   "漢字地図帳.html": ["Kanji Chizuchō", "Explore a kanji's meanings, readings, components, stroke diagram and related vocabulary. Search a character or a word containing it, then select the character to inspect. Related words and sentences help you learn it in context."],
+  "資料.html": ["Shiryō", "Printable Japanese cheatsheets and handwriting practice."],
   "パズル.html": ["Pazuru", "Solve a Japanese vocabulary crossword. Choose a mode, JLPT range, answer script and puzzle size, then create a puzzle. Select a cell or clue to type; check, hint or reveal according to your settings. Inspect words for definitions, example sentences and kanji details. Daily puzzles are date-seeded; other puzzles vary."],
   "しりとり.html": ["Shiritori", ""]
 };
@@ -64,7 +65,7 @@ export function mountToolHelp() {
   const file = decodeURIComponent(location.pathname.split("/").pop());
   const [name, description] = tools[file] || ["Japanese practice", "Choose your study settings, then begin practicing. Review answers and use the shared reading and audio controls as needed."];
   const brand = document.querySelector(".brand-name, .cw-brand-name");
-  if (brand?.firstChild?.nodeType === Node.TEXT_NODE) brand.firstChild.textContent = name;
+  if (tools[file] && brand?.firstChild?.nodeType === Node.TEXT_NODE) brand.firstChild.textContent = name;
   const heading = document.querySelector(".intro h1, .cw-intro h1");
   if (heading && !document.getElementById("helpButton")) {
     const button = document.createElement("button");

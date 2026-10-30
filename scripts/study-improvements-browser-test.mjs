@@ -102,7 +102,7 @@ try {
   await allDetails();
   assert.equal(await page.locator('#formSettings .chip-option input[value="potential"]').isEnabled(), true);
   assert.equal(await page.locator('#formSettings .chip-option input[value="potential"]').isChecked(), false);
-  await page.locator('#levelSettings .chip-option input[value="4"]').check();
+  await page.locator('#levelSettings .chip-option:has(input[value="4"]) .chip-label').click();
   assert.equal(await page.locator('#formSettings .chip-option input[value="potential"]').isChecked(), true);
   await change("setting-language", "en");
   await page.click("#startButton");

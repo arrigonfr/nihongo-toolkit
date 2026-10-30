@@ -2,19 +2,20 @@ import { API_BASE } from "./api.js";
 import { rememberControls } from "./settings-storage.js";
 import { sentencesHTML, loadSentences } from "./examples.js";
 import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML } from "./study-controls.js";
+import { toHiragana } from "wanakana";
 (() => {
   "use strict";
   const WORDS_API = `${API_BASE}/api/words?keyword=`;
   const KANJI_API = `${API_BASE}/api/kanji/`;
   const HISTORY_KEY = "kotoba-history-v1";
-  const CACHE_KEY = `kotoba-sqlite-cache-v5:${API_BASE}`;
+  const CACHE_KEY = `kotoba-sqlite-cache-v8:${API_BASE}`;
   const COMPOUND_OPTIONS_KEY = "kotoba-compound-options-v1";
   const DEBOUNCE_MS = 350;
   const MAX_HISTORY = 20;
   const $ = (selector) => document.querySelector(selector);
   const input = $("#query"), results = $("#results"), searchButton = $("#searchButton");
   const resultLabel = $("#resultLabel"), kanjiMode = $("#kanjiMode");
-  let debounceTimer, activeController, requestNumber = 0, selectedIndex = -1;
+  let debounceTimer, activeController, activeSearchKey, requestNumber = 0, selectedIndex = -1;
 
   function readStorage(key, fallback) {
     try { const value = localStorage.getItem(key); return value ? JSON.parse(value) : fallback; }
@@ -236,20 +237,23 @@ import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML } from "./stu
   async function search(requestedQuery = null, requestedMode = null) {
     clearTimeout(debounceTimer);
     const query = (requestedQuery ?? input.value).trim();
+    const isKanji = requestedMode ?? kanjiMode.checked;
+    const searchKey = `${isKanji}:${query}`;
+    if (activeSearchKey === searchKey) return;
     activeController?.abort();
+    activeSearchKey = null;
     const token = ++requestNumber;
     if (!query) {
       resultLabel.textContent = "Ready when you are";
       showMessage("Your next discovery starts here","Search a word, paste a sentence, or switch on Kanji mode to explore a character.");
       return;
     }
-    const isKanji = requestedMode ?? kanjiMode.checked;
     input.value = requestedQuery ?? input.value;
     if (!isKanji && query.length > 100) {
       showMessage("Search is too long", "Use up to 100 characters. Shorten your search to a word or phrase; use Fumitoki to analyze longer Japanese text.", true);
       return;
     }
-    const controller = new AbortController(); activeController = controller;
+    const controller = new AbortController(); activeController = controller; activeSearchKey = searchKey;
     saveHistory(query,isKanji); setLoading(isKanji ? "Looking up kanji…" : "Searching the dictionary…");
     resultLabel.textContent = "Searching…";
     try {
@@ -259,7 +263,17 @@ import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML } from "./stu
       let words;
       if (cached) words = cached;
       else {
-        const response = await fetchJSON(WORDS_API + encodeURIComponent(query),controller.signal);
+        const kana = /^[a-z]{1,32}$/i.test(query) ? toHiragana(query.toLowerCase()) : "";
+        const reading = kana && /^[\u3041-\u3096ー]+$/.test(kana) ? kana : "";
+        let response = reading ? await fetchJSON(WORDS_API + encodeURIComponent(reading),controller.signal) : null;
+        const exactReadings = response?.data?.filter((item) => item.japanese?.some((form) => toHiragana(form.reading || "") === reading));
+        if (exactReadings?.length) response = { ...response, data: exactReadings };
+        if (!response?.data?.length) response = await fetchJSON(WORDS_API + encodeURIComponent(query),controller.signal);
+        if (!reading && /^[a-z]+$/i.test(query)) {
+          const wholeWord = new RegExp(`\\b${query}\\b`, "i");
+          const matches = response.data?.filter((item) => item.senses?.some((sense) => sense.english_definitions?.some((definition) => wholeWord.test(definition))));
+          response = { ...response, data: matches || [] };
+        }
         words = response.data || []; cacheWrite(key,words);
       }
       if (token !== requestNumber) return;
@@ -282,7 +296,7 @@ import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML } from "./stu
           true
         );
       }
-    } finally { if (token === requestNumber) setIdle(); }
+    } finally { if (token === requestNumber) { activeSearchKey = null; setIdle(); } }
   }
   function scheduleSearch() {
     clearTimeout(debounceTimer);
@@ -292,7 +306,7 @@ import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML } from "./stu
   input.addEventListener("keydown",(event) => {
     if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); search(); return; }
     if (event.key === "Escape") {
-      event.preventDefault(); input.value = ""; activeController?.abort(); requestNumber++;
+      event.preventDefault(); input.value = ""; activeController?.abort(); activeSearchKey = null; requestNumber++;
       resultLabel.textContent = "Ready when you are";
       showMessage("Your next discovery starts here","Search a word, paste a sentence, or switch on Kanji mode to explore a character."); input.focus(); return;
     }
@@ -313,7 +327,7 @@ import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML } from "./stu
   });
   kanjiMode.addEventListener("change",() => { if (input.value.trim()) search(); });
   $("#clearButton").addEventListener("click",() => {
-    input.value = ""; activeController?.abort(); requestNumber++;
+    input.value = ""; activeController?.abort(); activeSearchKey = null; requestNumber++;
     resultLabel.textContent = "Ready when you are";
     showMessage("Your next discovery starts here","Search a word, paste a sentence, or switch on Kanji mode to explore a character."); input.focus();
   });

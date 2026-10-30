@@ -192,7 +192,6 @@ export const FORMATS = [
   { id: "svg", label: "SVG", ext: "svg", mime: "image/svg+xml" },
   { id: "html", label: "HTML", ext: "html", mime: "text/html" },
   { id: "md", label: "Markdown", ext: "md", mime: "text/markdown" },
-  { id: "txt", label: "Text", ext: "txt", mime: "text/plain" },
   { id: "csv", label: "CSV", ext: "csv", mime: "text/csv" }
 ];
 

@@ -14,6 +14,15 @@ try {
   browser = await chromium.launch();
   const page = await browser.newPage();
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/資料.html#worksheet`);
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.locator(".study-header-description").textContent(), "Printable Japanese cheatsheets");
+  assert.equal(await page.locator('link[rel="apple-touch-icon"]').count(), 1);
+  assert.equal(await page.locator("header").evaluate((header) => {
+    const brand = header.querySelector(".brand").getBoundingClientRect();
+    const appearance = header.querySelector(".study-appearance").getBoundingClientRect();
+    return Math.abs(brand.top - appearance.top) < 10 && brand.right <= appearance.left;
+  }), true);
+  await page.setViewportSize({ width: 1280, height: 720 });
   const geometry = await page.evaluate(async () => {
     const { worksheetLayout, worksheetSVG } = await import("/src/worksheet.js");
     const layouts = ["a4", "letter", "legal"].flatMap((paper) => ["portrait", "landscape"].flatMap((orientation) => [34, 42, 50].map((size) => {
@@ -28,6 +37,7 @@ try {
   assert.match(geometry.positions[0], /^translate\(30 100\)/);
   assert.match(geometry.positions[1], /^translate\([\d.]+ 100\)/);
   assert.equal(await page.locator('.worksheet-choices:first-child #sheetGrayscale').count(), 1);
+  assert.equal(await page.locator('.download-panel[data-worksheet] [data-format="png"]').evaluate((button) => getComputedStyle(button).gridColumn), "auto");
   const kanaChoice = page.locator('[data-field="mode"][value="kana"]');
   await kanaChoice.focus();
   await page.keyboard.press("Space");
@@ -64,6 +74,7 @@ try {
   assert.equal(result.printing, undefined);
   assert.equal(result.cleaned, true);
   await page.locator('[data-sheet="kana"]').click();
+  assert.equal(await page.locator('.download-panel:not([data-worksheet]) [data-format="png"]').evaluate((button) => getComputedStyle(button).gridColumn), "auto");
   assert.equal(await page.locator('.download-panel > .sheet-grayscale #sheetGrayscale').count(), 1);
   const normalPrint = await page.evaluate(async () => {
     const originalTheme = document.documentElement.dataset.theme;
