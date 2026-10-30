@@ -55,6 +55,5 @@
     "TRANSLATION_API_FALLBACK": "true",
     "WORD_API_FALLBACK": "true",
     "API_COMPRESSION": "true"
-  },
-  "limits": { "cpu_ms": 30000 }
+  }
 }
