@@ -2,8 +2,9 @@
 .resources-shell main { padding: 20px 0 40px; }
 .resources-shell .intro { margin-bottom: 18px; }
 .sheet-picker { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
+.sheet-picker-break { flex-basis: 100%; height: 0; margin: -5px 0; }
 .sheet-tab {
-  display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 16px 0 8px; border: 1px solid var(--line); border-radius: 999px;
+  display: inline-flex; justify-self: center; align-items: center; gap: 8px; min-height: 38px; padding: 0 16px 0 8px; border: 1px solid var(--line); border-radius: 999px;
   background: var(--card); color: var(--ink); font: 700 13px/1 system-ui, sans-serif;
 }
 .sheet-tab-icon {
@@ -19,6 +20,25 @@
 .download-panel { position: sticky; top: 16px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: var(--shadow); }
 .download-panel h2 { margin: 0 0 6px; font-size: 18px; line-height: 1.3; }
 .download-summary { margin: 0 0 14px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.sheet-grayscale { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 13px; }
+.worksheet-controls { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 14px; }
+.worksheet-controls[hidden], .download-button[hidden] { display: none; }
+.worksheet-controls label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.worksheet-controls .chip-option { display: inline-flex; color: var(--ink); }
+.worksheet-controls .chip-option input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.worksheet-choices { position: relative; min-width: 0; margin: 0; padding: 0; border: 0; }
+.worksheet-choices legend { margin-bottom: 4px; color: var(--muted); font-size: 12px; }
+.worksheet-choices:disabled { opacity: .5; }
+.worksheet-controls .sheet-grayscale { position: absolute; right: 0; top: -19px; display: flex; align-items: center; gap: 6px; margin: 0; color: var(--ink); font-size: 12px; }
+.worksheet-controls input[type="range"] { width: 100%; }
+.worksheet-controls select { width: 100%; min-width: 0; min-height: 36px; }
+.worksheet-pages { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink); font-size: 13px; }
+.worksheet-pages button { min-width: 36px; min-height: 36px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink); }
+.worksheet-pages button:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.worksheet-pages button:disabled { opacity: .4; }
+.worksheet-print { display: none; }
+.worksheet-notice { grid-column: 1 / -1; margin: 0; font-size: 12px; }
+.worksheet-notice:empty { display: none; }
 .download-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .download-button {
   display: grid; align-content: center; gap: 2px; min-height: 52px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 12px;
@@ -30,6 +50,7 @@ body .download-button { text-align: left !important; justify-items: start !impor
 .download-button:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
 .download-button:disabled { opacity: .6; cursor: progress; }
 .download-button[data-format="print"], .download-button[data-format="png"] { grid-column: 1 / -1; }
+.download-panel[data-worksheet] .download-button[data-format="png"] { grid-column: auto; }
 .download-status:empty { display: none; }
 .download-status { margin: 12px 0 0; color: var(--accent-strong); font-size: 13px; }
 
@@ -41,6 +62,7 @@ body .download-button { text-align: left !important; justify-items: start !impor
   .resources-shell { width: min(100% - 24px, 1180px); }
   .sheet-stage { padding: 8px; }
   .sheet-picker { gap: 6px; }
+  .sheet-picker-break { display: none; }
   .sheet-tab { padding-right: 12px; }
 }
 
@@ -51,4 +73,8 @@ body .download-button { text-align: left !important; justify-items: start !impor
   body[data-printing] .resources-layout { display: block; }
   body[data-printing] .sheet-stage { padding: 0; border: 0; box-shadow: none; background: #fff; }
   body[data-printing] .sheet-paper { width: 210mm; height: 297mm; box-shadow: none; }
+  body[data-worksheet-printing] .resources-shell { display: none !important; }
+  body[data-worksheet-printing] .worksheet-print { display: block; }
+  body[data-worksheet-printing] .worksheet-print svg { display: block; width: 100%; height: auto; break-after: page; }
+  body[data-worksheet-printing] .worksheet-print svg:last-child { break-after: auto; }
 }

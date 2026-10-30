@@ -14,10 +14,18 @@ function setMenuOpen(open) {
   menuButton.setAttribute("aria-label", open ? "Close helper menu" : "Open helper menu");
 }
 
-function loadHelper(filename) {
+function currentHelper() {
+  try {
+    return decodeURIComponent(helperFrame.contentWindow.location.pathname.split("/").pop());
+  } catch {
+    return null;
+  }
+}
+
+function loadHelper(filename, navigate = true) {
   const link = helpers.get(filename);
   if (!link) return;
-  if (helperFrame && helperFrame.getAttribute("src") !== link.dataset.file) {
+  if (helperFrame && navigate && currentHelper() !== link.dataset.file) {
     helperFrame.src = link.dataset.file;
   }
   if (helperFrame) helperFrame.title = `${link.querySelector(".helper-name").textContent} helper`;
@@ -31,6 +39,11 @@ function loadHelper(filename) {
     else item.removeAttribute("aria-current");
   });
 }
+
+helperFrame?.addEventListener("load", () => {
+  const filename = currentHelper();
+  if (helpers.has(filename)) loadHelper(filename, false);
+});
 
 window.addEventListener("message", (event) => {
   if (!helperFrame || event.origin !== location.origin || event.source !== helperFrame.contentWindow) return;

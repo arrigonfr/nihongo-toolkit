@@ -2,10 +2,37 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { SHEETS, buildSheet, cellText, toKatakana } from "../src/cheatsheet-data.js";
 import { buildPdf, fileName, toCSV, toHTML, toMarkdown, toSVG, toText } from "../src/cheatsheet-export.js";
-import { PAGE, layoutSheet, textWidth, wrapText } from "../src/cheatsheet-layout.js";
+import { PAGE, layoutSheet, paginateReference, textWidth, wrapText } from "../src/cheatsheet-layout.js";
 
 const find = (sheet, tableId) => sheet.tables.find((table) => table.id === tableId);
 const rowText = (row) => row.map((item) => (item ? cellText(item) : ""));
+
+test("reference pagination preserves every row and limits columns", () => {
+  const sheet = buildSheet("counters");
+  const pages = paginateReference(sheet, 7);
+  assert.ok(pages.length > 1);
+  assert.deepEqual(pages.flatMap((page) => page.tables.flatMap((table) => table.rows)), sheet.tables.flatMap((table) => table.rows));
+  assert.ok(pages.every((page) => page.tables.length <= 2 && page.tables.every((table) => table.rows.length <= 7)));
+  const lastCounterPage = paginateReference(sheet).at(-1);
+  assert.equal(lastCounterPage.tables.length, 2);
+  assert.ok(lastCounterPage.tables[1].rows.length >= 5);
+  const radicals = buildSheet("radicals");
+  const radicalPages = paginateReference(radicals);
+  assert.equal(radicalPages.length, 8);
+  for (const page of radicalPages) {
+    const rowHeight = Math.min(140, 900 / Math.max(...page.tables.map((table) => table.rows.length)));
+    for (const table of page.tables) for (const row of table.rows) {
+      for (const [column, width] of [[1, 120], [2, 166]]) {
+        const lines = cellText(row[column]).split("\n").flatMap((line) => wrapText(line, 8.5, width - 10));
+        assert.ok(lines.length * 10.5 <= rowHeight - 6, `radicals: ${cellText(row[0])}`);
+      }
+    }
+  }
+  assert.equal(find(radicals, "radicals-traditional").rows.length, 214);
+  assert.ok(find(radicals, "radicals-traditional").rows.some((row) => cellText(row[0]) === "龠"));
+  assert.ok(find(radicals, "radicals-traditional").rows.some((row) => cellText(row[0]) === "水" && cellText(row[2]).includes("さんずい")));
+  assert.deepEqual(radicalPages.flatMap((page) => page.tables.flatMap((table) => table.rows)), radicals.tables.flatMap((table) => table.rows));
+});
 
 test("katakana is derived from hiragana by code point", () => {
   assert.equal(toKatakana("きゃ しゅ ぱ を ん"), "キャ シュ パ ヲ ン");
@@ -19,12 +46,15 @@ test("kana sheet has complete charts for both scripts", () => {
   assert.equal(basic.rows.length, 11);
   assert.deepEqual(rowText(basic.rows[2]), ["さ", "し", "す", "せ", "そ"]);
   assert.deepEqual(rowText(basic.rows[7]), ["や", "", "ゆ", "", "よ"]);
-  assert.deepEqual(rowText(basic.rows[9]), ["わ", "", "", "", "を"]);
+  assert.deepEqual(rowText(basic.rows[9]), ["わ", "ゐ", "", "ゑ", "を"]);
+  assert.deepEqual(rowText(find(sheet, "katakana-basic").rows[9]), ["ワ", "ヰ", "", "ヱ", "ヲ"]);
+  assert.equal(basic.rows[9][1].sub, "wi*");
+  assert.match(sheet.footer, /Historical kana.*not used in standard modern Japanese/);
   assert.equal(basic.rows[2][1].sub, "shi");
   assert.equal(basic.rows[3][2].sub, "tsu");
   const count = (table) => table.rows.flat().filter(Boolean).length;
-  assert.equal(count(basic), 46);
-  assert.equal(count(find(sheet, "katakana-basic")), 46);
+  assert.equal(count(basic), 48);
+  assert.equal(count(find(sheet, "katakana-basic")), 48);
   assert.equal(count(find(sheet, "hiragana-voiced")), 25);
   assert.equal(count(find(sheet, "hiragana-combo")), 33);
   assert.deepEqual(rowText(find(sheet, "katakana-voiced").rows[4]), ["パ", "ピ", "プ", "ペ", "ポ"]);
@@ -37,7 +67,16 @@ test("kana grids contain every kana exactly once", () => {
   const sheet = buildSheet("kana");
   const all = ["hiragana-basic", "hiragana-voiced"].flatMap((id) => find(sheet, id).rows.flat()).filter(Boolean).map(cellText);
   assert.equal(new Set(all).size, all.length);
-  assert.equal(all.length, 46 + 25);
+  assert.equal(all.length, 48 + 25);
+});
+
+test("kana explains irregular romanization and particle examples keep separate lines", () => {
+  assert.match(buildSheet("kana").footer, /し shi · ち chi · つ tsu · ふ fu have irregular pronunciations/);
+  const sheet = buildSheet("particles");
+  const object = find(sheet, "particles-roles").rows.find((row) => cellText(row[0]) === "を (o)");
+  assert.match(cellText(object[2]), /book\.\n道/);
+  assert.match(toMarkdown(sheet), /book\.<br>道/);
+  assert.match(toSVG(sheet), /道を歩く/);
 });
 
 test("verb table covers the main forms for each verb group", () => {
@@ -67,6 +106,9 @@ test("godan ending table follows the sound-change rules", () => {
   assert.deepEqual(row("す").slice(4, 6), ["話して", "話した"]);
   assert.deepEqual(row("ぬ").slice(4, 6), ["死んで", "死んだ"]);
   assert.deepEqual(row("る").slice(3, 5), ["帰らない", "帰って"]);
+  const note = buildSheet("verb").notes[0].lines.join(" ");
+  assert.match(note, /行く is godan/);
+  assert.match(note, /行って · 行った · 行ったら/);
 });
 
 test("adjective table covers i, na and いい", () => {
@@ -80,6 +122,57 @@ test("adjective table covers i, na and いい", () => {
   assert.deepEqual(byName["Adverb"], ["高く", "静かに", "よく"]);
   assert.deepEqual(byName["Conditional ば"], ["高ければ", "静かなら(ば)", "よければ"]);
   assert.deepEqual(byName["Looks like そう"], ["高そう", "静かそう", "よさそう"]);
+});
+
+test("reference sheets cover key forms and fit their rows", () => {
+  const expected = {
+    particles: ["は (wa)", "しか〜ない", "ながら"],
+    counters: ["人 (にん)", "本 (ほん)", "分 (ふん)"],
+    radicals: ["水 / 氵", "人 / 亻", "言 / 訁"],
+    ambiguities: ["会う / 合う", "知る / 分かる"],
+    lookalikes: ["土 / 士", "待 / 持"],
+    "grammar-contrasts": ["と", "たら", "そうだ (heard)", "迷惑の受身", "つもり", "ようと思う"]
+  };
+  for (const [id, forms] of Object.entries(expected)) {
+    const sheet = buildSheet(id);
+    const rows = sheet.tables.flatMap((table) => table.rows);
+    for (const form of forms) assert.ok(rows.some((row) => cellText(row[0]) === form), `${id}: ${form}`);
+    for (const row of rows) {
+      assert.equal(row.length, 3);
+      assert.ok(row.every((item) => cellText(item)));
+      for (const [column, width] of [[1, 120], [2, 166]]) {
+        const rowHeight = Math.min(140, 900 / Math.min(12, Math.max(...sheet.tables.map((table) => table.rows.length))));
+        assert.ok(wrapText(cellText(row[column]), 6, width - 10).length * 8 <= rowHeight - 4, `${id}: ${cellText(row[0])}`);
+      }
+    }
+  }
+});
+
+test("counter readings are distinguished from written forms in exports", () => {
+  const sheet = buildSheet("counters");
+  assert.match(sheet.subtitle, /Written form → pronunciation/);
+  assert.ok(sheet.tables.flatMap((table) => table.rows).length > 60);
+  for (const output of [toText(sheet), toMarkdown(sheet), toCSV(sheet), toSVG(sheet)]) {
+    assert.ok(output.includes("一つ → ひとつ"));
+  }
+});
+
+test("grayscale visual exports include a monochrome filter", () => {
+  const sheet = buildSheet("counters");
+  assert.match(toSVG(sheet, { grayscale: true }), /feColorMatrix type="saturate" values="0"/);
+  assert.match(toHTML(sheet, { grayscale: true }), /filter="url\(#sheet-grayscale\)"/);
+  assert.doesNotMatch(toSVG(sheet), /sheet-grayscale/);
+});
+
+test("lookalikes stack characters and identify visual differences", () => {
+  const sheet = buildSheet("lookalikes");
+  assert.equal(sheet.title, "Kanji Lookalikes");
+  assert.equal(sheet.tables[0].columns[2], "What differs");
+  assert.ok(sheet.tables.flatMap((table) => table.rows).length >= 20);
+  const labels = layoutSheet(sheet).prims.filter((item) => item.k === "t").map((item) => item.runs.map((run) => run.t).join(""));
+  assert.ok(labels.includes("土") && labels.includes("士"));
+  assert.ok(!labels.includes("土 / 士"));
+  assert.ok(labels.includes("未: longer lower bar."));
 });
 
 test("every sheet exports to all text formats", () => {
@@ -114,7 +207,9 @@ test("csv and markdown carry the cell content", () => {
 
 test("layout keeps everything inside one A4 page", () => {
   for (const { id } of SHEETS) {
-    const { prims, width, height } = layoutSheet(buildSheet(id));
+    const sheet = buildSheet(id);
+    const page = ["grammar-contrasts", "counters", "radicals"].includes(id) ? paginateReference(sheet)[0] : sheet;
+    const { prims, width, height } = layoutSheet(page);
     assert.equal(width, PAGE.w);
     assert.equal(height, PAGE.h);
     for (const p of prims) {

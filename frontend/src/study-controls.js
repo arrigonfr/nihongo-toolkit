@@ -54,7 +54,7 @@ export function speakJapanese(text) {
   window.speechSynthesis.speak(utterance);
 }
 
-function mountSupport() {
+export function mountSupport() {
   const intro = document.querySelector(".intro, .cw-intro");
   if (!intro || intro.querySelector(".study-support")) return;
   const content = document.createElement("div");

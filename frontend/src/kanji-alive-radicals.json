@@ -1,0 +1,1935 @@
+[
+  {
+    "character": "一",
+    "strokes": 1,
+    "meaning": "one, horizontal stroke",
+    "name": "いち",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "丨",
+    "strokes": 1,
+    "meaning": "vertical stroke",
+    "name": "たてぼう",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "丶",
+    "strokes": 1,
+    "meaning": "dot",
+    "name": "てん",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "丿",
+    "strokes": 1,
+    "meaning": "diagonal sweeping stroke",
+    "name": "の",
+    "variants": [
+      "のかんむり"
+    ]
+  },
+  {
+    "character": "乙",
+    "strokes": 1,
+    "meaning": "the second",
+    "name": "おつ",
+    "variants": [
+      "おつ"
+    ]
+  },
+  {
+    "character": "亅",
+    "strokes": 1,
+    "meaning": "vertical stroke with a hook",
+    "name": "はねぼう",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "二",
+    "strokes": 2,
+    "meaning": "two",
+    "name": "に",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "亠",
+    "strokes": 2,
+    "meaning": "lid, top",
+    "name": "なべぶた",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "人",
+    "strokes": 2,
+    "meaning": "person",
+    "name": "ひと",
+    "variants": [
+      "にんべん",
+      "ひとやね"
+    ]
+  },
+  {
+    "character": "儿",
+    "strokes": 2,
+    "meaning": "human legs",
+    "name": "ひとあし",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "入",
+    "strokes": 2,
+    "meaning": "to enter",
+    "name": "いる",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "八",
+    "strokes": 2,
+    "meaning": "eight",
+    "name": "はち",
+    "variants": [
+      "はちがしら"
+    ]
+  },
+  {
+    "character": "冂",
+    "strokes": 2,
+    "meaning": "to enclose",
+    "name": "けいがまえ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "冖",
+    "strokes": 2,
+    "meaning": "cover, crown",
+    "name": "わかんむり",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "冫",
+    "strokes": 2,
+    "meaning": "ice",
+    "name": "にすい",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "几",
+    "strokes": 2,
+    "meaning": "table",
+    "name": "きにょう",
+    "variants": [
+      "かぜかんむり"
+    ]
+  },
+  {
+    "character": "凵",
+    "strokes": 2,
+    "meaning": "container, open box",
+    "name": "かんにょう",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "刀",
+    "strokes": 2,
+    "meaning": "knife, sword",
+    "name": "かたな",
+    "variants": [
+      "りっとう"
+    ]
+  },
+  {
+    "character": "力",
+    "strokes": 2,
+    "meaning": "power",
+    "name": "ちから",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "勹",
+    "strokes": 2,
+    "meaning": "to wrap",
+    "name": "つつみがまえ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "匕",
+    "strokes": 2,
+    "meaning": "spoon",
+    "name": "さじ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "匚",
+    "strokes": 2,
+    "meaning": "box",
+    "name": "はこがまえ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "匸",
+    "strokes": 2,
+    "meaning": "to conceal, hide",
+    "name": "かくしがまえ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "十",
+    "strokes": 2,
+    "meaning": "ten",
+    "name": "じゅう",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "卜",
+    "strokes": 2,
+    "meaning": "oracle",
+    "name": "ぼく",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "卩",
+    "strokes": 2,
+    "meaning": "stamp, seal",
+    "name": "ふしづくり",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "厂",
+    "strokes": 2,
+    "meaning": "cliff",
+    "name": "がんだれ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "厶",
+    "strokes": 2,
+    "meaning": "private, Katakana Mu",
+    "name": "む",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "又",
+    "strokes": 2,
+    "meaning": "again, right hand",
+    "name": "また",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "口",
+    "strokes": 3,
+    "meaning": "mouth",
+    "name": "くち",
+    "variants": [
+      "くちへん"
+    ]
+  },
+  {
+    "character": "囗",
+    "strokes": 3,
+    "meaning": "border, territorial boundaries",
+    "name": "くにがまえ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "土",
+    "strokes": 3,
+    "meaning": "earth",
+    "name": "つち",
+    "variants": [
+      "つちへん"
+    ]
+  },
+  {
+    "character": "士",
+    "strokes": 3,
+    "meaning": "man, scholar, samurai",
+    "name": "さむらい",
+    "variants": [
+      "さむらいかんむり"
+    ]
+  },
+  {
+    "character": "夂",
+    "strokes": 3,
+    "meaning": "to follow",
+    "name": "のまた",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "夊",
+    "strokes": 3,
+    "meaning": "to go slowly",
+    "name": "なつあし",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "夕",
+    "strokes": 3,
+    "meaning": "evening",
+    "name": "ゆうべ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "大",
+    "strokes": 3,
+    "meaning": "large, big",
+    "name": "だい",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "女",
+    "strokes": 3,
+    "meaning": "woman",
+    "name": "おんな",
+    "variants": [
+      "おんなへん"
+    ]
+  },
+  {
+    "character": "子",
+    "strokes": 3,
+    "meaning": "child, son",
+    "name": "こ",
+    "variants": [
+      "こへん"
+    ]
+  },
+  {
+    "character": "宀",
+    "strokes": 3,
+    "meaning": "roof, house",
+    "name": "うかんむり",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "寸",
+    "strokes": 3,
+    "meaning": "inch, (2.25 cm)",
+    "name": "すん",
+    "variants": [
+      "すんづくり"
+    ]
+  },
+  {
+    "character": "小",
+    "strokes": 3,
+    "meaning": "small",
+    "name": "しょう",
+    "variants": [
+      "しょうかんむり"
+    ]
+  },
+  {
+    "character": "⺐",
+    "strokes": 3,
+    "meaning": "lame leg",
+    "name": "だいのまげあし",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "尸",
+    "strokes": 3,
+    "meaning": "corpse, awning",
+    "name": "しかばね",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "屮",
+    "strokes": 3,
+    "meaning": "sprout",
+    "name": "くさのめ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "山",
+    "strokes": 3,
+    "meaning": "mountain",
+    "name": "やま",
+    "variants": [
+      "やまへん",
+      "やまかんむり"
+    ]
+  },
+  {
+    "character": "巛",
+    "strokes": 3,
+    "meaning": "winding river",
+    "name": "まがりがわ",
+    "variants": [
+      "さんぼんがわ"
+    ]
+  },
+  {
+    "character": "工",
+    "strokes": 3,
+    "meaning": "work, carpenter, skill",
+    "name": "たくみ",
+    "variants": [
+      "たくみへん"
+    ]
+  },
+  {
+    "character": "己",
+    "strokes": 3,
+    "meaning": "self",
+    "name": "おのれ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "巾",
+    "strokes": 3,
+    "meaning": "cloth",
+    "name": "はば",
+    "variants": [
+      "はばへん"
+    ]
+  },
+  {
+    "character": "干",
+    "strokes": 3,
+    "meaning": "to dry, shield",
+    "name": "かん",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "⺓",
+    "strokes": 3,
+    "meaning": "young, slight",
+    "name": "いとがしら",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "广",
+    "strokes": 3,
+    "meaning": "slanting roof",
+    "name": "まだれ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "廴",
+    "strokes": 3,
+    "meaning": "to move, stretch",
+    "name": "えんにょう",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "廾",
+    "strokes": 3,
+    "meaning": "folded hands",
+    "name": "にじゅうあし",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "弋",
+    "strokes": 3,
+    "meaning": "javelin",
+    "name": "いぐるみ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "弓",
+    "strokes": 3,
+    "meaning": "bow（in archery）",
+    "name": "ゆみ",
+    "variants": [
+      "ゆみへん"
+    ]
+  },
+  {
+    "character": "彐",
+    "strokes": 3,
+    "meaning": "pig’s head",
+    "name": "けいがしら",
+    "variants": [
+      "けいがしら"
+    ]
+  },
+  {
+    "character": "彡",
+    "strokes": 3,
+    "meaning": "hair-style, light rays",
+    "name": "さんづくり",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "彳",
+    "strokes": 3,
+    "meaning": "step, stride, street, to go",
+    "name": "ぎょうにんべん",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "心",
+    "strokes": 4,
+    "meaning": "heart, mind, spirit",
+    "name": "こころ",
+    "variants": [
+      "りっしんべん",
+      "したごころ"
+    ]
+  },
+  {
+    "character": "戈",
+    "strokes": 4,
+    "meaning": "spear, weapon",
+    "name": "ほこ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "戶",
+    "strokes": 4,
+    "meaning": "door",
+    "name": "と",
+    "variants": [
+      "とだれ"
+    ]
+  },
+  {
+    "character": "手",
+    "strokes": 4,
+    "meaning": "hand",
+    "name": "て",
+    "variants": [
+      "てへん"
+    ]
+  },
+  {
+    "character": "支",
+    "strokes": 4,
+    "meaning": "branch",
+    "name": "しにょう",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "攴",
+    "strokes": 4,
+    "meaning": "activity, to strike, hit",
+    "name": "ぼくづくり",
+    "variants": [
+      "ぼくづくり"
+    ]
+  },
+  {
+    "character": "文",
+    "strokes": 4,
+    "meaning": "literature, letters",
+    "name": "ぶん",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "斗",
+    "strokes": 4,
+    "meaning": "big dipper, ladle, 18 liters",
+    "name": "ますづくり",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "斤",
+    "strokes": 4,
+    "meaning": "axe",
+    "name": "おのづくり",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "方",
+    "strokes": 4,
+    "meaning": "direction, flag",
+    "name": "ほう",
+    "variants": [
+      "ほうへん"
+    ]
+  },
+  {
+    "character": "无",
+    "strokes": 4,
+    "meaning": "not",
+    "name": "むにょう",
+    "variants": [
+      "むにょう"
+    ]
+  },
+  {
+    "character": "日",
+    "strokes": 4,
+    "meaning": "sun, day, time",
+    "name": "ひ",
+    "variants": [
+      "ひへん"
+    ]
+  },
+  {
+    "character": "曰",
+    "strokes": 4,
+    "meaning": "to say",
+    "name": "ひらび",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "月",
+    "strokes": 4,
+    "meaning": "moon, month, period",
+    "name": "つき",
+    "variants": [
+      "つきへん"
+    ]
+  },
+  {
+    "character": "木",
+    "strokes": 4,
+    "meaning": "tree, wood",
+    "name": "き",
+    "variants": [
+      "きへん"
+    ]
+  },
+  {
+    "character": "欠",
+    "strokes": 4,
+    "meaning": "to lack, yawn",
+    "name": "あくび",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "止",
+    "strokes": 4,
+    "meaning": "to stop",
+    "name": "とめる",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "歹",
+    "strokes": 4,
+    "meaning": "death & dying, to decompose",
+    "name": "がつ",
+    "variants": [
+      "がつへん"
+    ]
+  },
+  {
+    "character": "殳",
+    "strokes": 4,
+    "meaning": "lance shaft, action",
+    "name": "るまた",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "毋",
+    "strokes": 4,
+    "meaning": "not, mother",
+    "name": "なかれ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "比",
+    "strokes": 4,
+    "meaning": "to compare",
+    "name": "くらべる",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "毛",
+    "strokes": 4,
+    "meaning": "hair",
+    "name": "け",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "氏",
+    "strokes": 4,
+    "meaning": "family, clan",
+    "name": "うじ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "气",
+    "strokes": 4,
+    "meaning": "steam, air",
+    "name": "きがまえ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "水",
+    "strokes": 4,
+    "meaning": "water",
+    "name": "みず",
+    "variants": [
+      "さんずい",
+      "したみず"
+    ]
+  },
+  {
+    "character": "火",
+    "strokes": 4,
+    "meaning": "fire",
+    "name": "ひ",
+    "variants": [
+      "ひへん",
+      "れっか"
+    ]
+  },
+  {
+    "character": "爪",
+    "strokes": 4,
+    "meaning": "claw, nail",
+    "name": "つめ",
+    "variants": [
+      "つめかんむり"
+    ]
+  },
+  {
+    "character": "父",
+    "strokes": 4,
+    "meaning": "father",
+    "name": "ちち",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "爻",
+    "strokes": 4,
+    "meaning": "to mix",
+    "name": "こう",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "爿",
+    "strokes": 4,
+    "meaning": "split wood",
+    "name": "しょうへん",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "片",
+    "strokes": 4,
+    "meaning": "split wood",
+    "name": "かた",
+    "variants": [
+      "かたへん"
+    ]
+  },
+  {
+    "character": "牙",
+    "strokes": 4,
+    "meaning": "fang, canine tooth",
+    "name": "きば",
+    "variants": [
+      "きば",
+      "きばへん"
+    ]
+  },
+  {
+    "character": "牛",
+    "strokes": 4,
+    "meaning": "cow",
+    "name": "うし",
+    "variants": [
+      "うしへん"
+    ]
+  },
+  {
+    "character": "犬",
+    "strokes": 4,
+    "meaning": "dog",
+    "name": "いぬ",
+    "variants": [
+      "けものへん"
+    ]
+  },
+  {
+    "character": "玄",
+    "strokes": 5,
+    "meaning": "darkness",
+    "name": "げん",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "玉",
+    "strokes": 5,
+    "meaning": "jewelry",
+    "name": "たま",
+    "variants": [
+      "おうへん"
+    ]
+  },
+  {
+    "character": "瓜",
+    "strokes": 5,
+    "meaning": "melon",
+    "name": "うり",
+    "variants": [
+      "うり"
+    ]
+  },
+  {
+    "character": "瓦",
+    "strokes": 5,
+    "meaning": "tile",
+    "name": "かわら",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "甘",
+    "strokes": 5,
+    "meaning": "sweet",
+    "name": "あまい",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "生",
+    "strokes": 5,
+    "meaning": "birth, to be born, live",
+    "name": "うまれる",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "用",
+    "strokes": 5,
+    "meaning": "to use",
+    "name": "もちいる",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "田",
+    "strokes": 5,
+    "meaning": "rice paddy",
+    "name": "た",
+    "variants": [
+      "たへん"
+    ]
+  },
+  {
+    "character": "疋",
+    "strokes": 5,
+    "meaning": "bolt of cloth",
+    "name": "ひき",
+    "variants": [
+      "ひきへん"
+    ]
+  },
+  {
+    "character": "疒",
+    "strokes": 5,
+    "meaning": "sickness",
+    "name": "やまいだれ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "癶",
+    "strokes": 5,
+    "meaning": "outspread legs, departure",
+    "name": "はつがしら",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "白",
+    "strokes": 5,
+    "meaning": "white",
+    "name": "しろ",
+    "variants": [
+      "はくへん"
+    ]
+  },
+  {
+    "character": "皮",
+    "strokes": 5,
+    "meaning": "skin, hide",
+    "name": "けがわ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "皿",
+    "strokes": 5,
+    "meaning": "plate, bowl",
+    "name": "さら",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "目",
+    "strokes": 5,
+    "meaning": "eye",
+    "name": "め",
+    "variants": [
+      "めへん",
+      "よこめ"
+    ]
+  },
+  {
+    "character": "矛",
+    "strokes": 5,
+    "meaning": "halberd",
+    "name": "ほこ",
+    "variants": [
+      "ほこへん"
+    ]
+  },
+  {
+    "character": "矢",
+    "strokes": 5,
+    "meaning": "arrow",
+    "name": "や",
+    "variants": [
+      "やへん"
+    ]
+  },
+  {
+    "character": "石",
+    "strokes": 5,
+    "meaning": "stone",
+    "name": "いし",
+    "variants": [
+      "いしへん"
+    ]
+  },
+  {
+    "character": "示",
+    "strokes": 5,
+    "meaning": "altar, festival, religious service",
+    "name": "しめす",
+    "variants": [
+      "しめすへん"
+    ]
+  },
+  {
+    "character": "禸",
+    "strokes": 5,
+    "meaning": "footprint",
+    "name": "じゅうのあし",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "禾",
+    "strokes": 5,
+    "meaning": "grain",
+    "name": "のぎへん",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "穴",
+    "strokes": 5,
+    "meaning": "hole, cave",
+    "name": "あな",
+    "variants": [
+      "あなかんむり"
+    ]
+  },
+  {
+    "character": "立",
+    "strokes": 5,
+    "meaning": "to stand",
+    "name": "たつ",
+    "variants": [
+      "たつへん"
+    ]
+  },
+  {
+    "character": "竹",
+    "strokes": 6,
+    "meaning": "bamboo",
+    "name": "たけ",
+    "variants": [
+      "たけかんむり"
+    ]
+  },
+  {
+    "character": "米",
+    "strokes": 6,
+    "meaning": "rice",
+    "name": "こめ",
+    "variants": [
+      "こめへん"
+    ]
+  },
+  {
+    "character": "糸",
+    "strokes": 6,
+    "meaning": "thread",
+    "name": "いと",
+    "variants": [
+      "いとへん"
+    ]
+  },
+  {
+    "character": "缶",
+    "strokes": 6,
+    "meaning": "earthen jar",
+    "name": "みずがめ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "网",
+    "strokes": 6,
+    "meaning": "net",
+    "name": "あみめ",
+    "variants": [
+      "あみがしら"
+    ]
+  },
+  {
+    "character": "羊",
+    "strokes": 6,
+    "meaning": "sheep",
+    "name": "ひつじ",
+    "variants": [
+      "ひつじ"
+    ]
+  },
+  {
+    "character": "羽",
+    "strokes": 6,
+    "meaning": "feather, wing",
+    "name": "はね",
+    "variants": [
+      "はね"
+    ]
+  },
+  {
+    "character": "老",
+    "strokes": 6,
+    "meaning": "old, old-age",
+    "name": "おいかんむり",
+    "variants": [
+      "おいかんむり"
+    ]
+  },
+  {
+    "character": "而",
+    "strokes": 6,
+    "meaning": "and also",
+    "name": "しこうして",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "耒",
+    "strokes": 6,
+    "meaning": "plow",
+    "name": "らいすき",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "耳",
+    "strokes": 6,
+    "meaning": "ear",
+    "name": "みみ",
+    "variants": [
+      "みみへん"
+    ]
+  },
+  {
+    "character": "聿",
+    "strokes": 6,
+    "meaning": "writing brush",
+    "name": "ふでづくり",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "肉",
+    "strokes": 6,
+    "meaning": "flesh, meat",
+    "name": "にく",
+    "variants": [
+      "にくづき"
+    ]
+  },
+  {
+    "character": "臣",
+    "strokes": 6,
+    "meaning": "retainer, minister",
+    "name": "しん",
+    "variants": [
+      "しん"
+    ]
+  },
+  {
+    "character": "自",
+    "strokes": 6,
+    "meaning": "self",
+    "name": "みずから",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "至",
+    "strokes": 6,
+    "meaning": "to arrive, reach",
+    "name": "いたる",
+    "variants": [
+      "いたるへん"
+    ]
+  },
+  {
+    "character": "臼",
+    "strokes": 6,
+    "meaning": "mortar, quern",
+    "name": "うす",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "舌",
+    "strokes": 6,
+    "meaning": "tongue",
+    "name": "した",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "舛",
+    "strokes": 6,
+    "meaning": "contrary, to err",
+    "name": "まいあし",
+    "variants": [
+      "まいあし"
+    ]
+  },
+  {
+    "character": "舟",
+    "strokes": 6,
+    "meaning": "ship, boat",
+    "name": "ふね",
+    "variants": [
+      "ふねへん"
+    ]
+  },
+  {
+    "character": "艮",
+    "strokes": 6,
+    "meaning": "boundary",
+    "name": "こん",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "色",
+    "strokes": 6,
+    "meaning": "color",
+    "name": "いろ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "艸",
+    "strokes": 6,
+    "meaning": "grass, plant",
+    "name": "くさ",
+    "variants": [
+      "くさかんむり"
+    ]
+  },
+  {
+    "character": "虍",
+    "strokes": 6,
+    "meaning": "tiger",
+    "name": "とらがしら",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "虫",
+    "strokes": 6,
+    "meaning": "worm, insect, bug",
+    "name": "むし",
+    "variants": [
+      "むしへん"
+    ]
+  },
+  {
+    "character": "血",
+    "strokes": 6,
+    "meaning": "blood",
+    "name": "ち",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "行",
+    "strokes": 6,
+    "meaning": "to go",
+    "name": "ぎょうがまえ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "衣",
+    "strokes": 6,
+    "meaning": "clothing",
+    "name": "ころも",
+    "variants": [
+      "ころもへん"
+    ]
+  },
+  {
+    "character": "襾",
+    "strokes": 6,
+    "meaning": "cover, west",
+    "name": "にし",
+    "variants": [
+      "にし"
+    ]
+  },
+  {
+    "character": "見",
+    "strokes": 7,
+    "meaning": "to see",
+    "name": "みる",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "角",
+    "strokes": 7,
+    "meaning": "horn, corner",
+    "name": "つの",
+    "variants": [
+      "つのへん"
+    ]
+  },
+  {
+    "character": "言",
+    "strokes": 7,
+    "meaning": "words, to speak, say",
+    "name": "げん",
+    "variants": [
+      "ごんべん"
+    ]
+  },
+  {
+    "character": "谷",
+    "strokes": 7,
+    "meaning": "valley",
+    "name": "たに",
+    "variants": [
+      "たにへん"
+    ]
+  },
+  {
+    "character": "豆",
+    "strokes": 7,
+    "meaning": "bean",
+    "name": "まめ",
+    "variants": [
+      "まめへん"
+    ]
+  },
+  {
+    "character": "豕",
+    "strokes": 7,
+    "meaning": "pig",
+    "name": "いのこ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "豸",
+    "strokes": 7,
+    "meaning": "badger",
+    "name": "むじなへん",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "貝",
+    "strokes": 7,
+    "meaning": "shell, property, wealth",
+    "name": "かい",
+    "variants": [
+      "かいへん"
+    ]
+  },
+  {
+    "character": "赤",
+    "strokes": 7,
+    "meaning": "red",
+    "name": "あか",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "走",
+    "strokes": 7,
+    "meaning": "to run",
+    "name": "はしる",
+    "variants": [
+      "そうにょう"
+    ]
+  },
+  {
+    "character": "足",
+    "strokes": 7,
+    "meaning": "foot, leg",
+    "name": "あし",
+    "variants": [
+      "あしへん"
+    ]
+  },
+  {
+    "character": "身",
+    "strokes": 7,
+    "meaning": "body",
+    "name": "み",
+    "variants": [
+      "みへん"
+    ]
+  },
+  {
+    "character": "車",
+    "strokes": 7,
+    "meaning": "vehicle, wheel, car",
+    "name": "くるま",
+    "variants": [
+      "くるまへん"
+    ]
+  },
+  {
+    "character": "辛",
+    "strokes": 7,
+    "meaning": "bitter",
+    "name": "からい",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "辰",
+    "strokes": 7,
+    "meaning": "Fifth zodiac sign, 7–9 A.M.",
+    "name": "しんのたつ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "辵",
+    "strokes": 7,
+    "meaning": "to advance, move ahead",
+    "name": "しんにょう",
+    "variants": [
+      "しんにょう"
+    ]
+  },
+  {
+    "character": "邑",
+    "strokes": 7,
+    "meaning": "community",
+    "name": "むら",
+    "variants": [
+      "おおざと"
+    ]
+  },
+  {
+    "character": "酉",
+    "strokes": 7,
+    "meaning": "sake jar, bird",
+    "name": "ひよみのとり",
+    "variants": [
+      "とりへん"
+    ]
+  },
+  {
+    "character": "釆",
+    "strokes": 7,
+    "meaning": "to separate",
+    "name": "のごめ",
+    "variants": [
+      "のごめへん"
+    ]
+  },
+  {
+    "character": "里",
+    "strokes": 7,
+    "meaning": "village, (3.93 km)",
+    "name": "さと",
+    "variants": [
+      "さとへん"
+    ]
+  },
+  {
+    "character": "金",
+    "strokes": 8,
+    "meaning": "metal, gold, mineral",
+    "name": "かね",
+    "variants": [
+      "かねへん"
+    ]
+  },
+  {
+    "character": "⻑",
+    "strokes": 8,
+    "meaning": "long",
+    "name": "ながい",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "門",
+    "strokes": 8,
+    "meaning": "gate, door",
+    "name": "もんがまえ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "阜",
+    "strokes": 8,
+    "meaning": "hill",
+    "name": "こざと",
+    "variants": [
+      "こざとへん"
+    ]
+  },
+  {
+    "character": "隶",
+    "strokes": 8,
+    "meaning": "to capture",
+    "name": "れいづくり",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "隹",
+    "strokes": 8,
+    "meaning": "small bird",
+    "name": "ふるとり",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "雨",
+    "strokes": 8,
+    "meaning": "rain",
+    "name": "あめ",
+    "variants": [
+      "あめかんむり"
+    ]
+  },
+  {
+    "character": "靑",
+    "strokes": 8,
+    "meaning": "blue, green",
+    "name": "あお",
+    "variants": [
+      "あお"
+    ]
+  },
+  {
+    "character": "非",
+    "strokes": 8,
+    "meaning": "wrong, non-",
+    "name": "あらず",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "面",
+    "strokes": 9,
+    "meaning": "face, surface",
+    "name": "めん",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "革",
+    "strokes": 9,
+    "meaning": "leather",
+    "name": "つくりがわ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "韋",
+    "strokes": 9,
+    "meaning": "leather",
+    "name": "なめしがわ",
+    "variants": [
+      "なめしがわ"
+    ]
+  },
+  {
+    "character": "韭",
+    "strokes": 9,
+    "meaning": "leek",
+    "name": "にら",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "音",
+    "strokes": 9,
+    "meaning": "sound, noise",
+    "name": "おと",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "頁",
+    "strokes": 9,
+    "meaning": "head, page",
+    "name": "おおがい",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "風",
+    "strokes": 9,
+    "meaning": "wind",
+    "name": "かぜ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "飛",
+    "strokes": 9,
+    "meaning": "to fly",
+    "name": "とぶ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "食",
+    "strokes": 9,
+    "meaning": "food, to eat",
+    "name": "しょく",
+    "variants": [
+      "しょくへん"
+    ]
+  },
+  {
+    "character": "首",
+    "strokes": 9,
+    "meaning": "head",
+    "name": "くび",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "香",
+    "strokes": 9,
+    "meaning": "scent",
+    "name": "かおり",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "馬",
+    "strokes": 10,
+    "meaning": "horse",
+    "name": "うま",
+    "variants": [
+      "うまへん"
+    ]
+  },
+  {
+    "character": "骨",
+    "strokes": 10,
+    "meaning": "bone",
+    "name": "ほね",
+    "variants": [
+      "ほねへん"
+    ]
+  },
+  {
+    "character": "高",
+    "strokes": 10,
+    "meaning": "high",
+    "name": "たかい",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "髟",
+    "strokes": 10,
+    "meaning": "long hair",
+    "name": "かみかんむり",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "鬥",
+    "strokes": 10,
+    "meaning": "fighting",
+    "name": "たたかいがまえ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "鬯",
+    "strokes": 10,
+    "meaning": "herbs",
+    "name": "においざけ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "鬲",
+    "strokes": 10,
+    "meaning": "tripod",
+    "name": "れき",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "鬼",
+    "strokes": 10,
+    "meaning": "demon",
+    "name": "おに",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "魚",
+    "strokes": 11,
+    "meaning": "fish",
+    "name": "うお",
+    "variants": [
+      "うおへん"
+    ]
+  },
+  {
+    "character": "鳥",
+    "strokes": 11,
+    "meaning": "bird",
+    "name": "とり",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "鹵",
+    "strokes": 11,
+    "meaning": "salt",
+    "name": "しお",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "鹿",
+    "strokes": 11,
+    "meaning": "deer",
+    "name": "しか",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "麥",
+    "strokes": 11,
+    "meaning": "wheat",
+    "name": "むぎ",
+    "variants": [
+      "むぎ"
+    ]
+  },
+  {
+    "character": "麻",
+    "strokes": 11,
+    "meaning": "hemp",
+    "name": "あさ",
+    "variants": [
+      "あさかんむり"
+    ]
+  },
+  {
+    "character": "黃",
+    "strokes": 12,
+    "meaning": "yellow",
+    "name": "き",
+    "variants": [
+      "き"
+    ]
+  },
+  {
+    "character": "黍",
+    "strokes": 12,
+    "meaning": "millet",
+    "name": "きび",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "黑",
+    "strokes": 12,
+    "meaning": "black",
+    "name": "くろ",
+    "variants": [
+      "くろ"
+    ]
+  },
+  {
+    "character": "黹",
+    "strokes": 12,
+    "meaning": "embroider",
+    "name": "ぬいとり",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "黽",
+    "strokes": 13,
+    "meaning": "frog",
+    "name": "かえる",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "鼎",
+    "strokes": 13,
+    "meaning": "tripod",
+    "name": "かなえ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "鼓",
+    "strokes": 13,
+    "meaning": "drum",
+    "name": "つづみ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "鼠",
+    "strokes": 13,
+    "meaning": "rat, mouse",
+    "name": "ねずみ",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "鼻",
+    "strokes": 14,
+    "meaning": "nose",
+    "name": "はな",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "齊",
+    "strokes": 14,
+    "meaning": "alike",
+    "name": "せい",
+    "variants": [
+      "せい"
+    ]
+  },
+  {
+    "character": "齒",
+    "strokes": 15,
+    "meaning": "tooth",
+    "name": "は",
+    "variants": [
+      "は"
+    ]
+  },
+  {
+    "character": "龍",
+    "strokes": 16,
+    "meaning": "dragon",
+    "name": "りゅう",
+    "variants": [
+
+    ]
+  },
+  {
+    "character": "龜",
+    "strokes": 16,
+    "meaning": "turtle",
+    "name": "かめ",
+    "variants": [
+      "かめ"
+    ]
+  },
+  {
+    "character": "龠",
+    "strokes": 17,
+    "meaning": "flute",
+    "name": "やく",
+    "variants": [
+
+    ]
+  }
+]

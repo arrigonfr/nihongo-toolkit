@@ -392,13 +392,24 @@ and browser interaction coverage.
 
 ## Shiryō resources (cheatsheets)
 
-Open **Shiryō · 資料** (`frontend/資料.html`) for three single-page A4 cheatsheets:
-Hiragana & Katakana, Verb conjugation and Adjective conjugation. Everything is
+Open **Shiryō · 資料** (`frontend/資料.html`) for single-page A4 cheatsheets:
+Hiragana & Katakana, Verb conjugation, Adjective conjugation, Particles, Counters,
+and focused word, kanji and grammar contrast sheets. Everything is
 generated in the browser (no backend): preview, then download as PNG, PDF (image
 based), SVG, standalone HTML, Markdown, plain text or CSV, or use **Print / Save as
 PDF** for vector text. Content lives in `src/cheatsheet-data.js`, page layout in
 `src/cheatsheet-layout.js`, exporters in `src/cheatsheet-export.js`; unit tests are
 in `frontend/test/cheatsheets.test.js`.
+
+The grayscale option applies to the preview, printing, and visual exports (PNG,
+PDF, SVG, and HTML). Text, Markdown, and CSV exports are unaffected.
+
+The handwriting worksheet uses locally generated KanjiVG stroke diagrams and
+JLPT lists. Choose characters, paper, orientation, font size, stroke opacity and
+number size. Printing and PDF include all pages; PNG, SVG and HTML downloads are
+ZIP archives of all pages. Regenerate the lists with
+`node scripts/build-worksheet-kanji.mjs` after updating the D1 export, and the
+stroke data with `node scripts/build-worksheet-strokes.mjs`.
 
 ## Katsuyō Japanese conjugator
 
