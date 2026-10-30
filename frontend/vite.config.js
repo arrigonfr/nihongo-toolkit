@@ -8,6 +8,7 @@ const toolFiles = readdirSync(root).filter((file) => file.endsWith(".html") && !
 
 function toolNavigation(site) {
   function addTagManager(html) {
+    html = html.replace(/<head\b[^>]*>/i, (head) => `${head}\n<script async src="https://www.googletagmanager.com/gtag/js?id=G-LL2V1JZBER"></script>\n<script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-LL2V1JZBER');</script>`);
     html = html.replace(/<head\b[^>]*>/i, (head) => `${head}\n<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-T7N85X93');</script>`);
     return html.replace(/<body\b[^>]*>/i, (body) => `${body}\n<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T7N85X93" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>`);
   }

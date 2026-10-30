@@ -45,6 +45,9 @@ try {
   for (const file of ["index.html", "kana.html", "yomi.html", "imi.html", "goi.html", "katsuyo-renshuu.html", "kotoba.html", "kanji-chizucho.html", "katsuyo.html", "fumitoki.html", "shiryo.html", "eawase.html", "kotoba-sagashi.html", "pazuru.html", "shiritori.html", "data-sources.html"]) {
     const source = await (await page.request.get(`${base}/${file}`)).text();
     assert.equal((source.match(/gtm\.js\?id=/g) || []).length, 1, `${file} has one GTM script`);
+    const head = source.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)[1];
+    assert.equal((head.match(/gtag\/js\?id=G-LL2V1JZBER/g) || []).length, 1, `${file} loads the Google tag once`);
+    assert.equal((head.match(/gtag\('config', 'G-LL2V1JZBER'\)/g) || []).length, 1, `${file} configures the Google tag once`);
     assert.match(source, /<body[^>]*>\s*<noscript><iframe src="https:\/\/www\.googletagmanager\.com\/ns\.html\?id=GTM-T7N85X93"/);
   }
   await page.goto(`${base}/data-sources.html`);
