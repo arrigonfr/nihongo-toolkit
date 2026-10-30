@@ -73,12 +73,14 @@ function drawCell(prims, item, x, y, w, rowH, o) {
   if (item.sub) text(prims, x + w / 2, y + rowH - 4.5, item.sub, fitSize(item.sub, o.subSize, w - 8, 5.5), { fill: MUTED });
 }
 
-function drawWrapped(prims, item, x, y, w, rowH, size) {
-  let lines = wrapText(cellText(item), size, w - 10);
+function drawWrapped(prims, item, x, y, w, rowH, size, options = {}) {
+  const content = options.content ?? cellText(item);
+  const wrap = (fontSize) => content.split("\n").flatMap((line) => wrapText(line, fontSize, w - 10));
+  let lines = wrap(size);
   let fontSize = size;
-  while (lines.length > 2 && fontSize > 6) { fontSize -= 0.5; lines = wrapText(cellText(item), fontSize, w - 10); }
+  while (lines.length * (fontSize + 2) > rowH - 5 && fontSize > 6) { fontSize -= 0.5; lines = wrap(fontSize); }
   const top = y + rowH / 2 - ((lines.length - 1) * (fontSize + 2)) / 2 + fontSize * 0.35;
-  lines.forEach((line, index) => text(prims, x + 6, top + index * (fontSize + 2), line, fontSize, { anchor: "start", fill: MUTED }));
+  lines.forEach((line, index) => text(prims, x + 6, top + index * (fontSize + 2), line, fontSize, { anchor: "start", fill: options.fill || MUTED, weight: options.weight }));
 }
 
 export function drawTable(prims, table, x, y, o) {
@@ -102,11 +104,17 @@ export function drawTable(prims, table, x, y, o) {
     let px = x;
     row.forEach((item, col) => {
       if (item) {
-        if (col === 0) {
+        if (col === 0 && o.stackForms) {
+          drawWrapped(prims, item, px, cursor, widths[col], rowH - 1, 13, { content: cellText(item).replaceAll(" / ", "\n"), fill: o.dark, weight: 700 });
+        } else if (col === 0) {
           const parts = item.sub ? 2 : 1;
           text(prims, px + 8, cursor + (parts === 2 ? rowH / 2 - 2 : rowH / 2 + 3.5), item.parts[0][0], fitSize(item.parts[0][0], 10, widths[0] - 12), { anchor: "start", weight: 700, fill: o.dark });
           if (item.sub) text(prims, px + 8, cursor + rowH - 5.5, item.sub, 8, { anchor: "start", fill: MUTED });
-        } else if (o.wrapCols?.includes(col)) drawWrapped(prims, item, px, cursor, widths[col], rowH - 1, 8.5);
+        } else if (o.wrapCols?.includes(col)) {
+          const value = cellText(item);
+          const content = o.breakContrasts ? (col === 1 && !o.stackForms ? value.replaceAll("; ", "\n") : value.replaceAll(" / ", "\n")) : value;
+          drawWrapped(prims, item, px, cursor, widths[col], rowH - 1, 8.5, { content });
+        }
         else drawCell(prims, item, px, cursor, widths[col], rowH - 1, { ...o, mainSize: o.mainSize, weight: 600 });
       }
       px += widths[col];
@@ -202,10 +210,37 @@ function layoutAdjective(sheet, prims) {
   if (wide) drawNote(prims, wide, margin, cursor + 124, width, 112, 270, 9.5);
 }
 
+export function paginateReference(sheet, rowsPerColumn = sheet.id === "radicals" ? 18 : 12) {
+  const columns = sheet.tables.flatMap((table) => {
+    const chunks = [];
+    for (let offset = 0; offset < table.rows.length; offset += rowsPerColumn) {
+      chunks.push({ ...table, title: offset ? `${table.title} (continued)` : table.title, rows: table.rows.slice(offset, offset + rowsPerColumn) });
+    }
+    return chunks;
+  });
+  const pages = [];
+  for (let index = 0; index < columns.length; index += 2) pages.push({ ...sheet, tables: columns.slice(index, index + 2) });
+  return pages.length ? pages : [{ ...sheet, tables: [] }];
+}
+
 export function layoutSheet(sheet) {
   const prims = [];
   rect(prims, 0, 0, PAGE.w, PAGE.h, PAPER);
-  ({ kana: layoutKana, verb: layoutVerb, adjective: layoutAdjective })[sheet.id](sheet, prims);
+  const layout = ({ kana: layoutKana, verb: layoutVerb, adjective: layoutAdjective })[sheet.id] || layoutReference;
+  layout(sheet, prims);
   footer(prims, sheet);
   return { width: PAGE.w, height: PAGE.h, prims };
+}
+
+function layoutReference(sheet, prims) {
+  const top = header(prims, sheet) + 12;
+  const palette = {
+    accent: hsl(sheet.hue2, 85, 38), dark: hsl(sheet.hue, 55, 24), head: hsl(sheet.hue, 45, 36),
+    tintA: hsl(sheet.hue, 50, 96), tintB: hsl(sheet.hue, 30, 99), ink: INK, subSize: 8
+  };
+  const rowH = Math.min(140, 900 / Math.max(...sheet.tables.map((table) => table.rows.length)));
+  sheet.tables.forEach((table, index) => drawTable(prims, table, PAGE.margin + index * 373, top, {
+    ...palette, colW: [68, 120, 166], rowH, mainSize: 10, wrapCols: [1, 2],
+    stackForms: sheet.id === "lookalikes", breakContrasts: ["ambiguities", "lookalikes", "grammar-contrasts", "grammar-contrasts-2"].includes(sheet.id)
+  }));
 }

@@ -3,7 +3,7 @@ import { FONT_STACK, layoutSheet, PAGE } from "./cheatsheet-layout.js";
 
 const escapeXml = (value) => String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
 
-export function toSVG(sheet, { standalone = true } = {}) {
+export function toSVG(sheet, { standalone = true, grayscale = false } = {}) {
   const { width, height, prims } = layoutSheet(sheet);
   const body = prims.map((p) => {
     if (p.k === "r") {
@@ -13,10 +13,11 @@ export function toSVG(sheet, { standalone = true } = {}) {
     return `<text x="${+p.x.toFixed(2)}" y="${+p.y.toFixed(2)}" font-size="${+p.size.toFixed(2)}" font-weight="${p.weight}" fill="${p.fill}" text-anchor="${p.anchor}">${spans}</text>`;
   }).join("\n");
   const ns = standalone ? ' xmlns="http://www.w3.org/2000/svg"' : "";
-  return `<svg${ns} viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" font-family='${FONT_STACK.replace(/'/g, "")}' role="img" aria-label="${escapeXml(sheet.title)} cheatsheet">\n${body}\n</svg>`;
+  const content = grayscale ? `<defs><filter id="sheet-grayscale" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/></filter></defs>\n<g filter="url(#sheet-grayscale)">${body}</g>` : body;
+  return `<svg${ns} viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" font-family='${FONT_STACK.replace(/'/g, "")}' role="img" aria-label="${escapeXml(sheet.title)} cheatsheet">\n${content}\n</svg>`;
 }
 
-export function drawToCanvas(ctx, sheet, scale = 2) {
+export function drawToCanvas(ctx, sheet, scale = 2, { grayscale = false } = {}) {
   const { prims } = layoutSheet(sheet);
   ctx.save();
   ctx.scale(scale, scale);
@@ -42,9 +43,17 @@ export function drawToCanvas(ctx, sheet, scale = 2) {
     });
   }
   ctx.restore();
+  if (grayscale) {
+    const image = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    for (let index = 0; index < image.data.length; index += 4) {
+      const gray = Math.round(image.data[index] * 0.2126 + image.data[index + 1] * 0.7152 + image.data[index + 2] * 0.0722);
+      image.data[index] = image.data[index + 1] = image.data[index + 2] = gray;
+    }
+    ctx.putImageData(image, 0, 0);
+  }
 }
 
-export function toHTML(sheet) {
+export function toHTML(sheet, { grayscale = false } = {}) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -67,7 +76,7 @@ export function toHTML(sheet) {
 </head>
 <body>
 <main class="sheet">
-${toSVG(sheet, { standalone: false })}
+${toSVG(sheet, { standalone: false, grayscale })}
 </main>
 </body>
 </html>
@@ -94,10 +103,15 @@ export function toText(sheet) {
   const out = [`${sheet.title} · ${sheet.jp}`, sheet.subtitle, ""];
   for (const table of sheet.tables) {
     const header = tableColumns(table), rows = tableRows(table);
-    const widths = header.map((label, col) => Math.max(displayWidth(label), ...rows.map((row) => displayWidth(row[col]))));
+    const widths = header.map((label, col) => Math.max(displayWidth(label), ...rows.flatMap((row) => row[col].split("\n").map(displayWidth))));
     out.push(table.title, "-".repeat(table.title.length));
     out.push(header.map((label, col) => pad(label, widths[col])).join(" | ").trimEnd());
-    for (const row of rows) out.push(row.map((value, col) => pad(value, widths[col])).join(" | ").trimEnd());
+    for (const row of rows) {
+      const lines = row.map((value) => value.split("\n"));
+      for (let index = 0; index < Math.max(...lines.map((cell) => cell.length)); index++) {
+        out.push(lines.map((cell, col) => pad(cell[index] || "", widths[col])).join(" | ").trimEnd());
+      }
+    }
     out.push("");
   }
   for (const note of sheet.notes) out.push(note.title, ...note.lines.map((line) => `- ${line}`), "");
@@ -105,7 +119,7 @@ export function toText(sheet) {
   return out.join("\n");
 }
 
-const mdCell = (value) => value.replace(/\|/g, "\\|");
+const mdCell = (value) => value.replace(/\|/g, "\\|").replace(/\n/g, "<br>");
 
 export function toMarkdown(sheet) {
   const out = [`# ${sheet.title} · ${sheet.jp}`, "", sheet.subtitle, ""];

@@ -14,7 +14,7 @@ import { exportD1 } from "../scripts/export-d1.js";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 
-test("Worker + real D1 integration: migrations, batched enrichment, all API families, static pages and lossless tokenizer", { timeout: 180000 }, async (t) => {
+test("Worker + real D1 integration: migrations, batched enrichment, API-only routing and lossless tokenizer", { timeout: 180000 }, async (t) => {
   await access("frontend/dist/_dictionary/base.gz").catch(() => {
     throw new Error("Run npm run build:cloudflare before the Cloudflare integration test.");
   });
@@ -171,8 +171,9 @@ test("Worker + real D1 integration: migrations, batched enrichment, all API fami
       }
     }
     await request(`/api/analyze?text=${encodeURIComponent("猫は本を読む。".repeat(60))}`);
-    assert.match((await request("/")).text, /<!doctype html>/i);
-    await request("/活用.html");
+    await request("/", 404);
+    await request("/活用.html", 404);
+    await request("/_dictionary/tid.gz", 404);
     await request("/api/missing", 404);
     await request("/api/health", 403, { headers: { Origin: "https://untrusted.test" } });
     await request("/api/health", 204, { method: "OPTIONS", headers: { Origin: "https://nihon.test" } });

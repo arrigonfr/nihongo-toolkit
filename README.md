@@ -6,8 +6,8 @@ breakdowns; and learn through memory, word-search, crossword and shiritori games
 The project lives at [arrigonfr/nihongo-toolkit](https://github.com/arrigonfr/nihongo-toolkit).
 
 Node.js 24 backend (`backend/`) and Vite multi-page frontend (`frontend/`).
-Local development uses SQLite; production can run as **one Cloudflare Worker
-with static assets and a D1 database**. The existing helper pages, filenames,
+Local development uses SQLite; production uses a Cloudflare Worker API with D1
+and a separately hosted frontend such as Cloudflare Pages. The existing helper pages, filenames,
 and local preferences are preserved. Sentence lookups use the dictionary database
 first, with an optional server-side Tatoeba API fallback when no local examples exist
 or when you request another random example.
@@ -121,8 +121,9 @@ Ocean, Wisteria, Amber and Sumi, each with light and dark styles. Sumi combines 
 nearly-black dark palette with a paper-like light palette; Sakura has pinker accents.
 Preferences are stored
 under `nihon:appearance-v1` and synchronized across the tool launcher, embedded
-tools and other open tabs on the same origin. Appearance follows the system by
-default; the top-bar toggle chooses light or dark mode.
+tools and other open tabs on the same origin. New users default to Sumi in dark
+mode; the appearance setting can follow the system, and the top-bar toggle
+chooses light or dark mode. Existing saved preferences are preserved.
 
 All thirteen tools automatically save valid settings to `localStorage`, including
 quiz modes, directions, levels, fonts, session lengths, review/stat toggles,
@@ -391,13 +392,24 @@ and browser interaction coverage.
 
 ## Shiryō resources (cheatsheets)
 
-Open **Shiryō · 資料** (`frontend/資料.html`) for three single-page A4 cheatsheets:
-Hiragana & Katakana, Verb conjugation and Adjective conjugation. Everything is
+Open **Shiryō · 資料** (`frontend/資料.html`) for single-page A4 cheatsheets:
+Hiragana & Katakana, Verb conjugation, Adjective conjugation, Particles, Counters,
+and focused word, kanji and grammar contrast sheets. Everything is
 generated in the browser (no backend): preview, then download as PNG, PDF (image
 based), SVG, standalone HTML, Markdown, plain text or CSV, or use **Print / Save as
 PDF** for vector text. Content lives in `src/cheatsheet-data.js`, page layout in
 `src/cheatsheet-layout.js`, exporters in `src/cheatsheet-export.js`; unit tests are
 in `frontend/test/cheatsheets.test.js`.
+
+The grayscale option applies to the preview, printing, and visual exports (PNG,
+PDF, SVG, and HTML). Text, Markdown, and CSV exports are unaffected.
+
+The handwriting worksheet uses locally generated KanjiVG stroke diagrams and
+JLPT lists. Choose characters, paper, orientation, font size, stroke opacity and
+number size. Printing and PDF include all pages; PNG, SVG and HTML downloads are
+ZIP archives of all pages. Regenerate the lists with
+`node scripts/build-worksheet-kanji.mjs` after updating the D1 export, and the
+stroke data with `node scripts/build-worksheet-strokes.mjs`.
 
 ## Katsuyō Japanese conjugator
 
@@ -855,10 +867,12 @@ The current seeded local snapshot exports 843,360 rows, with approximately
 
 ## Deploy
 
-The implemented production path is **Workers Static Assets + D1**, with `/api/*`
-served by `backend/src/worker.js`. No Vercel/Netlify service, Pages project, R2,
-SQLite file upload, or separate frontend API URL is required. Existing legacy
-hosting configuration is not used by the Cloudflare commands.
+The production Worker serves **only `/api/*`**, backed by D1. Host the frontend
+separately, for example on Cloudflare Pages: build it with `npm run build`, set
+`VITE_API_BASE_URL` to the Worker's HTTPS origin, and publish `frontend/dist`.
+Set `ALLOWED_ORIGINS` in `wrangler.jsonc` to the exact frontend origin. The Worker
+still needs its static asset binding for internal tokenizer data; `run_worker_first`
+must remain `true` to prevent public access to assets.
 
 1. Install Node 24 and run `npm ci`. Import/seed SQLite locally if needed.
 2. Run `npx wrangler login`, then `npx wrangler d1 create nihon`.
@@ -872,9 +886,9 @@ hosting configuration is not used by the Cloudflare commands.
 6. Run `npm run test:cloudflare` and `npm run check:cloudflare`.
 7. Run `npm run deploy:cloudflare`. Wrangler prints your HTTPS `workers.dev` URL.
    Open `/api/health` there and confirm `ready: true`, then try the practice,
-   dictionary, analysis and shiritori pages.
-8. Optionally set `VITE_SITE_URL` to that URL (or your custom domain) when building
-   and deploy again. Canonical links, robots and sitemap then use your own origin;
+   dictionary, analysis and shiritori pages on the frontend.
+8. Optionally set `VITE_SITE_URL` to the frontend URL when building the frontend.
+   Canonical links, robots and sitemap then use that origin;
    without it the build does not advertise the old Netlify origin.
 
 **Cost and limits:** Workers Paid (currently starting at $5/month, plus usage
@@ -902,9 +916,10 @@ The build strips unused binary padding, uses compact typed lookup maps and serve
 compressed dictionary assets with the upstream licenses. Loading is lazy,
 shared and retryable; there is no fallback that silently drops morphological analysis.
 
-To preview on your own computer: `npm run build:cloudflare`, apply migrations
+To preview the API on your own computer: `npm run build:cloudflare`, apply migrations
 with `--local`, import the same export without `--remote`, then `npx wrangler dev`.
-This local D1 is independent of `npm run dev`'s SQLite file.
+This local D1 is independent of `npm run dev`'s SQLite file. The Worker returns
+404 for frontend paths even locally; use Vite to serve the frontend.
 `DEPLOYMENT.md` is an intentionally gitignored, step-by-step operator guide in this
 workspace; these public instructions are sufficient for fresh clones.
 

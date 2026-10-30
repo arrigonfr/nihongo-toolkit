@@ -176,6 +176,7 @@ export function createHandler({
       res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
       res.setHeader("Access-Control-Allow-Headers", "Accept, Content-Type");
       if (req.method === "OPTIONS") { res.statusCode = 204; res.end(); return; }
+      if (req.method === "HEAD") { res.statusCode = 200; res.end(); return; }
       if (req.method !== "GET") {
         res.setHeader("Allow", "GET, OPTIONS");
         throw new HttpError(405, "Method not allowed");
