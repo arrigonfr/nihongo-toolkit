@@ -1,9 +1,10 @@
 import "./appearance.css";
 
 const key = "nihon:appearance-v1";
-export const colorThemes = { matcha: "Matcha", sakura: "Sakura", ocean: "Ocean", wisteria: "Wisteria", amber: "Amber", sumi: "Sumi · ink" };
+export const colorThemes = { matcha: "Matcha", sakura: "Sakura", ocean: "Ocean", wisteria: "Wisteria", amber: "Amber", sumi: "Sumi" };
 const media = window.matchMedia("(prefers-color-scheme: dark)");
-let preference = { palette: "matcha", mode: "system" };
+const defaultPreference = { palette: "sumi", mode: "dark" };
+let preference = { ...defaultPreference };
 let initialized = false;
 
 function restore(value) {
@@ -54,7 +55,7 @@ export function initializeAppearance() {
   window.addEventListener("storage", (event) => {
     if (event.key !== key && event.key !== null) return;
     try {
-      preference = { palette: "matcha", mode: "system" };
+      preference = { ...defaultPreference };
       restore(event.newValue);
       render();
     } catch (error) { console.warn("Could not synchronize appearance preferences.", error); }

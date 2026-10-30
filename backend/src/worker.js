@@ -9,11 +9,7 @@ const handlers = new WeakMap();
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === "/") {
-      url.pathname = "/index.html";
-      return env.ASSETS.fetch(new Request(url, request));
-    }
-    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+    if (!url.pathname.startsWith("/api/")) return new Response("Not found", { status: 404 });
     const headers = new Headers();
     let status = 200;
     let body;

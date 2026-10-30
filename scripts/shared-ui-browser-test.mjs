@@ -25,6 +25,22 @@ try {
   context.on("page", (tab) => tab.on("pageerror", (error) => errors.push(error.message)));
   page.on("pageerror", (error) => errors.push(error.message));
   const go = (file) => page.goto(`${origin}/${encodeURIComponent(file)}`);
+  await go("仮名.html");
+  await page.locator("#colorThemeSelect").waitFor();
+  assert.equal(await page.locator("#colorThemeSelect").inputValue(), "sumi");
+  assert.equal(await page.locator('#colorThemeSelect option[value="sumi"]').textContent(), "Sumi");
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
+  await page.selectOption("#colorThemeSelect", "ocean");
+  await page.click("#themeButton");
+  await page.reload();
+  await page.locator("#colorThemeSelect").waitFor();
+  assert.equal(await page.locator("#colorThemeSelect").inputValue(), "ocean");
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
+  await page.evaluate(() => localStorage.removeItem("nihon:appearance-v1"));
+  await page.reload();
+  await page.locator("#colorThemeSelect").waitFor();
+  assert.equal(await page.locator("#colorThemeSelect").inputValue(), "sumi");
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
   const tools = ["仮名.html", "意味.html", "読み.html", "語彙.html", "言葉.html", "文解き.html", "漢字地図帳.html", "パズル.html", "しりとり.html", "活用.html", "活用練習.html", "言葉探し.html", "絵合わせ.html"];
   for (const width of [375, 1280]) {
     await page.setViewportSize({ width, height: 900 });
