@@ -14,7 +14,7 @@
   },
   "previews": {
       "vars": {
-        "ALLOWED_ORIGINS": "develop.nihongo-toolkit.pages.dev",
+        "ALLOWED_ORIGINS": "https://develop.nihongo-toolkit.pages.dev",
         "SENTENCE_API_FALLBACK": "true",
         "TRANSLATION_API_FALLBACK": "true",
         "WORD_API_FALLBACK": "true",
