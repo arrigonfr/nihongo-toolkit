@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://nihongo-toolkit.workers.dev/sitemap.xml
+Sitemap: https://nihongo-toolkit.pages.dev/sitemap.xml

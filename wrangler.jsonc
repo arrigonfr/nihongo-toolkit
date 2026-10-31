@@ -30,12 +30,12 @@
       ]
   },
   "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "nihongo_toolkit",
-      "database_id": "0a65d875-b70b-4c17-a0fb-04b82f47b186",
-      "migrations_dir": "backend/migrations"
-    }
+     {
+        "binding": "DB",
+        "database_name": "nihongo_toolkit_staging",
+        "database_id": "c3336c0d-b18e-482b-a3fd-a8b8db38e337",
+        "migrations_dir": "backend/migrations"
+      }
   ],
   "vars": {
     "ALLOWED_ORIGINS": "https://nihongo-toolkit.pages.dev",
