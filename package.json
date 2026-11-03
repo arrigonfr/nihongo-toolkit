@@ -2,8 +2,14 @@
   "name": "nihongo-toolkit",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.0.0", "npm": ">=10.0.0" },
-  "workspaces": ["backend", "frontend"],
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:backend": "npm run dev -w backend",
@@ -34,5 +40,10 @@
     "test:game-exports": "node scripts/game-export-browser-test.mjs",
     "seed:vocab": "npm run seed:vocab -w backend --"
   },
-  "devDependencies": { "playwright": "^1.58.2", "wrangler": "^4.0.0", "miniflare": "^4.0.0", "esbuild": "^0.25.0" }
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "miniflare": "^4.0.0",
+    "playwright": "^1.58.2",
+    "wrangler": "^4.0.0"
+  }
 }

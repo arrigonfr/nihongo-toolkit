@@ -1,0 +1,35 @@
+@import "./shiritori.css";
+body { min-height: 100vh; min-height: 100dvh; }
+.imposters-shell { max-width: 1000px; }
+.imposters-settings { margin-bottom: 16px; }
+.imposters-settings .imposters-setting-wide { grid-column: 1 / -1; }
+.imposters-setting-stack { display: grid; gap: 18px; }
+.imposters-settings .setting > label { font-size: .85em; font-weight: 650; }
+.imposters-settings .setting[hidden] { display: none; }
+.imposters-settings .check-label { align-self: start; }
+.imposters-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0; }
+.imposters-game { text-align: center; }
+.imposters-status { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 700; }
+.imposters-prompt { min-height: 120px; display: grid; align-content: center; gap: 6px; margin: 12px 0; }
+.imposters-prompt h2 { margin: 0; font-size: 28px; overflow-wrap: anywhere; }
+.imposters-prompt h2.kanji-prompt { font-size: var(--kanji-size, 64px); }
+.imposters-prompt p { margin: 0; color: var(--muted); }
+.imposters-choices { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.imposters-choices button { min-width: 0; min-height: 110px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); font-size: 16px; overflow-wrap: anywhere; cursor: pointer; }
+.imposters-choices button[data-kanji] { font-family: "Noto Sans JP", sans-serif; font-size: var(--kanji-size, 64px); }
+.imposters-choices button[aria-pressed="true"] { border: 3px solid var(--accent); background: var(--accent-soft); }
+.imposters-choices button.correct { background: #d3efdc; color: #164b2b; border-color: #318454; }
+.imposters-choices button.wrong { background: #f9d9db; color: #792b33; border-color: #ba4b54; }
+.imposters-choices button.removed { visibility: hidden; }
+.imposters-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
+.imposters-feedback { min-height: 55px; margin-top: 16px; }
+.imposters-feedback p { margin: 5px 0; }
+.imposters-results ul { padding-left: 22px; }
+.imposters-results li { margin: 6px 0; }
+.imposters-results [lang="ja"] { font-size: 22px; font-weight: 700; }
+.imposters-error { color: #b43e46; }
+@media (max-width: 600px) {
+  .imposters-choices { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .imposters-choices button { min-height: 88px; }
+  .imposters-choices button[data-kanji] { font-size: var(--kanji-mobile-size, 48px); }
+}

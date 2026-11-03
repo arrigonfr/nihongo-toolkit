@@ -1,0 +1,27 @@
+name: Google Indexing API
+
+on:
+  push:
+    branches:
+      - main  # Runs every time you push updates to your main branch
+
+jobs:
+  index-urls:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Dependencies
+        run: npm install googleapis
+
+      - name: Create Credentials File
+        run: echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}' > service_account.json
+
+      - name: Run Indexing Script
+        run: node index.js

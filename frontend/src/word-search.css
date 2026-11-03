@@ -118,10 +118,10 @@ legend { font-weight: 700; font-size: 14px; margin-bottom: 16px; }
 @media (max-width: 780px) { .layout { grid-template-columns: minmax(0, 1fr); } aside { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; } aside .card { margin-bottom: 0; } .source-note { grid-column: 1 / -1; } .intro { padding-top: 28px; } }
 @media (max-width: 500px) { .shell { padding: 0 12px; } .toolbar { align-items: flex-start; } .toolbar > .actions { width: 100%; display: grid; grid-template-columns: 1fr 1.2fr; } .toolbar button { padding: 9px 6px; font-size: 12px; } .card { padding: 16px 12px; } aside { grid-template-columns: 1fr; } .settings-grid { grid-template-columns: 1fr; } .dialog-body, .puzzle-settings .settings-body { padding: 16px; } .board-bottom { gap: 6px; } .board-bottom button { font-size: 11px; } .board-bottom select { font-size: 11px; max-width: 135px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
-#settingsForm > fieldset:first-child .settings-grid > label:first-child { grid-column: 1 / -1; }
+#settingsForm > fieldset > legend { width: 100%; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+#settingsForm .settings-wide, #settingsForm .settings-grid > .chips-field { grid-column: 1 / -1; min-width: 0; }
 #settingsForm .settings-section h3 { margin-top: 0; }
 #settingsForm .settings-section .setting { margin-block: 12px; }
-@media (min-width: 900px) { #settingsForm > fieldset:first-child .settings-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .word-label .word-clue { display: block; }
 .word-label .word-clue + .word-clue { margin-top: 2px; opacity: .85; }
 
@@ -130,6 +130,3 @@ legend { font-weight: 700; font-size: 14px; margin-bottom: 16px; }
 .start-error { margin: 8px 0 0; font-size: 13px; color: light-dark(#a22730, #ffaaaa); }
 .start-error:empty { display: none; }
 #emptyBoard .start-error { text-align: center; }
-#settingsForm .settings-grid.clue-grid { gap: 0; }
-#settingsForm .clue-grid > .chips-field { margin-bottom: 0; }
-#settingsForm .clue-grid > .setting.check { margin-top: -6px; }

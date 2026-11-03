@@ -128,8 +128,9 @@ const plainCheck = (key, label) => `<div class="setting check"><input id="settin
 const levels = { all: "All · N5–N1", 5: "N5 · Beginner", 4: "N4", 3: "N3", 2: "N2", 1: "N1 · Advanced" };
 for (let from = 5; from >= 2; from--) for (let to = from - 1; to >= 1; to--) levels[`${from}-${to}`] = `N${from}–N${to}`;
 const availability = { limited: "Limited", unlimited: "Unlimited", disabled: "Disabled" };
-$("settingsForm").innerHTML = `<fieldset><legend>Puzzle & vocabulary</legend><div class="settings-grid">
-  ${selectSetting("mode", "Practice mode", MODES, null)}
+$("settingsForm").innerHTML = `<fieldset><legend>Session</legend><div class="settings-grid">
+  <div class="settings-wide">${selectSetting("mode", "Practice mode", MODES, null)}</div>
+  </div></fieldset><fieldset><legend>Vocabulary</legend><div class="settings-grid">
   ${selectSetting("level", "JLPT study levels", levels, null)}
   ${selectSetting("script", "Japanese script", { kana: "Kana", kanji: "Kanji", both: "Both" }, "Choose Kana, Kanji (written forms with necessary okurigana), or both for the next puzzle.")}
   ${plainSelect("category", "Vocabulary category", CATEGORIES)}

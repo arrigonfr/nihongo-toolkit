@@ -25,7 +25,7 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
-  assert.equal(await page.locator(".dashboard-link").count(), 14);
+  assert.equal(await page.locator(".dashboard-link").count(), 15);
   assert.equal(await page.locator("#helperFrame").count(), 0);
   assert.equal(await page.locator('.dashboard .study-support img[alt="PayPal"]').count(), 1);
   await page.setViewportSize({ width: 375, height: 812 });
@@ -42,7 +42,7 @@ try {
   assert.equal((html.match(/gtm\.js\?id=/g) || []).length, 1);
   assert.match(html, /<body[^>]*>\s*<noscript><iframe src="https:\/\/www\.googletagmanager\.com\/ns\.html\?id=GTM-T7N85X93"/);
   assert.match(await (await page.request.get(base)).text(), /name="google-site-verification"/);
-  for (const file of ["index.html", "kana.html", "yomi.html", "imi.html", "goi.html", "katsuyo-renshuu.html", "kotoba.html", "kanji-chizucho.html", "katsuyo.html", "fumitoki.html", "shiryo.html", "eawase.html", "kotoba-sagashi.html", "pazuru.html", "shiritori.html", "data-sources.html"]) {
+  for (const file of ["index.html", "kana.html", "yomi.html", "imi.html", "goi.html", "katsuyo-renshuu.html", "kotoba.html", "kanji-chizucho.html", "katsuyo.html", "fumitoki.html", "shiryo.html", "eawase.html", "kotoba-sagashi.html", "pazuru.html", "shiritori.html", "kanji-imposters.html", "data-sources.html"]) {
     const source = await (await page.request.get(`${base}/${file}`)).text();
     assert.equal((source.match(/gtm\.js\?id=/g) || []).length, 1, `${file} has one GTM script`);
     const head = source.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)[1];

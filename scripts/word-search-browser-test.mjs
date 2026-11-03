@@ -77,6 +77,12 @@ try {
   }
   const allDirections = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]];
   await page.goto(url);
+  assert.deepEqual(await page.locator("#settingsForm > fieldset > legend").allTextContents(), ["Session", "Vocabulary", "Grid & word placement", "Clue list", "Hints & reveals", "Timer & special mode limits", "Display & accessibility"]);
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 1000 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `settings overflow at ${width}px`);
+  }
+  await page.setViewportSize({ width: 1280, height: 1000 });
   assert.equal(await page.locator("#settingsDialog, #settingsButton").count(), 0);
   assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open && panel.previousElementSibling.classList.contains("intro")), true);
   await page.locator("#settingsPanel summary").focus();
@@ -260,7 +266,7 @@ try {
   assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), true, "Failed generation leaves settings open");
   await page.goto(`${base}/index.html`);
   await page.click("#menuButton");
-  assert.equal(await page.locator(".helper-link").count(), 14);
+  assert.equal(await page.locator(".helper-link").count(), 15);
   await page.click('#helperMenu [data-file="kotoba-sagashi.html"]');
   await page.waitForURL(`${base}/kotoba-sagashi.html`);
   await page.locator("#startButton").waitFor();
