@@ -126,10 +126,12 @@ export function generateWordSearch(items, settings, { seed = `${Date.now()}-${Ma
   }
   const candidates = filterVocabulary(items, settings).map((item) => {
     const kana = /^[ァ-ヺー]+$/u.test(item.word) ? item.word : readingOf(item);
-    const answer = settings.script === "kanji" || (settings.script === "both" && hasKanji(item.word) && random() < 0.5)
+    const kanjiFits = hasKanji(item.word) && [...item.word].length >= 2 && [...item.word].length <= size;
+    const kanaFits = [...kana].length >= 2 && [...kana].length <= size;
+    const answer = settings.script === "kanji" || (settings.script === "both" && kanjiFits && (!kanaFits || random() < 0.5))
       ? item.word : kana;
     return { ...item, answer, key: wordKey(item) };
-  }).filter((item) => [...item.answer].length <= size);
+  }).filter((item) => [...item.answer].length >= 2 && [...item.answer].length <= size);
   const unique = [...new Map(candidates.map((item) => [item.answer, item])).values()];
   if (unique.length < settings.count) throw new Error(`Only ${unique.length} distinct words fit these filters. Choose fewer words, a larger grid, or a wider level/category.`);
   const recentSet = new Set(recent);
@@ -182,13 +184,6 @@ export function matchSelection(puzzle, start, end, found = []) {
 
 export function localDay(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-export function dailyStreak(days, date = new Date()) {
-  const cursor = new Date(date);
-  if (!days.includes(localDay(cursor))) cursor.setDate(cursor.getDate() - 1);
-  let count = 0;
-  while (days.includes(localDay(cursor))) { count++; cursor.setDate(cursor.getDate() - 1); }
-  return count;
 }
 export function reviewImport(value) {
   if (value?.version !== 1 || value?.tool !== "nihon-word-search" || !Array.isArray(value.words) || value.words.length > 5000) {

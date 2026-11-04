@@ -53,7 +53,7 @@ const descriptions = {
 const modeHelp = {
   classic: "A standard crossword with clues and an optional timer.",
   relaxed: "Practice without a timer or pressure, with unlimited hints.",
-  daily: "A date-seeded puzzle with a daily streak counter.",
+  daily: "A date-seeded puzzle.",
   timed: "Complete the puzzle before the countdown expires.",
   suddenDeath: "An incorrect character or submitted answer ends the round.",
   kanjiChallenge: "Use words containing kanji, including their kana endings, rather than kana-only answers.",

@@ -33,7 +33,7 @@ root.innerHTML = `<div class="shell imposters-shell"><header><div class="brand">
 <fieldset class="help-group"><legend>Hints</legend><div class="settings-grid"><label>Availability<select id="hintMode">${options([["limited", "Limited"], ["unlimited", "Unlimited"], ["disabled", "Disabled"]])}</select></label><label>Hints per session<input id="hintLimit" type="number" min="0" max="200" value="3"></label></div></fieldset>
 <fieldset class="help-group"><legend>Reveal answer</legend><div class="settings-grid"><label>Availability<select id="revealMode">${options([["limited", "Limited"], ["unlimited", "Unlimited"], ["disabled", "Disabled"]])}</select></label><label>Reveals per session<input id="revealLimit" type="number" min="0" max="200" value="3"></label></div></fieldset>
 </div></fieldset></form></div></details>
-<div class="imposters-controls"><button id="start" class="primary" type="button">Start session</button><button id="reviewList" type="button">Review list</button><span id="streak"></span></div><p id="error" class="imposters-error" role="alert"></p>
+<div class="imposters-controls"><button id="start" class="primary" type="button">Start session</button><button id="reviewList" type="button">Review list</button></div><p id="error" class="imposters-error" role="alert"></p>
 <section id="game" class="card imposters-game" hidden><div class="imposters-status"><span id="progress"></span><span id="score"></span><span id="timer"></span></div><div class="imposters-prompt"><span id="promptLabel" class="eyebrow"></span><h2 id="prompt"></h2><p id="secondary"></p><div id="promptAudio"></div></div><div id="choices" class="imposters-choices" role="group" aria-label="Select all correct answers"></div><div class="imposters-actions"><button id="check" class="primary" type="button" disabled>Check answers</button><button id="hint" type="button">Hint</button><button id="reveal" type="button">Reveal answer</button><button id="stop" type="button">Stop session</button><button id="next" type="button" hidden>Next question</button></div><div id="feedback" class="imposters-feedback" role="status" aria-live="polite"></div></section>
 <section id="results" class="card imposters-results" hidden></section></div>`;
 const $ = (id) => document.getElementById(id);
@@ -42,13 +42,12 @@ mountChips($("variants"), { multiple: true, options: variants.map(([value, label
 $("variants").value = "all";
 $("variants").dispatchEvent(new Event("change", { bubbles: true }));
 mountStudyControls({ onChange: () => { if (session?.question) renderQuestion(); } });
-const reviewKey = "nihon:imposters-review-v1", dailyKey = "nihon:imposters-daily-v1";
+const reviewKey = "nihon:imposters-review-v1";
 function load(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } }
 function save(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { $("error").textContent = "Could not save your progress on this device."; } }
-let review = load(reviewKey, {}), daily = load(dailyKey, { last: "", streak: 0 }), session = null, timerHandle = null;
+let review = load(reviewKey, {}), session = null, timerHandle = null;
 const dateKey = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; };
-const yesterday = (date) => { const value = new Date(`${date}T12:00:00`); value.setDate(value.getDate() - 1); return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`; };
-function status() { $("reviewList").textContent = `Review list (${Object.keys(review).length})`; $("streak").textContent = `Daily streak: ${daily.streak}`; }
+function status() { $("reviewList").textContent = `Review list (${Object.keys(review).length})`; }
 status();
 $("count").addEventListener("change", () => { $("customWrap").hidden = $("count").value !== "custom"; });
 $("readingPrompt").addEventListener("change", () => { $("volumeNotice").hidden = $("readingPrompt").value !== "audio"; });
@@ -99,8 +98,7 @@ $("start").addEventListener("click", async () => {
       if (question) questions.push(question);
     }
     if (questions.length < targetCount) throw new Error("Not enough distinct choices for these settings.");
-    session = { mode, questions, index: 0, correct: 0, mistakes: [], score: 0, combo: 0, hints: 0, reveals: 0, answered: false, removed: new Set(), selected: new Set(), date: seed, firstDaily: mode === "daily" && daily.attempted !== seed };
-    if (session.firstDaily) { daily.attempted = seed; save(dailyKey, daily); }
+    session = { mode, questions, index: 0, correct: 0, mistakes: [], score: 0, combo: 0, hints: 0, reveals: 0, answered: false, removed: new Set(), selected: new Set() };
     $("settings").open = false; $("results").hidden = true; $("game").hidden = false; $("error").textContent = "";
     renderQuestion(); playPrompt(); startTimer();
   } catch (error) { $("error").textContent = error.message || "Could not start the session."; }
@@ -155,7 +153,6 @@ $("stop").addEventListener("click", () => finish(false));
 function finish(completed) {
   if (!session) return; clearInterval(timerHandle);
   const played = session.correct + session.mistakes.length, accuracy = played ? Math.round(session.correct * 100 / played) : 0;
-  if (session.mode === "daily" && session.firstDaily && completed && session.correct === session.questions.length) { daily.streak = daily.last === yesterday(session.date) ? daily.streak + 1 : 1; daily.last = session.date; save(dailyKey, daily); }
   const result = session; session = null; $("game").hidden = true; $("settings").open = true;
   $("start").disabled = false; $("reviewList").disabled = false;
   showReview(result.mistakes, "Session results");

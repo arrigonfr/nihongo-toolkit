@@ -77,7 +77,7 @@ try {
 
   for (const [file, start, ready] of [
     ["pazuru.html", "#newPuzzleBtn", "#crosswordGrid .cw-cell:not(.block)"],
-    ["kotoba-sagashi.html", "#newGame", "#grid [data-cell]"]
+    ["kotoba-sagashi.html", "#startButton", "#grid [data-cell]"]
   ]) {
     await page.goto(`${base}/${file}`);
     await page.click(start);

@@ -12,22 +12,23 @@ import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML, speakJapanes
 import { mountSentenceExamples, escape } from "./examples.js";
 import {
   CATEGORIES, MODES, LISTS, DEFAULTS, listStyles, validateSettings, effectiveSettings, generateWordSearch,
-  straightPath, matchSelection, readingOf, wordKey, categoryOf, localDay, dailyStreak, reviewImport
+  straightPath, matchSelection, readingOf, wordKey, categoryOf, localDay, reviewImport
 } from "./word-search-engine.js";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "nihon:word-search-v1";
 const directionDefaultsVersion = 1;
-const emptyProgress = () => ({ known: [], review: [], recent: [], days: [], completed: 0, daily: null });
+const emptyProgress = () => ({ known: [], review: [], recent: [], completed: 0, daily: null });
 let settings = { ...DEFAULTS }, progress = emptyProgress(), restoreError = "", migratedDirections = false, customSize = false;
 try {
   const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
   if (saved) {
     settings = validateSettings({ ...DEFAULTS, ...saved.settings });
     for (const key of ["known", "review"]) reviewImport({ version: 1, tool: "nihon-word-search", words: saved.progress[key] });
-    if (!["recent", "days"].every((key) => Array.isArray(saved.progress[key]) && saved.progress[key].every((value) => typeof value === "string"))
+    if (!Array.isArray(saved.progress.recent) || !saved.progress.recent.every((value) => typeof value === "string")
       || !Number.isInteger(saved.progress.completed)) throw new Error("Invalid saved progress.");
-    progress = { ...emptyProgress(), ...saved.progress };
+    const { days: _days, ...savedProgress } = saved.progress;
+    progress = { ...emptyProgress(), ...savedProgress };
     customSize = saved.customSize === true;
     if (saved.directionDefaultsVersion !== directionDefaultsVersion) {
       settings.directions = DEFAULTS.directions;
@@ -66,22 +67,22 @@ $("wordSearchRoot").innerHTML = `<div class="shell">
   <header><div class="brand"><span class="brand-mark" lang="ja">探</span><span class="brand-name">Kotoba Sagashi<span class="brand-note">at NihongoToolkit</span></span></div><button id="themeButton" aria-label="Toggle theme" type="button">◐</button></header>
   <section class="intro"><span class="eyebrow">A little discovery, every day</span><h1>Find a word.<br><span>Make it yours.</span></h1><p>A quiet corner for your Japanese. Follow the characters, uncover familiar words, and discover a few new ones.</p></section>
   <details id="settingsPanel" class="card puzzle-settings" open><summary>Puzzle settings</summary><div class="settings-body"><p class="small">Valid settings save automatically and apply to your next puzzle. The top reading, audio and appearance controls stay live. Mode overrides are described below.</p><form id="settingsForm"></form></div></details>
-  <div class="toolbar"><div><span class="tag" id="modeBadge">Classic</span> <span id="streak" class="small"></span></div><div class="actions"><button id="reviewButton" type="button">Notebook <span id="reviewCount">0</span></button><button id="newGame" class="primary" type="button">New puzzle ↗</button></div></div>
+  <div class="toolbar"><div><span class="tag" id="modeBadge">Classic</span></div><div class="actions"><button id="reviewButton" type="button">Notebook <span id="reviewCount">0</span></button></div></div>
   <p id="toolbarError" class="start-error" role="alert"></p>
   <div id="notice" role="status" aria-live="polite"></div>
   <div class="layout"><main>
+    <section class="card"><div class="card-heading"><h2>Your discoveries</h2><span class="tag" id="wordCount">0 words</span></div><p class="small" id="listNote">Find each word in the grid. Found words open your notebook.</p><ol id="wordList" class="word-list"></ol></section>
     <section class="card board-card" aria-label="Word search puzzle">
-      <div class="board-heading"><div><span class="eyebrow">言葉探し · Word search</span><h2 id="puzzleTitle">Ready for a little discovery?</h2></div><div class="clock"><span class="small" id="timerLabel">Time</span><strong id="timer">—</strong></div></div>
-      <div class="progress-row"><span id="progressText">Create a puzzle to begin</span><span id="directionLabel">${directionLabels[settings.directions]}</span></div>
-      <progress id="progress" max="8" value="0" aria-label="Words found"></progress>
-      <div class="board-scroll" tabindex="0" aria-label="Scrollable puzzle area"><div id="grid" role="grid" aria-label="Japanese word search" aria-describedby="selectionHelp"></div><div id="emptyBoard"><span lang="ja">見つけよう</span><p>Your next discovery starts here.</p><button id="startButton" class="primary" type="button">Create my first puzzle →</button><p id="startError" class="start-error"></p></div></div>
+      <div class="board-heading"><div><span class="eyebrow">言葉探し · Word search</span><h2 id="puzzleTitle">Ready for a little discovery?</h2></div></div>
+      <div class="board-scroll" tabindex="0" aria-label="Scrollable puzzle area"><div id="grid" role="grid" aria-label="Japanese word search" aria-describedby="selectionHelp"></div><div id="emptyBoard"><span lang="ja">見つけよう</span><p>Your next discovery starts here.</p><p id="startError" class="start-error"></p></div><button id="exportPuzzle" type="button" hidden>Export puzzle</button></div>
+      <button id="startButton" class="primary" type="button">Create my first puzzle →</button>
       <div class="selection-status" id="selectionStatus" aria-live="polite">Choose your settings, then create a puzzle.</div>
       <div class="board-bottom"><select id="hintType" aria-label="Hint type"><option value="first">First character</option><option value="direction">Direction</option><option value="length">Word length</option><option value="meaning">Meaning clue</option><option value="area">General area</option></select><button id="hintButton" type="button" disabled>✧ Hint</button><button id="revealButton" type="button" disabled>Reveal word</button><button id="endButton" type="button" disabled>End round</button></div>
       <p id="selectionHelp" class="small instructions">Drag a straight line, or tap the first and last characters.<br>Keyboard: arrows to move · Enter / Space to select · Esc to cancel.</p>
     </section>
     <section id="results" class="card results" tabindex="-1" hidden></section>
   </main><aside>
-    <section class="card"><div class="card-heading"><h2>Your discoveries</h2><span class="tag" id="wordCount">0 words</span></div><p class="small" id="listNote">Find each word in the grid. Found words open your notebook.</p><ol id="wordList" class="word-list"></ol></section>
+    <section class="card" aria-label="Puzzle statistics"><div class="card-heading"><h2>Stats</h2><div class="clock"><span class="small" id="timerLabel">Time</span><strong id="timer">—</strong></div></div><div class="progress-row"><span id="progressText">Create a puzzle to begin</span><span id="directionLabel">${directionLabels[settings.directions]}</span></div><progress id="progress" max="8" value="0" aria-label="Words found"></progress></section>
     <section class="card notebook"><div class="card-heading"><h2>Word notebook</h2><span aria-hidden="true">✎</span></div><div id="wordDetails"><div class="notebook-empty"><span lang="ja">一語一会</span><p>Every word is a new encounter.</p><p class="small">Find a word to explore its reading, meaning, and examples here.</p></div></div></section>
     <p class="small source-note">JLPT levels are study-list estimates. Category clues use approximate dictionary filters.<br><a href="./data-sources.html" target="_blank" rel="noopener">Dictionary & sentence credits ↗</a></p>
   </aside></div>
@@ -283,8 +284,6 @@ document.querySelectorAll("[data-close]").forEach((button) => { button.onclick =
 
 function updateLifetime() {
   $("reviewCount").textContent = progress.review.length;
-  const streak = dailyStreak(progress.days);
-  $("streak").textContent = streak ? `${streak} day${streak === 1 ? "" : "s"} streak` : "A fresh start";
 }
 function snapshotDaily() {
   if (game?.rules.mode === "daily") {
@@ -301,7 +300,7 @@ async function startGame(nextRound = false) {
     finish(false, "Round ended", choice === "save");
   }
   busy = true;
-  $("newGame").disabled = true; $("startButton").disabled = true;
+  $("startButton").disabled = true;
   if ($("nextRound")) $("nextRound").disabled = true;
   showStartError("");
   inform("Gathering words and making a little room for discovery…");
@@ -314,7 +313,7 @@ async function startGame(nextRound = false) {
     if (saved) {
       puzzle = saved.puzzle;
       if (!Array.isArray(puzzle?.grid) || !Array.isArray(puzzle?.entries) || puzzle.grid.length !== puzzle.size ** 2
-        || !puzzle.entries.every((entry) => entry.cells.every((cell, i) => puzzle.grid[cell] === [...entry.answer][i]))) {
+        || !puzzle.entries.every((entry) => [...entry.answer].length >= 2 && entry.cells.every((cell, i) => puzzle.grid[cell] === [...entry.answer][i]))) {
         throw new Error("Today's saved puzzle is invalid. Export your notebook, then reset progress to recover.");
       }
     } else {
@@ -343,6 +342,8 @@ async function startGame(nextRound = false) {
     anchor = null; pointer = null; preview = []; wrong = []; highlight = []; detailKey = null; detailRequest++;
     $("wordDetails").innerHTML = `<p class="small">Find a word to explore its reading, meaning, example sentences, and kanji here.</p>`;
     $("results").hidden = true;
+    $("startButton").textContent = "New puzzle ↗";
+    $("exportPuzzle").hidden = false;
     $("settingsPanel").open = false;
     renderBoard(); renderList(); updateStats();
     snapshotDaily(); persist(); updateLifetime();
@@ -351,7 +352,7 @@ async function startGame(nextRound = false) {
     inform(saved ? "Today's puzzle restored. Daily progress cannot be rerolled." : "Your puzzle is ready. Find your first word.");
   } catch (error) { console.error("Word Search generation failed.", error); inform("", false); showStartError(error.message); }
   finally {
-    busy = false; $("newGame").disabled = false; $("startButton").disabled = false;
+    busy = false; $("startButton").disabled = false;
     if ($("nextRound")) $("nextRound").disabled = false;
   }
 }
@@ -394,7 +395,7 @@ mountGameExport($("grid").parentElement, () => {
     grid: Array.from({ length: puzzle.size }, (_, row) => puzzle.grid.slice(row * puzzle.size, (row + 1) * puzzle.size).map((text, col) => ({ text, highlight: answers.has(row * puzzle.size + col) }))),
     lines: puzzle.entries.map((entry, index) => ({ text: `${index + 1}. ${entry.meaning}`, answer: `${index + 1}. ${entry.meaning} — ${entry.answer}` }))
   };
-});
+}, { button: $("exportPuzzle") });
 function paintGrid() {
   if (!game) return;
   const foundCells = new Set(game.paths.flat());
@@ -596,7 +597,6 @@ function finish(won, title, save = true) {
   if (save) for (const entry of game.puzzle.entries) if (!game.found.includes(entry.key)) addWord(progress.review, entry);
   if (won) {
     progress.completed++;
-    if (game.rules.mode === "daily" && !progress.days.includes(game.day)) progress.days.push(game.day);
   }
   snapshotDaily(); persist(); updateStats(); updateLifetime(); paintGrid();
   renderResults(title);
@@ -620,7 +620,6 @@ $("endButton").onclick = async () => {
   const choice = await confirmAction("End this round?", { review: true });
   if (choice && active()) finish(false, "Round ended", choice === "save");
 };
-$("newGame").onclick = () => startGame();
 $("startButton").onclick = () => startGame();
 $("wordList").onclick = (event) => {
   const button = event.target.closest("[data-word]");
@@ -704,10 +703,10 @@ $("reviewFile").onchange = async () => {
 };
 $("resetProgress").onclick = async () => {
   if (game && !game.ended) { $("reviewNotice").textContent = "End the current round before resetting progress."; return; }
-  if (!await confirmAction("Delete all Word Search discoveries, review words, and daily streaks on this browser?", { confirmLabel: "Delete progress" })) return;
+  if (!await confirmAction("Delete all Word Search discoveries and review words on this browser?", { confirmLabel: "Delete progress" })) return;
   progress = emptyProgress(); game = null;
   persist(); updateLifetime(); renderReview();
-  $("results").hidden = true; $("grid").innerHTML = ""; $("emptyBoard").hidden = false; $("wordList").innerHTML = "";
+  $("results").hidden = true; $("grid").innerHTML = ""; $("emptyBoard").hidden = false; $("wordList").innerHTML = ""; $("exportPuzzle").hidden = true;
   $("wordDetails").textContent = "Find a word to start a new notebook.";
   $("progress").value = 0; $("progressText").textContent = "Create a puzzle to begin";
   $("wordCount").textContent = "0 words"; $("timer").textContent = "—";

@@ -344,7 +344,7 @@ try {
   }
 
   await go("index.html");
-  assert.equal(await page.title(), "日本道具 · NihonTools");
+  assert.equal(await page.title(), "日本語道具箱 · Japanese Toolkit · Nihongo Toolkit");
 
   await go("kanji-chizucho.html");
   await page.fill("#query", "日");
@@ -525,7 +525,7 @@ try {
 
   await go("index.html");
   await page.click("#menuButton");
-  assert.equal(await page.locator(".helper-link").count(), 14);
+  assert.equal(await page.locator(".helper-link").count(), 15);
   for (const item of await page.locator(".helper-link").all()) {
     const description = await item.locator(".helper-description").textContent();
     assert.match(description, /^\(.+\)$/);
@@ -684,7 +684,7 @@ try {
   assert.equal(await page.locator("#revealPuzzleBtn").isDisabled(), true, "Round should end immediately in Sudden Death mode");
   await page.evaluate(() => localStorage.setItem("nihon:last-helper", "文字.html"));
   await go("index.html");
-  assert.equal(await page.locator(".dashboard-link").count(), 14);
+  assert.equal(await page.locator(".dashboard-link").count(), 15);
   await go("文字.html");
   await page.waitForURL(/kana\.html/);
   await page.waitForSelector("#startSessionButton");

@@ -316,7 +316,7 @@ try {
     assert.equal(await sessionPage.getAttribute("html", "data-japanese-font"), "Noto Sans JP", "Font changes wait for the next game");
     assert.equal(await sessionPage.locator('#settingsForm button[type="submit"]').count(), 0);
     await toggleStudy(snapshot);
-    await sessionPage.click("#newGame");
+    await sessionPage.click(`#${start}`);
     await sessionPage.locator(".study-confirm-dialog .study-pills button").nth(1).click();
     await sessionPage.locator(".study-confirm-dialog").waitFor({ state: "detached" });
     await sessionPage.waitForFunction(() => !document.getElementById("settingsPanel").open);

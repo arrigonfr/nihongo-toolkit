@@ -38,7 +38,7 @@ import {
   const GAME_MODES = {
     classic: { label: "Classic Mode", desc: "Standard crossword with clues and a timer." },
     relaxed: { label: "Relaxed Mode", desc: "No timer, unlimited hints, and no pressure." },
-    daily: { label: "Daily Challenge", desc: "One new deterministic puzzle per day with a streak counter." },
+    daily: { label: "Daily Challenge", desc: "One new deterministic puzzle per day." },
     timed: { label: "Timed Challenge", desc: "Complete the puzzle before the countdown runs out." },
     suddenDeath: { label: "Sudden Death", desc: "Any incorrect character or submitted answer ends the round immediately." },
     kanjiChallenge: { label: "Kanji Challenge", desc: "Use words containing kanji, including their kana endings, rather than kana-only answers." },
@@ -84,8 +84,6 @@ import {
     puzzlesCompleted: 0,
     wordsCorrect: 0,
     wordsRevealed: 0,
-    dailyStreak: 0,
-    lastDailyDate: "",
     recentWordIds: [] // recently used word IDs / words to avoid repeating crosswords
   });
 
@@ -145,6 +143,8 @@ import {
     loading: false,
     feedback: { text: "", tone: "" }
   };
+  delete state.stats.dailyStreak;
+  delete state.stats.lastDailyDate;
 
   const root = document.getElementById("crosswordRoot");
   const pendingSettings = { ...state.settings };
@@ -310,22 +310,25 @@ import {
                 </div>
               </div>
             </details>
-            <div class="cw-actions-row"><button class="cw-btn primary" id="newPuzzleBtn" type="button">New puzzle</button></div>
             <div class="cw-feedback-banner error" id="startError" role="alert" hidden></div>
           </section>
 
-          <section class="cw-empty" id="cwEmpty"><span class="cw-empty-mark" lang="ja" aria-hidden="true">パズル</span><h2>Ready when you are</h2><p>Pick your settings above, then start a game to see your crossword, clues and progress here.</p><button class="cw-btn primary" id="startGameBtn" type="button">Start a game →</button></section>
+          <section class="cw-empty" id="cwEmpty"><span class="cw-empty-mark" lang="ja" aria-hidden="true">パズル</span><h2>Ready when you are</h2><p>Pick your settings above, then start a game to see your crossword, clues and progress here.</p><button class="cw-btn primary" id="newPuzzleBtn" type="button">New puzzle</button></section>
 
           <section class="cw-status-bar" hidden aria-label="Puzzle status and assistance">
             <div class="cw-metrics">
               <div class="cw-metric"><strong id="progressMetric">0 / 0</strong><span>words solved</span></div>
               <div class="cw-metric" id="timerMetricWrap"><strong id="timerMetric">00:00</strong><span id="timerLabel">elapsed</span></div>
               <div class="cw-metric"><strong id="hintsMetric">0</strong><span id="hintsLabel">hints used</span></div>
-              <div class="cw-metric"><strong id="streakMetric">0</strong><span>daily streak</span></div>
+              <div class="cw-metric"><strong id="statPuzzlesCompleted">0</strong><span>puzzles completed</span></div>
+              <div class="cw-metric"><strong id="statWordsCorrect">0</strong><span>words answered</span></div>
+              <div class="cw-metric"><strong id="statWordsRevealed">0</strong><span>words revealed</span></div>
             </div>
 
             <div class="cw-assist-actions">
-              <button class="cw-btn" id="revealPuzzleBtn" type="button">Reveal puzzle</button>
+              <button class="cw-btn" id="revealPuzzleBtn" type="button">End and Reveal puzzle</button>
+              <button class="cw-btn" id="endPuzzleBtn" type="button" hidden>End puzzle</button>
+              <button class="cw-btn primary" id="nextPuzzleBtn" type="button" hidden>New puzzle</button>
             </div>
           </section>
 
@@ -374,17 +377,6 @@ import {
             <div id="studyInspectorBody"></div>
           </section>
 
-          <section class="cw-stats-panel" aria-label="Crossword statistics">
-            <div class="cw-study-header">
-              <h2>Stats · 記録</h2>
-            </div>
-            <div class="cw-stats-cards">
-              <div class="cw-stat-card"><strong id="statPuzzlesCompleted">0</strong><span>Puzzles completed</span></div>
-              <div class="cw-stat-card"><strong id="statWordsCorrect">0</strong><span>Words answered</span></div>
-              <div class="cw-stat-card"><strong id="statWordsRevealed">0</strong><span>Words revealed</span></div>
-              <div class="cw-stat-card"><strong id="statDailyStreak">0</strong><span>Daily challenge streak</span></div>
-            </div>
-          </section>
         </main>
 
         <footer class="cw-footer">
@@ -488,6 +480,8 @@ import {
       button.disabled = disabledAll || isCheckDisabled();
     });
     revPuzBtn.disabled = isRevealDisabled();
+    document.getElementById("endPuzzleBtn").hidden = !state.puzzle || state.roundEnded || !revPuzBtn.disabled;
+    document.getElementById("nextPuzzleBtn").hidden = !state.puzzle || !state.roundEnded;
 
     const hintsMetric = document.getElementById("hintsMetric");
     const hintsLabel = document.getElementById("hintsLabel");
@@ -581,8 +575,6 @@ import {
     state.stats.puzzlesCompleted = 0;
     state.stats.wordsCorrect = 0;
     state.stats.wordsRevealed = 0;
-    state.stats.dailyStreak = 0;
-    state.stats.lastDailyDate = "";
     saveJSON(STORAGE_KEYS.stats, state.stats);
     renderLifetimeStats();
   }
@@ -773,13 +765,6 @@ import {
       clearInterval(state.timerHandle);
       state.stats.puzzlesCompleted++;
 
-      if (state.settings.gameMode === "daily") {
-        const today = new Date().toISOString().slice(0, 10);
-        if (state.stats.lastDailyDate !== today) {
-          state.stats.dailyStreak = (state.stats.dailyStreak || 0) + 1;
-          state.stats.lastDailyDate = today;
-        }
-      }
       saveJSON(STORAGE_KEYS.stats, state.stats);
       showFeedback("🎉 おめでとう！ Puzzle completed! Hover or tap any completed word or kanji to review.", "good");
       updateAssistButtons();
@@ -792,7 +777,6 @@ import {
     const completed = state.puzzle.entries.filter((e) => e.completed).length;
     const total = state.puzzle.entries.length;
     document.getElementById("progressMetric").textContent = `${completed} / ${total}`;
-    document.getElementById("streakMetric").textContent = String(state.stats.dailyStreak || 0);
   }
 
   function renderPuzzleBoard() {
@@ -1220,7 +1204,6 @@ import {
     document.getElementById("statPuzzlesCompleted").textContent = String(state.stats.puzzlesCompleted || 0);
     document.getElementById("statWordsCorrect").textContent = String(state.stats.wordsCorrect || 0);
     document.getElementById("statWordsRevealed").textContent = String(state.stats.wordsRevealed || 0);
-    document.getElementById("statDailyStreak").textContent = String(state.stats.dailyStreak || 0);
   }
 
   function selectCell(row, col, toggleDirIfSame = false, { openPopover = true } = {}) {
@@ -1878,8 +1861,10 @@ import {
     document.getElementById("themeSelect").addEventListener("change", (e) => {
       updateSetting("themeCategory", e.target.value);
     });
-    document.getElementById("startGameBtn").addEventListener("click", () => document.getElementById("newPuzzleBtn").click());
     document.getElementById("newPuzzleBtn").addEventListener("click", () => {
+      buildNewPuzzle();
+    });
+    document.getElementById("nextPuzzleBtn").addEventListener("click", () => {
       buildNewPuzzle();
     });
 
@@ -1918,6 +1903,12 @@ import {
 
     // Assistance buttons
     document.getElementById("revealPuzzleBtn").addEventListener("click", handleRevealPuzzle);
+    document.getElementById("endPuzzleBtn").addEventListener("click", () => {
+      state.roundEnded = true;
+      clearInterval(state.timerHandle);
+      showFeedback("Puzzle ended. Start a new puzzle when you are ready.");
+      updateAssistButtons();
+    });
 
     document.getElementById("flipDirBtn").addEventListener("click", () => {
       selectCell(state.activeCell.row, state.activeCell.col, true, { openPopover: state.settings.inputStyle !== "clues" });

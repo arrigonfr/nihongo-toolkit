@@ -37,9 +37,6 @@ fieldset > button { font-size: 12px; padding: 5px 9px; min-height: 34px; }
 .start-line { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid var(--line); padding-top: 20px; margin-top: 22px; }
 .start-line p { margin: 0; }
 .start-line button { flex-shrink: 0; }
-.streak-number { display: flex; gap: 12px; align-items: baseline; margin: 16px 0 4px; color: var(--accent-strong); }
-.streak-number > span:first-child { font-size: 54px; font-weight: 650; letter-spacing: -.06em; line-height: 1.1; }
-.streak-number > span:last-child { font-size: 14px; }
 .progress-panel h3 { padding-top: 20px; border-top: 1px solid var(--line); }
 #lifetime { font-size: 13px; margin-top: 20px; }
 .weak-item { display: flex; justify-content: space-between; gap: 8px; padding: 9px 0; font-size: 12px; }

@@ -2,9 +2,9 @@ import { romanizeKana } from "./romanize.js";
 import { isFontSetting } from "./japanese-fonts.js";
 import { selectedLevels, matchesLevel } from "./jlpt-levels.js";
 import { createSeededRandom } from "./crossword-engine.js";
-import { CATEGORIES, matchesCategory, localDay, dailyStreak } from "./word-search-engine.js";
+import { CATEGORIES, matchesCategory, localDay } from "./word-search-engine.js";
 
-export { CATEGORIES, localDay, dailyStreak };
+export { CATEGORIES, localDay };
 export const WORD_PAIRS = {
   kh: "Kanji → Hiragana", kk: "Kanji → Katakana", ka: "Kanji → Any kana",
   kr: "Kanji → Romaji", hr: "Hiragana → Romaji", tr: "Katakana → Romaji",

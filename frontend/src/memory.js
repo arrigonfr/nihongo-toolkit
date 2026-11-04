@@ -11,23 +11,24 @@ import {
   WORD_PAIRS, KANA_PAIRS, MODES, BACKS, GROUPS, DISPLAYS, GRIDS, SHUFFLE_MODES, DEFAULTS, CATEGORIES,
   validateSettings, effectiveSettings, generateDeck, createRound, flipCard, settleMismatch,
   checkEnd, finishRound, elapsed, accuracy, assist, canAssist, itemKey, katakanaOf, romajiOf,
-  localDay, dailyStreak, reviewImport, restoreDaily
+  localDay, reviewImport, restoreDaily
 } from "./memory-engine.js";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "nihon:memory-v1";
-const freshProgress = () => ({ review: [], recent: [], days: [], completed: 0, daily: null });
+const freshProgress = () => ({ review: [], recent: [], completed: 0, daily: null });
 let settings = { ...DEFAULTS, groups: [...DEFAULTS.groups] }, progress = freshProgress(), restoreError = "";
 try {
   const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
   if (saved) {
     settings = validateSettings({ ...DEFAULTS, ...saved.settings });
     const review = reviewImport({ tool: "nihon-memory", version: 1, items: saved.progress?.review });
-    if (!["recent", "days"].every((key) => Array.isArray(saved.progress[key]) && saved.progress[key].length <= 5000
-      && saved.progress[key].every((v) => typeof v === "string" && v.length <= 2000))
+    if (!Array.isArray(saved.progress.recent) || saved.progress.recent.length > 5000
+      || !saved.progress.recent.every((v) => typeof v === "string" && v.length <= 2000)
       || !Number.isInteger(saved.progress.completed) || saved.progress.completed < 0) throw new Error("Invalid saved progress.");
     restoreDaily(saved.progress.daily, localDay());
-    progress = { ...freshProgress(), ...saved.progress, review };
+    const { days: _days, ...savedProgress } = saved.progress;
+    progress = { ...freshProgress(), ...savedProgress, review };
   }
 } catch (error) {
   console.error("Could not restore Memory data.", error);
@@ -60,22 +61,23 @@ $("memoryRoot").innerHTML = `<div class="shell">
     <form id="settingsForm"></form>
   </div></details>
   <div class="toolbar"><div class="content-choice" role="group" aria-label="Content for next puzzle"><button id="chooseWords" type="button">言 Words</button><button id="chooseKana" type="button">あ Syllabaries</button></div>
-    <div class="actions"><button id="reviewButton" type="button">Notebook <span id="reviewCount">0</span></button><button id="newGame" class="primary" type="button">New puzzle ↗</button></div></div>
+    <div class="actions"><button id="reviewButton" type="button">Notebook <span id="reviewCount">0</span></button></div></div>
   <p id="toolbarError" class="start-error" role="alert"></p>
   <div id="notice" role="status" aria-live="polite"></div>
+  <section class="panel"><div class="panel-heading"><h2>This round</h2><span class="tag" id="roundLabel">Ready</span></div><div id="stats" class="stats"></div><p id="challengeInfo" class="small">No rush. Every connection counts.</p><p id="streak" class="small"></p></section>
   <div class="layout"><main>
     <section class="panel board-panel" aria-label="Memory game">
       <div class="board-heading"><div><span class="eyebrow" id="modeBadge">Classic Memory</span><h2 id="boardTitle">Find your next connection</h2></div><div class="clock"><span id="timerLabel">Time</span><strong id="timer">—</strong></div></div>
       <div class="progress-row"><span id="progressText">Choose words or syllabaries to begin</span><span id="turnText">Solo practice</span></div>
       <progress id="progress" max="6" value="0" aria-label="Pairs found"></progress>
-      <div class="board-scroll"><div id="board" role="group" aria-label="Memory cards" aria-describedby="keyboardHelp"></div><div id="emptyBoard"><span aria-hidden="true">あ <span>↔</span> ア</span><h3>Two cards. One connection.</h3><p>Start with six pairs, or make the game your own.</p><button id="startButton" class="primary" type="button">Start matching →</button><p id="startError" class="start-error"></p></div></div>
+      <div class="board-scroll"><div id="board" role="group" aria-label="Memory cards" aria-describedby="keyboardHelp"></div><div id="emptyBoard"><span aria-hidden="true">あ <span>↔</span> ア</span><h3>Two cards. One connection.</h3><p>Start with six pairs, or make the game your own.</p><p id="startError" class="start-error"></p></div></div>
+      <button id="startButton" class="primary" type="button">Start matching →</button>
       <p id="feedback" role="status" aria-live="polite">Choose your content above. Settings let you pick scripts, levels, and challenges.</p>
       <div class="board-actions"><select id="hintType" aria-label="Hint type"><option value="pair">Highlight a pair</option><option value="meaning">Meaning / category</option><option value="reading">Reading / romaji</option></select><button id="hintButton" type="button" disabled>✧ Hint</button><button id="revealButton" type="button" disabled>Reveal pair</button><button id="restartButton" type="button" disabled>Restart</button><button id="endButton" type="button" disabled>End round</button></div>
       <p class="small" id="keyboardHelp">Arrow keys to move · Enter / Space to flip. Match to keep your turn; a mismatch passes it to the other player.</p>
     </section>
     <section id="results" class="panel results" tabindex="-1" hidden></section>
   </main><aside class="sidebar">
-    <section class="panel"><div class="panel-heading"><h2>This round</h2><span class="tag" id="roundLabel">Ready</span></div><div id="stats" class="stats"></div><p id="challengeInfo" class="small">No rush. Every connection counts.</p><p id="streak" class="small"></p></section>
     <section class="panel notebook"><div class="panel-heading"><h2>A closer look</h2><span aria-hidden="true">✎</span></div><div id="details"><p class="empty-detail" lang="ja">少しずつ。</p><p class="small">Matched pairs open their reading, meaning, and examples here.</p></div></section>
     <section class="panel"><h2>Your connections</h2><div id="matches" class="matches"><p class="small">Your matched pairs will collect here.</p></div></section>
     <p class="small credits">JLPT levels are study estimates; categories use approximate dictionary filters. Kana represent sounds, not English meanings.<br><a href="./data-sources.html" target="_blank" rel="noopener">Dictionary & sentence credits ↗</a></p>
@@ -178,8 +180,7 @@ function saveReview(item) {
 function itemFor(key) { return game.deck.pairs.find((pair) => pair.key === key).item; }
 function updateLifetime() {
   $("reviewCount").textContent = progress.review.length;
-  const streak = dailyStreak(progress.days);
-  $("streak").textContent = `${progress.completed} boards completed · ${streak} day daily streak`;
+  $("streak").textContent = `${progress.completed} boards completed`;
 }
 function syncContent(content, pairing = $("setting-pairing").value) {
   const allowed = content === "words" ? WORD_PAIRS : KANA_PAIRS;
@@ -311,7 +312,7 @@ async function startGame(nextRound = false) {
   const choice = game && !game.ended ? await confirmAction("Leave this round?", { review: true }) : "save";
   if (!choice) return;
   busy = true;
-  $("newGame").disabled = true; $("startButton").disabled = true;
+  $("startButton").disabled = true;
   if ($("nextRound")) $("nextRound").disabled = true;
   showStartError("");
   notify("Preparing your pairs…");
@@ -346,6 +347,7 @@ async function startGame(nextRound = false) {
     $("details").innerHTML = `<p class="empty-detail" lang="ja">つながる。</p><p class="small">Match a pair to explore it here.</p>`;
     $("results").hidden = true;
     $("emptyBoard").hidden = true;
+    $("startButton").textContent = "New puzzle ↗";
     $("board").dataset.back = game.rules.back;
     $("feedback").textContent = game.rules.mode === "reverse" ? "Turn a Recall card first, then find its Japanese match." : "Turn two cards to find a connection.";
     clearInterval(interval);
@@ -358,7 +360,7 @@ async function startGame(nextRound = false) {
   } catch (error) {
     console.error("Could not start Memory round.", error); notify("", false); showStartError(error.message);
   } finally {
-    busy = false; $("newGame").disabled = false; $("startButton").disabled = false;
+    busy = false; $("startButton").disabled = false;
     if ($("nextRound")) $("nextRound").disabled = false;
     updateStats();
   }
@@ -377,7 +379,6 @@ async function restart() {
   clearInterval(interval); interval = setInterval(tick, 150);
   renderBoard(); renderMatches(); updateStats(); persist();
 }
-$("newGame").onclick = () => startGame();
 $("startButton").onclick = () => startGame();
 $("restartButton").onclick = restart;
 $("endButton").onclick = async () => {
@@ -536,7 +537,6 @@ function finalize(save = true) {
   if (save) game.deck.pairs.filter((pair) => !game.matched.includes(pair.key)).forEach((pair) => saveReview(pair.item));
   if (game.won) {
     progress.completed++;
-    if (game.rules.mode === "daily" && !progress.days.includes(gameDay)) progress.days = [...progress.days, gameDay].slice(-5000);
   }
   renderResults(); updateLifetime(); persist();
 }

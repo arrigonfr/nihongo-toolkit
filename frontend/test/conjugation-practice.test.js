@@ -4,7 +4,7 @@ import { conjugate } from "../src/conjugation.js";
 import { practiceWords, wordCategories, formCatalog } from "../src/conjugation-practice-data.js";
 import {
   cleanSettings, defaults, createPool, evaluateAnswer, normalizeAnswer, PracticeSession,
-  chooseQuestion, sampleChoices, exampleFor, ruleFor, localDate, dailyStreak
+  chooseQuestion, sampleChoices, exampleFor, ruleFor
 } from "../src/conjugation-practice-engine.js";
 
 const all = { ...defaults, levels: [5, 4, 3, 2, 1], forms: Object.keys(formCatalog) };
@@ -332,14 +332,6 @@ test("comparison and reverse accept ambiguous analyses, even outside selected fa
   const base = sessionFor({ mode: "reverse" });
   base.current = question("来る", "basic-polite");
   assert.equal(base.submit("くる", {}, 100), "correct");
-});
-
-test("daily streak is local-calendar based across months and preserves yesterday's streak", () => {
-  const now = new Date(2026, 10, 1, 10);
-  assert.equal(localDate(now), "2026-11-01");
-  assert.equal(dailyStreak(["2026-10-30", "2026-10-31"], now), 2);
-  assert.equal(dailyStreak(["2026-10-30", "2026-10-31", "2026-11-01"], now), 3);
-  assert.equal(dailyStreak(["2026-10-29"], now), 0);
 });
 
 test("every bank word reuses the reference engine without modifying its forms", () => {

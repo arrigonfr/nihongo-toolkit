@@ -43,9 +43,9 @@ try {
     assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), true, "Autosaving leaves the inline panel open");
   }
   async function start() {
-    await page.click("#newGame");
+    await page.click("#startButton");
     await page.locator(".study-confirm-dialog").waitFor({ state: "detached" });
-    await page.waitForFunction(() => !document.getElementById("newGame").disabled);
+    await page.waitForFunction(() => !document.getElementById("startButton").disabled);
     assert.equal(await page.getAttribute("#notice", "data-error"), "false", await page.textContent("#notice"));
     assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), false, "Starting collapses settings");
   }
@@ -77,12 +77,19 @@ try {
   }
   const allDirections = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]];
   await page.goto(url);
+  assert.equal(await page.locator("#exportPuzzle").isVisible(), false);
   assert.deepEqual(await page.locator("#settingsForm > fieldset > legend").allTextContents(), ["Session", "Vocabulary", "Grid & word placement", "Clue list", "Hints & reveals", "Timer & special mode limits", "Display & accessibility"]);
   for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 1000 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `settings overflow at ${width}px`);
   }
   await page.setViewportSize({ width: 1280, height: 1000 });
+  assert.equal(await page.evaluate(() => {
+    const discoveries = document.querySelector("#wordList").closest(".card").getBoundingClientRect();
+    const stats = document.querySelector('[aria-label="Puzzle statistics"]').getBoundingClientRect();
+    const notebook = document.querySelector(".notebook").getBoundingClientRect();
+    return Math.abs(discoveries.top - stats.top) < 1 && stats.left >= discoveries.right && notebook.top >= stats.bottom;
+  }), true, "Stats sit beside discoveries and above the notebook");
   assert.equal(await page.locator("#settingsDialog, #settingsButton").count(), 0);
   assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open && panel.previousElementSibling.classList.contains("intro")), true);
   await page.locator("#settingsPanel summary").focus();
@@ -93,9 +100,20 @@ try {
   assert.equal(await page.locator("[data-cell]").count(), 0);
   await page.click("#startButton");
   await page.waitForSelector("[data-cell]");
+  assert.equal(await page.locator("#exportPuzzle").isVisible(), true);
   assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), false);
   assert.equal(await page.locator("[data-cell]").count(), 100);
   assert.equal(await page.locator("#wordList li").count(), 8);
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 1000 });
+    assert.equal(await page.locator("#wordList").evaluate((list) => {
+      const hints = [...list.children].map((item) => item.getBoundingClientRect());
+      const board = document.querySelector(".board-card").getBoundingClientRect();
+      return hints.every((a, i) => a.bottom <= board.top && hints.slice(i + 1).every((b) =>
+        a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top));
+    }), true, `hints overlap at ${width}px`);
+  }
+  await page.setViewportSize({ width: 1280, height: 1000 });
   const first = await solutions();
   await tapPath(first[0].cells);
   assert.match(await page.textContent("#progressText"), /1 of 8/);
@@ -148,10 +166,10 @@ try {
   assert.match(await page.textContent("#progressText"), /1 of 8/);
   assert.equal(await page.locator("#revealButton").isDisabled(), true);
   await solveAll(allDirections);
-  assert.equal((await saved()).progress.days.length, 1);
+  assert.equal("days" in (await saved()).progress, false);
   await page.reload(); await start();
   assert.equal(await page.locator("#results").isVisible(), true);
-  assert.equal((await saved()).progress.days.length, 1);
+  assert.equal("days" in (await saved()).progress, false);
 
   await configure({ mode: "memory" }); await start();
   assert.equal(await page.locator("#wordList li").count(), 0);
@@ -259,9 +277,9 @@ try {
   await page.selectOption("#setting-mode", "classic", { force: true });
   await page.selectOption("#setting-level", "1", { force: true });
   await page.route("**/api/word-search/vocabulary?level=1", (route) => route.fulfill({ status: 503, json: { error: "Vocabulary is temporarily unavailable." } }));
-  await page.click("#newGame");
+  await page.click("#startButton");
   await page.locator(".study-confirm-dialog").waitFor({ state: "detached" });
-  await page.waitForFunction(() => !document.getElementById("newGame").disabled);
+  await page.waitForFunction(() => !document.getElementById("startButton").disabled);
   assert.match(await page.textContent("#toolbarError"), /unavailable/);
   assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), true, "Failed generation leaves settings open");
   await page.goto(`${base}/index.html`);

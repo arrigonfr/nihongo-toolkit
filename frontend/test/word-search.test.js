@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   DEFAULTS, DIRECTIONS, effectiveSettings, validateSettings, filterVocabulary,
-  generateWordSearch, listStyles, straightPath, matchSelection, reviewImport, dailyStreak
+  generateWordSearch, listStyles, straightPath, matchSelection, reviewImport
 } from "../src/word-search-engine.js";
 
 const pairs = [
@@ -15,7 +15,9 @@ const pairs = [
   ["水", "みず", "water"], ["雨", "あめ", "rain"], ["雪", "ゆき", "snow"], ["風", "かぜ", "wind"],
   ["牛乳", "ぎゅうにゅう", "milk"], ["時間", "じかん", "time"], ["今日", "きょう", "today"],
   ["明日", "あした", "tomorrow"], ["昨日", "きのう", "yesterday"], ["毎日", "まいにち", "every day"],
-  ["コーヒー", "コーヒー", "coffee"], ["パン", "パン", "bread"]
+  ["コーヒー", "コーヒー", "coffee"], ["パン", "パン", "bread"],
+  ["天気", "てんき", "weather"], ["料理", "りょうり", "cooking"],
+  ["家族", "かぞく", "family"], ["会社", "かいしゃ", "company"]
 ];
 const pool = pairs.map(([word, reading, meaning], index) => ({ id: String(index), word, reading, meaning, level: 5, partOfSpeech: "noun" }));
 
@@ -37,6 +39,7 @@ test("exact target counts, straight lines, directions and overlap across seeds, 
       assert.ok(puzzle.grid.every((cell) => [...cell].length === 1));
       const occupied = [];
       for (const entry of puzzle.entries) {
+        assert.ok([...entry.answer].length >= 2);
         assert.equal(entry.cells.map((cell) => puzzle.grid[cell]).join(""), entry.answer);
         assert.deepEqual(straightPath(entry.cells[0], entry.cells.at(-1), size), entry.cells);
         assert.ok(DIRECTIONS[directions].some((direction) => direction.join() === entry.direction.join()));
@@ -48,6 +51,15 @@ test("exact target counts, straight lines, directions and overlap across seeds, 
       if (!overlap) assert.equal(new Set(occupied).size, occupied.length);
     }
   }
+});
+
+test("single-character answers are excluded, with kana fallback in mixed mode", () => {
+  const cat = pool.find((item) => item.word === "猫");
+  assert.throws(() => generateWordSearch([cat], { ...DEFAULTS, script: "kanji", count: 1 }), /Only 0/);
+  for (let seed = 0; seed < 10; seed++) {
+    assert.equal(generateWordSearch([cat], { ...DEFAULTS, script: "both", count: 1 }, { seed }).entries[0].answer, "ねこ");
+  }
+  assert.throws(() => generateWordSearch([{ ...cat, word: "あ", reading: "あ" }], { ...DEFAULTS, count: 1 }), /Only 0/);
 });
 
 test("seeds are deterministic and recent words are avoided when possible", () => {
@@ -86,11 +98,11 @@ test("level and category filters never silently broaden; impossible puzzles fail
   assert.throws(() => generateWordSearch(pool, { ...DEFAULTS, size: 0 }), /grid/);
   const longWords = Array.from({ length: 20 }, (_, i) => ({ ...pool[0], word: `ああああ${String.fromCodePoint(0x304b + i)}`, reading: `ああああ${String.fromCodePoint(0x304b + i)}` }));
   assert.throws(() => generateWordSearch(longWords, { ...DEFAULTS, size: 5, count: 20, overlap: false }), /cannot fit/);
-  const loan = generateWordSearch([{ ...pool.at(-2), reading: "こーひー" }], { ...DEFAULTS, count: 1 });
+  const loan = generateWordSearch([{ ...pool.find((item) => item.word === "コーヒー"), reading: "こーひー" }], { ...DEFAULTS, count: 1 });
   assert.equal(loan.entries[0].answer, "コーヒー");
 });
 
-test("mode overrides, validation, import safety, and streaks", () => {
+test("mode overrides, validation, and import safety", () => {
   assert.equal(effectiveSettings({ ...DEFAULTS, mode: "quick", count: 20 }).count, 5);
   const daily = effectiveSettings({ ...DEFAULTS, mode: "daily", level: "1", timer: true, count: 20 });
   assert.equal(daily.level, "5"); assert.equal(daily.timer, false); assert.equal(daily.reveals, "disabled");
@@ -107,9 +119,6 @@ test("mode overrides, validation, import safety, and streaks", () => {
   assert.deepEqual(reviewImport({ version: 1, tool: "nihon-word-search", words }), words);
   assert.throws(() => reviewImport({ version: 1, tool: "nihon-word-search", words: [{ ...words[0], word: "<script>" }] }));
   assert.throws(() => reviewImport({ version: 2, words }));
-  assert.equal(dailyStreak(["2026-10-22", "2026-10-23"], new Date(2026, 9, 24)), 2);
-  assert.equal(dailyStreak(["2026-10-22", "2026-10-23"], new Date(2026, 9, 25)), 0);
-  assert.equal(dailyStreak(["2026-10-22", "2026-10-23", "2026-10-24"], new Date(2026, 9, 24)), 3);
 });
 
 test("clue-list display accepts legacy singles and combinations, hidden is exclusive", () => {

@@ -87,7 +87,12 @@ try {
       }))
     }));
     async function newPuzzle() {
-      await page.click("#newPuzzleBtn");
+      if (await page.locator("#newPuzzleBtn").isVisible()) {
+        await page.click("#newPuzzleBtn");
+      } else {
+        if (!await page.locator("#nextPuzzleBtn").isVisible()) await page.click("#revealPuzzleBtn");
+        await page.click("#nextPuzzleBtn");
+      }
       await page.waitForFunction(() => !document.getElementById("feedbackBanner").textContent.startsWith("Generating"));
     }
     async function revealAndCheck(mode) {
@@ -132,6 +137,31 @@ try {
     assert.equal(await page.locator("#crosswordGrid .cw-cell").count(), 0, "Opening the tool does not generate a puzzle");
     await page.click("#newPuzzleBtn");
     await page.waitForFunction(() => document.querySelector("#crosswordGrid .cw-cell:not(.block)"));
+    assert.equal(await page.locator("#newPuzzleBtn").isVisible(), false);
+    assert.equal(await page.locator("#nextPuzzleBtn").isVisible(), false);
+    assert.equal(await page.locator("#revealPuzzleBtn").textContent(), "End and Reveal puzzle");
+    await page.locator("#crosswordGrid .cw-cell:not(.block)").first().scrollIntoViewIfNeeded();
+    const tileUnderMenu = await page.locator("#crosswordGrid .cw-cell:not(.block)").evaluateAll((tiles) => {
+      const left = innerWidth / 2 - Math.min(560, innerWidth - 24) / 2;
+      const right = innerWidth - left;
+      return tiles.findIndex((tile) => {
+        const rect = tile.getBoundingClientRect();
+        return rect.left < right - 4 && rect.right > left + 4;
+      });
+    });
+    assert.ok(tileUnderMenu >= 0);
+    await page.locator("#crosswordGrid .cw-cell:not(.block)").nth(tileUnderMenu).click();
+    await page.click("#menuButton");
+    assert.equal(await page.evaluate(() => {
+      const menu = document.querySelector("#helperMenu").getBoundingClientRect();
+      const tile = document.querySelector("#crosswordGrid .cw-cell.is-active");
+      window.scrollBy(0, tile.getBoundingClientRect().top - menu.top - 20);
+      const rect = tile.getBoundingClientRect();
+      const x = Math.max(menu.left, rect.left), y = Math.max(menu.top, rect.top);
+      if (x + 2 >= Math.min(menu.right, rect.right) || y + 2 >= Math.min(menu.bottom, rect.bottom)) return false;
+      return document.querySelector(".navigation").contains(document.elementFromPoint(x + 2, y + 2));
+    }), true, "Navigation overlays the active crossword tile");
+    await page.click("#menuButton");
     await page.click("#settingsDrawer summary");
     for (const [id, text] of [["kanjiFocusToggle", "Use Kanji meanings & readings as clues"]]) {
       assert.equal(await page.locator(`#${id}`).evaluate((input) => input.labels[0].textContent.trim()), text);

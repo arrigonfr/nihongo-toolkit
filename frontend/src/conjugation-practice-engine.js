@@ -178,17 +178,6 @@ export function evaluateAnswer(question, input, script = "either", reverseBase =
   return near ? "near" : "incorrect";
 }
 
-export function localDate(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-export function dailyStreak(days, now = new Date()) {
-  const date = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (!days.includes(localDate(date))) date.setDate(date.getDate() - 1);
-  let count = 0;
-  while (days.includes(localDate(date))) { count++; date.setDate(date.getDate() - 1); }
-  return count;
-}
-
 export function chooseQuestion(pool, progress, { priority = "balanced", mode = "classic" } = {}, previous, random = Math.random) {
   const candidates = pool.length > 1 ? pool.filter((q) => q.key !== previous) : pool;
   if (!candidates.length) return null;

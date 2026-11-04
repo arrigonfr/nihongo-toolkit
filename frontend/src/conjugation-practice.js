@@ -1,6 +1,6 @@
 import { bind } from "wanakana";
 import { API_BASE } from "./api.js";
-import { PracticeSession, cleanSettings, defaults, modes, createPool, dailyStreak, localDate, exampleFor, ruleFor, normalizeAnswer, sampleChoices, taskList } from "./conjugation-practice-engine.js";
+import { PracticeSession, cleanSettings, defaults, modes, createPool, exampleFor, ruleFor, normalizeAnswer, sampleChoices, taskList } from "./conjugation-practice-engine.js";
 import { wordCategories, formCatalog } from "./conjugation-practice-data.js";
 import { mountStudyControls, study, japaneseHTML, audioHTML } from "./study-controls.js";
 import { escape } from "./examples.js";
@@ -16,7 +16,7 @@ import { plainSelect, plainNumber, plainCheck, removeChipsTooltip } from "./plai
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "nihon:conjugation-practice-v1";
-let settings = cleanSettings(), progress = {}, days = [], completed = 0, session, clock, composing = false;
+let settings = cleanSettings(), progress = {}, completed = 0, session, clock, composing = false;
 const notice = (message) => { $("notice").textContent = message; };
 try {
   const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
@@ -26,10 +26,9 @@ try {
     if (key.length > 200 || !value || !["attempts", "correct", "wrong"].every((field) => Number.isSafeInteger(value[field]) && value[field] >= 0)
       || value.attempts !== value.correct + value.wrong || !Number.isFinite(value.last)) throw new Error("Invalid progress totals.");
   }
-  if (saved.days !== undefined && (!Array.isArray(saved.days) || saved.days.some((day) => !/^\d{4}-\d{2}-\d{2}$/.test(day)))) throw new Error("Invalid daily history.");
   if (saved.completed !== undefined && (!Number.isSafeInteger(saved.completed) || saved.completed < 0)) throw new Error("Invalid completed count.");
   settings = cleanSettings(saved.settings);
-  progress = records; days = saved.days || []; completed = saved.completed || 0;
+  progress = records; completed = saved.completed || 0;
 } catch (error) {
   console.warn("Could not restore conjugation practice.", error);
   notice("Saved practice data could not be restored. Defaults are in use; your other tools are unaffected.");
@@ -38,9 +37,8 @@ function persist() {
   if (session && !session.completedRecorded && (session.results.length >= session.limit || session.reason === "Time is up")) {
     completed++;
     session.completedRecorded = true;
-    if (session.settings.mode === "daily") days = [...new Set([...days, localDate()])];
   }
-  try { localStorage.setItem(storageKey, JSON.stringify({ settings, progress, days, completed })); }
+  try { localStorage.setItem(storageKey, JSON.stringify({ settings, progress, completed })); }
   catch (error) {
     console.warn("Could not save conjugation practice.", error);
     notice("Your browser could not save practice progress. Keep this tab open; progress may be lost when it closes.");
@@ -56,7 +54,7 @@ $("quickSettings").insertBefore($("levelSettings"), $("setting-questions").close
 const syncModePills = pillSelect($("setting-mode"), {
   classic: "Conjugate words with your selected filters.", quick: "A short drill of five questions.",
   marathon: "Continue until you stop or reach the mistake limit.", timed: "Answer as many questions as you can before time runs out.",
-  sudden: "The first missed or assisted answer ends the challenge.", daily: "Complete five questions to build your daily streak.",
+  sudden: "The first missed or assisted answer ends the challenge.", daily: "Complete five daily practice questions.",
   weak: "Practice previously missed or assisted word–form pairs.", mixed: "Review previously practiced word–form pairs.",
   comparison: "Distinguish potential, passive and causative forms.", sentence: "Conjugate the word to complete a sentence.",
   reverse: "Identify the base word or grammatical features of a conjugated form.", irregular: "Focus on irregular verbs."
@@ -332,7 +330,6 @@ function renderFeedback() {
   enableKanji($("feedback"));
 }
 function renderProgress() {
-  $("streak").textContent = dailyStreak(days);
   const records = Object.entries(progress);
   const attempts = records.reduce((sum, [, r]) => sum + r.attempts, 0), correct = records.reduce((sum, [, r]) => sum + r.correct, 0);
   $("lifetime").textContent = `${completed} completed sessions · ${attempts ? Math.round(correct / attempts * 100) : 0}% unassisted accuracy`;
@@ -492,8 +489,8 @@ $("revealButton").addEventListener("click", () => {
   renderQuestion(); renderProgress(); $("nextButton").focus();
 });
 $("resetButton").addEventListener("click", async () => {
-  if (!await confirmAction("Reset all conjugation practice scores, weak forms and daily streaks? Settings and other tools will not change.", { confirmLabel: "Reset progress" })) return;
-  progress = {}; days = []; completed = 0; session = null;
+  if (!await confirmAction("Reset all conjugation practice scores and weak forms? Settings and other tools will not change.", { confirmLabel: "Reset progress" })) return;
+  progress = {}; completed = 0; session = null;
   $("results").hidden = true; $("setup").hidden = false;
   persist(); renderProgress(); syncSettings(); notice("Conjugation practice progress reset.");
 });

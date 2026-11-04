@@ -250,12 +250,12 @@ try {
   const dailyAnswers = ["たべて", "みて", "たべて", "みて", "たべて"];
   for (const [index, reading] of dailyAnswers.entries()) {
     await answer(reading);
-    if (index === 4) assert.equal((await saved()).days.length, 1, "The fifth answer saves the streak before Next");
+    if (index === 4) assert.equal("days" in await saved(), false);
     await page.click("#nextButton");
   }
   assert.equal(await page.locator("#results").isVisible(), true);
-  assert.equal(await page.textContent("#streak"), "1");
-  assert.equal((await saved()).days.length, 1);
+  assert.equal(await page.locator("#streak").count(), 0);
+  assert.equal("days" in await saved(), false);
   assert.equal((await saved()).completed, 1);
 
   for (const mode of ["sudden", "marathon"]) {
@@ -319,7 +319,7 @@ try {
   await page.waitForURL(`${base}/katsuyo-renshuu.html`);
   await page.locator("#startButton").waitFor();
   assert.deepEqual(errors, []);
-  console.log("Conjugation practice browser checks passed: typing, grading, no auto-reveal, retry scoring, assistance limits, kanji, every recognition task, daily streak, sudden death, marathon, timer, filters, persistence, mobile, reset and launcher.");
+  console.log("Conjugation practice browser checks passed: typing, grading, no auto-reveal, retry scoring, assistance limits, kanji, every recognition task, daily practice, sudden death, marathon, timer, filters, persistence, mobile, reset and launcher.");
 } finally {
   await browser?.close();
   await vite?.close();

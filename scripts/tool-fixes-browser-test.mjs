@@ -205,7 +205,7 @@ try {
         assert.equal(await navigationPage.locator("#menuButton").isVisible(), true);
         await navigationPage.click("#menuButton");
         assert.equal(await navigationPage.locator("#helperMenu").isVisible(), true);
-        assert.equal(await navigationPage.locator("#helperMenu a[href]").count(), 14);
+        assert.equal(await navigationPage.locator("#helperMenu a[href]").count(), 15);
         assert.equal(await navigationPage.locator('.helper-link[aria-current="page"]').getAttribute("data-file"), file);
         assert.equal(await navigationPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         await checkMenuDismissal(navigationPage);
@@ -224,7 +224,7 @@ try {
     assert.match(await (await navigationPage.request.get(`${origin}/robots.txt`)).text(), /Sitemap: https:\/\/nihongo-toolkit.pages.dev\/sitemap.xml/);
     await navigationPage.goto(`${origin}/index.html`);
     await navigationPage.waitForURL(`${origin}/`);
-    assert.equal(await navigationPage.locator(".dashboard-link").count(), 14);
+    assert.equal(await navigationPage.locator(".dashboard-link").count(), 15);
     for (const file of files) {
       await navigationPage.click("#menuButton");
       await navigationPage.locator(`#helperMenu .helper-link[data-file="${file}"]`).click();

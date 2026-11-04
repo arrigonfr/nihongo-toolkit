@@ -28,7 +28,7 @@ const modeDescriptions = {
 };
 const defaults = { ...DEFAULT_RULES, opponent: "computer", players: 2, fontSize: "normal", font: "Noto Sans JP", contrast: false, translations: false };
 let settings = { ...defaults };
-let progress = { known: [], review: [], daily: { last: "", streak: 0, attempted: "" } };
+let progress = { known: [], review: [] };
 let restoreError = "";
 function validateSettings(value) {
   parseRules(value);
@@ -46,8 +46,9 @@ try {
   delete settings.appearance;
   const stored = JSON.parse(localStorage.getItem(progressKey) || "null");
   if (stored) {
-    if (!Array.isArray(stored.known) || !Array.isArray(stored.review) || !stored.daily || !Number.isInteger(stored.daily.streak)) throw new Error("Invalid saved progress");
-    progress = stored;
+    if (!Array.isArray(stored.known) || !Array.isArray(stored.review)) throw new Error("Invalid saved progress");
+    const { daily: _daily, ...savedProgress } = stored;
+    progress = savedProgress;
   }
 } catch (error) {
   console.error("Could not restore Shiritori preferences.", error);
@@ -71,11 +72,6 @@ const exampleCache = new Map();
 const today = () => {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-};
-const previousDay = (date) => {
-  const value = new Date(`${date}T12:00:00`);
-  value.setDate(value.getDate() - 1);
-  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 };
 const info = (message, error = false) => {
   $("feedback").textContent = message;
@@ -136,7 +132,7 @@ function settingsMarkup() {
   <div class="settings-footer">
     <button id="exportReview" type="button" data-setting-description="Download a JSON file of saved vocabulary, readings, meanings and source metadata.">Export review list</button>
     <button id="importReview" type="button" data-setting-description="Merge a previously exported review list. Files are validated locally and cannot add words to the accepted game dictionary.">Import review list</button>
-    <button id="resetProgress" type="button" data-setting-description="Permanently clear discoveries, the review list and Daily streak on this browser, after confirmation. Game statistics reset whenever you start a new game.">Reset progress</button>
+    <button id="resetProgress" type="button" data-setting-description="Permanently clear discoveries and the review list on this browser, after confirmation. Game statistics reset whenever you start a new game.">Reset progress</button>
     <input id="reviewFile" type="file" accept="application/json,.json" hidden>
   </div>`;
 }
@@ -157,7 +153,7 @@ $("shiritoriRoot").innerHTML = `<div class="shell">
     <section id="results" class="card results" tabindex="-1" hidden></section>
     <section class="card"><div class="card-heading"><h2>The word chain</h2><span id="chainCount" class="tag">0 words</span></div><ol id="chain" class="chain"></ol><div id="chainEmpty" class="empty-state"><span class="empty-icon" lang="ja">言葉をつなごう</span>Your first connection is waiting.<br><span class="small">Every word is a chance to learn something new.</span></div></section>
   </main><aside class="sidebar">
-    <section class="card"><div class="card-heading"><h2>This round</h2><span id="dailyStreak" class="small"></span></div><div id="scores" class="muted">A fresh chain, a fresh start.</div><div id="stats" class="stats"></div><p id="bonusLabel" class="small" style="margin:16px 0 0">N5 → 10 pts · N1 → 50 pts</p></section>
+    <section class="card"><div class="card-heading"><h2>This round</h2></div><div id="scores" class="muted">A fresh chain, a fresh start.</div><div id="stats" class="stats"></div><p id="bonusLabel" class="small" style="margin:16px 0 0">N5 → 10 pts · N1 → 50 pts</p></section>
     <section class="card" id="wordDetails"><div class="card-heading"><h2>Word notebook</h2><span class="small">Learn as you play</span></div><div id="detailBody" class="muted">Tap or hover over a played word to explore its reading, meaning, and an example. Tap an individual kanji for a closer look.</div></section>
     <section class="card rule-note"><h2>A small reminder</h2><p id="ruleSummary"></p><p class="small">Small kana stay with their syllable (しょ → しょ…). Longer overlaps earn bonus points. Prefer a gentler chain? Try Beginner in Settings.</p></section>
   </aside></div>
@@ -166,7 +162,7 @@ $("shiritoriRoot").innerHTML = `<div class="shell">
     <div class="help-example" lang="ja">りんご → ごりら → らっぱ</div>
     <p><strong>Shiritori means “taking the tail”.</strong> Start your word with the last syllable of the previous word, or with more of it: the last two or three syllables, or its last kanji or kanji compound. The answer must be longer than the overlap, so it can never begin with the entire previous word. Small kana stay attached (しょ needs しょ, and しょう works). Hiragana and katakana are equivalent. Submit with Enter or Play. Words ending in <strong>ん / ン</strong> and the particle <strong>を / ヲ</strong> are not accepted. Stuck? Use <strong>Pass</strong> to skip your turn; if everyone passes in a row, the round ends.</p>
     <h3>Play your way</h3><p>Play the computer, practice alone, or share this device with up to six local players. Classic retries invalid entries. Sudden Death loses on any invalid submission. Relaxed has unlimited hints and no timer: an invalid connection ends the round. Timed includes dictionary-check time. Beginner caps words at four morae and enables furigana. Marathon adds points for every word.</p>
-    <p>Category and Katakana challenges filter the vocabulary. Advanced Kanji Shiritori only accepts overlaps made of the last kanji or kanji compound. Daily uses a date-seeded match with fixed rules: play ten valid human words to win. Only your first attempt each local calendar day counts toward your streak; repeat attempts are practice.</p>
+    <p>Category and Katakana challenges filter the vocabulary. Advanced Kanji Shiritori only accepts overlaps made of the last kanji or kanji compound. Daily uses a date-seeded match with fixed rules: play ten valid human words to win.</p>
     <h3>Make the rules yours</h3><p>Choose Kana, Kanji or Both, a category and parts of speech. Conjugated verbs and adjectives are accepted. Romaji converts as you type; pick the right spelling when a reading is ambiguous. Kanji entry accepts a typed reading only after you confirm its spelling.</p>
     <p>For Kana entry and kanji chains: ${escape(READING_ENDING_RULE)} Dictionary readings are checked even when you type kanji. A long-vowel mark inside a word is fine, as in ケーキ. Outside Kanji Shiritori, Both entry keeps a final ー attached to its syllable (コーヒー requires ヒー). Repeated words and words ending in ん / ン are never accepted. You can allow voiced/unvoiced pairs. No available dictionary continuation ends the round with an explanation, not an invented word.</p>
     <h3>Learn, don’t just guess</h3><p>Hints cycle through first kana, morae, category and a hidden word; Reveal gives a legal word and meaning. Hover, focus or tap chain words to explore them. Kanji buttons show meanings, on’yomi, kun’yomi and compounds. Audio uses an installed Japanese device voice. Sentence availability depends on the dictionary and Tatoeba.</p>
@@ -313,7 +309,6 @@ function render() {
   $("modeBadge").textContent = `${modes[rules.mode]} · ${rules.mode === "daily" || players.opponent === "computer" ? "vs. computer" : players.players === 1 ? "solo practice" : `${players.players} local players`}`;
   $("newGame").textContent = game ? "New game →" : "Start game →";
   $("reviewCount").textContent = progress.review.length;
-  $("dailyStreak").textContent = `${progress.daily.streak} day streak`;
   const restrictedEndings = rules.entry === "kana" || kanjiChain(rules);
   $("ruleSummary").textContent = `${kanjiChain(rules) ? "Reuse the final kanji or kanji compound" : "Reuse the last syllable or more, or the final kanji / compound"}. No repeated words. ${restrictedEndings ? READING_ENDING_RULE : "Words ending in ん / ン are not accepted."}`;
   $("entryNote").textContent = `Romaji converts to kana as you type. You can also use a Japanese keyboard.${restrictedEndings ? ` ${READING_ENDING_RULE}` : ""}`;
@@ -408,7 +403,6 @@ async function startGame() {
   game = {
     rules, settings: { ...settings }, active: false, turn: 0, chain: [], humanWords: 0, bonusKana: "", deadline: 0, hintStep: 0,
     rng: createSeededRandom(rules.mode === "daily" ? date : `${Date.now()}-${Math.random()}`),
-    dailyDate: date, rankedDaily: rules.mode === "daily" && progress.daily.attempted !== date,
     knownBefore: new Set(progress.known),
     players: rules.mode === "daily" || settings.opponent === "computer"
       ? [{ name: "You", score: 0, hints: 0, reveals: 0 }, { name: "Computer", score: 0, hints: 0, reveals: 0, computer: true }]
@@ -446,14 +440,10 @@ async function startGame() {
       try { sessionStorage.setItem("nihon:shiritori-starters", JSON.stringify(recentStarters)); }
       catch (error) { console.warn("Could not save recent opening words.", error); }
     }
-    if (game.rankedDaily) {
-      progress.daily.attempted = date;
-      persist(progressKey, progress);
-    }
     game.active = true; busy = false;
     $("settingsPanel").open = false;
     renderChain(); showWord(starter); speakJapanese(starter.reading); beginTurn(following);
-    if (rules.mode === "daily") info(game.rankedDaily ? "Daily challenge: play 10 valid words. Your first attempt counts toward your streak." : "Daily practice: today’s ranked attempt has already been used.");
+    if (rules.mode === "daily") info("Daily challenge: play 10 valid words.");
     else info(`Your opening word is ${starter.word} (${starter.reading}). Continue with ${requiredStart(starter, rules)}.`);
   } catch (error) {
     if (generation !== token) return;
@@ -675,13 +665,6 @@ function finish(reason, explanation, loser = null, dailyGoal = false) {
   info("Round complete — see the results below.");
   clearInterval(timerHandle); $("timer").textContent = "Round ended"; $("choices").replaceChildren(); $("retryComputer").hidden = true;
   const dailyWin = game.rules.mode === "daily" && (dailyGoal || loser !== null && game.players[loser].computer);
-  if (game.rankedDaily) {
-    if (dailyWin) {
-      progress.daily.streak = progress.daily.last === previousDay(game.dailyDate) ? progress.daily.streak + 1 : 1;
-      progress.daily.last = game.dailyDate;
-    } else progress.daily.streak = 0;
-    persist(progressKey, progress);
-  }
   const title = dailyWin ? "Daily challenge complete!" : loser === null ? "A chain worth remembering" : game.players.length === 1 ? "Round lost" : game.players[loser].computer ? "You win!" : `${game.players[loser].name} ${game.players[loser].name === "You" ? "lose" : "loses"}`;
   const winners = loser === null ? "" : game.players.filter((_, i) => i !== loser).map((p) => p.name).join(", ");
   const discoveries = game.chain.filter((word, i, list) => list.findIndex((item) => item.id === word.id) === i);
@@ -755,7 +738,7 @@ $("reviewFile").addEventListener("change", async () => {
 $("resetProgress").addEventListener("click", async () => {
   if (game?.active) { showSettingsError("End the current round before resetting progress."); return; }
   if (!await confirmAction("Clear all discoveries, saved review words and daily progress on this browser?", { confirmLabel: "Delete progress" })) return;
-  progress = { known: [], review: [], daily: { last: "", streak: 0, attempted: "" } };
+  progress = { known: [], review: [] };
   persist(progressKey, progress); render(); showSettingsError("Progress reset.");
 });
 $("newGame").addEventListener("click", startGame);

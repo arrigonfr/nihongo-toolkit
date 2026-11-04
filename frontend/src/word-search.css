@@ -32,6 +32,7 @@ h3 { font-size: 13px; margin-top: 24px; }
 main, aside { min-width: 0; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px; margin-bottom: 20px; box-shadow: 0 4px 18px rgb(0 0 0 / .025); }
 .board-card { padding: 26px; }
+.board-card > #startButton { display: block; margin: 0 auto 16px; }
 .card.puzzle-settings { padding: 0; overflow: hidden; }
 .puzzle-settings summary { padding: 14px 17px; color: var(--accent-strong); cursor: pointer; font-size: 13px; font-weight: 750; list-style-position: inside; }
 .puzzle-settings .settings-body { padding: 16px 22px 22px; border-top: 1px solid var(--line); }
@@ -68,8 +69,7 @@ progress::-moz-progress-bar { background: var(--accent); }
 #emptyBoard > span { font-size: 35px; color: var(--accent); letter-spacing: .15em; }
 #emptyBoard p { font-size: 14px; color: var(--muted); }
 .card-heading { margin-bottom: 14px; }
-.word-list { list-style: none; padding: 0; margin: 15px 0 0; }
-.word-list li + li { margin-top: 4px; }
+.word-list { list-style: none; padding: 0; margin: 15px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 4px 12px; }
 .word-list button { display: flex; width: 100%; gap: 12px; padding: 12px 7px; border: 1px solid transparent; border-radius: 10px; text-align: left !important; justify-content: flex-start !important; background: transparent; font-size: 15px; font-weight: 500; }
 .word-list button:disabled { opacity: 1; }
 .word-check { font-size: 10px; color: var(--muted); flex: 0 0 24px; width: 24px; height: 24px; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; }
@@ -115,7 +115,7 @@ legend { font-weight: 700; font-size: 14px; margin-bottom: 16px; }
 .results p { font-size: 12px; }
 @media (min-width: 1500px) { .shell { max-width: 1400px; } .layout { grid-template-columns: minmax(0, 1fr) 370px; } }
 @media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr) 280px; gap: 15px; } .shell { padding: 0 20px; } .card, .board-card { padding: 18px; } }
-@media (max-width: 780px) { .layout { grid-template-columns: minmax(0, 1fr); } aside { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; } aside .card { margin-bottom: 0; } .source-note { grid-column: 1 / -1; } .intro { padding-top: 28px; } }
+@media (max-width: 780px) { .layout { grid-template-columns: minmax(0, 1fr); } .intro { padding-top: 28px; } }
 @media (max-width: 500px) { .shell { padding: 0 12px; } .toolbar { align-items: flex-start; } .toolbar > .actions { width: 100%; display: grid; grid-template-columns: 1fr 1.2fr; } .toolbar button { padding: 9px 6px; font-size: 12px; } .card { padding: 16px 12px; } aside { grid-template-columns: 1fr; } .settings-grid { grid-template-columns: 1fr; } .dialog-body, .puzzle-settings .settings-body { padding: 16px; } .board-bottom { gap: 6px; } .board-bottom button { font-size: 11px; } .board-bottom select { font-size: 11px; max-width: 135px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 #settingsForm > fieldset > legend { width: 100%; padding-bottom: 8px; border-bottom: 1px solid var(--line); }

@@ -1025,37 +1025,6 @@ body details .cw-toggle-group .cw-reset-setting legend + small { clear: both; }
   line-height: 1.6;
 }
 
-/* Lifetime Stats & Mistake Review Drawer */
-.cw-stats-panel {
-  margin-top: 16px;
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--card);
-}
-
-.cw-stats-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.cw-stat-card {
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--soft);
-}
-.cw-stat-card strong {
-  display: block;
-  font-size: 20px;
-  font-weight: 800;
-}
-.cw-stat-card span {
-  color: var(--muted);
-  font-size: 11px;
-}
-
 .cw-missed-chips {
   display: flex;
   flex-wrap: wrap;

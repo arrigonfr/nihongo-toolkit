@@ -90,7 +90,7 @@ requests on GitHub, alongside the PayPal support button.
 
 ### Discoverable tools and shared navigation
 
-Open the site at `/` to browse the dashboard. Each of the fourteen tools has a
+Open the site at `/` to browse the dashboard. Each of the fifteen tools has a
 bookmarkable romaji URL and a shared navigation menu. Links and browser Back/Forward
 navigate between pages; old Japanese filenames and `/#helper=...` links redirect to
 their corresponding tools. Click or tap outside the menu, or press Escape, to close it.
@@ -232,7 +232,7 @@ Explicitly revealing a Kana answer replaces its prompt instead of showing a bann
 Stopping a free, question-count, or timed session shows results without claiming
 the target was completed, cancels advancement/timers, and ignores late question
 responses. Session controls remain visible when numerical stats are hidden.
-The main menu includes all fourteen tools, centered icon separators, and short descriptions.
+The main menu includes all fifteen tools, centered icon separators, and short descriptions.
 
 ## Eawase · Japanese Memory
 
@@ -527,8 +527,7 @@ Missed questions are reinserted after an intervening question when space remains
 within the chosen session length, and weighted more heavily in future sessions.
 
 Results show accuracy, correct/incorrect-or-assisted counts, time, forms and
-words to revisit. Daily streaks use local calendar dates and are saved as soon
-as the fifth answer is recorded, at most once per day. Settings and cumulative
+words to revisit. Settings and cumulative
 per-word/form progress persist in `nihon:conjugation-practice-v1`; reloading ends
 an in-progress session but retains recorded answers. Reset affects only this
 trainer's progress and requires confirmation. A persistent missed-word log supports

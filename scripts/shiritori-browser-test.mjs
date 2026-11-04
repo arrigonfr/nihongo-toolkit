@@ -354,7 +354,7 @@ try {
   assert.match(await page.locator("#turnLabel").textContent(), /0\/10/);
   await page.click("#stopGame");
   await reset({ mode: "daily" });
-  assert.match(await page.locator("#feedback").textContent(), /today’s ranked attempt has already been used/);
+  assert.match(await page.locator("#feedback").textContent(), /Daily challenge: play 10 valid words/);
 
   await page.click("#settingsPanel > summary");
   assert.equal(await page.locator("#gameSettings").evaluate((node) => node.disabled), false);

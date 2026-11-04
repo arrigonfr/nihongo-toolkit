@@ -52,9 +52,9 @@ try {
     assert.equal(await page.locator("#settingsPanel").evaluate((element) => element.open), true);
   }
   async function start() {
-    await page.click("#newGame");
+    await page.click("#startButton");
     await page.locator(".study-confirm-dialog").waitFor({ state: "detached" });
-    await page.waitForFunction(() => !document.getElementById("newGame").disabled);
+    await page.waitForFunction(() => !document.getElementById("startButton").disabled);
     assert.equal(await page.getAttribute("#notice", "data-error"), "false", await page.textContent("#notice"));
   }
   async function scan() {
@@ -79,6 +79,14 @@ try {
   }
   await page.goto(url);
   assert.equal(await page.locator("[data-card]").count(), 0);
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  assert.equal(await page.evaluate(() => {
+    const stats = document.querySelector("#stats").closest(".panel").getBoundingClientRect();
+    const layout = document.querySelector(".layout").getBoundingClientRect();
+    const board = document.querySelector(".board-panel").getBoundingClientRect();
+    const notebook = document.querySelector(".sidebar .notebook").getBoundingClientRect();
+    return Math.abs(stats.width - layout.width) < 1 && Math.abs(board.top - notebook.top) < 1;
+  }), true, "Full-width stats precede the aligned board and notebook");
   await page.click("#helpButton");
   assert.match(await page.textContent("#helpDialog"), /Flip two cards/);
   await page.keyboard.press("Escape");
@@ -231,7 +239,7 @@ try {
   daily = (await saved()).progress.daily;
   const dailyPairs = daily.game.deck.pairs.map((pair) => daily.game.deck.cards.filter((card) => card.key === pair.key).map((card) => card.id));
   await solve(dailyPairs);
-  assert.equal((await saved()).progress.days.length, 1);
+  assert.equal("days" in (await saved()).progress, false);
   const completed = (await saved()).progress.completed;
   await page.reload(); await start();
   assert.equal(await page.locator("#results").isVisible(), true);
@@ -252,7 +260,7 @@ try {
   await start();
   await page.click("#revealButton");
   await page.click("#nextRound");
-  await page.waitForFunction(() => !document.getElementById("newGame").disabled);
+  await page.waitForFunction(() => !document.getElementById("startButton").disabled);
   assert.equal(await page.locator("[data-card]").count(), 6);
   assert.match(await page.textContent("#roundLabel"), /2 \/ 2/);
   for (let i = 0; i < 3; i++) await page.click("#revealButton");
@@ -262,9 +270,9 @@ try {
   await start();
   assert.equal(await page.locator("[data-card]").count(), 4);
   await configure({ mode: "listening", count: 3, correction: true, hints: "unlimited" });
-  await page.click("#newGame");
+  await page.click("#startButton");
   await page.locator(".study-confirm-dialog").waitFor({ state: "detached" });
-  await page.waitForFunction(() => !document.getElementById("newGame").disabled);
+  await page.waitForFunction(() => !document.getElementById("startButton").disabled);
   assert.match(await page.textContent("#startError"), /Audio On/);
   await page.click("#audioQuickToggle");
   await start();

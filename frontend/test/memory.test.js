@@ -4,7 +4,7 @@ import {
   DEFAULTS, BACKS, WORD_PAIRS, KANA_PAIRS, KANA, GRIDS, MODES, SHUFFLE_MODES, effectiveSettings, validateSettings,
   generateDeck, createRound, flipCard, settleMismatch, checkEnd, elapsed, accuracy, assist,
   canAssist, finishRound, reviewImport, restoreDaily, toHiragana, toKatakana, katakanaOf,
-  romajiOf, dailyStreak
+  romajiOf
 } from "../src/memory-engine.js";
 
 const words = [
@@ -276,7 +276,6 @@ test("daily snapshot survives partial/mismatched/finished rounds and rejects tam
   game.deck.cards[0].text = "tampered";
   assert.throws(restore, /board/);
   assert.equal(restoreDaily({ day, game }, "2026-10-25"), null);
-  assert.equal(dailyStreak(["2026-10-23", "2026-10-24"], new Date(2026, 9, 24)), 2);
 });
 test("legacy boolean shuffle settings do not invalidate a saved daily board", () => {
   const day = "2026-10-24", r = rules({ mode: "daily" });
