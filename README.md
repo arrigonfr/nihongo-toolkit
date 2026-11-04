@@ -945,8 +945,6 @@ must remain `true` to prevent public access to assets.
    Open `/api/health` there and confirm `ready: true`, then try the practice,
    dictionary, analysis and shiritori pages on the frontend.
 6. Optionally set `VITE_SITE_URL` to the frontend URL when building the frontend.
-   Canonical links, robots and sitemap then use that origin;
-   without it the build does not advertise the old Netlify origin.
 
 **Cost and limits:** Workers Paid (currently starting at $5/month, plus usage
 overages) is the supported plan for the complete app. Workers Free allows only
