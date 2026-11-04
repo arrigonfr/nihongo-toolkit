@@ -6,7 +6,7 @@ breakdowns; and learn through memory, word-search, crossword and shiritori games
 The project lives at [arrigonfr/nihongo-toolkit](https://github.com/arrigonfr/nihongo-toolkit).
 
 Node.js 24 backend (`backend/`) and Vite multi-page frontend (`frontend/`).
-Local development uses SQLite; production uses a Cloudflare Worker API with D1
+Local development uses SQLite; production uses a Cloudflare Worker API with Turso
 and a separately hosted frontend such as Cloudflare Pages. The existing helper pages, filenames,
 and local preferences are preserved. Sentence lookups use the dictionary database
 first, with an optional server-side Tatoeba API fallback when no local examples exist
@@ -405,7 +405,7 @@ The handwriting worksheet uses locally generated KanjiVG stroke diagrams and
 JLPT lists. Choose characters, paper, orientation, font size, stroke opacity and
 number size. Printing and PDF include all pages; PNG, SVG and HTML downloads are
 ZIP archives of all pages. Regenerate the lists with
-`node scripts/build-worksheet-kanji.mjs` after updating the D1 export, and the
+`node scripts/build-worksheet-kanji.mjs` after updating the local SQLite database, and the
 stroke data with `node scripts/build-worksheet-strokes.mjs`.
 
 ## Katsuyō Japanese conjugator
@@ -834,37 +834,98 @@ An exclusive import lock prevents concurrent writers. If a process is forcibly k
 remove only its stale `backend/data/nihon.sqlite.import-lock` after confirming no import
 is running. Restart a running backend after replacing its database.
 
-`npm run db:export-d1 -- --output backend/data/d1-export-initial` reads a consistent
-SQLite snapshot without modifying it. It exports the core tables, any optional
-seed tables, and a derived `practice_kanjis` table replacing SQLite's custom
-practice predicate in D1. SQL chunks contain primary-key existence checks, not
-replacement writes. Each chunk is at most 500 rows / approximately 2 MiB;
-individual statements are checked against D1's 100,000-byte SQL limit.
-`manifest.json` and `snapshot.json` record checksums and conservative write estimates.
-The output directory must be new; a failed export is incomplete until its final
-manifest and snapshot exist. Keep exports uncommitted.
+Production reads the uploaded `backend/data/nihon.sqlite` snapshot from a Turso
+libSQL database using `@libsql/client/web`. No additional schema or data migration
+is needed for an already uploaded snapshot. Practice-kanji eligibility uses the
+same JavaScript predicate as local SQLite, without a remote custom SQL function
+or derived table. Local import/seed commands still update only the local file;
+upload a new complete snapshot to Turso when publishing a rebuilt dictionary,
+or use the additive enrichment and delta-sync workflow below.
 
-`npm run db:import-d1 -- --input backend/data/d1-export-initial --remote` loads
-that snapshot after applying migrations. It verifies checksums, refuses a different
-snapshot or an untracked populated destination, checkpoints completed chunks in
-D1, and verifies final counts and foreign keys. Re-run the **same command and
-unchanged export** to resume. Omitting `--remote` imports into Wrangler's local D1,
-not the Node SQLite database. This is **not a synchronizer**: regenerated snapshots
-can reuse numeric IDs for different words. Use a new D1 database for new snapshots,
-even if only some source records changed.
+### Additive vocabulary and sentence enrichment
 
-The default write budget is 90,000 estimated writes per UTC day, tracked for this
-database/import (not other account activity). Index writes are included, with
-headroom. A budget stop exits with code 2; resume after UTC midnight. Check actual
-D1 metrics too, run only one importer per database, and lower the budget if other
-applications share the account. Paid accounts can explicitly raise `--budget`.
-The current seeded local snapshot exports 843,360 rows, with approximately
-3.31 million conservatively estimated writes; the default budget takes roughly
-37 days, not a single Free-plan import.
+Back up the local database before a large enrichment run. These commands append
+to the existing database and preserve numeric word IDs:
+
+```sh
+npm run db:enrich -- --api-limit 100
+npm run db:discover-words
+npm run db:generate-examples -- --model llama3.2:latest --minutes 10 --limit 1000
+npm run db:review-examples -- --limit 20
+npm run db:enrich -- --report
+```
+
+`db:enrich` obtains the latest English JMdict-with-examples release, inserts only
+previously unknown JMdict IDs, and imports the attributed Japanese/English
+Tatoeba pairs distributed by ManyThings. Source URLs and SHA-256 checksums are
+retained. Bulk files are cached under `backend/.cache/enrichment`; remove the
+specific cached download to refresh a mutable source URL. Corpus processing
+checkpoints every 500 pairs and resumes safely; lexical matching uses Kuromoji
+base forms and readings, not arbitrary substring matches. Ambiguous dictionary
+homographs are not automatically linked. Upstream sentence revisions receive
+versioned IDs rather than overwriting previously imported text.
+
+The API pass is rate-limited to one request at a time with a delay, searches up
+to `--api-limit` previously unqueried words (100 by default), and records progress.
+Use `--skip-bulk` to run only this pass, or `--api-limit 0` for bulk-only imports.
+Provider errors stop the run explicitly; committed batches remain available.
+`db:discover-words` examines a bounded sample of Wikinews articles and Wikibooks
+Japanese vocabulary pages. Unrecognized lexical candidates and their page URLs
+are kept in `enrichment_candidates` for dictionary validation, **not** published
+as invented definitions or copied news sentences.
+
+The coverage target is **three distinct Japanese sentences per word** in
+`sentences`/`word_sentences`. The report measures that normalized corpus; legacy
+OpenJLPT examples stored in `vocabulary.examples` remain available separately.
+Rare and obsolete entries may still lack authentic examples. Local generation
+requires an already running Ollama at `127.0.0.1:11434` and an installed model.
+It prioritizes JLPT/common words, saves progress per word/model, and stops at
+the first of the word or time limits (finishing the current request).
+Re-run to continue; `--retry-failed` also retries incomplete previous attempts.
+The generation prompt explicitly pairs the Japanese base word and reading with
+its first English dictionary gloss, requiring both sentences to preserve that
+single sense. The chosen pair is retained with each draft for review. This reduces
+ambiguity but does not guarantee a correct translation.
+Generation is structurally checked, **not linguistically verified**. All output
+is quarantined in `enrichment_generated`, excluded from coverage, learning screens
+and Turso sync. Review both Japanese usage and English translation, then explicitly
+run `npm run db:review-examples -- --approve ID` or `--reject ID` (repeat the flag
+for multiple IDs). Only approved examples enter the published corpus and sync journal.
+Generation may
+leave gaps rather than accepting malformed output, and a small model may be
+unsuitable for rare Japanese vocabulary. Model name/digest and generation date
+are retained. The API and UI label approved examples **AI-generated / reviewed**
+and do not link them to Tatoeba or claim a Tatoeba license.
+
+To migrate additions to the already-uploaded Turso snapshot:
+
+```sh
+# Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in backend/.env or the environment.
+npm run db:sync-turso
+npm run db:sync-turso -- --apply
+```
+
+The default is a local pending-change report; only `--apply` contacts and writes
+to Turso. Use a write-capable migration token, separate from the Worker's
+read-only token. Inserts are journaled transactionally in SQLite and sent in
+100-row transactions with batched validation. Existing identical rows are
+replay-safe; conflicting rows or mismatched word/kanji identities abort and roll
+back the batch. Successful batches checkpoint per destination URL, so retrying
+after interruption does not replace existing data. The remote database must be
+the original local snapshot with the same IDs; this is not a generic merger for
+unrelated dictionaries. Discovery candidates, quarantined generations, local
+progress and generation attempt records are not published. Core dictionary tag
+descriptions are merged.
+
+Keep the local database and its `enrichment_*` tables: they are the durable
+migration journal. `db:import` replaces the whole database and would discard
+enrichment and sync progress; do not rebuild it after enrichment without a
+backup and an explicit full-snapshot replacement plan. Enrichment snapshots,
+download caches and generated database files remain gitignored.
 
 ## Deploy
 
-The production Worker serves **only `/api/*`**, backed by D1. Host the frontend
+The production Worker serves **only `/api/*`**, backed by Turso. Host the frontend
 separately, for example on Cloudflare Pages: build it with `npm run build`, set
 `VITE_API_BASE_URL` to the Worker's HTTPS origin, and publish `frontend/dist`.
 Set `ALLOWED_ORIGINS` in `wrangler.jsonc` to the exact frontend origin. The Worker
@@ -872,40 +933,34 @@ still needs its static asset binding for internal tokenizer data; `run_worker_fi
 must remain `true` to prevent public access to assets.
 
 1. Install Node 24 and run `npm ci`. Import/seed SQLite locally if needed.
-2. Run `npx wrangler login`, then `npx wrangler d1 create nihon`.
-3. Copy the returned database UUID into `wrangler.jsonc` → `d1_databases[0].database_id`.
-   Keep the binding name `DB`; the all-zero value is only a placeholder.
-4. Run `npx wrangler d1 migrations apply DB --remote`. This creates the schema;
-   it does not import the dictionary.
-5. Export and import the data using the commands above. On Workers Paid, an
-   explicit `--budget 4000000` covers the current seeded export; verify your
-   account's included usage and billing first.
-6. Run `npm run test:cloudflare` and `npm run check:cloudflare`.
-7. Run `npm run deploy:cloudflare`. Wrangler prints your HTTPS `workers.dev` URL.
+2. Run `npx wrangler login`. Use the Turso libSQL database containing your uploaded
+   SQLite snapshot and obtain its database URL and an authentication token
+   (prefer a read-only token).
+3. Configure the Worker secrets with `npx wrangler secret put TURSO_DATABASE_URL`
+   and `npx wrangler secret put TURSO_AUTH_TOKEN`. Enter the `libsql://...` database
+   URL and token respectively. Never put tokens in frontend variables or source.
+   Configure both secrets separately for any staging/preview deployment.
+4. Run `npm run test:cloudflare` and `npm run check:cloudflare`.
+5. Run `npm run deploy:cloudflare`. Wrangler prints your HTTPS `workers.dev` URL.
    Open `/api/health` there and confirm `ready: true`, then try the practice,
    dictionary, analysis and shiritori pages on the frontend.
-8. Optionally set `VITE_SITE_URL` to the frontend URL when building the frontend.
+6. Optionally set `VITE_SITE_URL` to the frontend URL when building the frontend.
    Canonical links, robots and sitemap then use that origin;
    without it the build does not advertise the old Netlify origin.
 
 **Cost and limits:** Workers Paid (currently starting at $5/month, plus usage
 overages) is the supported plan for the complete app. Workers Free allows only
 10 ms CPU per invocation; loading/tokenizing with the complete Japanese dictionary
-cannot reliably fit that budget. The Worker is configured for a 30-second CPU cap.
-D1 Free currently allows 10 databases, **500 MB per database** and 5 GB aggregate,
-5 million rows read/day and 100,000 rows written/day. The approximately 233 MB local
-SQLite file fits the per-database limit, but measure D1 size including indexes.
-Wide substring searches and random samples still scan data and consume read quota;
-Free storage capacity does not imply Free production viability.
-See [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/),
-[D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/) and
-[D1 limits](https://developers.cloudflare.com/d1/platform/limits/) before provisioning.
+cannot reliably fit that budget. Wide substring searches and random samples
+still scan data and consume Turso read quota; check your database plan separately.
+See [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/)
+and [Turso pricing](https://turso.tech/pricing) before provisioning.
 
 **Runtime parity:** both backends share an asynchronous handler and parameterized
-queries. D1 batches concurrent enrichment, deduplicates request-local lookups and
+queries. Turso batches concurrent enrichment in read transactions, deduplicates request-local lookups and
 fetches vocabulary metadata in bounded sets; it never replays synchronous code or
-loads the entire SQL database into an isolate. JSON list parameters avoid the
-100-bind limit and literal string matching avoids D1's 50-byte LIKE-pattern limit.
+loads the entire SQL database into an isolate. JSON list parameters keep
+parameter counts bounded and substring searches use literal string matching.
 Shiritori reads bounded pages; unusually broad selections that exhaust its search
 budget surface a retryable error, not an incorrect rejection.
 Workers use the same Kuromoji tokenizer and complete IPADIC dictionary as Node.
@@ -913,9 +968,13 @@ The build strips unused binary padding, uses compact typed lookup maps and serve
 compressed dictionary assets with the upstream licenses. Loading is lazy,
 shared and retryable; there is no fallback that silently drops morphological analysis.
 
-To preview the API on your own computer: `npm run build:cloudflare`, apply migrations
-with `--local`, import the same export without `--remote`, then `npx wrangler dev`.
-This local D1 is independent of `npm run dev`'s SQLite file. The Worker returns
+To preview the API on your own computer, create a gitignored `.dev.vars` at the
+repository root containing `TURSO_DATABASE_URL=libsql://...` and
+`TURSO_AUTH_TOKEN=...`, then run `npm run dev:cloudflare`. This connects to the
+configured remote Turso database; use a staging database/token for previews.
+`npm run dev` continues to use the local SQLite file without Turso credentials.
+Missing Worker database configuration returns HTTP 503 rather than silently
+falling back to local data. The Worker returns
 404 for frontend paths even locally; use Vite to serve the frontend.
 `DEPLOYMENT.md` is an intentionally gitignored, step-by-step operator guide in this
 workspace; these public instructions are sufficient for fresh clones.
@@ -930,12 +989,17 @@ npm run check:cloudflare
 
 The first command runs the existing Node/SQLite and frontend unit tests.
 The Cloudflare integration suite builds all pages and dictionary assets, runs the
-real workerd/Miniflare D1 runtime, exercises the API families and tokenizer against
-SQLite output, checks 100-item enriched batches/parameter limits, and tests
-Wrangler migration/import budgeting, resume and snapshot refusal locally.
+real workerd/Miniflare runtime and Turso web client against a local libSQL HTTP
+protocol fixture backed by SQLite. It exercises API families and tokenizer parity,
+100-item enriched batches, exclusions, and practice eligibility without extra tables.
+Unit tests also cover real libSQL batches, request-local deduplication and errors.
+These checks do not contact your hosted Turso database; verify `/api/health` after
+configuring secrets and deploying.
 The last command builds and performs a Worker dry-run; it does not deploy.
 An imported local SQLite database is required by the dictionary regression tests.
 Browser checks remain available through the `test:*` scripts in `package.json`.
+`npm run test:examples` checks enrichment, quarantine/approval, safe delta replay,
+and provenance rendering in a real browser.
 
 ## Schema and data caveats
 

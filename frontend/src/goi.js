@@ -76,7 +76,8 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
       romaji: typeof item.romaji === "string" ? item.romaji.trim() : "",
       exampleSourceId: item.exampleSourceId,
       examples: (item.examples || []).map((example) => ({
-        id: example.tatoeba_id, japanese: example.ja, furigana: example.furigana, english: example.en, license: "CC BY 2.0 FR"
+        ...example, id: example.tatoeba_id || example.id, japanese: example.ja, furigana: example.furigana,
+        english: example.en, license: example.license || "CC BY 2.0 FR"
       })),
       pos: item.partOfSpeech || item.part_of_speech || item.pos || "",
       example: typeof item.example === "string" ? item.example :
@@ -157,7 +158,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
   }
   function getExample(item) {
     const candidates = [item.word, item.furigana].filter(Boolean).sort((a, b) => b.length - a.length);
-    const available = [...item.examples, ...(item.example ? [{ japanese: item.example, english: item.exampleMeaning }] : [])]
+    const available = [...item.examples, ...(!item.examples.length && item.example ? [{ japanese: item.example, english: item.exampleMeaning }] : [])]
       .filter((example) => candidates.some((term) => example.japanese?.includes(term)));
     const example = available.length ? randomItem(available) : null;
     if (example) {
@@ -179,7 +180,8 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
           generated: true
         };
       }
-      return { sentence: example.japanese, clozeSentence, translation: example.english, generated: false };
+      return { sentence: example.japanese, clozeSentence, translation: example.english,
+        generated: false, synthetic: example.generated ?? false, reviewed: example.reviewed ?? false };
     }
     const sentence = `「${item.meaning}」という意味の言葉は「${item.word}」です。`;
     return {
@@ -237,7 +239,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
       $("#answerInput").placeholder = "Type the English meaning";
     } else if (mode === "cloze" && dir === "je") {
       const example = getExample(item);
-      $("#prompt").textContent = "Type the English meaning of the highlighted word";
+      $("#prompt").textContent = `Type the English meaning of the highlighted word${example.synthetic ? ` · AI-generated, ${example.reviewed ? "reviewed" : "unverified"}` : ""}`;
       $("#word").innerHTML = example.generated ? japaneseHTML(item.word, item.furigana)
         : `<span class="japanese">${escapeHTML(example.sentence).replace(/(.*)/, (all) => highlightTerm(all, item))}</span>`;
       $("#answerInput").hidden = false;
@@ -250,7 +252,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
     } else {
       const example = getExample(item);
       $("#word").textContent = "？";
-      $("#prompt").textContent = `${example.generated ? "Meaning clue" : "Complete the sentence"} · type the missing Japanese word`;
+      $("#prompt").textContent = `${example.generated ? "Meaning clue" : "Complete the sentence"} · type the missing Japanese word${example.synthetic ? ` · AI-generated, ${example.reviewed ? "reviewed" : "unverified"}` : ""}`;
       $("#prompt").insertAdjacentHTML("beforeend", `<strong class="japanese">${escapeHTML(example.clozeSentence)}</strong>`);
       $("#answerInput").hidden = false;
       $("#answerInput").placeholder = kanaPlaceholder("Type the missing word");

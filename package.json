@@ -16,9 +16,6 @@
     "dev:frontend": "npm run dev -w frontend",
     "db:init": "npm run db:init -w backend",
     "db:import": "npm run db:import -w backend",
-    "db:export-d1": "node backend/scripts/export-d1.js",
-    "db:import-d1": "node backend/scripts/import-d1.js",
-    "db:import-cloudflare": "npm run db:import-d1 -- --input backend/data/d1-export-cloudflare --remote",
     "build": "npm run build -w frontend",
     "build:cloudflare": "VITE_API_BASE_URL= npm run build && node backend/scripts/build-tokenizer.js",
     "dev:cloudflare": "npm run build:cloudflare && wrangler dev",
@@ -38,7 +35,13 @@
     "test:memory": "node --test frontend/test/memory.test.js && node scripts/memory-browser-test.mjs",
     "test:crossword": "node --test frontend/test/crossword.test.js && node scripts/crossword-browser-test.mjs",
     "test:game-exports": "node scripts/game-export-browser-test.mjs",
-    "seed:vocab": "npm run seed:vocab -w backend --"
+    "seed:vocab": "npm run seed:vocab -w backend --",
+    "db:enrich": "node --use-system-ca backend/scripts/enrich.js",
+    "db:discover-words": "node --use-system-ca backend/scripts/discover-words.js",
+    "db:generate-examples": "node backend/scripts/generate-examples.js",
+    "db:review-examples": "node backend/scripts/review-examples.js",
+    "db:sync-turso": "node --use-system-ca --env-file-if-exists=backend/.env backend/scripts/sync-enrichment.js",
+    "test:examples": "node --test backend/test/examples.test.js backend/test/enrichment.test.js && node scripts/example-provenance-browser-test.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

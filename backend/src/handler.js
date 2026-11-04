@@ -28,8 +28,20 @@ export function kanjiRecord(row, { svg, lookupKanji } = {}) {
   };
 }
 
-async function vocabularyRecord(row, { lookupKanji, tags = {}, sensesJson } = {}) {
-  const examples = parse(row.examples);
+function vocabularyExample(example) {
+  return {
+    ja: example.japanese, en: example.english, furigana: example.furigana,
+    tatoeba_id: example.source === "Tatoeba" ? example.id : undefined,
+    id: example.id, source: example.source, generated: example.generated ?? false, reviewed: example.reviewed ?? false,
+    license: example.license, attribution: example.attribution, owner: example.owner,
+    translationId: example.translationId, translationOwner: example.translationOwner
+  };
+}
+
+async function vocabularyRecord(row, { db, lookupKanji, tags = {}, sensesJson } = {}) {
+  const examples = db && row.word_id != null
+    ? (await localExamples(db, { wordId: row.word_id, limit: Math.max(3, parse(row.examples).length) })).map(vocabularyExample)
+    : parse(row.examples);
   const meaningsList = parse(row.meanings);
   const posList = parse(row.parts_of_speech);
   let synonyms = [];
@@ -278,8 +290,7 @@ export function createHandler({
           : `SELECT v.*, w.senses AS word_senses FROM vocabulary v LEFT JOIN words w ON v.word_id = w.id WHERE 1=1${filter.sql}`;
         const args = [...filter.args];
         if (kanji) {
-          sql += db.d1 ? " AND id IN (SELECT kanji_id FROM practice_kanjis)"
-            : " AND is_practice_kanji(character, on_readings, kun_readings, meanings) = 1";
+          if (!db.remote) sql += " AND is_practice_kanji(character, on_readings, kun_readings, meanings) = 1";
           const mode = params.get("mode") ?? "meaning";
           if (!["meaning", "reading", "both"].includes(mode)) throw new HttpError(400, "Invalid kanji mode");
           if (mode !== "reading") sql += " AND json_array_length(meanings) > 0";
@@ -293,9 +304,24 @@ export function createHandler({
         }
         const enrichKanji = params.get("kanji") === "1" || params.get("kanji") === "true";
         const expandJMdict = !kanji && (params.get("expand") === "1" || params.get("expand") === "true");
-        let items = await Promise.all((await db.prepare(`${sql} ORDER BY random() LIMIT ?`).all(...args, limit))
+        let rows;
+        if (kanji && db.remote) {
+          rows = [];
+          // A stable randomized order lets us filter pages without skipping valid kanji.
+          const seed = Math.floor(Math.random() * 2147483647);
+          for (let offset = 0; rows.length < limit; offset += 100) {
+            const page = await db.prepare(`${sql} ORDER BY ((id * 1103515245 + ${seed}) & 2147483647), id LIMIT 100 OFFSET ?`).all(...args, offset);
+            rows.push(...page.filter((row) => isPracticeKanji(row.character,
+              parse(row.on_readings), parse(row.kun_readings), parse(row.meanings))));
+            if (page.length < 100) break;
+          }
+          rows = rows.slice(0, limit);
+        } else {
+          rows = await db.prepare(`${sql} ORDER BY random() LIMIT ?`).all(...args, limit);
+        }
+        let items = await Promise.all(rows
           .map(kanji ? async (row) => ({ ...await toKanji(row), meanings: practiceMeanings(parse(row.meanings)) }) : (row) => vocabularyRecord(row, {
-            tags, sensesJson: row.word_senses,
+            db, tags, sensesJson: row.word_senses,
             lookupKanji: enrichKanji ? lookupKanjiDetail : undefined
           })));
         if (expandJMdict) {
@@ -309,7 +335,7 @@ export function createHandler({
             const meaningsList = parse(wRow.meanings);
             if (!meaningsList.length) return;
             const posList = unique(senses.flatMap((s) => s.partOfSpeech || []));
-            const examples = await localExamples(db, { wordId: wRow.id });
+            const examples = (await localExamples(db, { wordId: wRow.id })).map(vocabularyExample);
             const kanjiChars = unique([...wRow.word].filter((ch) => /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u.test(ch)));
             const kanjiDetails = enrichKanji ? (await Promise.all(kanjiChars.map((ch) => lookupKanjiDetail(ch)))).filter(Boolean) : undefined;
             const jlptEst = kanjiDetails?.length
@@ -463,6 +489,7 @@ export function createHandler({
         const fresh = examples.filter((example) => !excluded.includes(example.japanese));
         const data = shuffleExamples(fresh.length ? fresh : examples).slice(0, random ? 1 : 3).map((example) => ({
           id: example.id, text: example.japanese, furigana: example.furigana, license: example.license, owner: example.owner,
+          source: example.source, generated: example.generated ?? false, reviewed: example.reviewed ?? false, attribution: example.attribution,
           translations: [{ id: example.translationId, lang: "eng", text: example.english, owner: example.translationOwner }]
         }));
         return send(200, { data, ...(warning ? { warning } : {}) });

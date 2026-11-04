@@ -13,5 +13,7 @@ backend/.env
 .DS_Store
 DEPLOYMENT.md
 .wrangler/
-backend/data/d1-export*/
+.dev.vars
+.dev.vars.*
+backend/data/*export*/
 .vscode/

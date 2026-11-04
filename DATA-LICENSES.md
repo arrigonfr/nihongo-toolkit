@@ -12,6 +12,8 @@ Code licensing is separate; this notice does not relicense application code.
 | [OpenJLPT](https://github.com/evanclan/OpenJLPT) | OpenJLPT contributors, CC BY-SA 4.0; [per-field notice](https://github.com/evanclan/OpenJLPT/blob/main/NOTICE.md) | Study records, romaji, modern JLPT estimates and examples |
 | [JLPT resources](https://www.tanos.co.uk/jlpt/) | Jonathan Waller, CC BY, via OpenJLPT | Community JLPT lists |
 | [Tatoeba](https://tatoeba.org) / Tanaka Corpus | Sentence contributors, [CC BY 2.0 FR](https://creativecommons.org/licenses/by/2.0/fr/) or the license returned per sentence | Example sentences via OpenJLPT and optional live API fallback; sentence IDs, authors, translation IDs/authors and links retained when supplied |
+| [ManyThings bilingual sentence pairs](https://www.manythings.org/anki/) | Tatoeba contributors, CC BY 2.0 FR; collection by Charles Kelly | Bulk Japanese/English examples; original Japanese and English sentence IDs and author credits retained |
+| [Japanese Wikinews](https://ja.wikinews.org/) / [Wikibooks Japanese](https://en.wikibooks.org/wiki/Japanese) | Wikimedia contributors; see each page's reuse terms | Discovery only: unknown lexical candidates and source URLs are retained locally for validation, not article prose or unverified dictionary definitions |
 | [KanjiVG](https://kanjivg.tagaini.net/) | Ulrich Apel and contributors, [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) | Original SVGs in `strokes`; worksheet data adapts their paths and stroke-number positions for colored, adjustable diagrams |
 | [Kanji alive](https://kanjialive.com/214-traditional-kanji-radicals/) | Kanji alive team, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Traditional radical names, meanings, stroke counts and variant names; adapted from the [2026-09 dataset](https://github.com/kanjialive/kanji-data-media/tree/e67d274123011c85325f369a1376289414f4552d/language-data), normalized and regrouped for the cheatsheet |
 | [Kanji Stroke Orders](https://www.nihilist.org.uk/) | Ulrich Apel, the AAAA project and the Wadoku project, BSD 3-clause; notice below | Numbered stroke-order font used by the handwriting worksheet |
@@ -42,6 +44,19 @@ identify modifications, and provide derivative dictionary data under CC BY-SA 4.
 KanjiVG SVGs retain their separate CC BY-SA 3.0 license. Keep source snapshots
 reasonably current. The original root `kanjidb.sqlite` is not part of this derived
 dataset and is not used because its provenance was not provided.
+
+## Synthetic example sentences
+
+Optional Ollama generation produces original, **unverified** learning candidates,
+quarantined in `enrichment_generated` and excluded from learning screens and
+remote migration until explicitly reviewed and approved. Approved examples use
+`source = 'ai-generated'`. Their provenance records the
+model name, model digest, generation timestamp and target word. They are not
+Tatoeba quotations and are not represented as native-speaker-reviewed or licensed
+under Tatoeba's Creative Commons terms. Review linguistic accuracy and the chosen
+model's applicable terms before redistribution. The default local model,
+`llama3.2:latest`, is subject to [Meta's Llama 3.2 terms](https://www.llama.com/llama3_2/license/).
+Structural validation cannot establish correct meaning, natural usage or translation.
 
 ## Kanji Stroke Orders font license
 

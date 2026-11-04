@@ -186,7 +186,7 @@ export async function shiritoriWords(db, params, tags, fallback, segment = segme
   const seed = Math.floor(Math.random() * 2147483647);
   const order = randomOpening ? `is_common DESC, ((id * 1103515245 + ${seed}) & 2147483647), id` : "is_common DESC, id";
   pages: for (let page = 0; ; page++) {
-    if (db.d1 && page >= 12) {
+    if (db.remote && page >= 12) {
       if (items.length) break;
       const error = new Error("This selection is too broad to search right now. Try a different starting word.");
       error.status = 502;

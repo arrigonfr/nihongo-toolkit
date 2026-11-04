@@ -1,164 +1,121 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile, mkdir, rm, access } from "node:fs/promises";
-import { resolve, dirname, join } from "node:path";
+import { access, mkdir, rm } from "node:fs/promises";
+import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { build } from "esbuild";
 import { Miniflare } from "miniflare";
 import { openDatabase } from "../src/database.js";
-import { isPracticeKanji } from "../src/practice-kanji.js";
 import { segmentText } from "../src/tokenizer.js";
-import { asyncDatabase } from "../src/async-database.js";
-import { createDatabase } from "../src/database.js";
-import { exportD1 } from "../scripts/export-d1.js";
-import { spawnSync } from "node:child_process";
-import { createRequire } from "node:module";
+import { isPracticeKanji } from "../src/practice-kanji.js";
 
-test("Worker + real D1 integration: migrations, batched enrichment, API-only routing and lossless tokenizer", { timeout: 180000 }, async (t) => {
-  await access("frontend/dist/_dictionary/base.gz").catch(() => {
-    throw new Error("Run npm run build:cloudflare before the Cloudflare integration test.");
-  });
+// Exercise the real web client and Worker against a local libSQL HTTP protocol fixture.
+function libsqlResponse(db, stmt) {
+  const args = (stmt.args || []).map((arg) => arg.type === "null" ? null
+    : arg.type === "integer" ? Number(arg.value) : arg.value);
+  const query = db.prepare(stmt.sql);
+  const cols = query.columns().map((column) => ({ name: column.name, decltype: column.type }));
+  const rows = query.all(...args).map((row) => cols.map(({ name }) => {
+    const value = row[name];
+    return value === null ? { type: "null" }
+      : typeof value === "number" ? { type: Number.isInteger(value) ? "integer" : "float", value: Number.isInteger(value) ? String(value) : value }
+        : { type: "text", value };
+  }));
+  return { cols, rows, affected_row_count: 0, last_insert_rowid: null };
+}
 
-  await t.test("Wrangler local import stops at budget, resumes, skips completed files and refuses another snapshot", { timeout: 120000 }, async () => {
-    const directory = resolve(`backend/.cache/import-${randomUUID()}`);
-    await mkdir(directory, { recursive: true });
-    const source = createDatabase(":memory:");
-    const require = createRequire(import.meta.url);
-    function run(args) {
-      return spawnSync(process.execPath, args, { encoding: "utf8",
-        env: { ...process.env, WRANGLER_SEND_METRICS: "false" }, maxBuffer: 5 * 1024 * 1024 });
-    }
-    try {
-      source.prepare("INSERT INTO metadata VALUES (?, ?)").run("test", "first snapshot");
-      await exportD1(source, `${directory}/export`);
-      const migrations = run([join(dirname(require.resolve("wrangler/package.json")), "bin/wrangler.js"), "d1", "migrations", "apply",
-        "DB", "--local", "--persist-to", `${directory}/state`]);
-      assert.equal(migrations.status, 0, migrations.stderr + migrations.stdout);
-      const args = ["backend/scripts/import-d1.js", "--input", `${directory}/export`, "--persist-to", `${directory}/state`];
-      const stopped = run([...args, "--budget", "1"]);
-      assert.equal(stopped.status, 2, stopped.stderr + stopped.stdout);
-      assert.match(stopped.stdout, /daily budget/);
-      const imported = run([...args, "--budget", "100"]);
-      assert.equal(imported.status, 0, imported.stderr + imported.stdout);
-      assert.match(imported.stdout, /Counts and foreign keys verified/);
-      const replayed = run([...args, "--budget", "100"]);
-      assert.equal(replayed.status, 0, replayed.stderr + replayed.stdout);
-      assert.doesNotMatch(replayed.stdout, /Importing \d/);
-      source.prepare("UPDATE metadata SET value = ?").run("different snapshot");
-      await exportD1(source, `${directory}/other`);
-      const other = run(["backend/scripts/import-d1.js", "--input", `${directory}/other`, "--persist-to", `${directory}/state`]);
-      assert.notEqual(other.status, 0);
-      assert.match(other.stderr, /different export/);
-    } finally {
-      source.close();
-      await rm(directory, { recursive: true, force: true });
-    }
-  });
+test("Worker + Turso web client: API parity, practice filtering and lossless tokenizer", { timeout: 180000 }, async () => {
+  await access("frontend/dist/_dictionary/base.gz");
   const directory = resolve(`backend/.cache/cloudflare-${randomUUID()}`);
   await mkdir(directory, { recursive: true });
-  let mf;
   const local = openDatabase();
+  let mf;
+  let unavailable = false;
   try {
     const output = await build({
-      stdin: {
-        contents: `import worker from "./backend/src/worker.js";
-          export default { async fetch(request, env) {
-            let batches = 0;
-            const DB = {
-              prepare(sql) { const stmt = env.DB.prepare(sql); return {
-                bind(...args) { if(args.length > 100) throw Error("D1 parameter limit"); return stmt.bind(...args); }
-              }; },
-              batch(stmts) { if (++batches > 50) throw Error("D1 query limit"); return env.DB.batch(stmts); }
-            };
-            const response = await worker.fetch(request, { ...env, DB });
-            const result = new Response(response.body, response);
-            result.headers.set("X-Test-Batches", batches);
-            return result;
-          } };`,
-        resolveDir: resolve(".")
-      },
-      bundle: true, write: false, format: "esm", platform: "node",
+      entryPoints: ["backend/src/worker.js"],
+      bundle: true, write: false, format: "esm", platform: "browser",
+      external: ["node:*"],
       alias: { "#tokenizer-loader": resolve("backend/src/tokenizer-worker.js") }
     });
-    mf = new Miniflare({
+    const options = {
       name: "nihon-test", modules: true, script: output.outputFiles[0].text,
       compatibilityDate: "2026-08-06", compatibilityFlags: ["nodejs_compat"],
       defaultPersistRoot: directory,
-      d1Databases: { DB: "nihon-integration" },
-      bindings: { SENTENCE_API_FALLBACK: "false", TRANSLATION_API_FALLBACK: "false", WORD_API_FALLBACK: "false" },
+      bindings: { TURSO_DATABASE_URL: "https://database.test", TURSO_AUTH_TOKEN: "test-token",
+        SENTENCE_API_FALLBACK: "false", TRANSLATION_API_FALLBACK: "false", WORD_API_FALLBACK: "false" },
+      outboundService: async (request) => {
+        try {
+          assert.equal(new URL(request.url).hostname, "database.test");
+          assert.equal(request.headers.get("authorization"), "Bearer test-token");
+          if (unavailable) return new Response("Database unavailable", { status: 503 });
+          const body = await request.json();
+          const sql = new Map();
+          const results = body.requests.map((request) => {
+            if (request.type === "close") return { type: "ok", response: { type: "close" } };
+            if (request.type === "store_sql") {
+              sql.set(request.sql_id, request.sql);
+              return { type: "ok", response: { type: "store_sql" } };
+            }
+            if (request.type === "close_sql") {
+              sql.delete(request.sql_id);
+              return { type: "ok", response: { type: "close_sql" } };
+            }
+            assert.equal(request.type, "batch");
+            const step_results = [];
+            function matches(condition) {
+              if (!condition) return true;
+              if (condition.type === "ok") return step_results[condition.step] != null;
+              if (condition.type === "not") return !matches(condition.cond);
+              if (condition.type === "and") return condition.conds.every(matches);
+              if (condition.type === "or") return condition.conds.some(matches);
+              if (condition.type === "is_autocommit") return !local.isTransaction;
+              throw new Error(`Unsupported batch condition: ${condition.type}`);
+            }
+            for (const { stmt, condition } of request.batch.steps) {
+              step_results.push(matches(condition) ? libsqlResponse(local, { ...stmt, sql: stmt.sql ?? sql.get(stmt.sql_id) }) : null);
+            }
+            return { type: "ok", response: { type: "batch", result: { step_results, step_errors: [] } } };
+          });
+          return Response.json({ baton: null, base_url: null, results });
+        } catch (error) {
+          console.error("libSQL protocol fixture failed:", error);
+          throw error;
+        }
+      },
       assets: { directory: resolve("frontend/dist"), binding: "ASSETS", workerName: "nihon-test",
         routerConfig: { invoke_user_worker_ahead_of_assets: true, has_user_worker: true },
         assetConfig: { html_handling: "none", not_found_handling: "404-page" } }
-    });
-    const db = await mf.getD1Database("DB");
-    const schema = await readFile("backend/migrations/0001_dictionary.sql", "utf8");
-    for (const statement of schema.split(";").map((s) => s.trim()).filter(Boolean)) await db.prepare(statement).run();
-    // Reapplying our schema is harmless (Wrangler additionally tracks versions).
-    for (const statement of schema.split(";").map((s) => s.trim()).filter(Boolean)) await db.prepare(statement).run();
-    const kanjis = local.prepare("SELECT * FROM kanjis WHERE jlpt = 5 OR character IN ('読','食','学','日','猫')").all();
-    const words = local.prepare(`SELECT DISTINCT w.* FROM words w JOIN vocabulary v ON v.word_id = w.id
-      WHERE v.jlpt = 5 LIMIT 300`).all();
-    for (const row of local.prepare("SELECT * FROM words WHERE word IN ('読む','食べる','学校','本','猫','行く','すもも')").all()) {
-      if (!words.some((word) => word.id === row.id)) words.push(row);
-    }
-    const wordIds = new Set(words.map((row) => row.id));
-    const kanjiIds = new Set(kanjis.map((row) => row.id));
-    async function insert(table, rows) {
-      for (let i = 0; i < rows.length; i += 100) {
-        await db.batch(rows.slice(i, i + 100).map((row) => db.prepare(
-          `INSERT INTO ${table} (${Object.keys(row).join(",")}) VALUES (${Object.keys(row).map(() => "?").join(",")})`
-        ).bind(...Object.values(row))));
-      }
-    }
-    await insert("kanjis", kanjis);
-    await insert("words", words);
-    await insert("vocabulary", local.prepare("SELECT * FROM vocabulary").all().filter((row) => wordIds.has(row.word_id)));
-    await insert("kanji_words", local.prepare("SELECT * FROM kanji_words").all().filter((row) => wordIds.has(row.word_id) && kanjiIds.has(row.kanji_id)));
-    await insert("metadata", local.prepare("SELECT * FROM metadata").all());
-    await insert("strokes", local.prepare("SELECT * FROM strokes").all().filter((row) => kanjis.some((k) => k.character === row.character)));
-    await insert("practice_kanjis", kanjis.filter((row) =>
-      isPracticeKanji(row.character, JSON.parse(row.on_readings), JSON.parse(row.kun_readings), JSON.parse(row.meanings)))
-      .map((row) => ({ kanji_id: row.id })));
-    let batches = 0;
-    const adapter = asyncDatabase({ prepare: (sql) => db.prepare(sql), batch: (stmts) => { batches++; return db.batch(stmts); } });
-    const results = await Promise.all(Array.from({ length: 100 }, (_, i) => adapter.prepare("SELECT ? AS n").get(i)));
-    assert.equal(results[99].n, 99);
-    assert.equal(batches, 1);
-    await adapter.prepare("SELECT ? AS n").get(99);
-    assert.equal(batches, 1, "request cache avoids duplicate lookups");
-
+    };
+    mf = new Miniflare(options);
     async function request(path, expected = 200, init) {
       const response = await mf.dispatchFetch(`https://nihon.test${path}`, init);
       const text = await response.text();
       assert.equal(response.status, expected, `${path}: ${text.slice(0, 500)}`);
-      assert.ok(Number(response.headers.get("X-Test-Batches")) < 40, path);
       return { response, text, json: () => JSON.parse(text) };
     }
     assert.equal((await request("/api/health")).json().ready, true);
     const batch = (await request("/api/kanji/batch?limit=100")).json().items;
-    assert.ok(batch.length > 50);
+    assert.equal(batch.length, 100);
+    assert.ok(batch.every((item) => isPracticeKanji(item.kanji, item.on_readings, item.kun_readings, item.meanings)));
     assert.ok(batch.every((item) => Array.isArray(item.components) && Array.isArray(item.examples)));
     const excludedBatch = (await request(`/api/kanji/batch?limit=100&exclude=${batch[0].id}`)).json().items;
+    assert.equal(excludedBatch.length, 100);
     assert.ok(excludedBatch.every((item) => item.id !== batch[0].id));
-    await request("/api/kanji/batch?level=1,2,3,4,5&limit=100&" + Array.from({ length: 100 }, (_, i) => `exclude=${900000 + i}`).join("&"));
-    await request("/api/words/batch?limit=100&kanji=1&expand=1");
-    await request("/api/word-search/vocabulary?level=5");
-    await request("/api/kanji?level=5");
-    await request("/api/kanji/日");
-    await request("/api/kanji/日/words?limit=100");
+    for (const path of [
+      "/api/kanji/batch?level=1,2,3,4,5&limit=100&" + Array.from({ length: 100 }, (_, i) => `exclude=${900000 + i}`).join("&"),
+      "/api/words/batch?limit=100&kanji=1&expand=1", "/api/word-search/vocabulary?level=5",
+      "/api/kanji?level=5", "/api/kanji/日", "/api/kanji/日/words?limit=100",
+      "/api/kanji/candidates?reading=にち", `/api/words?q=${encodeURIComponent("あ".repeat(30))}`,
+      "/api/conjugator?random=true&level=5", "/api/shiritori/words?q=猫", "/api/shiritori/words?random=1",
+      `/api/shiritori/words?prev=${encodeURIComponent(JSON.stringify({ word: "あ".repeat(60), reading: "あ".repeat(60) }))}`,
+      "/api/sentences?q=猫"
+    ]) await request(path);
     assert.match((await request("/api/kanji/日/strokes")).text, /<svg/);
-    await request("/api/kanji/candidates?reading=にち");
     assert.ok((await request("/api/words?q=食べました")).json().data.length);
-    await request(`/api/words?q=${encodeURIComponent("あ".repeat(30))}`);
     assert.ok((await request("/api/conjugator?q=食べる")).json().items.length);
-    await request("/api/conjugator?random=true&level=5");
-    await request("/api/shiritori/words?q=猫");
-    await request("/api/shiritori/words?random=1");
-    await request(`/api/shiritori/words?prev=${encodeURIComponent(JSON.stringify({ word: "あ".repeat(60), reading: "あ".repeat(60) }))}`);
-    await request("/api/sentences?q=猫");
-    const sentences = ["私は昨日学校に行きました。", "本を読んでいます。", "寿司を食べませんでした。",
-      "これは高くなかった。", "すもももももももものうち", "ドイツ語はやさしい言語ではありません。", "猫 は\n元気です。🙂"];
-    for (const text of sentences) {
+    for (const text of ["私は昨日学校に行きました。", "本を読んでいます。", "寿司を食べませんでした。",
+      "これは高くなかった。", "すもももももももものうち", "ドイツ語はやさしい言語ではありません。", "猫 は\n元気です。🙂"]) {
       const tokens = (await request(`/api/analyze?text=${encodeURIComponent(text)}`)).json().tokens;
       const expected = await segmentText(text);
       assert.deepEqual(tokens.map(({ text, type }) => ({ text, type })), expected.map(({ text, type }) => ({ text, type })));
@@ -171,14 +128,16 @@ test("Worker + real D1 integration: migrations, batched enrichment, API-only rou
       }
     }
     await request(`/api/analyze?text=${encodeURIComponent("猫は本を読む。".repeat(60))}`);
-    await request("/", 404);
-    await request("/活用.html", 404);
-    await request("/_dictionary/tid.gz", 404);
-    await request("/api/missing", 404);
+    for (const path of ["/", "/活用.html", "/_dictionary/tid.gz", "/api/missing"]) await request(path, 404);
     await request("/api/health", 403, { headers: { Origin: "https://untrusted.test" } });
     await request("/api/health", 204, { method: "OPTIONS", headers: { Origin: "https://nihon.test" } });
     await request("/api/health", 405, { method: "POST" });
-    assert.deepEqual((await db.prepare("PRAGMA foreign_key_check").all()).results, []);
+    unavailable = true;
+    await request("/api/health", 503);
+    unavailable = false;
+    assert.equal((await request("/api/health")).json().ready, true);
+    await mf.setOptions({ ...options, bindings: {} });
+    assert.equal((await request("/api/health", 503)).json().error, "Database unavailable");
   } finally {
     local.close();
     await mf?.dispose();

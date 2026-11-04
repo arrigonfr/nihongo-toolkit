@@ -1207,6 +1207,7 @@ import {
       </div>
     `;
     mountSentenceExamples(document.getElementById("cwSentenceExamples"), word, examples.map((example) => ({
+      ...example,
       id: example.tatoeba_id || example.id,
       japanese: example.ja || example.japanese,
       english: example.en || example.english,

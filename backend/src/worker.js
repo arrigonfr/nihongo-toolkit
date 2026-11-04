@@ -4,6 +4,7 @@ import { assetTokenizer } from "./tokenizer-worker.js";
 import { createSentenceFallback } from "./examples.js";
 import { createSentenceTranslator } from "./analyze.js";
 import { createWordFallback } from "./shiritori.js";
+import { openTursoDatabase } from "./turso.js";
 
 const handlers = new WeakMap();
 export default {
@@ -18,12 +19,21 @@ export default {
       set statusCode(value) { status = value; },
       end: (value) => { body = value; }
     };
-    let byOrigin = handlers.get(env.DB);
-    if (!byOrigin) { byOrigin = new Map(); handlers.set(env.DB, byOrigin); }
+    let state = handlers.get(env);
+    if (!state) {
+      try {
+        state = { database: openTursoDatabase(env), byOrigin: new Map() };
+        handlers.set(env, state);
+      } catch (error) {
+        console.error("Database configuration failed:", error);
+        return Response.json({ error: "Database unavailable" }, { status: 503 });
+      }
+    }
+    const { database, byOrigin } = state;
     let handler = byOrigin.get(url.origin);
     if (!handler) {
       handler = createHandler({
-      database: env.DB,
+      database,
       origins: [url.origin, ...(env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean)],
       compression: false,
       segment: (text) => segmentText(text, () => assetTokenizer(env.ASSETS)),

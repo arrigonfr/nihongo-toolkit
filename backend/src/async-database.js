@@ -1,4 +1,4 @@
-// One adapter per request: concurrent lookups share D1 batch round-trips and
+// One adapter per request: concurrent lookups share Turso batch round-trips and
 // identical lookups share their promise. SQLite continues to execute locally.
 export function asyncDatabase(source) {
   if (source.async) return source;
@@ -20,16 +20,18 @@ export function asyncDatabase(source) {
     const jobs = pending;
     pending = [];
     try {
-      const results = await source.batch(jobs.map(({ sql, args }) => source.prepare(sql).bind(...args)));
+      const results = await source.batch(jobs.map(({ sql, args }) => ({ sql, args })), "read");
+      if (results.length !== jobs.length) throw new Error("Incomplete Turso batch result");
       results.forEach((result, i) => {
-        if (!result.success) jobs[i].reject(new Error(result.error || "D1 query failed"));
-        else jobs[i].resolve(result.results);
+        jobs[i].resolve(result.rows.map((row) => Object.fromEntries(
+          result.columns.map((column) => [column, row[column]])
+        )));
       });
     } catch (error) { jobs.forEach((job) => job.reject(error)); }
   }
   return {
     async: true,
-    d1: Boolean(source.batch),
+    remote: Boolean(source.batch),
     prepare(sql) {
       return {
         all: (...args) => query(sql, args),

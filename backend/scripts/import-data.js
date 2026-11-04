@@ -42,7 +42,7 @@ export function insertKanjis(db, dictionary, levels) {
   }
 }
 
-export function insertWords(db, dictionary) {
+export function insertWords(db, dictionary, { append = false, onInsert = () => {} } = {}) {
   if (!Array.isArray(dictionary.words) || !dictionary.words.length) {
     throw new Error("Invalid or empty JMdict dataset");
   }
@@ -51,7 +51,9 @@ export function insertWords(db, dictionary) {
     (jmdict_id, word, reading, meanings, is_common, kanji_forms, kana_forms, senses)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
   const relation = db.prepare("INSERT OR IGNORE INTO kanji_words VALUES (?, ?)");
+  const existing = append ? new Set(db.prepare("SELECT jmdict_id FROM words").all().map((row) => row.jmdict_id)) : new Set();
   for (const entry of dictionary.words) {
+    if (existing.has(String(entry.id))) continue;
     const form = entry.kanji.find((k) => k.common) ?? entry.kanji[0];
     const applicable = entry.kana.filter((k) =>
       !form || k.appliesToKanji.includes("*") || k.appliesToKanji.includes(form.text));
@@ -65,8 +67,15 @@ export function insertWords(db, dictionary) {
       const kanjiId = kanjis.get(character);
       if (kanjiId) relation.run(kanjiId, result.lastInsertRowid);
     }
+    onInsert(Number(result.lastInsertRowid));
   }
-  db.prepare("INSERT INTO metadata VALUES ('jmdict_tags', ?)").run(json(dictionary.tags));
+  if (append) {
+    const tags = JSON.parse(db.prepare("SELECT value FROM metadata WHERE key='jmdict_tags'").get()?.value ?? "{}");
+    db.prepare("INSERT INTO metadata VALUES ('jmdict_tags', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+      .run(json({ ...tags, ...dictionary.tags }));
+  } else {
+    db.prepare("INSERT INTO metadata VALUES ('jmdict_tags', ?)").run(json(dictionary.tags));
+  }
 }
 
 export function insertVocabulary(db, entries) {

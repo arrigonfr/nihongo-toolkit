@@ -24,10 +24,33 @@ export async function localExamples(db, { wordId, query, limit = 3, random = fal
     seen.add(example.ja);
     return true;
   });
-  return (random ? shuffleExamples(examples) : examples).slice(0, limit).map((example) => ({
+  const items = examples.map((example) => ({
     id: example.tatoeba_id, japanese: example.ja, furigana: example.furigana || "", english: example.en,
     license: "CC BY 2.0 FR", source: "Tatoeba"
   }));
+  const tables = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('sentences','word_sentences')").all();
+  if (tables.filter((row) => row.name === "sentences" || row.name === "word_sentences").length === 2) {
+    const stored = await db.prepare(`SELECT DISTINCT s.* FROM sentences s
+      JOIN word_sentences ws ON ws.sentence_id=s.id
+      WHERE ${wordId !== undefined ? "ws.word_id=?" : "ws.word_id IN (SELECT id FROM words WHERE word=? OR reading=?)"}
+      AND (s.source <> 'ai-generated' OR CASE WHEN json_valid(s.attribution)
+        THEN json_extract(s.attribution,'$.reviewed') END = 1)
+      ORDER BY (s.source='ai-generated'), s.id LIMIT 100`).all(...(wordId !== undefined ? [wordId] : [query, query]));
+    for (const row of stored) {
+      if (seen.has(row.ja)) continue;
+      seen.add(row.ja);
+      const attribution = row.attribution.startsWith("{") ? JSON.parse(row.attribution) : {};
+      items.push({
+        id: row.source === "tatoeba" ? Number(row.source_id) : row.id,
+        japanese: row.ja, english: row.en, furigana: "", license: row.license,
+        source: row.source === "tatoeba" ? "Tatoeba" : row.source,
+        generated: row.source === "ai-generated", reviewed: attribution.reviewed === true, attribution: row.attribution,
+        owner: attribution.owner, translationOwner: attribution.translationOwner,
+        translationId: attribution.translationId
+      });
+    }
+  }
+  return (random ? shuffleExamples(items) : items).slice(0, limit);
 }
 
 export function createSentenceFallback({ fetchImpl = fetch, enabled = process.env.SENTENCE_API_FALLBACK !== "false" } = {}) {
@@ -57,7 +80,7 @@ export function createSentenceFallback({ fetchImpl = fetch, enabled = process.en
         return [{
           id: sentence.id, japanese: sentence.text, english: translation.text,
           owner: sentence.owner, translationOwner: translation.owner,
-          translationId: translation.id, license: sentence.license, source: "Tatoeba"
+          translationId: translation.id, translationLicense: translation.license, license: sentence.license, source: "Tatoeba"
         }];
       });
       if (cache.size >= 200) cache.delete(cache.keys().next().value);

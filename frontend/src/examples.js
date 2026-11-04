@@ -12,7 +12,8 @@ export function sentencesHTML(examples, query = "") {
     <div class="sentence-item" data-sentence-text="${escape(item.japanese)}">
       <div lang="ja" class="sentence-japanese">${sentenceHTML(item.japanese, item.furigana)}</div>
       <div>${escape(item.english)}</div>
-      ${item.id ? `<a class="sentence-credit" href="https://tatoeba.org/sentences/show/${encodeURIComponent(item.id)}"
+      ${item.generated ? `<div class="sentence-credit">AI-generated · ${item.reviewed ? "Reviewed" : "Unverified"}</div>` : ""}
+      ${item.id && (!item.source || item.source === "Tatoeba") && !item.generated ? `<a class="sentence-credit" href="https://tatoeba.org/sentences/show/${encodeURIComponent(item.id)}"
         target="_blank" rel="noopener noreferrer">Tatoeba · ${escape(item.owner || "contributors")} · ${escape(item.license || "CC BY 2.0 FR")}</a>` : ""}
       ${item.translationId ? `<a class="sentence-credit" href="https://tatoeba.org/sentences/show/${encodeURIComponent(item.translationId)}"
         target="_blank" rel="noopener noreferrer">Translation · ${escape(item.translationOwner || "contributors")}</a>` : ""}
@@ -40,7 +41,8 @@ async function loadSentenceResult(query, signal, { random = false, exclude = [] 
     const translation = item.translations?.find((t) => t.lang === "eng");
     return {
       id: item.id, japanese: item.text, furigana: item.furigana, english: translation?.text ?? "",
-      owner: item.owner, translationOwner: translation?.owner, translationId: translation?.id, license: item.license
+      owner: item.owner, translationOwner: translation?.owner, translationId: translation?.id, license: item.license,
+      source: item.source, generated: item.generated, reviewed: item.reviewed, attribution: item.attribution
     };
   });
   return { examples, warning: payload.warning || "" };
