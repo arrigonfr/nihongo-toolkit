@@ -97,6 +97,8 @@ their corresponding tools. Click or tap outside the menu, or press Escape, to cl
 
 Set `VITE_SITE_URL` to the public HTTPS origin at build time to generate canonical
 URLs, robots.txt and a sitemap containing the homepage, tools and data-source credits.
+The homepage's Open Graph and `WebSite` structured-data metadata identify the site's
+name in search results; keep them aligned with its page title.
 When adding a tool, update the dashboard menu; Vite discovers its HTML page for the
 sitemap. The Google Tag Manager container is included in generated pages; configure
 tags and any required consent settings in the container.

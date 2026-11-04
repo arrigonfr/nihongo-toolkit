@@ -27,6 +27,15 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
+  const siteName = "日本語道具箱 · Japanese Toolkit · Nihongo Toolkit";
+  assert.equal(await page.locator('meta[property="og:site_name"]').getAttribute("content"), siteName);
+  assert.deepEqual(await page.locator('script[type="application/ld+json"]').evaluate((script) => JSON.parse(script.textContent)), {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: siteName,
+    alternateName: "Nihongo Toolkit",
+    url: "https://nihongo-toolkit.pages.dev/"
+  });
   const frame = page;
   async function select(file) {
     await page.click("#menuButton");
