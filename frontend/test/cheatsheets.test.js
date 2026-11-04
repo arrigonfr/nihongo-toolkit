@@ -38,6 +38,73 @@ test("katakana is derived from hiragana by code point", () => {
   assert.equal(toKatakana("きゃ しゅ ぱ を ん"), "キャ シュ パ ヲ ン");
 });
 
+test("word and grammar contrasts explain usage limits in every row", () => {
+  for (const id of ["ambiguities", "grammar-contrasts"]) {
+    for (const row of buildSheet(id).tables.flatMap((table) => table.rows)) {
+      const distinction = cellText(row[1]);
+      assert.equal(distinction.split("\n").length, 2, cellText(row[0]));
+      assert.doesNotMatch(distinction, /undefined/);
+      assert.ok(distinction.split("\n")[1].length > 40);
+    }
+  }
+});
+
+test("landscape conjugation form names share a baseline and fit their column", () => {
+  for (const [w, h] of [[1123, 794], [1056, 816], [1344, 816]]) {
+    for (const id of ["verb", "adjective"]) {
+      const sheet = buildSheet(id);
+      const { prims } = layoutSheet(sheet, { ...PAGE, w, h });
+      const columnWidth = (id === "verb" ? 112 : 118) * (w - PAGE.margin * 2) / 722;
+      for (const [index, row] of sheet.tables[0].rows.entries()) {
+        const form = row[0];
+        assert.ok(form.sub);
+        const labels = prims.filter((p) => p.k === "t" && p.x === PAGE.margin + 8 && p.runs[0].t === cellText(form));
+        assert.equal(labels.length, 1);
+        const label = labels[0];
+        assert.equal(label.runs[1].t, `  ${form.sub}`);
+        assert.ok(textWidth(label.runs.map((run) => run.t).join(""), label.size) <= columnWidth - 16);
+        const rowHeight = id === "verb" ? 16 : 20;
+        const rowTop = 146 + index * rowHeight;
+        assert.ok(label.y - label.size >= rowTop && label.y <= rowTop + rowHeight - 1);
+      }
+    }
+  }
+});
+
+test("all paper sizes reflow content within page bounds without rotating or scaling an A4 SVG", () => {
+  for (const [label, size] of Object.entries({ A4: [794, 1123], Letter: [816, 1056], Legal: [816, 1344] })) {
+    for (const landscape of [false, true]) {
+      const [w, h] = landscape ? [...size].reverse() : size;
+      const page = { ...PAGE, w, h, label };
+      for (const { id } of SHEETS) {
+        const sheet = buildSheet(id);
+        const reference = !["kana", "verb", "adjective"].includes(id);
+        const rows = id === "radicals" ? (landscape ? 11 : 18) : ["ambiguities", "grammar-contrasts"].includes(id) ? 4 : landscape ? 6 : 12;
+        const pages = reference ? paginateReference(sheet, rows, page) : [sheet];
+        assert.deepEqual(pages.flatMap((item) => item.tables.flatMap((table) => table.rows)), sheet.tables.flatMap((table) => table.rows));
+        for (const item of pages) {
+          const layout = layoutSheet(item, page);
+          assert.equal(layout.width, w);
+          assert.equal(layout.height, h);
+          for (const p of layout.prims) {
+            const context = `${id} ${label} ${landscape} ${JSON.stringify(p)}`;
+            if (p.k === "r") {
+              assert.ok(p.x >= 0 && p.y >= 0 && p.x + p.w <= w + .01 && p.y + p.h <= h + .01, context);
+            } else {
+              const width = textWidth(p.runs.map((run) => run.t).join(""), p.size);
+              const left = p.anchor === "middle" ? p.x - width / 2 : p.anchor === "end" ? p.x - width : p.x;
+              assert.ok(left >= 0 && left + width <= w + 1 && p.y <= h, context);
+            }
+          }
+          const svg = toSVG(item, { page });
+          assert.ok(svg.includes(`viewBox="0 0 ${w} ${h}"`));
+          assert.equal((svg.match(/<svg/g) || []).length, 1);
+        }
+      }
+    }
+  }
+});
+
 test("kana sheet has complete charts for both scripts", () => {
   const sheet = buildSheet("kana");
   assert.equal(sheet.tables.length, 6);

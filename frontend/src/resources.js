@@ -10,7 +10,7 @@ import { SHEETS, buildSheet } from "./cheatsheet-data.js";
 import { FORMATS, buildPdf, fileName, textExporters, toSVG } from "./cheatsheet-export.js";
 import { PDFDocument } from "pdf-lib";
 import { strToU8, zipSync } from "fflate";
-import { FONT_STACK, PAGE, paginateReference } from "./cheatsheet-layout.js";
+import { PAGE, paginateReference } from "./cheatsheet-layout.js";
 import { mountWorksheet } from "./worksheet.js";
 
 const META = {
@@ -45,8 +45,12 @@ controls.innerHTML = '<label>Page layout <select data-reference="orientation"><o
 document.querySelector(".download-panel").insertBefore(controls, list);
 worksheet.button.addEventListener("click", () => { controls.hidden = true; });
 let sheet = null, page = 0;
-const paginated = () => ["counters", "radicals", "lookalikes", "grammar-contrasts"].includes(sheet?.id);
-const pages = () => paginated() ? paginateReference(sheet) : [sheet];
+const paginated = () => !["kana", "verb", "adjective"].includes(sheet?.id);
+const pageLayout = () => {
+  const [w, h] = dimensions();
+  return { ...PAGE, w, h, label: { a4: "A4", letter: "US Letter", legal: "US Legal" }[paper()] };
+};
+const pages = () => paginated() ? paginateReference(sheet, sheet.id === "radicals" ? (orientation() === "landscape" ? 11 : 18) : (["ambiguities", "grammar-contrasts"].includes(sheet.id) ? 4 : orientation() === "landscape" ? 6 : 12), pageLayout()) : [sheet];
 const paper = () => controls.querySelector('[data-reference="paper"]').value;
 const orientation = () => controls.querySelector('[data-reference="orientation"]').value;
 function dimensions() {
@@ -55,10 +59,7 @@ function dimensions() {
   return orientation() === "landscape" ? [...size].reverse() : size;
 }
 function pageSVG(item, standalone = true) {
-  const svg = toSVG(item, { standalone, grayscale: grayscale.checked });
-  const [width, height] = dimensions();
-  const title = sheet.title.replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
-  return `<svg${standalone ? ' xmlns="http://www.w3.org/2000/svg"' : ""} viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="${title} cheatsheet"><rect width="100%" height="100%" fill="white"/><svg x="0" y="0" width="${width}" height="${height}" viewBox="0 0 ${PAGE.w} ${PAGE.h}" font-family='${FONT_STACK.replace(/'/g, "")}'>${svg.slice(svg.indexOf(">") + 1, svg.lastIndexOf("</svg>"))}</svg></svg>`;
+  return toSVG(item, { standalone, grayscale: grayscale.checked, page: pageLayout() });
 }
 function render() {
   const all = pages();
@@ -73,9 +74,11 @@ function render() {
   for (const button of list.querySelectorAll("[data-format]")) {
     const format = button.dataset.format;
     if (!FORMAT_NOTES[format]) continue;
+    const [width, height] = dimensions();
+    const notes = { ...FORMAT_NOTES, png: `Sharp image, ${Math.round(width * 2.5)} × ${Math.round(height * 2.5)} px`, pdf: `${pageLayout().label} ${orientation()} (image based)`, html: `Self-contained page, prints on ${pageLayout().label}` };
     button.querySelector("small").textContent = paginated() && ["png", "svg", "html"].includes(format)
       ? "ZIP with one file per page" : paginated() && format === "pdf"
-        ? "All pages, selected paper size" : FORMAT_NOTES[format];
+        ? "All pages, selected paper size" : notes[format];
   }
 }
 controls.addEventListener("change", () => render());

@@ -3,8 +3,8 @@ import { FONT_STACK, layoutSheet, PAGE } from "./cheatsheet-layout.js";
 
 const escapeXml = (value) => String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
 
-export function toSVG(sheet, { standalone = true, grayscale = false } = {}) {
-  const { width, height, prims } = layoutSheet(sheet);
+export function toSVG(sheet, { standalone = true, grayscale = false, page = PAGE } = {}) {
+  const { width, height, prims } = layoutSheet(sheet, page);
   const body = prims.map((p) => {
     if (p.k === "r") {
       return `<rect x="${+p.x.toFixed(2)}" y="${+p.y.toFixed(2)}" width="${+p.w.toFixed(2)}" height="${+p.h.toFixed(2)}"${p.rx ? ` rx="${p.rx}"` : ""} fill="${p.fill}"${p.stroke ? ` stroke="${p.stroke}"` : ""}/>`;

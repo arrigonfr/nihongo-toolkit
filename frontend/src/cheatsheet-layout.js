@@ -40,8 +40,8 @@ const text = (prims, x, y, runs, size, o = {}) => prims.push({
   runs: typeof runs === "string" ? [{ t: runs }] : runs
 });
 
-function header(prims, sheet) {
-  const { margin, w } = PAGE, h = 62;
+function header(prims, sheet, page = PAGE) {
+  const { margin, w } = page, h = 62;
   rect(prims, margin, margin, w - margin * 2, h, hsl(sheet.hue, 50, 38), 14);
   rect(prims, w - margin - 190, margin, 190, h, hsl(sheet.hue2, 70, 52), 14);
   rect(prims, w - margin - 190, margin, 20, h, hsl(sheet.hue2, 70, 52));
@@ -51,12 +51,12 @@ function header(prims, sheet) {
   return margin + h;
 }
 
-function footer(prims, sheet) {
-  const { w, h, margin } = PAGE;
+function footer(prims, sheet, page = PAGE) {
+  const { w, h, margin } = page;
   const lines = wrapText(sheet.footer, 8, w - margin * 2);
   lines.forEach((line, index) => text(prims, w / 2, h - margin + 4 - (lines.length - 1 - index) * 11, line, 8, { fill: MUTED }));
   text(prims, margin, h - 12, "Nihon · cheatsheet", 7, { anchor: "start", fill: "#9aa19b" });
-  text(prims, w - margin, h - 12, "A4", 7, { anchor: "end", fill: "#9aa19b" });
+  text(prims, w - margin, h - 12, page.label || "A4", 7, { anchor: "end", fill: "#9aa19b" });
 }
 
 function fitSize(label, size, width, min = 6) {
@@ -106,6 +106,12 @@ export function drawTable(prims, table, x, y, o) {
       if (item) {
         if (col === 0 && o.stackForms) {
           drawWrapped(prims, item, px, cursor, widths[col], rowH - 1, 13, { content: cellText(item).replaceAll(" / ", "\n"), fill: o.dark, weight: 700 });
+        } else if (col === 0 && o.inlineForms && item.sub) {
+          const label = `${cellText(item)}  ${item.sub}`;
+          const size = fitSize(label, 10, widths[0] - 16);
+          text(prims, px + 8, cursor + rowH / 2 + size * 0.35, [
+            { t: cellText(item) }, { t: `  ${item.sub}`, fill: MUTED }
+          ], size, { anchor: "start", weight: 700, fill: o.dark });
         } else if (col === 0) {
           const parts = item.sub ? 2 : 1;
           text(prims, px + 8, cursor + (parts === 2 ? rowH / 2 - 2 : rowH / 2 + 3.5), item.parts[0][0], fitSize(item.parts[0][0], 10, widths[0] - 12), { anchor: "start", weight: 700, fill: o.dark });
@@ -162,9 +168,9 @@ function drawNote(prims, note, x, y, w, h, hue, size = 8.5) {
   return cursor - y + 6;
 }
 
-function layoutKana(sheet, prims) {
-  const { margin, w } = PAGE, colW = (w - margin * 2 - 26) / 2;
-  let top = header(prims, sheet) + 12;
+function layoutKana(sheet, prims, page) {
+  const { margin, w, h } = page, colW = (w - margin * 2 - 26) / 2;
+  let top = header(prims, sheet, page) + 12;
   const scripts = [{ name: "Hiragana", jp: "ひらがな", hue: 345, span: 40, tables: sheet.tables.slice(0, 3), note: sheet.notes[0] },
     { name: "Katakana", jp: "カタカナ", hue: 195, span: 70, tables: sheet.tables.slice(3), note: sheet.notes[1] }];
   scripts.forEach((script, index) => {
@@ -173,7 +179,16 @@ function layoutKana(sheet, prims) {
     rect(prims, x, cursor, colW, 24, hsl(script.hue, 55, 92), 12);
     text(prims, x + 14, cursor + 16.5, `${script.jp}  ${script.name}`, 12, { anchor: "start", weight: 800, fill: hsl(script.hue, 55, 26) });
     cursor += 30;
-    const rowH = 31;
+    if (w > h) {
+      const gap = 12, gridW = (colW - gap) / 2, rowH = 25;
+      const basicH = drawKana(prims, script.tables[0], x, cursor, gridW, rowH, script.hue, script.span);
+      drawKana(prims, script.tables[2], x + gridW + gap, cursor, gridW, rowH, script.hue, script.span);
+      const lower = cursor + basicH + 8;
+      drawKana(prims, script.tables[1], x, lower, gridW, rowH, script.hue, script.span);
+      drawNote(prims, script.note, x + gridW + gap, lower + 16, gridW, h - lower - 76, script.hue, 8.5);
+      return;
+    }
+    const rowH = Math.min(31, (h - 280) / 27);
     cursor += drawKana(prims, script.tables[0], x, cursor, colW, rowH, script.hue, script.span) + 6;
     cursor += drawKana(prims, script.tables[1], x, cursor, colW, rowH, script.hue, script.span) + 6;
     const comboW = 20 + 3 * 60;
@@ -183,26 +198,27 @@ function layoutKana(sheet, prims) {
   });
 }
 
-function layoutVerb(sheet, prims) {
-  const { margin, w } = PAGE, width = w - margin * 2;
+function layoutVerb(sheet, prims, page) {
+  const { margin, w, h } = page, width = w - margin * 2;
   const palette = {
     accent: hsl(sheet.hue2, 85, 38), dark: hsl(sheet.hue, 55, 24), head: hsl(sheet.hue, 45, 36),
     tintA: hsl(sheet.hue, 50, 96), tintB: hsl(sheet.hue, 30, 99), ink: INK, subSize: 8
   };
-  let cursor = header(prims, sheet) + 12;
-  cursor += drawTable(prims, sheet.tables[0], margin, cursor, { ...palette, colW: [112, 196, 104, 110, 100, 100], rowH: 29.5, mainSize: 13.5, wrapCols: [1] }) + 10;
-  cursor += drawTable(prims, sheet.tables[1], margin, cursor, { ...palette, colW: [50, 94, 99, 99, 95, 95, 95, 95], rowH: 25, headH: 20, mainSize: 12.5 }) + 8;
+  let cursor = header(prims, sheet, page) + 12;
+  const compact = h < 1000, widths = (values) => values.map((value) => value * width / 722);
+  cursor += drawTable(prims, sheet.tables[0], margin, cursor, { ...palette, colW: widths([112, 196, 104, 110, 100, 100]), rowH: compact ? 16 : Math.min(29.5, 29.5 - (1123 - h) / 19), mainSize: compact ? 10 : 13.5, wrapCols: [1], inlineForms: w > h }) + 10;
+  cursor += drawTable(prims, sheet.tables[1], margin, cursor, { ...palette, colW: widths([50, 94, 99, 99, 95, 95, 95, 95]), rowH: compact ? 17 : 25, headH: 20, mainSize: compact ? 11 : 12.5 }) + 8;
   drawNote(prims, sheet.notes[0], margin, cursor, width, 92, sheet.hue2, 9.5);
 }
 
-function layoutAdjective(sheet, prims) {
-  const { margin, w } = PAGE, width = w - margin * 2;
+function layoutAdjective(sheet, prims, page) {
+  const { margin, w, h } = page, width = w - margin * 2;
   const palette = {
     accent: hsl(sheet.hue2, 85, 38), dark: hsl(sheet.hue, 60, 24), head: hsl(sheet.hue, 50, 38),
     tintA: hsl(sheet.hue, 60, 96), tintB: hsl(sheet.hue, 30, 99), ink: INK, subSize: 8
   };
-  let cursor = header(prims, sheet) + 12;
-  cursor += drawTable(prims, sheet.tables[0], margin, cursor, { ...palette, colW: [118, 184, 140, 140, 140], rowH: 34, mainSize: 13, wrapCols: [1] }) + 12;
+  let cursor = header(prims, sheet, page) + 12;
+  cursor += drawTable(prims, sheet.tables[0], margin, cursor, { ...palette, colW: [118, 184, 140, 140, 140].map((value) => value * width / 722), rowH: h < 1000 ? 20 : 34, mainSize: h < 1000 ? 11 : 13, wrapCols: [1], inlineForms: w > h }) + 12;
   const cardW = (width - 24) / 3;
   const hues = [sheet.hue, 150, sheet.hue2];
   sheet.notes.filter((note) => !note.wide).forEach((note, index) => drawNote(prims, note, margin + index * (cardW + 12), cursor, cardW, 112, hues[index], 8.5));
@@ -210,7 +226,8 @@ function layoutAdjective(sheet, prims) {
   if (wide) drawNote(prims, wide, margin, cursor + 124, width, 112, 270, 9.5);
 }
 
-export function paginateReference(sheet, rowsPerColumn = sheet.id === "radicals" ? 18 : 12) {
+export function paginateReference(sheet, rowsPerColumn = sheet.id === "radicals" ? 18 : 12, page = PAGE) {
+  const columnCount = page.w > page.h ? 3 : 2;
   const columns = sheet.tables.flatMap((table) => {
     const chunks = [];
     for (let offset = 0; offset < table.rows.length; offset += rowsPerColumn) {
@@ -219,28 +236,30 @@ export function paginateReference(sheet, rowsPerColumn = sheet.id === "radicals"
     return chunks;
   });
   const pages = [];
-  for (let index = 0; index < columns.length; index += 2) pages.push({ ...sheet, tables: columns.slice(index, index + 2) });
+  for (let index = 0; index < columns.length; index += columnCount) pages.push({ ...sheet, tables: columns.slice(index, index + columnCount) });
   return pages.length ? pages : [{ ...sheet, tables: [] }];
 }
 
-export function layoutSheet(sheet) {
+export function layoutSheet(sheet, page = PAGE) {
   const prims = [];
-  rect(prims, 0, 0, PAGE.w, PAGE.h, PAPER);
+  rect(prims, 0, 0, page.w, page.h, PAPER);
   const layout = ({ kana: layoutKana, verb: layoutVerb, adjective: layoutAdjective })[sheet.id] || layoutReference;
-  layout(sheet, prims);
-  footer(prims, sheet);
-  return { width: PAGE.w, height: PAGE.h, prims };
+  layout(sheet, prims, page);
+  footer(prims, sheet, page);
+  return { width: page.w, height: page.h, prims };
 }
 
-function layoutReference(sheet, prims) {
-  const top = header(prims, sheet) + 12;
+function layoutReference(sheet, prims, page) {
+  const top = header(prims, sheet, page) + 12;
   const palette = {
     accent: hsl(sheet.hue2, 85, 38), dark: hsl(sheet.hue, 55, 24), head: hsl(sheet.hue, 45, 36),
     tintA: hsl(sheet.hue, 50, 96), tintB: hsl(sheet.hue, 30, 99), ink: INK, subSize: 8
   };
-  const rowH = Math.min(140, 900 / Math.max(...sheet.tables.map((table) => table.rows.length)));
-  sheet.tables.forEach((table, index) => drawTable(prims, table, PAGE.margin + index * 373, top, {
-    ...palette, colW: [68, 120, 166], rowH, mainSize: 10, wrapCols: [1, 2],
+  const rowH = Math.min(140, (page.h - 223) / Math.max(...sheet.tables.map((table) => table.rows.length)));
+  const columnCount = page.w > page.h ? 3 : 2;
+  const colW = (page.w - page.margin * 2 - (columnCount - 1) * 19) / columnCount;
+  sheet.tables.forEach((table, index) => drawTable(prims, table, page.margin + index * (colW + 19), top, {
+    ...palette, colW: [68, 120, 166].map((value) => value * colW / 354), rowH, mainSize: 10, wrapCols: [1, 2],
     stackForms: sheet.id === "lookalikes", breakContrasts: ["ambiguities", "lookalikes", "grammar-contrasts", "grammar-contrasts-2"].includes(sheet.id)
   }));
 }

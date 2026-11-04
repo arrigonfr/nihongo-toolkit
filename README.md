@@ -381,14 +381,17 @@ and browser interaction coverage.
 
 ## Shiryō resources (cheatsheets)
 
-Open **Shiryō · 資料** (`frontend/shiryo.html`) for single-page A4 cheatsheets:
+Open **Shiryō · 資料** (`frontend/shiryo.html`) for printable cheatsheets:
 Hiragana & Katakana, Verb conjugation, Adjective conjugation, Particles, Counters,
 and focused word, kanji and grammar contrast sheets. Everything is
 generated in the browser (no backend): preview, then download as PNG, PDF (image
 based), SVG, standalone HTML, Markdown, plain text or CSV, or use **Print / Save as
 PDF** for vector text. Content lives in `src/cheatsheet-data.js`, page layout in
 `src/cheatsheet-layout.js`, exporters in `src/cheatsheet-export.js`; unit tests are
-in `frontend/test/cheatsheets.test.js`.
+in `frontend/test/cheatsheets.test.js`. Portrait and landscape layouts reflow
+content for A4, US Letter and US Legal in previews, printing and visual downloads;
+worksheet layouts remain independent. Word and grammar contrasts include usage
+limits alongside their distinctions and examples.
 
 The grayscale option applies to the preview, printing, and visual exports (PNG,
 PDF, SVG, and HTML). Markdown and CSV exports are unaffected.

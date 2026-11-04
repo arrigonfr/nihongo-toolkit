@@ -61,10 +61,6 @@ export function mountSupport() {
   const content = document.createElement("div");
   content.className = "study-intro-content";
   content.append(...intro.childNodes);
-  content.insertAdjacentHTML("beforeend", `<p class="study-contribute">
-    Have a suggestion or found a bug? <a href="https://github.com/arrigonfr/nihongo-toolkit/issues" target="_blank" rel="noopener noreferrer">Open an issue</a>
-    or <a href="https://github.com/arrigonfr/nihongo-toolkit" target="_blank" rel="noopener noreferrer">send a pull request on GitHub</a>.
-  </p>`);
   intro.append(content);
   intro.classList.add("study-intro");
   const header = document.querySelector("header");

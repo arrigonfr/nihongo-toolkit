@@ -590,6 +590,56 @@ const EXTRA_CONTRASTS = {
   ]
 };
 
+const CONTRAST_LIMITS = {
+  "会う / 合う": "Do not use 合う for meeting a person or 会う for a size fitting.",
+  "知る / 分かる": "知る is learning a fact, not the continuing state of knowing; use 知っている. 分からない means not understanding.",
+  "着る / 履く": "Do not use 着る for shoes or 履く for a shirt; hats and glasses need other verbs.",
+  "かぶる / かける": "For wearing, not interchangeable: glasses take かける, not かぶる.",
+  "暑い / 熱い": "Do not use 暑い for hot tea or 熱い for hot weather.",
+  "寒い / 冷たい": "Do not use 寒い for cold water; 冷たい can also describe an unfriendly attitude.",
+  "暖かい / 温かい": "Use 温かい for kindness, not 暖かい; the spoken forms are identical.",
+  "に / へ / で": "Use で for studying at a place, not destination に. 着く takes に, not directional へ.",
+  "あげる": "Do not use for someone giving to you; use くれる. For a superior, consider a respectful alternative.",
+  "くれる": "Do not use for you giving outward; use あげる. The gift must be toward your viewpoint.",
+  "もらう": "Do not make the giver the subject; that changes the viewpoint to あげる or くれる.",
+  "は / が": "Use 誰が, not 誰は, to ask who did it. は need not mark the grammatical subject.",
+  "聞く / 聴く": "Do not use 聴く to ask a question. 聞く can also mean attentive listening; 聴く emphasizes it.",
+  "見る / 観る": "Do not use 観る for a casual glance at the sky. 見る is also valid for films.",
+  "開く / 開ける": "For a door: が開く, を開ける, not を開く (あく). 開く (ひらく) is a separate reading and use.",
+  "いる / ある": "Do not use ある for an ordinary living cat or いる for a book. Plants normally take ある.",
+  "上手 / 得意": "Avoid 上手 for praising your own skill; 得意 suits self-description. Liking something does not imply skill.",
+  "好き / 欲しい": "Do not use 欲しい for wanting to do an action; use たい. Others' desires usually need evidence or quotation.",
+  "早い / 速い": "Use 早い for an early arrival, not 速い; use 速い for movement speed.",
+  "多い / 大きい": "Do not use 大きい for a large number of people. Say 多くの人, not 多い人, for 'many people'.",
+  "と": "For a one-off request, use たら instead: 着いたら電話して, not 着くと電話して.",
+  "ば": "For the same person's deliberate action then a request, prefer たら. State conditions allow requests: 暇なら来て.",
+  "たら": "The result normally follows the condition; for advice before an intended trip, use なら.",
+  "なら": "Not an automatic 'when': it accepts a premise, rather than asserting the event has happened.",
+  "から / ので": "Both can give reasons for requests; ので is not a ban on requests. Use から for a forceful personal justification.",
+  "て / で": "Use から or ので when explicitly giving the reason for an instruction.",
+  "そうだ (looks)": "Do not attach to a plain verb or noun for appearance. いい becomes よさそう; かわいい becomes かわいそう only with a different meaning: pitiful.",
+  "そうだ (heard)": "Not your own visual guess. Keep the plain ending: 降るそうだ, not 降りそうだ.",
+  "ようだ / みたい": "Do not use noun + ようだ without の. Avoid casual みたい in formal writing.",
+  "らしい": "Not certainty or a firm personal plan. Typicality and hearsay are different readings; context decides.",
+  "なければならない": "Not a prohibition: 行かなければならない means must go, not must not go.",
+  "たほうがいい": "Not a binding duty. Do not use た for negative advice: 行かないほうがいい.",
+  "直接受身": "Not automatically unpleasant; use the affected passive when the subject was not the direct object.",
+  "迷惑の受身": "Not a neutral replacement for every active sentence; it foregrounds an affected person.",
+  "たらどう": "Not an obligation. Avoid for sensitive advice to a superior; it can sound critical.",
+  "にする / になる": "Do not use になる to say you choose tea. With い-adjectives use くする / くなる.",
+  "てくる / ていく": "Not just past versus future: physical direction and the chosen viewpoint also matter.",
+  "つもり": "Not merely a possibility or wish. Do not assert another person's private intention without evidence or a report.",
+  "ようと思う": "Use the volitional form, not dictionary + と思う, for an intention to act.",
+  "時 / たら": "時 does not require the first event to finish. Use たら when completion is the prerequisite.",
+  "ために / ように": "For an ability goal use ように: 泳げるように練習する. Purpose ために normally shares the actor.",
+  "のに / けど": "For a request or invitation after 'but', prefer けど; のに normally expresses a contrary outcome.",
+  "はず / かもしれない": "はず needs grounds for expectation; it is not advice or duty. かもしれない does not imply a strong expectation.",
+  "ている / てある": "てある normally needs a transitive verb and an intentional result; not a natural state like rain falling.",
+  "ておく / てしまう": "ておく does not imply regret; てしまう does not by itself mean preparation.",
+  "ことがある / たことがある": "For a specific dated event use the ordinary past, not the experience pattern.",
+  "ようになる / ようにする": "Use なる for an acquired ability; する describes effort, not proof the ability was acquired."
+};
+
 function contrastSheet(id, title, jp, sourceIndex, start, end, hue) {
   const source = contrastSource().tables[sourceIndex].rows.slice(start, end).map((row) => {
     const form = cellText(row[0]);
@@ -597,6 +647,11 @@ function contrastSheet(id, title, jp, sourceIndex, start, end, hue) {
     return detail ? [plain(form), ...detail.map((value) => plain(value))] : row;
   });
   source.push(...(EXTRA_CONTRASTS[id] || []).map((row) => row.map((value) => plain(value))));
+  if (id !== "lookalikes") {
+    for (const row of source) {
+      row[1] = plain(`${cellText(row[1])}\n${CONTRAST_LIMITS[cellText(row[0])]}`);
+    }
+  }
   const midpoint = Math.ceil(source.length / 2);
   return {
     id, title, jp, subtitle: "Choose by meaning, context and viewpoint",

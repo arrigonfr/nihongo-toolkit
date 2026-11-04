@@ -76,6 +76,11 @@ try {
   assert.equal(result.printing, undefined);
   assert.equal(result.cleaned, true);
   await page.locator('[data-sheet="kana"]').click();
+  assert.equal(await page.locator(".study-contribute").count(), 0);
+  await page.locator('[data-reference="orientation"]').selectOption("landscape");
+  assert.equal(await page.locator("#sheetPreview > svg").getAttribute("viewBox"), "0 0 1123 794");
+  assert.equal(await page.locator("#sheetPreview svg svg").count(), 0);
+  await page.locator('[data-reference="orientation"]').selectOption("portrait");
   assert.equal(await page.locator('.download-panel:not([data-worksheet]) [data-format="png"]').evaluate((button) => getComputedStyle(button).gridColumn), "auto");
   assert.equal(await page.locator('.download-panel > .sheet-grayscale #sheetGrayscale').count(), 1);
   const normalPrint = await page.evaluate(async () => {
@@ -118,13 +123,14 @@ try {
   await page.locator('[data-reference="orientation"]').selectOption("portrait");
   await page.locator('[data-sheet="counters"]').click();
   const pageIndicator = page.locator('[data-reference-page]');
-  const pageCount = Number((await pageIndicator.textContent()).split(" / ")[1]);
+  let pageCount = Number((await pageIndicator.textContent()).split(" / ")[1]);
   assert.ok(pageCount > 1);
   await page.locator('[data-reference-action="next"]').click();
   assert.equal(await pageIndicator.textContent(), `2 / ${pageCount}`);
   await page.locator('[data-reference="paper"]').selectOption("letter");
   await page.locator('[data-reference="orientation"]').selectOption("landscape");
   assert.equal(await page.locator('#sheetPreview > svg').getAttribute("viewBox"), "0 0 1056 816");
+  pageCount = Number((await pageIndicator.textContent()).split(" / ")[1]);
   for (const format of ["svg", "pdf"]) {
     const pending = page.waitForEvent("download");
     await page.locator(`[data-format="${format}"]`).click();
@@ -177,10 +183,15 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.locator("#sheetPicker").evaluate((picker) => getComputedStyle(picker).display), "flex");
   await page.locator('[data-sheet="radicals"]').click();
-  assert.ok(Number((await pageIndicator.textContent()).split(" / ")[1]) > 2);
-  assert.ok(await page.locator('#sheetPreview').textContent().then((text) => text.includes("さんずい")));
-  await page.locator('[data-reference-action="next"]').click();
-  assert.ok(await page.locator('#sheetPreview').textContent().then((text) => text.includes("けものへん")));
+  const radicalPageCount = Number((await pageIndicator.textContent()).split(" / ")[1]);
+  assert.ok(radicalPageCount > 2);
+  let radicalText = "";
+  for (let index = 0; index < radicalPageCount; index++) {
+    radicalText += await page.locator("#sheetPreview").textContent();
+    if (index + 1 < radicalPageCount) await page.locator('[data-reference-action="next"]').click();
+  }
+  assert.ok(radicalText.includes("さんずい"));
+  assert.ok(radicalText.includes("けものへん"));
   console.log("Worksheet browser checks passed.");
 } finally {
   await browser?.close();
