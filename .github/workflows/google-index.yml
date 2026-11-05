@@ -18,8 +18,7 @@ jobs:
       - name: Install Dependencies
         run: npm install googleapis
 
-      - name: Create Credentials File
-        run: echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}' > service_account.json
-
       - name: Run Indexing Script
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
         run: node index.js
