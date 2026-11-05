@@ -31,7 +31,7 @@ with the backend running at http://localhost:3000. Use the top-center menu to
 choose a practice tool, reference tool or game, and the `?` beside its heading
 for instructions. Choose settings and start a session where applicable.
 Audio uses Japanese speech voices on your device, except in Firefox where a
-local Japanese voice is downloaded on first use and runs in your browser.
+local Japanese voice loads in the background when a page opens with Audio On.
 Settings and supported
 progress are stored in your browser, not in an account or across devices.
 
@@ -580,10 +580,14 @@ distinct messages. Kotoba no longer offers JSON export.
 Audio buttons respect Audio On/Off. Firefox uses a browser-local Japanese voice;
 other browsers use the browser's speech synthesis.
 Playback uses play icons. Outside Firefox it prefers enhanced/natural Japanese
-voices when exposed by the device. Firefox downloads the voice and phonemizer
-assets from the public Hugging Face repository (approximately 100 MB uncompressed)
-and synthesizes text locally; downloads are subject to browser caching and hosting
-availability. No speech text is sent to the asset host. The voice and runtime
+voices when exposed by the device. With Audio On, Firefox loads Kokoro's synthetic
+`jf_alpha` voice and Japanese phonemizer in the background when a page opens or Audio
+is enabled. The model comes from Hugging Face and the Japanese dictionary and runtime
+assets from jsDelivr; the initial download is over 110 MB, and synthesis runs locally.
+The model uses browser storage and the dictionary uses the browser's HTTP cache across
+pages; browsers can clear or evict cached data, and storage restrictions can prevent
+caching. There is currently no backup host for the Kokoro assets.
+No speech text is sent to the asset host. The voice and runtime
 credits are listed on the data and licenses page. No paid speech service or API key
 is required. Reading quizzes
 and reverse vocabulary prompts do not expose pronunciation before the answer is revealed.

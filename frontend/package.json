@@ -10,13 +10,11 @@
   "dependencies": {
     "fast-xml-parser": "^5.11.2",
     "fflate": "^0.8.3",
-    "onnxruntime-web": "1.30.0",
+    "kokoro-js-jp": "0.2.0",
     "pdf-lib": "^1.17.1",
-    "piper-plus": "0.8.2",
     "wanakana": "^5.3.1"
   },
   "devDependencies": {
     "vite": "^7.3.1"
   }
 }
-

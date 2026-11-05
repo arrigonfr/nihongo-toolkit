@@ -10,12 +10,13 @@ import { mountToolHelp } from "./tool-help.js";
 import { mountFontControls } from "./japanese-fonts.js";
 import { mountLevelControls } from "./jlpt-levels.js";
 import { createSupportButton } from "./support.js";
-import { cancelLocalSpeech, speakLocalJapanese } from "./local-speech.js";
+import { cancelLocalSpeech, preloadLocalSpeech, speakLocalJapanese } from "./local-speech.js";
 
 const key = "nihon:study-controls-v1";
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 export const study = { audio: true, furigana: true, romaji: false };
+const usesLocalSpeech = () => /Firefox\//.test(navigator.userAgent);
 try {
   const saved = JSON.parse(localStorage.getItem(key) || "{}");
   for (const name of Object.keys(study)) if (typeof saved[name] === "boolean") study[name] = saved[name];
@@ -35,7 +36,7 @@ export function readingsHTML(readings = []) {
 }
 export function speakJapanese(text) {
   if (!study.audio || !text) return;
-  if (/Firefox\//.test(navigator.userAgent)) {
+  if (usesLocalSpeech()) {
     void speakLocalJapanese(text);
     return;
   }
@@ -110,6 +111,7 @@ export function mountStudyControls({ furigana = true, romaji = true, onChange = 
   header.append(toolbar);
   mountAppearance(header, theme);
   mountToolHelp();
+  let audioWasEnabled = false;
   function refresh() {
     for (const name of Object.keys(study)) {
       document.documentElement.dataset[`study${name[0].toUpperCase()}${name.slice(1)}`] = String(study[name]);
@@ -120,7 +122,10 @@ export function mountStudyControls({ furigana = true, romaji = true, onChange = 
     if (!study.audio) {
       window.speechSynthesis?.cancel();
       cancelLocalSpeech();
+    } else if (!audioWasEnabled && usesLocalSpeech()) {
+      preloadLocalSpeech();
     }
+    audioWasEnabled = study.audio;
   }
   window.addEventListener("storage", (event) => {
     if (event.key !== key) return;

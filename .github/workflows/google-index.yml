@@ -1,9 +1,7 @@
 name: Google Indexing API
 
 on:
-  push:
-    branches:
-      - main  # Runs every time you push updates to your main branch
+  workflow_dispatch:
 
 jobs:
   index-urls:
