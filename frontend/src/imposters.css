@@ -3,8 +3,10 @@ body { min-height: 100vh; min-height: 100dvh; }
 .imposters-shell { max-width: 1000px; }
 .imposters-settings { margin-bottom: 16px; }
 .imposters-settings .imposters-setting-wide { grid-column: 1 / -1; }
-.imposters-setting-stack { display: grid; gap: 18px; }
-.imposters-settings .setting > label { font-size: .85em; font-weight: 650; }
+body details #settingsForm .imposters-question-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body details #settingsForm .imposters-question-settings > .level-field { grid-column: auto; }
+body details #settingsForm .imposters-display-settings { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.imposters-settings .setting > label, .imposters-settings .setting > .field-label { font-size: .85em; font-weight: 650; }
 .imposters-settings .setting[hidden] { display: none; }
 .imposters-settings .check-label { align-self: start; }
 .imposters-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0; }
@@ -24,10 +26,16 @@ body { min-height: 100vh; min-height: 100dvh; }
 .imposters-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
 .imposters-feedback { min-height: 55px; margin-top: 16px; }
 .imposters-feedback p { margin: 5px 0; }
+.imposters-feedback-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 12px; margin-top: 12px; }
+.imposters-feedback-item { min-width: 0; overflow-wrap: anywhere; }
+.imposters-feedback-item > strong[lang="ja"] { font-size: 24px; }
 .imposters-results ul { padding-left: 22px; }
 .imposters-results li { margin: 6px 0; }
 .imposters-results [lang="ja"] { font-size: 22px; font-weight: 700; }
 .imposters-error { color: #b43e46; }
+@media (max-width: 740px) {
+  body details #settingsForm .imposters-question-settings, body details #settingsForm .imposters-display-settings { grid-template-columns: 1fr; }
+}
 @media (max-width: 600px) {
   .imposters-choices { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .imposters-choices button { min-height: 88px; }

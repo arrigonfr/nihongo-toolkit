@@ -30,7 +30,9 @@ database; downloads are cached for later imports. Open http://localhost:5173
 with the backend running at http://localhost:3000. Use the top-center menu to
 choose a practice tool, reference tool or game, and the `?` beside its heading
 for instructions. Choose settings and start a session where applicable.
-Audio requires a Japanese speech voice on your device. Settings and supported
+Audio uses Japanese speech voices on your device, except in Firefox where a
+local Japanese voice is downloaded on first use and runs in your browser.
+Settings and supported
 progress are stored in your browser, not in an account or across devices.
 
 Jump to [local development](#local-development), [data sources](#importing-data),
@@ -279,7 +281,7 @@ side and pair with the natural written form, overriding the script direction.
 Emoji mode uses a small curated word-to-picture mapping and may require fewer
 pairs or wider filters. Kana English clues describe sounds/usage, not invented
 word meanings; small kana have no standalone pronunciation and are excluded
-from listening cards. Audio uses device Japanese voices and requires the
+from listening cards. Audio uses the shared Japanese voice and requires the
 shared Audio toggle. Every newly flipped audio card plays its clue, including
 the second card of a mismatch. Face-up audio cards can be tapped to replay,
 including matched cards and hint/correction previews, without adding a flip.
@@ -467,7 +469,7 @@ The trainer reuses the conjugator engine with an original, bounded study bank
 of 49 verbs, adjectives and auxiliary patterns. Practice generation, grading,
 rules and original teaching examples need no dictionary requests. Kanji details
 and example compounds use the existing dictionary API; speech uses your
-device's Japanese voices.
+shared Japanese audio.
 
 Choose N5–N1 individually, select several levels for a range, or select All.
 Question difficulty combines the estimated word level with the form's suggested
@@ -575,11 +577,15 @@ readings are not invented for unannotated sentences. Their translations remain v
 when compound meanings are hidden. Empty results and provider failures have
 distinct messages. Kotoba no longer offers JSON export.
 
-Audio buttons use the browser's Japanese speech synthesis and respect Audio On/Off.
-Playback uses play icons and prefers enhanced/natural Japanese voices when exposed
-by the device, at a slightly slower study pace. No paid speech service or API key
-is required. Installing an enhanced Japanese system voice can improve quality;
-availability and quality still depend on the browser and device. Reading quizzes
+Audio buttons respect Audio On/Off. Firefox uses a browser-local Japanese voice;
+other browsers use the browser's speech synthesis.
+Playback uses play icons. Outside Firefox it prefers enhanced/natural Japanese
+voices when exposed by the device. Firefox downloads the voice and phonemizer
+assets from the public Hugging Face repository (approximately 100 MB uncompressed)
+and synthesizes text locally; downloads are subject to browser caching and hosting
+availability. No speech text is sent to the asset host. The voice and runtime
+credits are listed on the data and licenses page. No paid speech service or API key
+is required. Reading quizzes
 and reverse vocabulary prompts do not expose pronunciation before the answer is revealed.
 Each kana reading, its optional romaji, and its play button are grouped together.
 
@@ -762,7 +768,7 @@ is needed.
 **Coverage:** thematic categories are approximate English-gloss filters, not
 human-curated classifications; names depend on dictionary coverage and do not
 establish whether a person is famous. Not every word has a JLPT level, a
-translated example or an available device voice. Strict endings can legitimately
+translated example or available Japanese audio. Strict endings can legitimately
 have no continuation in the installed vocabulary. Opening words are checked for
 at least one legal continuation before a round starts.
 

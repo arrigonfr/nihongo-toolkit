@@ -30,6 +30,8 @@ header.study-header { display: grid; grid-template-columns: minmax(0, 1fr) auto;
   .study-toolbar button { padding: 4px; font-size: 11px; }
 }
 .study-reading { display: inline-flex; align-items: center; flex-wrap: wrap; gap: .3rem; margin: .2rem .65rem .2rem 0; }
+.study-speech-status { position: fixed; right: 16px; bottom: 16px; z-index: 1000; max-width: min(360px, calc(100vw - 32px)); padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; }
+.study-speech-status[hidden] { display: none; }
 .font-preview { display: grid; gap: 4px; background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin-top: 6px; text-align: center; }
 .font-preview-sample { font-size: 20px; }
 .font-preview-name { color: var(--muted); font: 11px/1.5 system-ui; }

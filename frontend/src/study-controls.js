@@ -10,6 +10,7 @@ import { mountToolHelp } from "./tool-help.js";
 import { mountFontControls } from "./japanese-fonts.js";
 import { mountLevelControls } from "./jlpt-levels.js";
 import { createSupportButton } from "./support.js";
+import { cancelLocalSpeech, speakLocalJapanese } from "./local-speech.js";
 
 const key = "nihon:study-controls-v1";
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
@@ -34,6 +35,10 @@ export function readingsHTML(readings = []) {
 }
 export function speakJapanese(text) {
   if (!study.audio || !text) return;
+  if (/Firefox\//.test(navigator.userAgent)) {
+    void speakLocalJapanese(text);
+    return;
+  }
   if (!window.speechSynthesis) {
     window.alert("Speech playback is not supported by this browser.");
     return;
@@ -112,7 +117,10 @@ export function mountStudyControls({ furigana = true, romaji = true, onChange = 
       button.textContent = `${{ audio: study.audio ? "🔊 Audio" : "🔇 Audio", furigana: "あ Furigana", romaji: "Aa Romaji" }[name]} ${study[name] ? "On" : "Off"}`;
       button.setAttribute("aria-pressed", String(study[name]));
     }
-    if (!study.audio) window.speechSynthesis?.cancel();
+    if (!study.audio) {
+      window.speechSynthesis?.cancel();
+      cancelLocalSpeech();
+    }
   }
   window.addEventListener("storage", (event) => {
     if (event.key !== key) return;
@@ -129,7 +137,10 @@ export function mountStudyControls({ furigana = true, romaji = true, onChange = 
     speakJapanese(button.dataset.studySpeak);
   });
   refresh();
-  window.addEventListener("pagehide", () => window.speechSynthesis?.cancel());
+  window.addEventListener("pagehide", () => {
+    window.speechSynthesis?.cancel();
+    cancelLocalSpeech();
+  });
   return {
     setPreferences(update) {
       for (const name of Object.keys(study)) if (typeof update[name] === "boolean") study[name] = update[name];

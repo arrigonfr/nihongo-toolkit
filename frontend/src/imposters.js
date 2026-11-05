@@ -15,29 +15,29 @@ root.innerHTML = `<div class="shell imposters-shell"><header><div class="brand">
 <section class="intro"><span class="eyebrow">Kanji Imposters</span><h1>Kanji Kuizu <span lang="ja">漢字クイズ</span></h1></section>
 <details class="card game-settings imposters-settings" id="settings" open><summary>Game settings</summary><div class="settings-body"><form id="settingsForm">
 <fieldset class="settings-section"><legend>Session</legend><div class="settings-grid">
-<div class="setting imposters-setting-wide"><label for="mode">Game mode</label><select id="mode">${options(modes)}</select></div>
-<div class="setting"><label for="count">Questions per session</label><select id="count">${options([["10", "10"], ["20", "20"], ["30", "30"], ["50", "50"], ["custom", "Custom"]])}</select></div>
+<div class="setting imposters-setting-wide"><span class="field-label" id="modeLabel">Game mode</span><select id="mode" aria-labelledby="modeLabel">${options(modes)}</select></div>
+<div class="setting"><span class="field-label" id="countLabel">Questions per session</span><select id="count" aria-labelledby="countLabel">${options([["10", "10"], ["20", "20"], ["30", "30"], ["50", "50"], ["custom", "Custom"]])}</select></div>
 <div class="setting" id="customWrap" hidden><label for="customCount">Custom question count</label><input id="customCount" type="number" min="1" max="200" value="10"></div>
-<div class="setting"><label for="seconds">Seconds per question</label><select id="seconds">${options([["10", "10 seconds"], ["20", "20 seconds"], ["30", "30 seconds"], ["60", "60 seconds"]])}</select></div>
+<div class="setting"><span class="field-label" id="secondsLabel">Seconds per question</span><select id="seconds" aria-labelledby="secondsLabel">${options([["10", "10 seconds"], ["20", "20 seconds"], ["30", "30 seconds"], ["60", "60 seconds"]])}</select></div>
 </div></fieldset>
-<fieldset class="settings-section"><legend>Questions</legend><div class="imposters-setting-stack">
+<fieldset class="settings-section"><legend>Questions</legend><div class="settings-grid imposters-question-settings">
 <div class="setting"><label for="levelSelect">JLPT levels</label><select id="levelSelect">${options([["all", "All"], ...[5, 4, 3, 2, 1].map((level) => [String(level), `N${level}`])])}</select></div>
-<div class="setting"><label for="variants">Question variants</label><select id="variants">${options(variants)}</select></div>
+<div class="setting"><label for="variants" data-setting-description="Choose whether to identify readings for a kanji, kanji for a reading, or both.">Question variants</label><select id="variants">${options(variants)}</select></div>
 </div></fieldset>
-<fieldset class="settings-section"><legend>Display and feedback</legend><div class="settings-grid">
-<div class="setting"><label for="readingPrompt">Reading prompt</label><select id="readingPrompt">${options([["text", "Show kana"], ["audio", "Play audio"]])}</select><small id="volumeNotice" hidden>Check your volume and enable Audio in the study controls.</small></div>
-<div class="setting"><label for="fontSize">Kanji size</label><select id="fontSize">${options([["48", "Small"], ["64", "Standard"], ["80", "Large"]])}</select></div>
-<label class="check-label imposters-setting-wide"><input id="details" type="checkbox" checked> Show readings and example after each answer</label>
+<fieldset class="settings-section"><legend>Display and feedback</legend><div class="settings-grid imposters-display-settings">
+<div class="setting"><label for="readingPrompt" data-setting-description="How do you want your questions to be? Show the reading as kana or play it as audio.">Reading prompt</label><select id="readingPrompt">${options([["text", "Show kana"], ["audio", "Play audio"]])}</select><small id="volumeNotice" hidden>Check your volume and enable Audio in the study controls.</small></div>
+<div class="setting"><span class="field-label" id="fontSizeLabel">Kanji size</span><select id="fontSize" aria-labelledby="fontSizeLabel">${options([["48", "Small"], ["64", "Standard"], ["80", "Large"]])}</select></div>
+<label class="check-label"><input id="details" type="checkbox" checked> Show readings and example after each answer</label>
 </div></fieldset>
 <fieldset class="settings-section help-section"><legend>Help during play</legend><div class="help-pair">
-<fieldset class="help-group"><legend>Hints</legend><div class="settings-grid"><label>Availability<select id="hintMode">${options([["limited", "Limited"], ["unlimited", "Unlimited"], ["disabled", "Disabled"]])}</select></label><label>Hints per session<input id="hintLimit" type="number" min="0" max="200" value="3"></label></div></fieldset>
-<fieldset class="help-group"><legend>Reveal answer</legend><div class="settings-grid"><label>Availability<select id="revealMode">${options([["limited", "Limited"], ["unlimited", "Unlimited"], ["disabled", "Disabled"]])}</select></label><label>Reveals per session<input id="revealLimit" type="number" min="0" max="200" value="3"></label></div></fieldset>
+<fieldset class="help-group"><legend>Hints</legend><div class="settings-grid"><div class="setting"><span class="field-label" id="hintModeLabel">Availability</span><select id="hintMode" aria-labelledby="hintModeLabel">${options([["limited", "Limited"], ["unlimited", "Unlimited"], ["disabled", "Disabled"]])}</select></div><div class="setting"><span class="field-label" id="hintLimitLabel">Hints per session</span><input id="hintLimit" type="number" min="0" max="200" value="3" aria-labelledby="hintLimitLabel"></div></div></fieldset>
+<fieldset class="help-group"><legend>Reveal answer</legend><div class="settings-grid"><div class="setting"><span class="field-label" id="revealModeLabel">Availability</span><select id="revealMode" aria-labelledby="revealModeLabel">${options([["limited", "Limited"], ["unlimited", "Unlimited"], ["disabled", "Disabled"]])}</select></div><div class="setting"><span class="field-label" id="revealLimitLabel">Reveals per session</span><input id="revealLimit" type="number" min="0" max="200" value="3" aria-labelledby="revealLimitLabel"></div></div></fieldset>
 </div></fieldset></form></div></details>
 <div class="imposters-controls"><button id="start" class="primary" type="button">Start session</button><button id="reviewList" type="button">Review list</button></div><p id="error" class="imposters-error" role="alert"></p>
 <section id="game" class="card imposters-game" hidden><div class="imposters-status"><span id="progress"></span><span id="score"></span><span id="timer"></span></div><div class="imposters-prompt"><span id="promptLabel" class="eyebrow"></span><h2 id="prompt"></h2><p id="secondary"></p><div id="promptAudio"></div></div><div id="choices" class="imposters-choices" role="group" aria-label="Select all correct answers"></div><div class="imposters-actions"><button id="check" class="primary" type="button" disabled>Check answers</button><button id="hint" type="button">Hint</button><button id="reveal" type="button">Reveal answer</button><button id="stop" type="button">Stop session</button><button id="next" type="button" hidden>Next question</button></div><div id="feedback" class="imposters-feedback" role="status" aria-live="polite"></div></section>
 <section id="results" class="card imposters-results" hidden></section></div>`;
 const $ = (id) => document.getElementById(id);
-mountChips($("mode"), { presentation: "radio" });
+mountChips($("mode"), { presentation: "radio", label: "Game mode" });
 mountChips($("variants"), { multiple: true, options: variants.map(([value, label]) => ({ value, label })), allValue: "all", emptyValue: "none" });
 $("variants").value = "all";
 $("variants").dispatchEvent(new Event("change", { bubbles: true }));
@@ -119,10 +119,12 @@ function renderQuestion() {
   $("score").textContent = session.mode === "high" ? `Score ${session.score} · Combo ${session.combo}` : "";
   $("promptLabel").textContent = question.variant === "reading-kanji" ? "Select all kanji with this reading" : "Select all readings for this kanji";
   const audioOnly = question.variant === "reading-kanji" && $("readingPrompt").value === "audio" && study.audio;
-  $("prompt").textContent = audioOnly ? "Listen" : question.prompt;
+  $("prompt").textContent = audioOnly ? "" : question.prompt;
   $("prompt").classList.toggle("kanji-prompt", question.variant === "kanji-reading");
   if (!audioOnly) $("prompt").lang = "ja"; else $("prompt").removeAttribute("lang");
-  $("promptAudio").innerHTML = question.variant === "reading-kanji" ? audioHTML(question.prompt) : "";
+  $("promptAudio").innerHTML = question.variant === "reading-kanji"
+    ? audioOnly ? `<button type="button" class="study-audio" data-study-speak="${escape(question.prompt)}" aria-label="Replay question audio">Replay ▶</button>` : audioHTML(question.prompt)
+    : "";
   $("secondary").textContent = "";
   $("choices").innerHTML = question.choices.map((choice, index) => `<button type="button" data-choice="${index}" ${question.variant === "reading-kanji" ? 'data-kanji lang="ja"' : 'lang="ja"'} aria-pressed="${session.selected.has(index)}" class="${session.removed.has(index) ? "removed" : session.answered && choice.correct ? "correct" : session.answered && session.selected.has(index) ? "wrong" : ""}" ${session.answered || session.removed.has(index) ? "disabled" : ""}>${escape(choice.value)}</button>`).join("");
   $("check").hidden = session.answered;
@@ -142,8 +144,18 @@ function answer(result, revealed = false) {
   if (correct) { session.correct++; session.combo++; if (session.mode === "high") session.score += 100 * Math.min(session.combo, 5); }
   else { session.combo = 0; const item = { kanji: question.target.kanji, meaning: meanings(question.target)[0] }; session.mistakes.push(item); review[item.kanji] = item; if (question.variant === "reading-kanji") question.choices.forEach((choice, index) => { if (choice.correct && !session.selected.has(index)) review[choice.value] = { kanji: choice.value, meaning: meanings(choice.item)[0] }; }); save(reviewKey, review); status(); }
   renderQuestion();
-  const example = question.target.examples?.[0];
-  $("feedback").innerHTML = `<strong>${correct ? "Correct" : revealed ? "Answer revealed" : result === null ? "Time is up" : "Not quite"}</strong>${$("details").checked ? `<p>${readingsHTML([...question.target.on_readings || [], ...question.target.kun_readings || []])}</p><p>${escape(meanings(question.target).join(" · "))}</p>${example ? `<p>${japaneseHTML(example.word, example.reading)} ${escape((example.meanings || []).join(", "))} ${audioHTML(example.word)}</p>` : ""}` : ""}`;
+  const detailItems = question.variant === "reading-kanji" ? question.choices.map((choice) => choice.item) : [question.target];
+  const details = detailItems.map((item) => {
+    const example = item.examples?.[0];
+    const itemReadings = [...item.on_readings || [], ...item.kun_readings || []];
+    return `<div class="imposters-feedback-item" data-feedback-kanji="${escape(item.kanji)}">
+      ${question.variant === "reading-kanji" ? `<strong lang="ja">${escape(item.kanji)}</strong>` : ""}
+      <p>${itemReadings.length ? readingsHTML(itemReadings) : "No readings available."}</p>
+      <p>${escape(meanings(item).join(" · ") || "No meaning available.")}</p>
+      ${example ? `<p>${japaneseHTML(example.word, example.reading)} ${escape((example.meanings || []).join(", "))} ${audioHTML(example.word)}</p>` : ""}
+    </div>`;
+  }).join("");
+  $("feedback").innerHTML = `<strong>${correct ? "Correct" : revealed ? "Answer revealed" : result === null ? "Time is up" : "Not quite"}</strong>${$("details").checked ? `<div class="imposters-feedback-details">${details}</div>` : ""}`;
   if (session.mode === "sudden" && !correct) $("next").textContent = "See results"; else $("next").textContent = session.index + 1 === session.questions.length ? "See results" : "Next question";
 }
 $("hint").addEventListener("click", () => { if (!session || session.answered || !allowance("hint")) return; const wrong = session.question.choices.map((choice, index) => !choice.correct && !session.removed.has(index) ? index : -1).filter((index) => index >= 0); if (!wrong.length) return; const removed = wrong[Math.floor(Math.random() * wrong.length)]; session.removed.add(removed); session.selected.delete(removed); session.hints++; renderQuestion(); });

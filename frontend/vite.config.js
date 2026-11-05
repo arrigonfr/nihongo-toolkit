@@ -68,7 +68,17 @@ export default defineConfig(({ mode }) => {
     throw new Error("VITE_SITE_URL must be the public HTTPS site URL.");
   }
   return {
+  optimizeDeps: { exclude: ["onnxruntime-web/wasm", "piper-plus/wasm/multilingual"] },
   plugins: [toolNavigation(site), {
+    name: "speech-wasm-external",
+    enforce: "pre",
+    transform(code, id) {
+      if (!id.includes("/piper-plus/dist/rust-wasm/piper_plus_wasm.js")) return;
+      const defaultAsset = "new URL('piper_plus_wasm_bg.wasm', import.meta.url)";
+      if (!code.includes(defaultAsset)) throw new Error("Piper WASM loader changed; update the external asset configuration.");
+      return code.replace(defaultAsset, "undefined");
+    }
+  }, {
     name: "deployment-seo",
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
