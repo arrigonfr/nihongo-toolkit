@@ -29,7 +29,7 @@
       }
   },
   "vars": {
-    "TRACK_VISITS": "false",
+    "TRACK_VISITS": "true",
     "ALLOWED_ORIGINS": "https://nihongo-toolkit.pages.dev",
     "SENTENCE_API_FALLBACK": "true",
     "TRANSLATION_API_FALLBACK": "true",
