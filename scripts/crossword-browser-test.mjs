@@ -52,9 +52,13 @@ try {
     });
     const errors = [];
     let crossingFixture = false;
+    let batchCalls = 0;
     await context.route("**/*", (route) => {
       const url = new URL(route.request().url());
       if (url.pathname === "/api/words/batch") {
+        batchCalls++;
+        assert.equal(url.searchParams.get("projection"), "practice");
+        assert.equal(url.searchParams.has("kanji"), false);
         const level = url.searchParams.get("level");
         return route.fulfill({ json: {
           items: crossingFixture ? crossingWords : level === "1" ? kanaOnly : level === "2" ? isolated : vocabulary
@@ -137,6 +141,7 @@ try {
     assert.equal(await page.locator("#crosswordGrid .cw-cell").count(), 0, "Opening the tool does not generate a puzzle");
     await page.click("#newPuzzleBtn");
     await page.waitForFunction(() => document.querySelector("#crosswordGrid .cw-cell:not(.block)"));
+    assert.equal(batchCalls, 1, "one initial vocabulary request");
     assert.equal(await page.locator("#newPuzzleBtn").isVisible(), false);
     assert.equal(await page.locator("#nextPuzzleBtn").isVisible(), false);
     assert.equal(await page.locator("#revealPuzzleBtn").textContent(), "End and Reveal puzzle");

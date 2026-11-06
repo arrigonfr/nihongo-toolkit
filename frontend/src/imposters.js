@@ -61,12 +61,13 @@ $("reviewList").addEventListener("click", () => { if (!session) showReview(Objec
 $("results").addEventListener("click", (event) => { const key = event.target.dataset.remove; if (!key) return; delete review[key]; save(reviewKey, review); status(); event.target.closest("li").remove(); });
 async function getJSON(path) { const response = await fetch(`${API_BASE}${path}`, { signal: AbortSignal.timeout(20000) }); if (!response.ok) throw new Error("Could not load kanji. Please try again."); return response.json(); }
 async function loadPool(mode, level, random, needed) {
-  if (mode !== "daily") return (await getJSON(`/api/kanji/batch?mode=both&limit=100&level=${encodeURIComponent(level)}`)).items;
+  if (mode !== "daily") return (await getJSON(`/api/kanji/batch?mode=both&limit=100&projection=practice&level=${encodeURIComponent(level)}`)).items;
   const list = (await getJSON(`/api/kanji?limit=3000&level=${encodeURIComponent(level)}`)).items;
   const selected = shuffle(list, random).slice(0, Math.min(list.length, Math.max(50, needed + 20)));
-  const pool = [];
-  for (let index = 0; index < selected.length; index += 8) pool.push(...await Promise.all(selected.slice(index, index + 8).map((item) => getJSON(`/api/kanji/${encodeURIComponent(item.kanji)}`))));
-  return pool;
+  if (!selected.length) return [];
+  const params = new URLSearchParams();
+  selected.forEach((item) => params.append("character", item.kanji));
+  return (await getJSON(`/api/kanji/bulk?${params}`)).items;
 }
 $("start").addEventListener("click", async () => {
   $("error").textContent = "";

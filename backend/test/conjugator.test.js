@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
-import { conjugationType, conjugationEntries, findConjugationEntries } from "../src/conjugator.js";
+import { conjugationType, conjugationEntries, findConjugationEntries, conjugatorSearch } from "../src/conjugator.js";
+import { readFileSync } from "node:fs";
 const sense = (pos, meanings, kanji = ["*"], kana = ["*"]) => ({
   partOfSpeech: pos, gloss: meanings.map((text) => ({ lang: "eng", text })), appliesToKanji: kanji,
   appliesToKana: kana, misc: [], related: [], info: []
@@ -33,8 +34,10 @@ test("suru nouns attach する but nouns alone are not conjugatable", () => {
 });
 test("lookup offers ambiguous classes, treats wildcard input literally, and random avoids recent readings", async () => {
   const db = new DatabaseSync(":memory:");
-  db.exec(`CREATE TABLE words (id INTEGER, word TEXT, reading TEXT, is_common INTEGER, kanji_forms TEXT, kana_forms TEXT, senses TEXT);
-    CREATE TABLE vocabulary (word_id INTEGER, word TEXT, reading TEXT, jlpt INTEGER);`);
+  db.exec(`CREATE TABLE words (id INTEGER PRIMARY KEY, word TEXT, reading TEXT, is_common INTEGER, kanji_forms TEXT, kana_forms TEXT, senses TEXT);
+    CREATE TABLE vocabulary (word_id INTEGER, word TEXT, reading TEXT, jlpt INTEGER);
+    CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT);`);
+  db.exec(readFileSync(new URL("../src/word-search-index.sql", import.meta.url), "utf8"));
   const insert = db.prepare("INSERT INTO words VALUES (?, ?, ?, ?, ?, ?, ?)");
   for (const data of [
     row("切る", "きる", [sense(["v5r"], ["cut"])], 1),
@@ -46,6 +49,14 @@ test("lookup offers ambiguous classes, treats wildcard input literally, and rand
   assert.equal((await findConjugationEntries(db, { query: "%" })).length, 0);
   assert.equal((await findConjugationEntries(db, { random: true, exclude: ["きる"], level: "5", category: "verb" }))[0].word, "食べる");
   assert.equal((await findConjugationEntries(db, { query: "はんさむ" }))[0].word, "ハンサム");
+  const search = conjugatorSearch("食べ");
+  const plans = db.prepare(`EXPLAIN QUERY PLAN ${search.sql}`).all(...search.args).map((row) => row.detail).join("\n");
+  assert.match(plans, /SEARCH word_forms USING PRIMARY KEY/);
+  assert.doesNotMatch(plans, /SCAN (?:words|word_forms)/);
+  let calls = 0;
+  const counted = { prepare(sql) { const stmt = db.prepare(sql); return { all(...args) { calls++; return stmt.all(...args); } }; } };
+  assert.equal((await findConjugationEntries(counted, { query: "食べ" }))[0].word, "食べる");
+  assert.equal(calls, 2, "one indexed candidate query and one bulk level query");
   assert.equal((await findConjugationEntries(db, { random: true, category: "adjective" }))[0].word, "ハンサム");
   await assert.rejects(findConjugationEntries(db, { random: true, level: "0" }), /JLPT/);
   db.close();

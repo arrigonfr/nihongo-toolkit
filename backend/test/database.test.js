@@ -5,6 +5,7 @@ import { once } from "node:events";
 import { createDatabase } from "../src/database.js";
 import { insertKanjis, insertWords, insertVocabulary } from "../scripts/import-data.js";
 import { createHandler, dictionaryRecord } from "../src/app.js";
+import { exactWordCandidates } from "../src/async-database.js";
 
 function fixture() {
   const db = createDatabase(":memory:");
@@ -33,6 +34,88 @@ function fixture() {
   db.prepare("INSERT INTO strokes VALUES (?, ?)").run("日", '<svg xmlns="http://www.w3.org/2000/svg"/>');
   return db;
 }
+
+test("lightweight startup and ordered bulk kanji keep feedback with bounded remote queries", async (t) => {
+  let now = Date.now();
+  t.mock.method(Date, "now", () => now);
+  const db = fixture();
+  const original = db.prepare("SELECT * FROM kanjis").get();
+  const columns = Object.keys(original);
+  const insert = db.prepare(`INSERT INTO kanjis (${columns.join(",")}) VALUES (${columns.map(() => "?").join(",")})`);
+  for (const [index, character] of [..."月火水木金土山川田人口大小中"].entries()) {
+    const row = { ...original, id: 100 + index, character, codepoint: character.codePointAt(0), unicode: `U+${character.codePointAt(0).toString(16).toUpperCase()}` };
+    insert.run(...columns.map((column) => row[column]));
+  }
+  let statements = [];
+  const source = { async batch(jobs) {
+    return jobs.map(({ sql, args }) => {
+      statements.push(sql);
+      const query = db.prepare(sql);
+      return { columns: query.columns().map((column) => column.name), rows: query.all(...args) };
+    });
+
+  } };
+  const server = createServer(createHandler({ database: source, sentenceFallback: async () => [], translateSentence: async () => "" }));
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const get = async (path) => {
+    statements = [];
+    const response = await fetch(`http://127.0.0.1:${server.address().port}${path}`);
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  try {
+    const batch = await get("/api/kanji/batch?mode=both&projection=practice&limit=100");
+    assert.equal(batch.items.length, [..."月火水木金土山川田人口大小中"].length + 1);
+    assert.equal(statements.length, 3, "metadata, selection, bulk compounds");
+    assert.equal(batch.items[0].sentences, undefined);
+    await get("/api/kanji/batch?mode=both&projection=practice&limit=100");
+    assert.equal(statements.length, 2, "random selection and compounds are set-based");
+    await get("/api/kanji?limit=100");
+    assert.equal(statements.length, 2);
+    await get("/api/kanji?limit=100");
+    assert.equal(statements.length, 1, "only bounded list counts are cached");
+    now += 60001;
+    await get("/api/kanji?limit=100");
+    assert.equal(statements.length, 2, "counts refresh after one minute");
+    const bulk = await get("/api/kanji/bulk?character=月&character=日&character=月");
+    assert.deepEqual(bulk.items.map((item) => item.kanji), ["月", "日"]);
+    assert.equal(statements.length, 2);
+    const detail = await get("/api/kanji/日");
+    for (const key of ["on_readings", "kun_readings", "meanings", "examples"]) {
+      assert.deepEqual(bulk.items[1][key], detail[key], key);
+    }
+    const vocabulary = await get("/api/words/batch?projection=practice&limit=200&expand=1");
+    assert.ok(statements.length <= 3);
+    assert.ok(!statements.some((sql) => /sentences|strokes/.test(sql)));
+    assert.equal(vocabulary.items[0].example, "日本です。");
+    const base = `http://127.0.0.1:${server.address().port}`;
+    for (const params of ["", "?character=日本", `?${Array.from({ length: 101 }, (_, i) => `character=${String.fromCodePoint(0x4e00 + i)}`).join("&")}`]) {
+      assert.equal((await fetch(`${base}/api/kanji/bulk${params}`)).status, 400);
+    }
+  } finally { server.close(); await once(server, "close"); db.close(); }
+});
+
+test("set-based exact dictionary candidates retain ranking and use spelling/reading indexes", async () => {
+  const db = fixture();
+  let calls = 0;
+  try {
+    const matches = await exactWordCandidates({ prepare(sql) {
+      return { all(...args) {
+        calls++;
+        const plan = db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...args).map((row) => row.detail).join("\n");
+        assert.match(plan, /words_spelling/);
+        assert.match(plan, /words_reading/);
+        assert.doesNotMatch(plan, /SCAN w\b/);
+        return db.prepare(sql).all(...args);
+      } };
+    } }, ["日本", "にほん", "missing", "日本"], 20);
+    assert.equal(calls, 1);
+    assert.deepEqual([...matches.keys()], ["日本", "にほん", "missing"]);
+    assert.deepEqual(matches.get("日本"), matches.get("にほん"));
+    assert.equal(matches.get("missing").length, 0);
+  } finally { db.close(); }
+});
 
 test("import retains multilingual data, overlapping categories, old/new JLPT and links", () => {
   const db = fixture();

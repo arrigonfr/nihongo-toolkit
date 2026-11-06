@@ -1,4 +1,5 @@
 import { segmentText } from "./tokenizer.js";
+import { exactWordCandidates } from "./async-database.js";
 export { segmentText } from "./tokenizer.js";
 
 const GODAN_MASU = { "い": "う", "き": "く", "ぎ": "ぐ", "し": "す", "ち": "つ", "に": "ぬ", "び": "ぶ", "み": "む", "り": "る" };
@@ -190,19 +191,22 @@ export function createSentenceTranslator({
   };
 }
 
-export async function analyzeSentence(db, text, { toWord, translateSentence = createSentenceTranslator(), segment = segmentText } = {}) {
+export async function analyzeSentence(db, text, { toWord, toWords, translateSentence = createSentenceTranslator(), segment = segmentText, onTiming = () => {} } = {}) {
   const trimmed = String(text || "").trim();
-  const findExact = db.prepare(`
-    SELECT * FROM words
-    WHERE word = ? OR reading = ?
-    ORDER BY is_common DESC, (word = ? OR senses LIKE '%"uk"%') DESC, id
-    LIMIT 6
-  `);
-
+  let started = performance.now();
   const rawTokens = await segment(text);
-  const candidatesByToken = rawTokens.map((token) => [...new Set([token.base, token.text, ...deinflectCandidates(token.text)].filter(Boolean))]);
-  const matches = new Map(await Promise.all([...new Set(candidatesByToken.flat())].map(async (candidate) =>
-    [candidate, await findExact.all(candidate, candidate, candidate)])));
+  onTiming("tokenizer", performance.now() - started);
+  started = performance.now();
+  const candidatesByToken = rawTokens.map((token) => token.type === "word" || token.type === "particle"
+    ? [...new Set([token.base, token.text, ...deinflectCandidates(token.text)].filter(Boolean))] : []);
+  const matches = await exactWordCandidates(db, candidatesByToken.flat());
+  onTiming("dictionary", performance.now() - started);
+  started = performance.now();
+  const selectedRows = [...new Map(candidatesByToken.flatMap((candidates) =>
+    matches.get(candidates.find((candidate) => matches.get(candidate)?.length)) ?? [])
+    .map((row) => [row.id, row])).values()];
+  const mappedRows = toWords ? await toWords(selectedRows) : await Promise.all(selectedRows.map(toWord));
+  const mappedById = new Map(selectedRows.map((row, index) => [row.id, mappedRows[index]]));
   const enriched = await Promise.all(rawTokens.map(async (token, index) => {
     if (token.type !== "word" && token.type !== "particle") {
       return { ...token, reading: "", base: "", result: null, results: [] };
@@ -211,7 +215,7 @@ export async function analyzeSentence(db, text, { toWord, translateSentence = cr
     for (const candidate of candidates) {
       const rows = matches.get(candidate);
       if (rows.length) {
-        const mapped = await Promise.all(rows.map((row) => toWord(row)));
+        const mapped = rows.map((row) => mappedById.get(row.id));
         const primary = mapped[0];
         const form = (primary.japanese || []).find((f) => f.word === candidate || f.reading === candidate)
           || primary.japanese?.[0] || {};
@@ -226,7 +230,9 @@ export async function analyzeSentence(db, text, { toWord, translateSentence = cr
     }
     return { ...token, result: null, results: [] };
   }));
+  onTiming("enrichment", performance.now() - started);
 
+  started = performance.now();
   let translation = "";
   let translationSource = "";
   if (trimmed) {
@@ -234,6 +240,7 @@ export async function analyzeSentence(db, text, { toWord, translateSentence = cr
     if (translation) {
       translationSource = "Translation";
     }
+    onTiming("translation", performance.now() - started);
   }
 
   return {

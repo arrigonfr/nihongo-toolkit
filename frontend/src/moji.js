@@ -55,7 +55,7 @@ import { setSettingAvailability } from "./settings-panel.js";
   mountPracticeMode($("#sessionMode"), { values: {} });
   mountStudyControls({ furigana: tool !== "kana", romaji: tool !== "kana" });
   const batches = new BatchQueue(
-    (level, limit, exclude) => fetchItems("/api/kanji/batch", { mode: tool, level, limit, exclude }),
+    (level, limit, exclude) => fetchItems("/api/kanji/batch", { mode: tool, level, limit, exclude, projection: "practice" }),
     { onError: () => showWarning("We’re having trouble loading more kanji right now. You can keep practicing with the questions already loaded while we retry.") }
   );
   const FONTS = ["Noto Sans JP", "Sawarabi Mincho", "M PLUS Rounded 1c", "Zen Kurenaido"];

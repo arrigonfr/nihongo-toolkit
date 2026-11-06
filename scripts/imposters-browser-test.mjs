@@ -22,6 +22,12 @@ try {
   const pool = characters.map((kanji, index) => ({ kanji, jlpt: 5, meanings: [`meaning ${index}`], on_readings: [index < 6 ? "コウ" : "セイ", `カ${"アイウエオキクケコサシス"[index]}`], kun_readings: [`た${"あいうえおかきくけこさし"[index]}`], examples: [{ word: `${kanji}語`, reading: "ご", meanings: [`example ${index}`] }] }));
   await page.route("**/api/kanji/batch?**", (route) => route.fulfill({ json: { items: pool } }));
   await page.route("**/api/kanji?**", (route) => route.fulfill({ json: { items: pool } }));
+  let bulkCalls = 0;
+  await page.route("**/api/kanji/bulk?**", (route) => {
+    bulkCalls++;
+    const characters = new URL(route.request().url()).searchParams.getAll("character");
+    return route.fulfill({ json: { items: characters.map((character) => pool.find((item) => item.kanji === character)) } });
+  });
   await page.route(/\/api\/kanji\/[^/?]+$/, (route) => route.fulfill({ json: pool.find((item) => item.kanji === decodeURIComponent(new URL(route.request().url()).pathname.split("/").at(-1))) }));
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/kanji-imposters.html`);
   assert.match(await page.locator(".brand-name").textContent(), /Kanji Kuizu/);
@@ -187,6 +193,7 @@ try {
     await page.locator("#stop").click();
   }
   assert.deepEqual(dailySets[0], dailySets[1]);
+  assert.equal(bulkCalls, 2, "one bulk detail request per daily startup");
   assert.deepEqual(errors, []);
   console.log("Kanji Imposters browser checks passed.");
 } finally {

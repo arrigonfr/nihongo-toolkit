@@ -988,6 +988,41 @@ before deploying the Worker, which requires the new table.
 Gameplay validation sends `examples=0` to avoid waiting for sentence queries;
 the word notebook still loads examples separately. Other API callers retain
 examples by default.
+
+**Startup performance:** Yomi, Imi and Kanji Kuizu request
+`/api/kanji/batch?projection=practice`, which returns readings, meanings and
+set-based compound examples, without eager stroke/component/sentence hydration.
+Goi and Pazuru use `/api/words/batch?projection=practice` (up to 200 items),
+retaining vocabulary examples and lexical notes while loading additional
+sentences and kanji notebook details on demand. Pazuru starts with one expanded
+pool request. Daily Kanji Kuizu keeps the same seeded list selection and order,
+then uses `/api/kanji/bulk?character=日&character=月` (1–100 unique characters)
+instead of individual detail requests. The default batch and detail responses
+remain fully enriched for other callers.
+
+Typed conjugator candidates use the existing version-1 `word_forms` index.
+Dictionary/deinflection and sentence-analysis exact candidates, JLPT metadata,
+and sentence enrichment use set-based reads; broad dictionary substring search
+still runs when needed to preserve discovery and ranking. Bulk sentence reads
+preserve provenance, review filtering and ordering while bounding returned
+examples. `/api/analyze` exposes tokenizer, dictionary, enrichment and translation
+phases in `Server-Timing`.
+
+Kanji list counts cache up to 128 filter combinations per isolate for one minute,
+coalescing concurrent loads and evicting failures. Random selections are never
+cached; remote practice eligibility remains paged rather than loading every
+kanji at cold start. Counts can take one minute to reflect imports.
+This is not a whole-database cache:
+the local November 2026 snapshot alone is 395,710,464 bytes (219,010 words), before
+JS objects, sentences or tokenizer memory. It is not a measurement of production.
+
+These startup improvements require deploying **both frontend and Worker**.
+They require no additional migration if `metadata.word_forms_version = '1'`;
+otherwise apply the existing index migration above before deploying. Local tests
+use SQLite and a local libSQL protocol fixture, not hosted Turso. These changes
+reduce queries and transfer but do not guarantee the Workers Free CPU budget;
+substring discovery and tokenizer cold starts remain relevant costs.
+
 Shiritori reads bounded pages; unusually broad selections that exhaust its search
 budget surface a retryable error, not an incorrect rejection.
 Workers use the same Kuromoji tokenizer and complete IPADIC dictionary as Node.

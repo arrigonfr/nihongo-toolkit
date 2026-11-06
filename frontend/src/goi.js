@@ -14,7 +14,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
   "use strict";
   const batches = new BatchQueue(
     async (level, limit, exclude) => {
-      const items = await fetchItems("/api/words/batch", { level, limit, exclude });
+      const items = await fetchItems("/api/words/batch", { level, limit, exclude, projection: "practice" });
       const normalized = items.map(normalizeWord);
       if (normalized.some((item) => !item)) throw new Error("We couldn’t prepare the next vocabulary words right now.");
       state.words.push(...normalized);

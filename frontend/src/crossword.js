@@ -517,9 +517,8 @@ import {
     let existing = state.poolCache.get(cacheKey) || [];
     const recentIds = Array.isArray(state.stats.recentWordIds) ? state.stats.recentWordIds : [];
 
-    // Always fetch a fresh random batch from the backend (including expanded 218k JMdict common words)
-    // so puzzles never rely on a static cached 160-word array.
-    const rounds = existing.length < 100 ? 2 : 1;
+    // A single larger startup batch keeps the notebook enrichment on demand.
+    const rounds = 1;
     for (let round = 0; round < rounds; round++) {
       const exclude = [...new Set([...recentIds.slice(-60), ...existing.slice(-50).map((item) => item.id)])]
         .filter((id) => typeof id === "string" && id.length <= 28)
@@ -527,8 +526,8 @@ import {
       try {
         const batch = await fetchItems("/api/words/batch", {
           level,
-          limit: 100,
-          kanji: 1,
+          limit: existing.length < 100 ? 200 : 100,
+          projection: "practice",
           expand: 1,
           ...(exclude.length ? { exclude } : {})
         });

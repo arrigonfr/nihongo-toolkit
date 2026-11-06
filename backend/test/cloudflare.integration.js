@@ -31,6 +31,7 @@ test("Worker + Turso web client: API parity, practice filtering and lossless tok
   const local = openDatabase();
   let mf;
   let unavailable = false;
+  let statements = [];
   try {
     const output = await build({
       entryPoints: ["backend/src/worker.js"],
@@ -73,7 +74,9 @@ test("Worker + Turso web client: API parity, practice filtering and lossless tok
               throw new Error(`Unsupported batch condition: ${condition.type}`);
             }
             for (const { stmt, condition } of request.batch.steps) {
-              step_results.push(matches(condition) ? libsqlResponse(local, { ...stmt, sql: stmt.sql ?? sql.get(stmt.sql_id) }) : null);
+              const query = { ...stmt, sql: stmt.sql ?? sql.get(stmt.sql_id) };
+              if (matches(condition) && /^\s*(SELECT|WITH)\b/i.test(query.sql)) statements.push(query.sql);
+              step_results.push(matches(condition) ? libsqlResponse(local, query) : null);
             }
             return { type: "ok", response: { type: "batch", result: { step_results, step_errors: [] } } };
           });
@@ -89,6 +92,7 @@ test("Worker + Turso web client: API parity, practice filtering and lossless tok
     };
     mf = new Miniflare(options);
     async function request(path, expected = 200, init) {
+      statements = [];
       const response = await mf.dispatchFetch(`https://nihon.test${path}`, init);
       const text = await response.text();
       assert.equal(response.status, expected, `${path}: ${text.slice(0, 500)}`);
@@ -102,6 +106,17 @@ test("Worker + Turso web client: API parity, practice filtering and lossless tok
     const excludedBatch = (await request(`/api/kanji/batch?limit=100&exclude=${batch[0].id}`)).json().items;
     assert.equal(excludedBatch.length, 100);
     assert.ok(excludedBatch.every((item) => item.id !== batch[0].id));
+    const light = (await request("/api/kanji/batch?limit=100&projection=practice")).json().items;
+    assert.equal(light.length, 100);
+    assert.ok(statements.length <= 4, "lightweight batches use bounded candidate pages and one bulk compound read");
+    assert.ok(light.every((item) => Array.isArray(item.examples) && !("sentences" in item)));
+    const selected = batch.slice(0, 50).map((item) => item.kanji);
+    const bulk = (await request(`/api/kanji/bulk?${selected.map((ch) => `character=${encodeURIComponent(ch)}`).join("&")}`)).json().items;
+    assert.deepEqual(bulk.map((item) => item.kanji), selected);
+    assert.equal(statements.length, 2);
+    assert.deepEqual(bulk.map((item) => item.examples), batch.slice(0, 50).map((item) => item.examples));
+    await request("/api/words/batch?limit=200&projection=practice&expand=1");
+    assert.ok(statements.length <= 3);
     for (const path of [
       "/api/kanji/batch?level=1,2,3,4,5&limit=100&" + Array.from({ length: 100 }, (_, i) => `exclude=${900000 + i}`).join("&"),
       "/api/words/batch?limit=100&kanji=1&expand=1", "/api/word-search/vocabulary?level=5",
@@ -116,7 +131,9 @@ test("Worker + Turso web client: API parity, practice filtering and lossless tok
     assert.ok((await request("/api/conjugator?q=食べる")).json().items.length);
     for (const text of ["私は昨日学校に行きました。", "本を読んでいます。", "寿司を食べませんでした。",
       "これは高くなかった。", "すもももももももものうち", "ドイツ語はやさしい言語ではありません。", "猫 は\n元気です。🙂"]) {
-      const tokens = (await request(`/api/analyze?text=${encodeURIComponent(text)}`)).json().tokens;
+      const analyzed = await request(`/api/analyze?text=${encodeURIComponent(text)}`);
+      assert.match(analyzed.response.headers.get("Server-Timing"), /tokenizer;dur=.*dictionary;dur=.*enrichment;dur=.*translation;dur=/);
+      const tokens = analyzed.json().tokens;
       const expected = await segmentText(text);
       assert.deepEqual(tokens.map(({ text, type }) => ({ text, type })), expected.map(({ text, type }) => ({ text, type })));
       assert.equal(tokens.map((token) => token.text).join(""), text);

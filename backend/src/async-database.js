@@ -52,5 +52,21 @@ export async function rowsByWordIds(db, ids) {
     if (!result.has(row.word_id)) result.set(row.word_id, []);
     result.get(row.word_id).push(row);
   }
+
+  return result;
+}
+
+export async function exactWordCandidates(db, candidates, limit = 6) {
+  const values = [...new Set(candidates)];
+  if (!values.length) return new Map();
+  const rows = await db.prepare(`SELECT * FROM (
+    SELECT w.*, c.key AS candidate_order,
+      row_number() OVER (PARTITION BY c.key ORDER BY w.is_common DESC,
+        (w.word = c.value OR w.senses LIKE '%"uk"%') DESC, w.id) AS candidate_rank
+    FROM json_each(?) c JOIN words w ON w.word = c.value OR w.reading = c.value
+  ) WHERE candidate_rank <= ? ORDER BY candidate_order, candidate_rank`)
+    .all(JSON.stringify(values), limit);
+  const result = new Map(values.map((value) => [value, []]));
+  for (const { candidate_order, candidate_rank, ...row } of rows) result.get(values[candidate_order]).push(row);
   return result;
 }

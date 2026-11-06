@@ -5,6 +5,30 @@ const parse = JSON.parse;
 const supports = (values, value) => values.includes("*") || values.includes(value);
 const hiragana = (text) => text.replace(/[ァ-ヶ]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
 const katakana = (text) => text.replace(/[ぁ-ゖ]/g, (char) => String.fromCharCode(char.charCodeAt(0) + 0x60));
+export function conjugatorSearch(query) {
+  const variants = [...new Set([query, katakana(query)])];
+  const exact = [...new Set(variants.flatMap((value) =>
+    /(?:する|スル)$/.test(value) ? [value, value.slice(0, -2)] : [value]))];
+  const clauses = [], args = [];
+  for (const kind of [0, 1]) {
+    clauses.push(`SELECT word_id FROM word_forms WHERE kind = ? AND form IN (SELECT value FROM json_each(?))`);
+    args.push(kind, JSON.stringify(exact));
+    for (const variant of variants) {
+      const chars = [...variant];
+      let last = chars.length - 1;
+      while (last >= 0 && chars[last].codePointAt(0) === 0x10ffff) last--;
+      const end = last < 0 ? null : chars.slice(0, last).join("") + String.fromCodePoint(chars[last].codePointAt(0) + 1);
+      clauses.push(`SELECT word_id FROM word_forms WHERE kind = ? AND form >= ?${end === null ? "" : " AND form < ?"}`);
+      args.push(kind, variant, ...(end === null ? [] : [end]));
+    }
+  }
+  return {
+    sql: `SELECT * FROM words WHERE id IN (${clauses.join(" UNION ALL ")})
+      ORDER BY (word IN (SELECT value FROM json_each(?)) OR reading IN (SELECT value FROM json_each(?))) DESC,
+      is_common DESC, id LIMIT 200`,
+    args: [...args, JSON.stringify(exact), JSON.stringify(exact)]
+  };
+}
 export function conjugationType(tag) {
   if (["v1", "v1-s"].includes(tag)) return "ichidan";
   if (["v5u", "v5u-s", "v5k", "v5k-s", "v5g", "v5s", "v5t", "v5n", "v5b", "v5m", "v5r", "v5r-i", "v5aru"].includes(tag)) return "godan";
@@ -81,17 +105,8 @@ export async function findConjugationEntries(db, { query, random = false, level 
     }
     rows = await db.prepare(`SELECT w.* FROM words w WHERE ${conditions.join(" AND ")} ORDER BY random() LIMIT 400`).all(...args);
   } else {
-    const search = db.prepare(`SELECT * FROM words WHERE word = ? OR reading = ? OR word = ? OR reading = ?
-      OR instr(lower(word), lower(?)) = 1 OR instr(lower(reading), lower(?)) = 1
-      OR instr(lower(kanji_forms), lower(?)) > 0 OR instr(lower(kana_forms), lower(?)) > 0
-      ORDER BY (word = ? OR reading = ? OR word = ? OR reading = ?) DESC, is_common DESC, id LIMIT 100`);
-    const byId = new Map();
-    for (const variant of new Set([query, katakana(query)])) {
-      const stem = /(?:する|スル)$/.test(variant) ? variant.slice(0, -2) : variant;
-      for (const row of await search.all(variant, variant, stem, stem, variant, variant,
-        `"text":"${variant}"`, `"text":"${variant}"`, variant, variant, stem, stem)) byId.set(row.id, row);
-    }
-    rows = [...byId.values()];
+    const search = conjugatorSearch(query);
+    rows = await db.prepare(search.sql).all(...search.args);
   }
   const levels = await rowsByWordIds(db, rows.map((row) => row.id));
   const entries = rows.flatMap((row) => conjugationEntries(row, levels.get(row.id) ?? []))

@@ -1,10 +1,48 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createSentenceFallback, localExamples, shuffleExamples } from "../src/examples.js";
+import { createSentenceFallback, localExamples, localExamplesMany, shuffleExamples } from "../src/examples.js";
+import { DatabaseSync } from "node:sqlite";
+import { asyncDatabase } from "../src/async-database.js";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { createDatabase } from "../src/database.js";
 import { createHandler } from "../src/app.js";
+
+test("bulk examples preserve deduplication, ordering and provenance with bounded returned rows", async () => {
+  const source = new DatabaseSync(":memory:");
+  source.exec(`CREATE TABLE vocabulary (word_id INTEGER, examples TEXT, word TEXT DEFAULT '日本',
+      reading TEXT DEFAULT 'にほん', romaji TEXT DEFAULT 'nihon', other_forms TEXT DEFAULT '[]');
+    CREATE TABLE word_forms (kind INTEGER, form TEXT, word_id INTEGER, PRIMARY KEY(kind, form, word_id));
+    INSERT INTO word_forms VALUES (0, '別表記', 1);
+    CREATE TABLE sentences (id INTEGER PRIMARY KEY, source TEXT, source_id TEXT, ja TEXT, en TEXT, license TEXT, attribution TEXT);
+    CREATE TABLE word_sentences (word_id INTEGER, sentence_id INTEGER, PRIMARY KEY(word_id, sentence_id));`);
+  const native = [1, 2, 3].map((id) => ({ ja: `文${id}`, en: `Sentence ${id}`, tatoeba_id: id }));
+  for (const id of [1, 2, 3]) source.prepare("INSERT INTO vocabulary (word_id, examples) VALUES (?, ?)").run(id, JSON.stringify(native.slice(0, id === 2 ? 0 : id === 3 ? 3 : 2)));
+  for (let id = 1; id <= 140; id++) {
+    source.prepare("INSERT INTO sentences VALUES (?, ?, ?, ?, ?, ?, ?)").run(
+      id, id % 2 ? "tatoeba" : "ai-generated", String(id), `文${Math.ceil(id / 2)}`, `Sentence ${id}`, "test", JSON.stringify({ reviewed: id % 4 === 0, owner: "author" })
+    );
+    for (const wordId of [1, 2, 3]) source.prepare("INSERT INTO word_sentences VALUES (?, ?)").run(wordId, id);
+  }
+  let count = 0, returned = 0;
+  const counted = asyncDatabase({ prepare(sql) {
+    const stmt = source.prepare(sql);
+    return { all(...args) {
+      count++;
+      const rows = stmt.all(...args);
+      if (sql.includes("WITH candidates")) returned += rows.length;
+      return rows;
+    } };
+  } });
+  try {
+    const bulk = await localExamplesMany(counted, [1, 2, 3, 1]);
+    assert.equal(count, 3);
+    assert.ok(returned <= 10);
+    for (const id of [1, 2, 3]) assert.deepEqual(bulk.get(id), await localExamples(source, { wordId: id }));
+    assert.deepEqual(await localExamples(source, { query: "別表記" }), bulk.get(2),
+      "deferred notebook lookups resolve alternate indexed spellings");
+  } finally { source.close(); }
+});
 
 test("local examples retain source furigana", async () => {
   const db = { prepare: () => ({ all: () => [{ examples: JSON.stringify([

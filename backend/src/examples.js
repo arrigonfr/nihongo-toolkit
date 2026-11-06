@@ -7,14 +7,14 @@ export function shuffleExamples(items, random = Math.random) {
   return result;
 }
 
-export async function localExamples(db, { wordId, query, limit = 3, random = false }) {
-  const rows = wordId !== undefined
+export async function localExamples(db, { wordId, query, limit = 3, random = false, prefetched } = {}) {
+  const rows = prefetched?.vocabulary ?? (wordId !== undefined
     ? await db.prepare("SELECT examples FROM vocabulary WHERE word_id = ?").all(wordId)
     : await db.prepare(`SELECT examples FROM vocabulary WHERE instr(word, ?) > 0
         OR reading = ? OR romaji = ? OR EXISTS
         (SELECT 1 FROM json_each(other_forms) WHERE value = ?)
         ORDER BY (word = ? OR reading = ?) DESC LIMIT 40`)
-      .all(query, query, query, query, query, query);
+      .all(query, query, query, query, query, query));
   const seen = new Set();
   const examples = rows.flatMap((row) => JSON.parse(row.examples)).filter((example) => {
     if (!example.ja || !example.en || seen.has(example.ja)) return false;
@@ -28,11 +28,14 @@ export async function localExamples(db, { wordId, query, limit = 3, random = fal
     id: example.tatoeba_id, japanese: example.ja, furigana: example.furigana || "", english: example.en,
     license: "CC BY 2.0 FR", source: "Tatoeba"
   }));
+  if (!random && items.length >= limit) return items.slice(0, limit);
   const tables = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('sentences','word_sentences')").all();
   if (tables.filter((row) => row.name === "sentences" || row.name === "word_sentences").length === 2) {
-    const stored = await db.prepare(`SELECT DISTINCT s.* FROM sentences s
+    const stored = prefetched?.stored ?? await db.prepare(`SELECT DISTINCT s.* FROM sentences s
       JOIN word_sentences ws ON ws.sentence_id=s.id
-      WHERE ${wordId !== undefined ? "ws.word_id=?" : "ws.word_id IN (SELECT id FROM words WHERE word=? OR reading=?)"}
+      WHERE ${wordId !== undefined ? "ws.word_id=?" : `ws.word_id IN (
+        SELECT word_id FROM word_forms WHERE kind=0 AND form=?
+        UNION ALL SELECT word_id FROM word_forms WHERE kind=1 AND form=?)`}
       AND (s.source <> 'ai-generated' OR CASE WHEN json_valid(s.attribution)
         THEN json_extract(s.attribution,'$.reviewed') END = 1)
       ORDER BY (s.source='ai-generated'), s.id LIMIT 100`).all(...(wordId !== undefined ? [wordId] : [query, query]));
@@ -51,6 +54,44 @@ export async function localExamples(db, { wordId, query, limit = 3, random = fal
     }
   }
   return (random ? shuffleExamples(items) : items).slice(0, limit);
+}
+
+// Request-scoped, set-based enrichment; keep the single-item ordering and provenance.
+export async function localExamplesMany(db, ids, limit = 3) {
+  const unique = [...new Set(ids)];
+  if (!unique.length) return new Map();
+  const vocabulary = await db.prepare("SELECT word_id, examples FROM vocabulary WHERE word_id IN (SELECT value FROM json_each(?))")
+    .all(JSON.stringify(unique));
+  const groups = new Map(unique.map((id) => [id, { vocabulary: [], stored: [] }]));
+  vocabulary.forEach((row) => groups.get(row.word_id)?.vocabulary.push(row));
+  const tables = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('sentences','word_sentences')").all();
+  if (tables.length === 2) {
+    const needed = unique.filter((id) => {
+      const seen = new Set(groups.get(id).vocabulary.flatMap((row) => JSON.parse(row.examples))
+        .filter((item) => item.ja && item.en).map((item) => item.ja));
+      return seen.size < limit;
+    });
+    if (needed.length) {
+      const stored = await db.prepare(`WITH candidates AS (
+        SELECT s.*, ws.word_id,
+          row_number() OVER (PARTITION BY ws.word_id ORDER BY (s.source='ai-generated'), s.id) AS rank
+        FROM word_sentences ws JOIN sentences s ON s.id = ws.sentence_id
+        WHERE ws.word_id IN (SELECT value FROM json_each(?))
+          AND (s.source <> 'ai-generated' OR CASE WHEN json_valid(s.attribution)
+            THEN json_extract(s.attribution,'$.reviewed') END = 1)
+      ), distinct_sentences AS (
+        SELECT *, row_number() OVER (PARTITION BY word_id, ja ORDER BY rank) AS duplicate
+        FROM candidates WHERE rank <= 100
+      ), bounded AS (
+        SELECT *, row_number() OVER (PARTITION BY word_id ORDER BY rank) AS selected
+        FROM distinct_sentences WHERE duplicate = 1
+      ) SELECT * FROM bounded WHERE selected <= ? ORDER BY word_id, rank`)
+        .all(JSON.stringify(needed), limit * 2 - 1);
+      stored.forEach((row) => groups.get(row.word_id)?.stored.push(row));
+    }
+  }
+  return new Map(await Promise.all(unique.map(async (wordId) =>
+    [wordId, await localExamples(db, { wordId, limit, prefetched: groups.get(wordId) })])));
 }
 
 export function createSentenceFallback({ fetchImpl = fetch, enabled = process.env.SENTENCE_API_FALLBACK !== "false" } = {}) {
