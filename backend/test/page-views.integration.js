@@ -29,7 +29,7 @@ test("real Worker/D1 migration, concurrent UPSERTs, CORS and isolation from Turs
     const headers = { Origin: "https://nihongo-toolkit.pages.dev", "Content-Type": "application/json" };
     const options = await mf.dispatchFetch(url, { method: "OPTIONS", headers: { ...headers, "Access-Control-Request-Method": "POST" } });
     assert.equal(options.status, 204);
-    assert.equal(options.headers.get("access-control-allow-methods"), "POST, OPTIONS");
+    assert.equal(options.headers.get("access-control-allow-methods"), "GET, POST, OPTIONS");
     assert.equal(options.headers.get("access-control-allow-origin"), headers.Origin);
     const responses = await Promise.all(Array.from({ length: 40 }, (_, i) => mf.dispatchFetch(url, {
       method: "POST", headers, body: JSON.stringify({ page: i < 30 ? "/fumitoki.html" : "/" })
@@ -50,7 +50,17 @@ test("real Worker/D1 migration, concurrent UPSERTs, CORS and isolation from Turs
     assert.equal(rejected.status, 403);
     assert.equal(rejected.headers.get("access-control-allow-origin"), null);
     // No Turso credentials are present: success above proves storage independence.
-    assert.equal((await mf.dispatchFetch(url)).status, 405);
+    const counts = await mf.dispatchFetch(`${url}?date=${rows[0].date}`, { headers: { Origin: headers.Origin } });
+    assert.equal(counts.status, 200);
+    assert.equal(counts.headers.get("access-control-allow-origin"), headers.Origin);
+    assert.deepEqual(await counts.json(), {
+      date: rows[0].date, pages: [{ page: "/", views: 10 }, { page: "/fumitoki.html", views: 30 }], total: 40
+    });
+    assert.equal((await (await mf.dispatchFetch(url)).json()).total, 40);
+    assert.deepEqual(await (await mf.dispatchFetch(`${url}?date=2000-01-01`)).json(),
+      { date: "2000-01-01", pages: [], total: 0 });
+    assert.equal((await mf.dispatchFetch(`${url}?date=2026-02-30`)).status, 400);
+    assert.equal((await mf.dispatchFetch(url, { headers: { Origin: "https://evil.test" } })).status, 403);
     await mf.setOptions({
       modules: true, script: output.outputFiles[0].text,
       compatibilityDate: "2026-08-06", compatibilityFlags: ["nodejs_compat"],

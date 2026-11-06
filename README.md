@@ -948,7 +948,8 @@ Page views are **off by default**. Only the exact string
 `process.env.TRACK_VISITS === "true"` enables browser reporting at build time;
 the Worker also requires the exact `"true"` in its `TRACK_VISITS` environment
 binding (or Node-compatible `process.env`). Values such as `TRUE`, `1`, and boolean
-`true` do not enable it. Disabled Workers require no D1 binding.
+`true` do not enable it. Disabled reporting requires no D1 binding; reading
+previously collected counts still requires the binding.
 
 This counter uses **Cloudflare D1, not Turso**. It counts each document load,
 including reloads, once per canonical page and UTC day—not unique people.
@@ -958,6 +959,24 @@ no-retry browser POST schedules an atomic SQL upsert with `ctx.waitUntil`.
 The primary key is `(date, page)`; `date` is `YYYY-MM-DD` without a time.
 `updated_at` is a separate UTC audit timestamp. Blocked/failed requests can
 undercount, and this public aggregate endpoint is not bot-proof analytics.
+
+Read daily totals with `GET /api/page-views?date=2026-11-06`. Omitting `date`
+defaults to the current UTC day. The public response contains only pages with
+recorded views, ordered by page:
+
+```json
+{
+  "date": "2026-11-06",
+  "pages": [{ "page": "/", "views": 10 }, { "page": "/fumitoki.html", "views": 30 }],
+  "total": 40
+}
+```
+
+Days without records return `"pages": []` and `"total": 0`. Invalid dates or
+repeated `date` parameters return 400; unavailable storage returns 503.
+GET does not increment counts and remains available when `TRACK_VISITS` is off.
+Like reporting, reads use the configured origin allowlist; there is no
+authentication on these aggregate statistics.
 
 To opt in (these commands provision/change Cloudflare resources; run them yourself):
 

@@ -10,12 +10,33 @@ export async function pageViews(request, env, ctx) {
     ? Response.json({ error }, { status, headers })
     : new Response(null, { status, headers });
   if (request.method === "OPTIONS") {
-    headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
+    headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS";
     headers["Access-Control-Allow-Headers"] = "Content-Type";
     return reply(204);
   }
+  if (request.method === "GET") {
+    const params = new URL(request.url).searchParams;
+    const date = params.get("date") ?? new Date().toISOString().slice(0, 10);
+    if (params.getAll("date").length > 1 || !/^\d{4}-\d{2}-\d{2}$/.test(date)
+        || !Number.isFinite(Date.parse(`${date}T00:00:00.000Z`))
+        || new Date(`${date}T00:00:00.000Z`).toISOString().slice(0, 10) !== date) {
+      return reply(400, "Expected a valid date in YYYY-MM-DD format");
+    }
+    if (!env.PAGE_VIEWS_DB) return reply(503, "Page view storage is not configured");
+    try {
+      const { results } = await env.PAGE_VIEWS_DB.prepare(
+        "SELECT page, views FROM daily_page_views WHERE date = ? ORDER BY page"
+      ).bind(date).all();
+      return Response.json({
+        date, pages: results, total: results.reduce((total, row) => total + row.views, 0)
+      }, { headers });
+    } catch (error) {
+      console.error("Page view read failed; check the D1 binding and migrations.", error);
+      return reply(503, "Page view counts are unavailable");
+    }
+  }
   if (request.method !== "POST") {
-    headers.Allow = "POST, OPTIONS";
+    headers.Allow = "GET, POST, OPTIONS";
     return reply(405, "Method not allowed");
   }
   if ((env.TRACK_VISITS ?? process.env.TRACK_VISITS) !== "true") return reply(503, "Page view reporting is disabled");

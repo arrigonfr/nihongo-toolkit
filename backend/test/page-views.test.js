@@ -83,5 +83,35 @@ test("counter failures are explicit and payload/CORS are narrowly constrained", 
   assert.equal((await pageViews(request('{"page":"/"}', { headers: { Origin: "https://evil.test" } }), env, {})).status, 403);
   assert.equal((await pageViews(request('{"page":"/"}'), {}, {})).status, 503);
   assert.equal((await pageViews(request('{"page":"/"}'), { TRACK_VISITS: "true" }, {})).status, 503);
-  assert.equal((await pageViews(new Request("https://worker.test/api/page-views"), env, {})).status, 405);
+  assert.equal((await pageViews(new Request("https://worker.test/api/page-views", { method: "DELETE" }), env, {})).status, 405);
+});
+
+test("daily counts default to UTC today and remain readable with tracking disabled", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-11-06T00:30:00Z") });
+  const dates = [];
+  const env = { TRACK_VISITS: "false", PAGE_VIEWS_DB: {
+    prepare(sql) {
+      assert.match(sql, /WHERE date = \? ORDER BY page/);
+      return { bind(date) {
+        dates.push(date);
+        return { all: async () => ({ results: date === "2026-11-06"
+          ? [{ page: "/", views: 2 }, { page: "/fumitoki.html", views: 3 }] : [] }) };
+      } };
+    }
+  } };
+  const get = (query = "") => pageViews(new Request(`https://worker.test/api/page-views${query}`), env, {});
+  assert.deepEqual(await (await get()).json(), {
+    date: "2026-11-06", pages: [{ page: "/", views: 2 }, { page: "/fumitoki.html", views: 3 }], total: 5
+  });
+  assert.deepEqual(await (await get("?date=2024-02-29")).json(), { date: "2024-02-29", pages: [], total: 0 });
+  for (const date of ["", "2026-02-29", "2026-04-31", "2026-13-01", "2026-1-01", "today", "2026-11-06T00:00:00Z"]) {
+    assert.equal((await get(`?date=${encodeURIComponent(date)}`)).status, 400, date);
+  }
+  assert.equal((await get("?date=2026-11-06&date=2026-11-05")).status, 400);
+  assert.deepEqual(dates, ["2026-11-06", "2024-02-29"]);
+  assert.equal((await pageViews(new Request("https://worker.test/api/page-views"), {}, {})).status, 503);
+  t.mock.method(console, "error", () => {});
+  env.PAGE_VIEWS_DB.prepare = () => { throw new Error("Unavailable"); };
+  assert.equal((await get()).status, 503);
+  assert.equal(console.error.mock.callCount(), 1);
 });
