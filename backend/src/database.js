@@ -10,6 +10,7 @@ export function createDatabase(path = databasePath) {
   mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   db.exec(readFileSync(new URL("./schema.sql", import.meta.url), "utf8"));
+  db.exec(readFileSync(new URL("./word-search-index.sql", import.meta.url), "utf8"));
   return db;
 }
 

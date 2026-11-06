@@ -3,6 +3,35 @@ let context;
 let source;
 let requestId = 0;
 let status;
+let worker;
+let jobId = 0;
+const pending = new Map();
+
+function speechJob(text) {
+  if (!worker) {
+    worker = new Worker(new URL("./local-speech-worker.js", import.meta.url), { type: "module" });
+    worker.onmessage = ({ data }) => {
+      const job = pending.get(data.id);
+      if (!job) return;
+      pending.delete(data.id);
+      if (data.error) job.reject(new Error(data.error));
+      else job.resolve(data);
+    };
+    worker.onerror = (event) => {
+      const error = new Error(event.message || "Japanese speech worker failed.");
+      worker.terminate();
+      worker = undefined;
+      enginePromise = undefined;
+      for (const job of pending.values()) job.reject(error);
+      pending.clear();
+    };
+  }
+  return new Promise((resolve, reject) => {
+    const id = ++jobId;
+    pending.set(id, { resolve, reject });
+    worker.postMessage({ id, text });
+  });
+}
 
 function showStatus(message) {
   if (!status) {
@@ -18,10 +47,7 @@ function showStatus(message) {
 async function loadEngine() {
   if (!enginePromise) {
     enginePromise = (async () => {
-      const { KokoroJP } = await import("kokoro-js-jp");
-      const engine = await KokoroJP.load({ device: "wasm", dtype: "q8" });
-      await engine.speak("こんにちは", "jf_alpha");
-      return engine;
+      await speechJob();
     })().catch((error) => {
       enginePromise = undefined;
       throw error;
@@ -53,9 +79,9 @@ export async function speakLocalJapanese(text) {
     context ||= new AudioContext();
     const resumed = context.resume().then(() => null, (error) => error);
     showStatus("Loading Japanese audio; the first download may take a while...");
-    const engine = await loadEngine();
+    await loadEngine();
     if (id !== requestId) return;
-    const audio = await engine.speak(text, "jf_alpha");
+    const audio = await speechJob(text);
     const resumeError = await resumed;
     if (id !== requestId) return;
     if (resumeError) throw resumeError;

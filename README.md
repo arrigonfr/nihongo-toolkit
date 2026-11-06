@@ -103,7 +103,10 @@ The homepage's Open Graph and `WebSite` structured-data metadata identify the si
 name in search results; keep them aligned with its page title.
 When adding a tool, update the dashboard menu; Vite discovers its HTML page for the
 sitemap. The Google Tag Manager container is included in generated pages; configure
-tags and any required consent settings in the container.
+tags and any required consent settings in the container. Analytics defaults to
+host-only cookies (`cookie_domain: 'none'`) before either Google tag loads, avoiding
+invalid parent-domain cookies on shared hosts such as `pages.dev`. Keep any
+container-level cookie-domain overrides aligned with this setting.
 `npm run test:tool-fixes` checks direct pages, navigation, canonical URLs and
 crawler files in development and the production build.
 
@@ -584,6 +587,9 @@ voices when exposed by the device. With Audio On, Firefox loads Kokoro's synthet
 `jf_alpha` voice and Japanese phonemizer in the background when a page opens or Audio
 is enabled. The model comes from Hugging Face and the Japanese dictionary and runtime
 assets from jsDelivr; the initial download is over 110 MB, and synthesis runs locally.
+Loading and synthesis run in a Web Worker so they do not block game rendering or
+input. The worker reuses up to 32 synthesized clips per page, including its warm-up
+greeting; a first pronunciation still waits for model loading and inference.
 The model uses browser storage and the dictionary uses the browser's HTTP cache across
 pages; browsers can clear or evict cached data, and storage restrictions can prevent
 caching. There is currently no backup host for the Kokoro assets.
@@ -970,6 +976,18 @@ queries. Turso batches concurrent enrichment in read transactions, deduplicates 
 fetches vocabulary metadata in bounded sets; it never replays synchronous code or
 loads the entire SQL database into an isolate. JSON list parameters keep
 parameter counts bounded and substring searches use literal string matching.
+Shiritori uses indexed dictionary spellings/readings (including alternate forms)
+and fetches JLPT metadata in the same query. Before deploying this version against
+an existing database, run `npm run db:index-words` locally and
+`npm run db:index-words -- --turso` with a **write-capable migration token** in
+`backend/.env`. The latter changes the configured Turso database; use staging
+credentials for staging. The migration is repeatable and backfills existing
+words; triggers keep the indexes current for subsequent imports and enrichment.
+New local databases create these indexes automatically. Run the remote migration
+before deploying the Worker, which requires the new table.
+Gameplay validation sends `examples=0` to avoid waiting for sentence queries;
+the word notebook still loads examples separately. Other API callers retain
+examples by default.
 Shiritori reads bounded pages; unusually broad selections that exhaust its search
 budget surface a retryable error, not an incorrect rejection.
 Workers use the same Kuromoji tokenizer and complete IPADIC dictionary as Node.

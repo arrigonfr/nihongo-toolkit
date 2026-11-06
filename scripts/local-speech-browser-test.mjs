@@ -12,7 +12,9 @@ if (dev) await server.listen();
 let browser;
 try {
   browser = await firefox.launch();
-  const page = await browser.newPage();
+  const context = await browser.newContext();
+  await context.route(/googletagmanager\.com/, (route) => route.fulfill({ body: "" }));
+  const page = await context.newPage();
   const errors = [];
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
   await page.addInitScript(() => {
@@ -29,7 +31,7 @@ try {
     };
   });
   const preload = page.waitForRequest((request) => request.url().includes("/Kokoro-82M-v1.0-ONNX/"));
-  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/kana.html`);
+  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/kana.html`, { waitUntil: "domcontentloaded" });
   await preload;
   await page.waitForSelector("#audioQuickToggle");
   await page.evaluate(() => {
@@ -60,7 +62,7 @@ try {
     repeatedDownloads++;
     return route.abort();
   });
-  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/imi.html`);
+  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/imi.html`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("#audioQuickToggle");
   await page.evaluate(() => {
     const button = document.createElement("button");
@@ -76,8 +78,9 @@ try {
   assert.equal(repeatedDownloads, 0, "changing pages must reuse the cached model and voice");
   await page.unroute(assetPattern);
   const failurePage = await browser.newPage();
+  await failurePage.route(/googletagmanager\.com/, (route) => route.fulfill({ body: "" }));
   await failurePage.route(assetPattern, (route) => route.abort());
-  await failurePage.goto(`http://127.0.0.1:${server.httpServer.address().port}/kana.html`);
+  await failurePage.goto(`http://127.0.0.1:${server.httpServer.address().port}/kana.html`, { waitUntil: "domcontentloaded" });
   await failurePage.waitForSelector("#audioQuickToggle");
   await failurePage.evaluate(() => {
     const button = document.createElement("button");
@@ -89,12 +92,13 @@ try {
   await failurePage.click("#testSpeech");
   await failurePage.getByRole("status").getByText("Japanese audio could not be played.", { exact: false }).waitFor({ timeout: 30000 });
   const offPage = await browser.newPage();
+  await offPage.route(/googletagmanager\.com/, (route) => route.fulfill({ body: "" }));
   await offPage.addInitScript(() => localStorage.setItem("nihon:study-controls-v1", JSON.stringify({ audio: false })));
   let offRequests = 0;
   offPage.on("request", (request) => {
     if (request.url().includes("/Kokoro-82M-v1.0-ONNX/")) offRequests++;
   });
-  await offPage.goto(`http://127.0.0.1:${server.httpServer.address().port}/kana.html`);
+  await offPage.goto(`http://127.0.0.1:${server.httpServer.address().port}/kana.html`, { waitUntil: "domcontentloaded" });
   await offPage.waitForSelector("#audioQuickToggle");
   await offPage.waitForTimeout(1000);
   assert.equal(offRequests, 0, "Audio Off must not preload the voice");

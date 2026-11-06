@@ -3,7 +3,6 @@ import { localExamples } from "./examples.js";
 import { findConjugationEntries } from "./conjugator.js";
 import { segmentText } from "./tokenizer.js";
 import { isPlaceName } from "./proper-nouns.js";
-import { rowsByWordIds } from "./async-database.js";
 import { selectedLevels } from "../../frontend/src/jlpt-levels.js";
 
 const unique = (values) => [...new Set(values)];
@@ -118,6 +117,11 @@ export function createWordFallback({ fetchImpl = fetch, enabled = process.env.WO
 
 const katakanaOf = (text) => text.replace(/[ぁ-ゖ]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
 const wordPattern = /^[\p{Script=Han}ぁ-ゖァ-ヶー]+$/u;
+const unvoice = (text) => text.normalize("NFD").replace(/[\u3099\u309a]/g, "").normalize("NFC");
+const prefixEnd = (text) => {
+  const chars = [...text];
+  return chars.slice(0, -1).join("") + String.fromCodePoint(chars.at(-1).codePointAt(0) + 1);
+};
 
 // Conjugated verbs and adjectives are not dictionary headwords: analyse the surface form and look up its base.
 async function inflectedForms(db, tags, query, segment = segmentText) {
@@ -145,6 +149,7 @@ async function inflectedForms(db, tags, query, segment = segmentText) {
 export async function shiritoriWords(db, params, tags, fallback, segment = segmentText) {
   const rules = parseRules(JSON.parse(params.get("rules") || "{}"));
   const query = (params.get("q") || "").trim().normalize("NFKC");
+  const includeExamples = params.get("examples") !== "0";
   const previous = params.get("prev") ? JSON.parse(params.get("prev")) : null;
   const randomOpening = !query && !previous && params.get("random") === "1" && rules.mode !== "daily";
   const used = JSON.parse(params.get("used") || "[]");
@@ -157,21 +162,35 @@ export async function shiritoriWords(db, params, tags, fallback, segment = segme
   if (query) {
     const hira = kana(query);
     const kata = katakanaOf(hira);
-    where = `(word = ? OR reading IN (?, ?) OR EXISTS (SELECT 1 FROM json_each(kanji_forms) WHERE json_extract(value, '$.text') = ?)
-      OR EXISTS (SELECT 1 FROM json_each(kana_forms) WHERE json_extract(value, '$.text') IN (?, ?)))`;
-    args.push(query, hira, kata, query, hira, kata);
-  } else if (previous && !rules.voicing) {
+    where = `id IN (SELECT word_id FROM word_forms WHERE kind = 0 AND form = ?
+      UNION ALL SELECT word_id FROM word_forms WHERE kind = 1 AND form IN (?, ?))`;
+    args.push(query, hira, kata);
+  } else if (previous) {
     const options = startOptions(previous, rules);
     const clauses = [];
     if (options.kana.length) {
-      clauses.push("EXISTS (SELECT 1 FROM json_each(kana_forms) f, json_each(?) p WHERE instr(json_extract(f.value, '$.text'), p.value) = 1)");
-      args.push(JSON.stringify(unique(options.kana.flatMap(({ text }) => [kana(text), katakanaOf(kana(text))]))));
+      const prefixes = unique(options.kana.flatMap(({ text }) => {
+        const hira = kana(text);
+        // A first-character superset avoids exponential voicing combinations.
+        const variants = rules.voicing
+          ? Array.from({ length: 86 }, (_, i) => String.fromCodePoint(0x3041 + i))
+            .filter((c) => unvoice(c) === unvoice([...hira][0]))
+          : [hira];
+        return variants.flatMap((prefix) => [prefix, katakanaOf(prefix)]);
+      }));
+      for (const prefix of prefixes) {
+        clauses.push("(kind = 1 AND form >= ? AND form < ?)");
+        args.push(prefix, prefixEnd(prefix));
+      }
     }
     if (options.kanji.length) {
-      clauses.push("EXISTS (SELECT 1 FROM json_each(kanji_forms) f, json_each(?) p WHERE instr(json_extract(f.value, '$.text'), p.value) = 1)");
-      args.push(JSON.stringify(options.kanji.map(({ text }) => text)));
+      for (const { text } of options.kanji) {
+        clauses.push("(kind = 0 AND form >= ? AND form < ?)");
+        args.push(text, prefixEnd(text));
+      }
     }
-    where = clauses.length ? `(${clauses.join(" OR ")})` : "0=1";
+    where = clauses.length ? `id IN (${clauses.map((clause) =>
+      `SELECT word_id FROM word_forms WHERE ${clause}`).join(" UNION ALL ")})` : "0=1";
   }
   if (!query) {
     const selected = selectedLevels(rules.level);
@@ -192,12 +211,16 @@ export async function shiritoriWords(db, params, tags, fallback, segment = segme
       error.status = 502;
       throw error;
     }
-    const rows = await db.prepare(`SELECT * FROM words WHERE ${where} ORDER BY ${order} LIMIT 500 OFFSET ?`).all(...args, page * 500);
+    const rows = await db.prepare(`WITH selected AS MATERIALIZED (
+      SELECT id FROM words WHERE ${where} ORDER BY ${order} LIMIT 500 OFFSET ?
+    ) SELECT words.*, (
+      SELECT json_group_array(json_object('word', v.word, 'reading', v.reading, 'jlpt', v.jlpt))
+      FROM vocabulary v WHERE v.word_id = words.id
+    ) AS levels FROM words WHERE id IN (SELECT id FROM selected) ORDER BY ${order}`).all(...args, page * 500);
     if (!rows.length) break;
-    const levels = await rowsByWordIds(db, rows.map((row) => row.id));
     for (const row of rows) {
     if (!query && excluded.has(`jm-${row.id}`)) continue;
-    for (const word of dictionaryForms(row, tags, levels.get(row.id) ?? [])) {
+    for (const word of dictionaryForms(row, tags, JSON.parse(row.levels))) {
       const key = `${word.word}:${word.reading}`;
       if (seen.has(key)) continue;
       if (query) {
@@ -213,7 +236,7 @@ export async function shiritoriWords(db, params, tags, fallback, segment = segme
   if (query && !items.length) {
     items.push(...await inflectedForms(db, tags, query, segment));
     if (items.length) {
-      await Promise.all(items.map(async (item) => { item.examples = await localExamples(db, { wordId: Number(item.id.slice(3)) }); }));
+      if (includeExamples) await Promise.all(items.map(async (item) => { item.examples = await localExamples(db, { wordId: Number(item.id.slice(3)) }); }));
       return { items, fallback: false };
     }
   }
@@ -226,6 +249,6 @@ export async function shiritoriWords(db, params, tags, fallback, segment = segme
       throw failure;
     }
   }
-  if (query) await Promise.all(items.map(async (item) => { item.examples = await localExamples(db, { wordId: Number(item.id.slice(3)) }); }));
+  if (query && includeExamples) await Promise.all(items.map(async (item) => { item.examples = await localExamples(db, { wordId: Number(item.id.slice(3)) }); }));
   return { items, fallback: false };
 }

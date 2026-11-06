@@ -278,7 +278,7 @@ async function api(path, params = {}) {
 async function roundWords(query = "") {
   const randomOpening = !query && !game.chain.length && game.rules.mode !== "daily";
   const params = {
-    rules: game.rules, ...(query ? { q: query } : {
+    rules: game.rules, ...(query ? { q: query, examples: "0" } : {
       ...(game.chain.length ? { prev: { word: game.chain.at(-1).word, reading: game.chain.at(-1).reading } } : {}),
       used: randomOpening ? recentStarters : game.chain.map((w) => w.id),
       ...(randomOpening ? { random: "1" } : {})

@@ -15,6 +15,7 @@
     "dev:backend": "npm run dev -w backend",
     "dev:frontend": "npm run dev -w frontend",
     "db:init": "npm run db:init -w backend",
+    "db:index-words": "node --use-system-ca --env-file-if-exists=backend/.env backend/scripts/index-word-forms.js",
     "db:import": "npm run db:import -w backend",
     "build": "npm run build -w frontend",
     "build:cloudflare": "VITE_API_BASE_URL= npm run build && node backend/scripts/build-tokenizer.js",
