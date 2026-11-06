@@ -6,8 +6,8 @@
   "compatibility_flags": ["nodejs_compat"],
   "d1_databases": [{
     "binding": "PAGE_VIEWS_DB",
-    "database_name": "nihongo_toolkit_view_stg",
-    "database_id": "db44671b-bed5-4fab-ba34-8be3e70f77ec",
+    "database_name": "nihongo_toolkit_view",
+    "database_id": "7ef173ea-8a39-4697-a279-6f708f2fa545",
     "migrations_dir": "backend/migrations/page-views"
   }],
   "alias": {
