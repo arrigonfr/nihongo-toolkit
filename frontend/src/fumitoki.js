@@ -1,7 +1,10 @@
 import { API_BASE } from "./api.js";
+import { beginLoading } from "./request-loading.js";
 import { rememberControls } from "./settings-storage.js";
 import { mountStudyControls, japaneseHTML, audioHTML } from "./study-controls.js";
 import { mountSentenceExamples } from "./examples.js";
+import { renderAnalysisStats } from "./analysis-stats.js";
+import "./analysis-stats.css";
 (() => {
   "use strict";
   const API_URL = `${API_BASE}/api/words?keyword=`;
@@ -12,6 +15,10 @@ import { mountSentenceExamples } from "./examples.js";
   const detailWord = $("#detailWord"), detailContent = $("#detailContent"), lookupInput = $("#lookupInput");
   const status = $("#status"), historyList = $("#historyList"), tokenCount = $("#tokenCount");
   const translationBox = $("#translationBox"), translationLabel = $("#translationLabel"), translationText = $("#translationText");
+  const statsPanel = document.createElement("div");
+  statsPanel.className = "analysis-stats";
+  parsedText.after(statsPanel);
+  let analysisKanji = [];
   let tokens = [], currentTranslation = "", currentTranslationSource = "", selectedTokenIndex = -1, requestId = 0, parseRequestId = 0, activeController = null, history = [];
   rememberControls("nihon:fumitoki-settings-v1", ["translationToggle"], (message) => setStatus(message, true));
 
@@ -52,6 +59,7 @@ import { mountSentenceExamples } from "./examples.js";
       })),
       translation: currentTranslation,
       translationSource: currentTranslationSource,
+      kanji: analysisKanji,
       updatedAt: new Date().toISOString()
     });
     history = history.slice(0, 10);
@@ -108,6 +116,7 @@ import { mountSentenceExamples } from "./examples.js";
     translationText.textContent = currentTranslation || "Translating sentence…";
   }
   function renderTokens() {
+    renderAnalysisStats(statsPanel, tokens, analysisKanji);
     parsedText.replaceChildren();
     let count = 0;
     tokens.forEach((token, index) => {
@@ -144,6 +153,7 @@ import { mountSentenceExamples } from "./examples.js";
     }
     textInput.value = text;
     tokens = [];
+    analysisKanji = [];
     currentTranslation = "";
     currentTranslationSource = "";
     selectedTokenIndex = -1;
@@ -152,6 +162,7 @@ import { mountSentenceExamples } from "./examples.js";
     setStatus("Analyzing Japanese words and readings…");
 
     const currentParse = ++parseRequestId;
+    const doneLoading = beginLoading($("#parseButton"), parsedText);
     try {
       const response = await fetch(ANALYZE_URL + encodeURIComponent(value), {
         signal: AbortSignal.timeout(20000),
@@ -160,6 +171,7 @@ import { mountSentenceExamples } from "./examples.js";
       if (!response.ok) throw new Error("Sentence analysis is unavailable. Please try again.");
       const payload = await response.json();
       if (currentParse !== parseRequestId) return;
+      analysisKanji = Array.isArray(payload.kanji) ? payload.kanji : [];
       if (!Array.isArray(payload.tokens) || !payload.tokens.length) throw new Error("No sentence analysis returned.");
       if (Array.isArray(payload.tokens) && payload.tokens.length) {
         tokens = payload.tokens.map((token) => ({
@@ -185,6 +197,8 @@ import { mountSentenceExamples } from "./examples.js";
       if (currentParse !== parseRequestId) return;
       console.warn("Sentence analysis failed:", error);
       setStatus("The sentence could not be analyzed. Please check your connection and try again.", true);
+    } finally {
+      await doneLoading();
     }
   }
   function addText(parent, tagName, text, className) {
@@ -322,6 +336,7 @@ import { mountSentenceExamples } from "./examples.js";
     const controller = new AbortController();
     activeController = controller;
     const currentRequest = ++requestId;
+    const doneLoading = beginLoading([$("#lookupForm button"), ...document.querySelectorAll(".token[aria-pressed=true]")], detailContent);
     try {
       const response = await fetch(API_URL + encodeURIComponent(term), {
         signal: controller.signal,
@@ -339,6 +354,8 @@ import { mountSentenceExamples } from "./examples.js";
       detailContent.replaceChildren();
       addText(detailContent, "p", "We couldn’t look up this word right now. Please check your connection and try again.", "small-note");
       setStatus(`Couldn’t look up “${term}” right now. Please try again in a moment.`, true);
+    } finally {
+      await doneLoading();
     }
   }
   async function copyAnalysis() {

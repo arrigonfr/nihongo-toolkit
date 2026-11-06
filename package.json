@@ -23,6 +23,8 @@
     "deploy:cloudflare": "npm run build:cloudflare && wrangler deploy",
     "check:cloudflare": "npm run build:cloudflare && wrangler deploy --dry-run",
     "test:cloudflare": "npm run build:cloudflare && node --test backend/test/cloudflare.integration.js",
+    "test:page-views": "node --test backend/test/page-views.test.js frontend/test/analysis-stats.test.js backend/test/page-views.integration.js",
+    "test:loading": "node scripts/loading-browser-test.mjs",
     "test": "node --test backend/test/*.test.js frontend/test/*.test.js",
     "test:conjugator": "node --test backend/test/conjugator.test.js frontend/test/conjugation.test.js && node scripts/conjugator-browser-test.mjs",
     "test:conjugation-practice": "node --test frontend/test/conjugation-practice.test.js frontend/test/conjugation.test.js && node scripts/conjugation-practice-browser-test.mjs",

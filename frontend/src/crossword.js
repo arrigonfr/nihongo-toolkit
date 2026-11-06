@@ -5,6 +5,7 @@ import { groupSettings, setSettingAvailability } from "./settings-panel.js";
 import { mountStudyControls, study, speakJapanese } from "./study-controls.js";
 import { alignFuriganaRuby } from "./furigana.js";
 import { API_BASE, fetchItems } from "./api.js";
+import { beginLoading } from "./request-loading.js";
 import { romanizeKana } from "./romanize.js";
 import { convertTypedRomaji, hasLatin, matchExpectedAnswer, romajiToKana, toHiragana, toKatakana } from "./kana-input.js";
 import { mountSentenceExamples } from "./examples.js";
@@ -557,6 +558,7 @@ import {
 
   async function ensureKanjiDetail(char) {
     if (state.kanjiCache.has(char)) return state.kanjiCache.get(char);
+    const doneLoading = beginLoading([], document.getElementById("studyInspector"));
     try {
       const res = await fetch(`${API_BASE}/api/kanji/${encodeURIComponent(char)}`, {
         headers: { Accept: "application/json" }
@@ -567,6 +569,7 @@ import {
         return data;
       }
     } catch {}
+    finally { await doneLoading(); }
     return null;
   }
 
@@ -617,6 +620,7 @@ import {
   async function buildNewPuzzle() {
     if (state.loading) return;
     state.loading = true;
+    const doneLoading = beginLoading([...document.querySelectorAll("#newPuzzleBtn, #nextPuzzleBtn")], document.getElementById("cwWorkspace").parentElement);
     const startError = document.getElementById("startError");
     startError.hidden = true;
     showFeedback("Generating your Japanese vocabulary crossword…");
@@ -714,6 +718,7 @@ import {
       startError.textContent = error.message || "Could not load vocabulary for this puzzle.";
       startError.hidden = false;
     } finally {
+      await doneLoading();
       state.loading = false;
     }
   }

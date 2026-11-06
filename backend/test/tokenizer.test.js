@@ -3,6 +3,33 @@ import assert from "node:assert/strict";
 import { segmentText } from "../src/tokenizer.js";
 import { analyzeSentence } from "../src/analyze.js";
 import { openDatabase } from "../src/database.js";
+import { createHandler } from "../src/app.js";
+import { createServer } from "node:http";
+import { once } from "node:events";
+
+test("analysis API includes distinct source kanji and database JLPT ratings", async () => {
+  const db = openDatabase();
+  const server = createServer(createHandler({
+    database: db, translateSentence: async () => "",
+    sentenceFallback: async () => [], wordFallback: async () => []
+  }));
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  try {
+    for (const text of ["本を読んでいます。本。", "ひらがな"]) {
+      const response = await fetch(`http://127.0.0.1:${server.address().port}/api/analyze?text=${encodeURIComponent(text)}`);
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      const expected = db.prepare("SELECT character, jlpt FROM kanjis WHERE character IN (SELECT value FROM json_each(?))")
+        .all(JSON.stringify([...new Set([...text].filter((character) => /\p{Script=Han}/u.test(character)))]));
+      assert.deepEqual(payload.kanji, expected.map((row) => ({ ...row })));
+      assert.equal(payload.tokens.map((token) => token.text).join(""), text);
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    db.close();
+  }
+});
 
 test("morphological analysis preserves Japanese words, suffixes, particles and conjugations", async () => {
   for (const [text, expected] of [

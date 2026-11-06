@@ -5,11 +5,13 @@ import { createSentenceFallback } from "./examples.js";
 import { createSentenceTranslator } from "./analyze.js";
 import { createWordFallback } from "./shiritori.js";
 import { openTursoDatabase } from "./turso.js";
+import { pageViews } from "./page-views.js";
 
 const handlers = new WeakMap();
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === "/api/page-views") return pageViews(request, env, ctx);
     if (!url.pathname.startsWith("/api/")) return new Response("Not found", { status: 404 });
     const headers = new Headers();
     let status = 200;

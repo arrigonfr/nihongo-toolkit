@@ -1,4 +1,5 @@
 import { fetchItems } from "./api.js";
+import { beginLoading } from "./request-loading.js";
 import { setSettingAvailability } from "./settings-panel.js";
 import { BatchQueue } from "./batch-queue.js";
 import { mountSentenceExamples, loadSentences } from "./examples.js";
@@ -272,6 +273,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
       return;
     }
     state.loading = true;
+    const doneLoading = beginLoading([$("#startButton"), $("#skipButton")], $("#questionContent").parentElement);
     $("#checkButton").disabled = true;
     $("#startButton").disabled = true;
     $("#skipButton").disabled = true;
@@ -303,6 +305,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
       finishQuiz("error");
       setStatus("Could not load a word. Use Start quiz to retry.", true);
     } finally {
+      await doneLoading();
       state.loading = false;
       $("#checkButton").disabled = false;
       $("#startButton").disabled = false;

@@ -2,6 +2,7 @@ import "./memory.css";
 import { confirmAction } from "./confirm-dialog.js";
 import { setSettingAvailability } from "./settings-panel.js";
 import { fetchItems } from "./api.js";
+import { beginLoading } from "./request-loading.js";
 import { mountChips } from "./chips.js";
 import { rememberControls } from "./settings-storage.js";
 import { JAPANESE_FONTS, applyJapaneseFont } from "./japanese-fonts.js";
@@ -312,6 +313,7 @@ async function startGame(nextRound = false) {
   const choice = game && !game.ended ? await confirmAction("Leave this round?", { review: true }) : "save";
   if (!choice) return;
   busy = true;
+  const doneLoading = beginLoading([$("startButton"), $("nextRound")], $("board").parentElement);
   $("startButton").disabled = true;
   if ($("nextRound")) $("nextRound").disabled = true;
   showStartError("");
@@ -360,6 +362,7 @@ async function startGame(nextRound = false) {
   } catch (error) {
     console.error("Could not start Memory round.", error); notify("", false); showStartError(error.message);
   } finally {
+    await doneLoading();
     busy = false; $("startButton").disabled = false;
     if ($("nextRound")) $("nextRound").disabled = false;
     updateStats();

@@ -507,6 +507,7 @@ document.addEventListener("click", async (event) => {
   $("kanjiTitle").textContent = character;
   $("kanjiContent").textContent = "Loading kanji information…";
   $("kanjiDialog").showModal();
+  const doneLoading = beginLoading(button, $("kanjiContent"), "Looking up kanji…", { captureTrigger: false });
   try {
     const url = `${API_BASE}/api/kanji/${encodeURIComponent(character)}`;
     const responses = await Promise.all([url, `${url}/words?limit=5`].map((target) => fetch(target, { signal: AbortSignal.timeout(10000) })));
@@ -526,6 +527,9 @@ document.addEventListener("click", async (event) => {
   } catch (error) {
     console.warn("Kanji lookup failed.", error);
     if (token === kanjiRequest) $("kanjiContent").textContent = error.message;
+  } finally {
+    await doneLoading();
   }
 });
 syncSettings(); renderProgress();
+import { beginLoading } from "./request-loading.js";

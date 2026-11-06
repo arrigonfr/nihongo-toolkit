@@ -4,6 +4,12 @@
   "main": "backend/src/worker.js",
   "compatibility_date": "2026-08-06",
   "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [{
+    "binding": "PAGE_VIEWS_DB",
+    "database_name": "nihongo_toolkit_view_stg",
+    "database_id": "db44671b-bed5-4fab-ba34-8be3e70f77ec",
+    "migrations_dir": "backend/migrations/page-views"
+  }],
   "alias": {
     "#tokenizer-loader": "./backend/src/tokenizer-worker.js"
   },
@@ -14,6 +20,7 @@
   },
   "previews": {
       "vars": {
+        "TRACK_VISITS": "false",
         "ALLOWED_ORIGINS": "https://develop.nihongo-toolkit.pages.dev",
         "SENTENCE_API_FALLBACK": "true",
         "TRANSLATION_API_FALLBACK": "true",
@@ -22,6 +29,7 @@
       }
   },
   "vars": {
+    "TRACK_VISITS": "false",
     "ALLOWED_ORIGINS": "https://nihongo-toolkit.pages.dev",
     "SENTENCE_API_FALLBACK": "true",
     "TRANSLATION_API_FALLBACK": "true",

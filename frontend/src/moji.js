@@ -1,4 +1,5 @@
 import { fetchItems } from "./api.js";
+import { beginLoading } from "./request-loading.js";
 import { BatchQueue } from "./batch-queue.js";
 import { wordsHTML } from "./examples.js";
 import { renderPractice } from "./practice-view.js";
@@ -483,6 +484,8 @@ import { setSettingAvailability } from "./settings-panel.js";
     }
     const requestId = ++questionRequest;
     if (tool === "kana") { renderQuestion(randomKana(randomItem(["hiragana", "katakana"]))); return; }
+    const doneLoading = beginLoading([$("#startSessionButton"), $("#skipButton"), $("#nextButton")], $("#glyph").parentElement);
+    try {
     current = null;
     $("#questionCount").textContent = "Loading kanji…";
     $("#glyph").textContent = "漢";
@@ -519,6 +522,7 @@ import { setSettingAvailability } from "./settings-panel.js";
       questionType, direction, meaning,
       answers: reverseMeaning ? [character] : meanings
     });
+    } finally { await doneLoading(); }
   }
   function advanceQuestion() {
     if (!sessionActive || sessionPendingStart) return;
@@ -729,6 +733,7 @@ import { setSettingAvailability } from "./settings-panel.js";
     if (!questionScored && current.direction === "meaning-reverse" && input && !/\p{Script=Han}/u.test(input)) {
       const request = ++candidateRequest, question = current;
       candidates.textContent = "Finding kanji candidates…";
+      const doneLoading = beginLoading($("#checkButton"), candidates);
       try {
         const items = await fetchItems("/api/kanji/candidates", { reading: toHiragana(input) });
         if (request !== candidateRequest || current !== question || !sessionActive || $("#answerInput").value.trim() !== input) return;
@@ -745,6 +750,8 @@ import { setSettingAvailability } from "./settings-panel.js";
         }
       } catch (error) {
         if (request === candidateRequest && current === question) candidates.textContent = error.message;
+      } finally {
+        await doneLoading();
       }
       return;
     }

@@ -516,6 +516,10 @@ export function createHandler({
         const result = await analyzeSentence(db, text, { toWords, translateSentence, segment,
           onTiming: (phase, duration) => timings.push(`${phase};dur=${duration.toFixed(1)}`)
         });
+        const characters = unique([...text].filter((ch) => /\p{Script=Han}/u.test(ch)));
+        result.kanji = characters.length ? await db.prepare(
+          "SELECT character, jlpt FROM kanjis WHERE character IN (SELECT value FROM json_each(?))"
+        ).all(JSON.stringify(characters)) : [];
         res.setHeader("Server-Timing", timings.join(", "));
         return send(200, result);
       }

@@ -303,6 +303,7 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
     const originalGlyph = button.querySelector(".hero-kanji-character");
     button.querySelector(".hero-strokes")?.remove();
     originalGlyph.hidden = false;
+    const doneLoading = beginLoading(button, button.parentElement);
     button.disabled = true;
     caption.textContent = "Loading stroke order…";
     try {
@@ -353,6 +354,7 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
         setNotice(`We couldn’t load the stroke order diagram for ${character} right now. Please try again in a moment.`, true);
       }
     } finally {
+      await doneLoading();
       if (button.isConnected) button.disabled = false;
     }
   }
@@ -409,6 +411,7 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
   }
 
   async function showKanji(character, token = ++requestNumber) {
+    const doneLoading = beginLoading([elements.searchButton, elements.randomButton], elements.detail);
     setLoading(true, `Looking up ${character}…`);
     elements.results.replaceChildren();
     setNotice("");
@@ -430,6 +433,7 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
         true
       );
     } finally {
+      await doneLoading();
       if (token === requestNumber) setLoading(false);
     }
   }
@@ -461,6 +465,7 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
       await showKanji(term, token);
       return;
     }
+    const doneLoading = beginLoading([elements.searchButton, elements.randomButton], elements.results);
     setLoading(true, "Searching kanji…");
     try {
       if (/^(?:jlpt\s*)?n[1-5]$/i.test(term)) {
@@ -487,12 +492,14 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
       if (token !== requestNumber) return;
       setNotice("We couldn’t complete your search right now. Please check your connection and try again.", true);
     } finally {
+      await doneLoading();
       if (token === requestNumber) setLoading(false);
     }
   }
 
   async function showRandom() {
     const token = ++requestNumber;
+    const doneLoading = beginLoading([elements.searchButton, elements.randomButton], elements.detail);
     elements.detail.replaceChildren();
     elements.results.replaceChildren();
     setNotice("");
@@ -505,6 +512,9 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
       if (token !== requestNumber) return;
       setNotice("We couldn’t load a random kanji right now. Please check your connection and try again.", true);
       setLoading(false);
+    } finally {
+      await doneLoading();
+      if (token === requestNumber) setLoading(false);
     }
   }
 
@@ -557,3 +567,4 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
   renderHistory();
 })();
 mountStudyControls();
+import { beginLoading } from "./request-loading.js";

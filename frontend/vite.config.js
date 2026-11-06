@@ -23,6 +23,7 @@ function toolNavigation(site) {
         if (file === "文字.html") return addTagManager(html);
         const canonical = site ? new URL(file === "index.html" ? "" : file, site).href : null;
         const tags = [{ tag: "link", attrs: { rel: "apple-touch-icon", sizes: "180x180", href: "./apple-touch-icon.png?v=2" }, injectTo: "head" }];
+        tags.push({ tag: "script", attrs: { type: "module", src: "./src/page-views.js" }, injectTo: "body" });
         if (canonical) tags.push({ tag: "link", attrs: { rel: "canonical", href: canonical }, injectTo: "head" });
         if (file === "index.html" || toolFiles.includes(file)) {
           const launcher = readFileSync(new URL("./index.html", import.meta.url), "utf8");
@@ -70,6 +71,7 @@ export default defineConfig(({ mode }) => {
     throw new Error("VITE_SITE_URL must be the public HTTPS site URL.");
   }
   return {
+  define: { "process.env.TRACK_VISITS": JSON.stringify(env.TRACK_VISITS || "") },
   worker: { format: "es" },
   plugins: [toolNavigation(site), {
     name: "deployment-seo",

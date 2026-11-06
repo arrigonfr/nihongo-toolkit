@@ -77,6 +77,7 @@ $("start").addEventListener("click", async () => {
   if (level === "none" || !selectedVariants.length || !Number.isInteger(count) || count < 1 || count > 200 || !$("settingsForm").checkValidity()) { $("error").textContent = "Choose levels and question variants, and enter valid session settings."; return; }
   if (mode === "review" && !Object.keys(review).length) { $("error").textContent = "Your review list is empty."; return; }
   if ($("readingPrompt").value === "audio" && !study.audio && (selectedVariants.includes("reading-kanji") || mode === "daily")) { $("error").textContent = "Enable Audio in the study controls or choose Show kana."; return; }
+  const doneLoading = beginLoading($("start"), $("game").parentElement);
   $("start").disabled = true;
   $("error").textContent = "Loading kanji…";
   try {
@@ -103,7 +104,7 @@ $("start").addEventListener("click", async () => {
     $("settings").open = false; $("results").hidden = true; $("game").hidden = false; $("error").textContent = "";
     renderQuestion(); playPrompt(); startTimer();
   } catch (error) { $("error").textContent = error.message || "Could not start the session."; }
-  finally { $("start").disabled = Boolean(session); $("reviewList").disabled = Boolean(session); }
+  finally { await doneLoading(); $("start").disabled = Boolean(session); $("reviewList").disabled = Boolean(session); }
 });
 function startTimer() {
   clearInterval(timerHandle);
@@ -172,3 +173,4 @@ function finish(completed) {
   $("results").insertAdjacentHTML("afterbegin", `<p>Correct: ${result.correct} · Mistakes: ${result.mistakes.length} · Accuracy: ${accuracy}%${result.mode === "high" ? ` · Score: ${result.score}` : ""}</p>`);
   status();
 }
+import { beginLoading } from "./request-loading.js";

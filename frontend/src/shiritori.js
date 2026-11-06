@@ -398,6 +398,7 @@ async function startGame() {
     rules = parseRules(settings);
   } catch (error) { startError(error.message); return; }
   const token = ++generation;
+  const doneLoading = beginLoading($("newGame"), $("previousWord").closest(".card"));
   clearInterval(timerHandle);
   const date = today();
   game = {
@@ -449,6 +450,8 @@ async function startGame() {
     if (generation !== token) return;
     game.active = false; busy = false; render(); info("");
     startError(error.message);
+  } finally {
+    await doneLoading();
   }
 }
 function beginTurn(preloaded = null) {
@@ -476,6 +479,7 @@ async function nextWords() {
 }
 async function prepareHumanTurn() {
   const token = generation;
+  const doneLoading = beginLoading([$("playWord"), $("hintButton"), $("revealButton")], $("choices"));
   busy = true; enableControls();
   try {
     const words = await nextWords();
@@ -492,11 +496,14 @@ async function prepareHumanTurn() {
     if (generation !== token) return;
     busy = false; enableControls();
     info(`${error.message} You can still try a word or retry with Hint.`, true);
+  } finally {
+    await doneLoading();
   }
 }
 async function computerTurn() {
   if (!game?.active || !game.players[game.turn].computer || busy) return;
   const token = generation;
+  const doneLoading = beginLoading($("retryComputer"), $("choices"));
   busy = true; $("retryComputer").hidden = true; render();
   try {
     const words = await nextWords();
@@ -514,6 +521,8 @@ async function computerTurn() {
     $("timer").textContent = "Paused";
     info(`${error.message} The computer turn is paused; retry or end the round.`, true);
     $("retryComputer").hidden = false; render();
+  } finally {
+    await doneLoading();
   }
 }
 function reject(result) {
@@ -544,6 +553,7 @@ async function submit() {
   }
   if (selected && checkedText === text) { resolveWord(selected); return; }
   const token = generation;
+  const doneLoading = beginLoading($("playWord"), $("choices"));
   busy = true; enableControls(); info("Checking the dictionary…");
   try {
     candidates = await roundWords(text);
@@ -566,6 +576,7 @@ async function submit() {
     }
   } catch (error) { if (generation === token) info(error.message, true); }
   finally {
+    await doneLoading();
     if (generation === token) {
       busy = false; enableControls();
       if (humanTurn()) $("wordInput").focus();
@@ -625,6 +636,7 @@ async function assist(reveal, automatic = false) {
   const player = game.players[game.turn];
   if (reveal ? !assistAllowed(game.rules, player, "reveal") : game.rules.hints === "disabled" || game.rules.hints === "limited" && player.hints >= game.rules.hintLimit) return;
   const token = generation;
+  const doneLoading = beginLoading([$("hintButton"), $("revealButton")], $("choices"));
   busy = true; enableControls();
   try {
     const words = await nextWords();
@@ -657,7 +669,7 @@ async function assist(reveal, automatic = false) {
     }
     render();
   } catch (error) { if (generation === token) info(error.message, true); }
-  finally { if (generation === token) { busy = false; enableControls(); if (humanTurn()) $("wordInput").focus(); } }
+  finally { await doneLoading(); if (generation === token) { busy = false; enableControls(); if (humanTurn()) $("wordInput").focus(); } }
 }
 function finish(reason, explanation, loser = null, dailyGoal = false) {
   if (!game?.active) return;
@@ -691,16 +703,18 @@ async function showWord(word) {
   if (detailGeneration === token && examples.length) exampleCache.set(key, examples);
 }
 let kanjiRequest = 0;
-async function showKanji(character) {
+async function showKanji(character, button) {
   const token = ++kanjiRequest;
   $("kanjiTitle").textContent = `${character} · Kanji details`;
   $("kanjiBody").textContent = "Loading kanji…";
   if (!$("kanjiDialog").open) $("kanjiDialog").showModal();
+  const doneLoading = beginLoading(button, $("kanjiBody"), "Looking up kanji…", { captureTrigger: false });
   try {
     const word = await api(`/api/kanji/${encodeURIComponent(character)}`);
     if (token !== kanjiRequest) return;
     $("kanjiBody").innerHTML = `<div class="detail-word" lang="ja">${escape(character)}</div><p>${escape(word.meanings.join("; "))}</p><h3>On’yomi</h3><p>${readingsHTML(word.on_readings) || "No on’yomi listed."}</p><h3>Kun’yomi</h3><p>${readingsHTML(word.kun_readings) || "No kun’yomi listed."}</p><h3>Example words</h3>${word.examples.map((item) => `<p>${japaneseHTML(item.word, item.reading)} ${audioHTML(item.reading)}<br><span class="small">${escape(item.meanings.join("; "))}</span></p>`).join("") || "<p>No examples available.</p>"}`;
   } catch (error) { if (token === kanjiRequest) $("kanjiBody").textContent = error.message; }
+  finally { await doneLoading(); }
 }
 function renderReview() {
   $("reviewBody").innerHTML = progress.review.length ? `<p class="small">Saved on this browser. Export or import your list in Settings.</p>${progress.review.map((word, i) => `<div class="score-row"><span>${japaneseHTML(word.word, word.reading)}${audioHTML(word.reading)}<br><span class="small">${escape(word.meaning)}</span></span><button type="button" data-remove-review="${i}" aria-label="Remove ${escape(word.word)} from review">Remove</button></div>`).join("")}` : "<p>No saved words yet. Play a word, then choose Save to review in the word notebook.</p>";
@@ -775,8 +789,9 @@ for (const id of ["chain", "results"]) {
 }
 $("detailBody").addEventListener("click", (event) => {
   const button = event.target.closest("[data-kanji]");
-  if (button) showKanji(button.dataset.kanji);
+  if (button) showKanji(button.dataset.kanji, button);
 });
 window.addEventListener("pagehide", () => { generation++; detailGeneration++; clearInterval(timerHandle); });
 document.addEventListener("visibilitychange", deadlineTick);
 render();
+import { beginLoading } from "./request-loading.js";

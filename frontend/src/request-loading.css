@@ -1,0 +1,22 @@
+.request-loading-button::before {
+  content: ""; display: inline-block; width: .85em; height: .85em; margin-right: .5em;
+  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+  vertical-align: -.1em; animation: request-spin .8s linear infinite;
+}
+.request-loading-panel { position: relative; min-height: 100px; }
+.request-loading-panel:empty:not([hidden]) { display: block; }
+.request-loading-panel::before {
+  content: ""; position: absolute; inset: 0; z-index: 20; border-radius: inherit;
+  background: color-mix(in srgb, var(--card, var(--surface, #fff)) 92%, transparent);
+}
+.request-loading-panel::after {
+  content: ""; position: absolute; top: 50%; left: 50%; z-index: 21;
+  width: 28px; height: 28px; margin: -16px; border-radius: 50%;
+  border: 3px solid var(--line, #dce4de); border-top-color: var(--accent, #426653);
+  animation: request-spin .9s linear infinite;
+}
+.request-loading-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@keyframes request-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .request-loading-button::before, .request-loading-panel::after { animation: none; }
+}

@@ -1,0 +1,6 @@
+.analysis-stats { border-top: 1px solid var(--line, #ddd); margin-top: 1.5rem; padding-top: .5rem; }
+.analysis-stats h3 { font-size: .95rem; }
+.jlpt-donuts { display: flex; flex-wrap: wrap; gap: 1rem; }
+.jlpt-stat { display: grid; justify-items: center; gap: .3rem; font-size: .8rem; }
+.jlpt-donut { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: conic-gradient(var(--accent, #426653) var(--percentage), var(--line, #ddd) 0); }
+.jlpt-donut > span { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--card, var(--surface, #fff)); color: var(--ink, #26382e); font-size: .75rem; }

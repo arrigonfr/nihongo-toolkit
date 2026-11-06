@@ -1,5 +1,6 @@
 import { bind, toHiragana } from "wanakana";
 import { API_BASE } from "./api.js";
+import { beginLoading } from "./request-loading.js";
 import { conjugate, filterForms, groups, typeNames, copyTable } from "./conjugation.js";
 import { mountStudyControls, study, japaneseHTML, audioHTML } from "./study-controls.js";
 import { romanizeKana } from "./romanize.js";
@@ -247,6 +248,7 @@ async function lookup(value, { suggest = false, preferred } = {}) {
   const query = toHiragana(value.trim());
   if (!query || query.length > 100) { if (!suggest) status("Enter a dictionary-form verb or adjective (1–100 characters).", true); return; }
   const token = ++request;
+  const doneLoading = beginLoading([...document.querySelectorAll("#searchForm button")], $("result").parentElement);
   if (!suggest) { $("wordInput").value = query; status("Looking up word types and readings…"); }
   try {
     const items = await load({ q: query });
@@ -274,6 +276,8 @@ async function lookup(value, { suggest = false, preferred } = {}) {
     status(error.message, true);
     if (auxiliaries[query] && !suggest) showEntry(auxiliaries[query]);
     else if (!suggest) manualEntry(query);
+  } finally {
+    await doneLoading();
   }
 }
 bind($("wordInput"), { IMEMode: true });
@@ -301,6 +305,7 @@ $("manualForm").addEventListener("submit", (event) => {
 $("randomButton").addEventListener("click", async () => {
   clearTimeout(timer);
   const token = ++request;
+  const doneLoading = beginLoading([...document.querySelectorAll("#searchForm button")], $("result").parentElement);
   $("randomButton").disabled = true; status("Finding a new word…");
   try {
     const items = await load({ random: "true", level: settings.level, category: settings.category, exclude: [...new Set([...randomHistory, ...(current ? [current.reading] : [])])].slice(-80) });
@@ -309,7 +314,7 @@ $("randomButton").addEventListener("click", async () => {
     randomHistory = [...randomHistory, items[0].reading].slice(-80);
     showEntry(items[0]);
   } catch (error) { if (token === request) status(error.message, true); }
-  finally { $("randomButton").disabled = false; }
+  finally { await doneLoading(); if (token === request) $("randomButton").disabled = false; }
 });
 function renderLists() {
   $("history").innerHTML = recent.length ? recent.map((entry, i) => `<button type="button" data-recent="${i}" lang="ja">${escape(entry.word)}</button>`).join("") : '<p class="muted">Your recent words will appear here.</p>';

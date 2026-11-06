@@ -134,6 +134,11 @@ test("Worker + Turso web client: API parity, practice filtering and lossless tok
       const analyzed = await request(`/api/analyze?text=${encodeURIComponent(text)}`);
       assert.match(analyzed.response.headers.get("Server-Timing"), /tokenizer;dur=.*dictionary;dur=.*enrichment;dur=.*translation;dur=/);
       const tokens = analyzed.json().tokens;
+      const characters = [...new Set([...text].filter((character) => /\p{Script=Han}/u.test(character)))];
+      const expectedKanji = characters.length ? local.prepare(
+        `SELECT character, jlpt FROM kanjis WHERE character IN (${characters.map(() => "?").join(",")})`
+      ).all(...characters) : [];
+      assert.deepEqual(analyzed.json().kanji, expectedKanji.map((row) => ({ ...row })));
       const expected = await segmentText(text);
       assert.deepEqual(tokens.map(({ text, type }) => ({ text, type })), expected.map(({ text, type }) => ({ text, type })));
       assert.equal(tokens.map((token) => token.text).join(""), text);

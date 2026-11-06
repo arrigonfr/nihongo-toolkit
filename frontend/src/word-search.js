@@ -5,6 +5,7 @@ import { pillSelect } from "./choice-controls.js";
 import { confirmAction } from "./confirm-dialog.js";
 import { japaneseDescriptions } from "./japanese-descriptions.js";
 import { API_BASE, fetchItems } from "./api.js";
+import { beginLoading } from "./request-loading.js";
 import { mountChips } from "./chips.js";
 import { rememberControls } from "./settings-storage.js";
 import { JAPANESE_FONTS, applyJapaneseFont } from "./japanese-fonts.js";
@@ -300,6 +301,7 @@ async function startGame(nextRound = false) {
     finish(false, "Round ended", choice === "save");
   }
   busy = true;
+  const doneLoading = beginLoading([$("startButton"), $("nextRound")], $("grid").parentElement);
   $("startButton").disabled = true;
   if ($("nextRound")) $("nextRound").disabled = true;
   showStartError("");
@@ -352,6 +354,7 @@ async function startGame(nextRound = false) {
     inform(saved ? "Today's puzzle restored. Daily progress cannot be rerolled." : "Your puzzle is ready. Find your first word.");
   } catch (error) { console.error("Word Search generation failed.", error); inform("", false); showStartError(error.message); }
   finally {
+    await doneLoading();
     busy = false; $("startButton").disabled = false;
     if ($("nextRound")) $("nextRound").disabled = false;
   }
@@ -648,10 +651,11 @@ async function fetchKanji(character) {
   kanjiCache.set(character, value);
   return value;
 }
-async function showKanji(character, modal) {
+async function showKanji(character, modal, button) {
   const token = ++detailRequest, key = detailKey;
   if (modal) { $("kanjiContent").textContent = "Looking up this kanji…"; if (!$("kanjiDialog").open) $("kanjiDialog").showModal(); }
   else if ($("kanjiPreview")) $("kanjiPreview").textContent = "Looking up this kanji…";
+  const doneLoading = beginLoading(button, modal ? $("kanjiContent") : $("kanjiPreview"), "Looking up kanji…", { captureTrigger: false });
   try {
     const result = await fetchKanji(character);
     if (token !== detailRequest || key !== detailKey) return;
@@ -663,9 +667,11 @@ async function showKanji(character, modal) {
   } catch (error) {
     console.error("Kanji lookup failed.", error);
     if (token === detailRequest) { const target = modal ? $("kanjiContent") : $("kanjiPreview"); if (target) target.textContent = error.message; }
+  } finally {
+    await doneLoading();
   }
 }
-$("wordDetails").addEventListener("click", (event) => { const button = event.target.closest("[data-kanji]"); if (button) showKanji(button.dataset.kanji, true); });
+$("wordDetails").addEventListener("click", (event) => { const button = event.target.closest("[data-kanji]"); if (button) showKanji(button.dataset.kanji, true, button); });
 $("wordDetails").addEventListener("pointerover", (event) => { const button = event.target.closest("[data-kanji]"); if (button && event.pointerType === "mouse" && !button.contains(event.relatedTarget)) showKanji(button.dataset.kanji, false); });
 $("wordDetails").addEventListener("focusin", (event) => { const button = event.target.closest("[data-kanji]"); if (button) showKanji(button.dataset.kanji, false); });
 

@@ -61,6 +61,7 @@ export async function mountSentenceExamples(element, query, initial = []) {
   element.innerHTML = sentencesHTML(initial, query);
   if (initial.length) return initial;
   element.querySelector(".sentence-results").textContent = "Looking for example sentences…";
+  const doneLoading = beginLoading([], element, "Looking for example sentences…", { captureTrigger: false });
   element.querySelector(".sentence-next").disabled = true;
   try {
     if (!cache.has(query) && !requests.has(query)) {
@@ -84,6 +85,8 @@ export async function mountSentenceExamples(element, query, initial = []) {
     }
     console.warn("Example sentence lookup failed:", error);
     return [];
+  } finally {
+    await doneLoading();
   }
 }
 
@@ -93,6 +96,7 @@ document.addEventListener("click", async (event) => {
   const panel = button.closest(".sentence-panel");
   const status = panel.querySelector(".sentence-status");
   const exclude = [...panel.querySelectorAll("[data-sentence-text]")].map((item) => item.dataset.sentenceText);
+  const doneLoading = beginLoading(button, panel.querySelector(".sentence-results"));
   button.disabled = true;
   status.textContent = "Finding another example…";
   try {
@@ -104,7 +108,7 @@ document.addEventListener("click", async (event) => {
     button.textContent = "Another example";
   } catch (error) {
     if (panel.isConnected) { status.textContent = error.message; button.textContent = "Retry examples"; }
-  } finally { button.disabled = false; }
+  } finally { await doneLoading(); button.disabled = false; }
 });
 
 export function wordsHTML(words) {
@@ -112,3 +116,4 @@ export function wordsHTML(words) {
     `<li><span lang="ja" class="example-word">${japaneseHTML(item.word, item.reading)}</span>${audioHTML(item.reading || item.word)}
       <span class="example-definition">${item.meanings.map(escape).join("; ")}</span></li>`).join("")}</ul>`;
 }
+import { beginLoading } from "./request-loading.js";

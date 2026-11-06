@@ -52,7 +52,7 @@ import { toHiragana } from "wanakana";
     writeStorage(HISTORY_KEY, history.slice(0, MAX_HISTORY));
     renderHistory();
   }
-  function setIdle() { results.setAttribute("aria-busy", "false"); searchButton.disabled = false; }
+  function setIdle() { if (results.classList.contains("request-loading-panel")) return; results.setAttribute("aria-busy", "false"); searchButton.disabled = false; }
   function setLoading(message) {
     results.setAttribute("aria-busy", "true");
     results.innerHTML = `<div class="loading"><span class="spinner" aria-hidden="true"></span>${escapeHTML(message)}</div>`;
@@ -259,6 +259,7 @@ import { toHiragana } from "wanakana";
       return;
     }
     const controller = new AbortController(); activeController = controller; activeSearchKey = searchKey;
+    const doneLoading = beginLoading(searchButton, results);
     saveHistory(query,isKanji); setLoading(isKanji ? "Looking up kanji…" : "Searching the dictionary…");
     resultLabel.textContent = "Searching…";
     try {
@@ -291,7 +292,7 @@ import { toHiragana } from "wanakana";
           true
         );
       }
-    } finally { if (token === requestNumber) { activeSearchKey = null; setIdle(); } }
+    } finally { await doneLoading(); if (token === requestNumber) { activeSearchKey = null; setIdle(); } }
   }
   function scheduleSearch() {
     clearTimeout(debounceTimer);
@@ -358,3 +359,4 @@ import { toHiragana } from "wanakana";
   });
   renderHistory();
 })();
+import { beginLoading } from "./request-loading.js";

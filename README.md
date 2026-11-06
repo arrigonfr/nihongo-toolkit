@@ -942,6 +942,72 @@ download caches and generated database files remain gitignored.
 
 ## Deploy
 
+### Optional daily page views (D1)
+
+Page views are **off by default**. Only the exact string
+`process.env.TRACK_VISITS === "true"` enables browser reporting at build time;
+the Worker also requires the exact `"true"` in its `TRACK_VISITS` environment
+binding (or Node-compatible `process.env`). Values such as `TRUE`, `1`, and boolean
+`true` do not enable it. Disabled Workers require no D1 binding.
+
+This counter uses **Cloudflare D1, not Turso**. It counts each document load,
+including reloads, once per canonical page and UTC day—not unique people.
+Legacy redirects count only the destination; queries and fragments are excluded.
+No cookies, user IDs, IP addresses or referrers are stored. A non-blocking,
+no-retry browser POST schedules an atomic SQL upsert with `ctx.waitUntil`.
+The primary key is `(date, page)`; `date` is `YYYY-MM-DD` without a time.
+`updated_at` is a separate UTC audit timestamp. Blocked/failed requests can
+undercount, and this public aggregate endpoint is not bot-proof analytics.
+
+To opt in (these commands provision/change Cloudflare resources; run them yourself):
+
+1. The current `wrangler.jsonc` already binds `PAGE_VIEWS_DB` to
+   `nihongo_toolkit_view_stg`. Keep this for staging if it is your intended
+   database. To create a separate production database, run
+   `npx wrangler d1 create nihongo-page-views`.
+2. For a new database, replace `database_name` and `database_id` in
+   `d1_databases` with the returned values. Retain binding `PAGE_VIEWS_DB` and
+   `migrations_dir: "backend/migrations/page-views"`. Do not share staging and
+   production aggregates unintentionally.
+3. Apply the schema:
+   `npx wrangler d1 migrations apply PAGE_VIEWS_DB --local` for local development,
+   or `npx wrangler d1 migrations apply PAGE_VIEWS_DB --remote` for the configured
+   cloud database. With the current file, `--remote` targets the staging database.
+4. Set `"TRACK_VISITS": "true"` in the Worker's `vars`. Leave previews disabled
+   unless they have their own D1 binding/migrations. Keep `ALLOWED_ORIGINS` set
+   to the exact frontend origin.
+5. Set `TRACK_VISITS=true` in the **frontend build environment** as well (for
+   example `TRACK_VISITS=true npm run build`), retaining `VITE_API_BASE_URL`
+   pointing to the Worker. Rebuild/publish the frontend and deploy the Worker
+   through your normal release process. Changing Worker vars alone does not
+   change an already-built frontend.
+
+To disable, set the Worker flag to `"false"` immediately and rebuild the
+frontend without `TRACK_VISITS=true`. No database deletion is needed.
+Local D1 reporting uses `wrangler dev` and its local binding, not the Node
+`dev:backend` server. The browser must target that Worker's local origin.
+
+### Loading feedback and Fumitoki totals
+
+Backend-driven game/search buttons show an in-button spinner and a themed,
+accessible loading panel. Triggers remain disabled through the request and
+for 500 ms after its result/error, preserving cancellation and game-state rules.
+Purely local kana/conjugation practice does not simulate network loading.
+
+Fumitoki shows distinct dictionary-word and source-kanji totals with circle
+percentages for N5–N1 and Unrated. Repeated dictionary IDs count once; unmatched
+words use their base form. Particles are included; punctuation/spacing are not
+words. Multiple JLPT word labels use the easiest listed level. Displayed tenths
+sum to 100% for nonempty totals; empty totals show 0%. Grammar distribution is
+deferred: the existing morphological data cannot reliably identify JLPT grammar
+patterns.
+
+Run `npm run test:page-views` for unit and local Miniflare/D1 tests, and
+`npm run test:loading` for network-isolated browser loading, Fumitoki and page-view
+checks. Neither requires cloud credentials or contacts hosted Turso.
+
+### Dictionary/API deployment
+
 The production Worker serves **only `/api/*`**, backed by Turso. Host the frontend
 separately, for example on Cloudflare Pages: build it with `npm run build`, set
 `VITE_API_BASE_URL` to the Worker's HTTPS origin, and publish `frontend/dist`.
