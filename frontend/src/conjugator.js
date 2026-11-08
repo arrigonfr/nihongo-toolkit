@@ -52,6 +52,8 @@ try {
   saved = (stored.saved || []).filter(validSaved).slice(0, 500).map(cleanSaved);
   randomHistory = (stored.randomHistory || []).filter((word) => typeof word === "string" && word.length <= 100).slice(-80);
 } catch (error) { console.warn("Could not restore conjugator preferences.", error); status("Saved settings could not be restored. Default settings are in use.", true); }
+settings.kanji = true;
+settings.examples = true;
 function persist() {
   try { localStorage.setItem(key, JSON.stringify({ settings, recent, saved, randomHistory })); }
   catch (error) { console.warn("Could not save conjugator data.", error); status("Your browser could not save these changes. Export saved words to keep a copy.", true); }
@@ -64,14 +66,13 @@ $("settings").innerHTML = [
   plainSelect("fontSize", "Japanese font size", choices.fontSize.map((n) => [n, `${n}px`])),
   select("level", "Random word JLPT level", [["all", "All levels (including unrated)"], ...["5", "4", "3", "2", "1"].map((n) => [n, `N${n}`])]),
   select("category", "Random word category", [["all", "Verbs and adjectives"], ["verb", "Verbs"], ["adjective", "Adjectives"]]),
-  plainCheck("compact", "Compact view (forms only)"), plainCheck("examples", "Show example sentences"), plainCheck("kanji", "Kanji information"), plainCheck("contrast", "High contrast")
+  plainCheck("compact", "Compact view (forms only)"), plainCheck("contrast", "High contrast")
 ].join("");
 groupSettings($("settings"), [
   ["Form filters", ["setting-politeness", "setting-polarity", "setting-tense"]],
   ["Form groups", []],
   ["Random word selection", ["setting-level", "setting-category"]],
-  ["Reading & learning support", ["field-examples", "field-kanji"]],
-  ["Display & accessibility", ["field-fontSize"]]
+  ["Display & accessibility", ["field-fontSize", "field-compact", "field-contrast"]]
 ]);
 mountConjugationFilters();
 mountChips($("setting-category"), {
@@ -94,14 +95,7 @@ mountChips(groupsSelect, {
 });
 groupsGrid.insertAdjacentHTML("beforeend", '<p class="muted small groups-note">Connective forms without their own tense or politeness remain visible under either filter. Honorific alternatives are dictionary forms, not automatically polite sentences.</p>');
 const displayGrid = [...$("settings").querySelectorAll(".settings-section")].find((section) => section.querySelector("legend").textContent === "Display & accessibility").querySelector(".settings-section-grid");
-const viewOptions = document.createElement("fieldset");
-viewOptions.className = "settings-section view-options";
-viewOptions.innerHTML = "<legend>View options</legend>";
-const viewGrid = document.createElement("div");
-viewGrid.className = "settings-section-grid";
-viewGrid.append($("field-compact"), $("field-contrast"));
-viewOptions.append(viewGrid);
-displayGrid.append(viewOptions);
+displayGrid.classList.add("display-options");
 $("manualType").insertAdjacentHTML("beforeend", Object.entries(typeNames).filter(([type]) => type !== "copula")
   .map(([type, name]) => `<option value="${type}">${name}</option>`).join(""));
 function syncSettings() {
@@ -115,7 +109,6 @@ function syncSettings() {
   for (const name of ["politeness", "polarity", "tense"]) {
     setSettingAvailability($("setting-" + name), settings.groups.length ? "" : "Select a form group to filter its forms.");
   }
-  setSettingAvailability($("setting-kanji"), current && !current.kanjiDetails?.length ? "This word has no kanji information." : "");
   document.documentElement.dataset.contrast = String(settings.contrast);
   document.documentElement.style.setProperty("--jp-size", settings.fontSize + "px");
 }

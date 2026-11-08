@@ -91,19 +91,35 @@ Games and practice pages open in setup with their settings expanded. Starting a
 session hides setup; finishing or stopping shows results. **Practice again**
 returns to setup without starting another session. Shiritori keeps its word chain
 and sidebar after the round; Eawase keeps its sidebar, and Pazuru keeps its study
-inspector. Start buttons in Kanji Kuizu, Pazuru, Shiritori, Eawase and Goi remain
+inspector. Start buttons in Kanji Kuizu, Pazuru, Shiritori, Eawase, Kotoba Sagashi and Goi remain
 available in the settings footer even when settings are collapsed.
 Japanese font controls for conjugation practice
 are in **Accessibility** at the bottom of setup.
 
 Kotoba and Katsuyo search on Enter or Search, not after a typing delay. Missing sentence
-examples load only through **Load examples**. Existing examples bundled with a
-dictionary result remain visible without another request. Kanji Kuizu uses
+examples load only through **Load example**. Kotoba initially shows one bundled
+example for the first result; every result keeps its on-demand example button. Kanji Kuizu uses
 `kanji-kuizu.html`; the former `kanji-imposters.html` URL redirects there.
 
 Conjugation sessions avoid random repeats until their available question pool is
 exhausted, and ordinary balanced sessions avoid recent pairs when alternatives
-exist. The explicit repeat-missed setting can still deliberately repeat a mistake.
+exist. Missed questions return once after all primary questions in a finite session;
+timed and endless challenges retain their time/mistake limits. Conjugation questions
+are bilingual and accept kana, kanji, mixed spelling, or automatically converted romaji.
+Answers receive inline feedback without example sentences. A correct answer changes
+**Check answer** to **Next question**; the live automatic-advance switch skips that extra click.
+
+Yomi's **Answer options** select on'yomi, kun'yomi, or both. Either kana script is
+accepted, romaji converts automatically, and kanji input is cleared. Yomi and Imi's
+kanji-review switch and Kanji Kuizu's answer-details switch work during the quiz.
+Kana, Yomi and Imi no longer offer Skip or Show answer.
+
+Shiritori keeps JLPT base points (N5 to N1: 10 to 50; unrated: 10).
+Independent switches enable **Bonus points** (+5 per additional overlapping syllable
+or kanji, never the whole previous word) and **Bonus kana** (+15 when the accepted
+word contains the kana offered every third move). A single-unit connection earns no
+overlap bonus. Marathon adds 5 per accepted word; feedback itemizes the award.
+
 Firefox uses an installed Japanese voice when available; the local model fallback
 queues successive clips. Its first model download and uncached synthesis can
 still be slow on low-powered devices.
@@ -146,15 +162,23 @@ chooses light or dark mode. Existing saved preferences are preserved.
 Tools automatically save valid settings to `localStorage`, including
 quiz modes, directions, levels, fonts, session lengths, review/stat toggles,
 dictionary Kanji mode, sentence translation, game rules and hint type.
+Kanji Kuizu also retains its session limits, variants, reading prompt, font size,
+assistance budgets and live details toggle. Restored chip selections reflect the
+saved values immediately.
 Kana, Imi and Yomi keep independent preferences; Audio, Furigana, Romaji and
 appearance remain shared. Atlas has only these shared settings.
 JLPT filters use checkboxes with All/Clear actions, accepting disjoint selections
 as well as individual levels. APIs accept comma-separated levels (for example
 `5,3`), and existing saved single-level and range preferences remain supported.
 Run `npm run test:study-improvements` for the cross-tool interaction checks.
+Run `npm run test:reading-options` for Yomi reading filters, kana conversion,
+IME clearing and live kanji-review behavior.
 
 Pazuru, Eawase, Kotoba Sagashi, Katsuyo and Katsuyo Renshuu group settings by
-purpose. Dependent controls are disabled when unused, with an explanation beside
+purpose. Currently relevant dependent controls sit inside softly tinted, rounded
+outlines with breathing room around the control, without shifting the layout.
+The highlight disappears when another choice makes them irrelevant.
+Dependent controls are disabled when unused, with an explanation beside
 the control (for example, hint budgets require limited hints and challenge limits
 require the corresponding mode). Mode overrides do not replace saved preferences:
 switching back makes those preferences available again. Puzzle and practice
@@ -512,8 +536,8 @@ explicitly saved unfinished questions. Comparison accepts multiple valid analyse
 食べられる. Reverse can ask for the base word, form, polarity, tense or
 politeness. Sentence prompts have an original contextual example, translation
 and explicit grammatical constraints so the intended answer is not a guess.
-Question language selects Japanese, English, or both for prompts and grammatical
-traits; general interface and feedback text remain English.
+Prompts and grammatical traits always show Japanese and English;
+general interface and feedback text remain English.
 Politeness has its own prominent, labeled line, including unmarked connectives.
 “Requested form shown as” offers form names, usage descriptions, sentence blanks,
 or **Mixed**, which randomly chooses a presentation for each new question and
@@ -522,8 +546,8 @@ expands to show every option without a nested scrolling area.
 
 Type kana, kanji or romaji and press Enter (or Check answer). Romaji converts
 automatically, including pasted answers; native Japanese IME composition does
-not submit prematurely. “Both” requires `spelling / reading`; “Either” accepts
-either spelling or reading and supported mixed-script spellings. Full-width
+not submit prematurely. Answers accept either spelling or reading and supported
+mixed-script spellings without a separate input-mode setting. Full-width
 Latin letters, katakana, spacing and terminal punctuation are normalized.
 Equivalent negative variants are accepted within the requested politeness and
 tense: for example, 静かではありません / 静かじゃありません /
@@ -535,13 +559,25 @@ negative still requires くありません, and colloquial ら抜き potential f
 are not taught.
 
 Checking an incorrect answer reports incorrect/nearly correct **without
-revealing the solution** and keeps the answer editable. Focus moves to the
-feedback instead of the input; mobile layouts also scroll the feedback into view.
-Correct the answer and check again directly, move on, or explicitly Reveal answer to see
-the correct spelling, reading, explanation and translated example. Correct
-answers show these details immediately. The answer label follows Question language,
-and solution readings appear underneath the written form. Empty-answer notices
-appear beside the answer input. Reverse uses answer buttons; on desktop, 1–9 select
+revealing the solution** and keeps the answer editable and focused. The input
+is styled for correct or incorrect answers, with a nearby hint about polarity,
+politeness, tense or word type. Correct the answer and check again, or explicitly
+Reveal answer to see the answer inline. Correct answers change the submit button
+to Next question. A small green **Correct!** caption stays until you advance,
+or for 750 ms when the live automatic-advance checkbox in the session bar is on.
+Toggling it off cancels the pending advance; graded text is read-only, and Enter
+still advances. No after-answer example sentences or feedback panel are shown.
+Compact wrong/empty-answer notices appear above the answer input in a reserved,
+scrollable feedback area, so long hints and correct captions do not move the input.
+Kana, Yomi, Imi and Goi typing/cloze use the same stable feedback placement;
+inputs are neutral until checked and reset on each new question. Yomi displays
+only the selected reading-type badges. Imi/Yomi's review toggle and Goi's
+example/definition toggle hide the entire details panel when off, even after an
+incorrect answer. Both controls work live; enabling Goi review cancels a pending
+automatic advance and disabling it resumes advancement after a correct answer.
+Desktop font
+choices use four columns beside font size, reducing to two columns on narrow screens.
+Reverse uses answer buttons; on desktop, 1–9 select
 the first nine options and H/R/C/N operate hints, reveal, check and next outside text inputs.
 Finished challenges still stop input at their time or
 mistake limit. Hints progress through type, initial
@@ -549,8 +585,9 @@ kana, kana-character count, rule and a partially hidden answer. Hint and reveal
 availability are independently unlimited, limited per session, or disabled.
 Only the first unassisted correct answer earns credit; retries do not inflate
 scores, and assisted answers are included in the “Incorrect / assisted” count.
-Missed questions are reinserted after an intervening question when space remains
-within the chosen session length, and weighted more heavily in future sessions.
+Missed questions return once after all primary questions in a finite session,
+without counting toward its question total, and are weighted more heavily in future
+sessions. Priority is always balanced. Time and mistake limits still end challenges.
 
 Results show accuracy, correct/incorrect-or-assisted counts, time, forms and
 words to revisit. Settings and cumulative
@@ -560,12 +597,11 @@ trainer's progress and requires confirmation. A persistent missed-word log suppo
 Weak Form Focus. Ending an unanswered question can save it for review without
 counting an attempt, or discard that pending addition; Cancel/backdrop returns to practice.
 Appearance, furigana, romaji and
-audio use only the shared header controls. A panel above both setup and practice
-stays first when starting, ending or restarting a session. It holds Japanese font
-and size settings for the next session. Base-word readings follow the shared
+audio use only the shared header controls. Accessibility in setup holds Japanese font
+and size settings side by side on desktop for the next session. Base-word readings follow the shared
 Furigana toggle rather than a duplicate display setting. JLPT choices disable
 conjugation families above the selected proficiency range.
-Kanji information is always enabled. Meanings, word types and examples remain
+Kanji information is always enabled. Meanings and word types remain
 configurable in the practice settings.
 
 Run `npm run test:conjugation-practice` for engine and browser checks.
@@ -665,6 +701,19 @@ Kotoba rejects word searches longer than the API's 100-character limit before
 making a request, with guidance to shorten the query or use Fumitoki. Server
 validation errors display their actual message rather than a connection error.
 Recent searches stay within their panel, with ellipsis and the full query on hover.
+
+Goi's direction labels are **Kanji / Kana → Romaji** and **Romaji → Kanji / Kana**.
+Typing prompts show the Japanese spelling or romaji for the selected direction,
+including randomized questions. Kana-only headwords can display their compatible
+kanji spellings above them (reverse ruby), or alongside a cloze sentence. These
+hints come from the same JMdict entry and respect reading/sense restrictions;
+unlinked entries are not guessed from unrelated homophones.
+
+Typing and cloze J→E answers accept the study-list meanings plus applicable
+English JMdict glosses. Parenthetical alternatives such as `(swimming) pool`
+accept both `swimming pool` and `pool`; arbitrary substrings are not accepted.
+Japanese cross-references are not treated as English synonyms. Display glosses
+and multiple-choice scoring remain unchanged.
 
 Goi has a single Start quiz control. All shortcut labels, including S, Space and Enter / N,
 are visible only in desktop multiple-choice mode.
@@ -779,8 +828,10 @@ dictionary version is needed to reproduce a daily match.
 
 N5–N1 earn 10/20/30/40/50 points; unrated entries earn 10 and are available only
 in All. Levels are matched to spelling/reading metadata, never guessed from
-kanji difficulty. Every third move can carry a +15 bonus kana. Additional
-suffix/prefix overlap earns +5 per extra matching character. Rejected words do
+kanji difficulty. The independent Bonus kana setting offers +15 every third move
+for including the displayed kana in an accepted word. Bonus points awards +5 per
+extra overlapping syllable or kanji, excluding the whole previous word. A single
+final syllable/kanji earns no overlap bonus. Rejected words do
 not enter the chain or earn points. Statistics reset for each new game; discoveries, daily progress and the
 optional review list remain local. Settings can export/import validated JSON
 review lists or reset progress. Imported words do not enter the game dictionary.
@@ -960,6 +1011,62 @@ migration journal. `db:import` replaces the whole database and would discard
 enrichment and sync progress; do not rebuild it after enrichment without a
 backup and an explicit full-snapshot replacement plan. Enrichment snapshots,
 download caches and generated database files remain gitignored.
+
+### Filling missing JLPT levels
+
+```sh
+# Preview published-list matches only; no database changes.
+npm run db:enrich-jlpt
+# Print the complete JSON plan (no filename required).
+npm run db:enrich-jlpt -- --report
+# Include explicitly labeled, low-confidence estimates and save an auditable plan.
+npm run db:enrich-jlpt -- --estimates --report /tmp/nihon-jlpt-plan.json
+# After reviewing the report and backing up the database:
+npm run db:enrich-jlpt -- --estimates --offline --apply
+# Preview the pending changes for the configured Turso destination.
+npm run db:sync-jlpt
+# Explicitly authorize remote writes and, separately, estimated assignments.
+npm run db:sync-jlpt -- --apply --allow-estimates
+```
+
+Both scripts accept `--db PATH` and default to dry-run. `--report` alone (or
+`--report -`) prints the full JSON plan to stdout, with status messages on stderr.
+Use `npm run --silent db:enrich-jlpt -- --report > plan.json` for JSON redirection
+without npm's command banner. `--report FILE` saves to a new file and never
+overwrites it. Enrichment uses immutable OpenJLPT, open-anki-jlpt-decks and
+Kezuru (Wikibooks-based N4/N5 vocabulary) snapshots, with URL, commit, SHA-256 and license recorded for
+each published assignment. `--offline` requires cached snapshots. Full commit
+overrides are available via `--openjlpt-revision` and `--anki-revision`.
+OpenJLPT and open-anki largely share Jonathan Waller's data: agreement is **not independent
+corroboration**. Kezuru supplies an additional Wikibooks-derived study list, not
+official certification or proof of independent agreement. Only its spelling,
+reading and level are imported, not definitions or example sentences.
+No complete official modern JLPT vocabulary/kanji list exists. After updating
+sources, run once without `--offline` to cache the new pinned snapshots.
+
+Word matches must have an unambiguous dictionary identity and an exact permitted
+spelling/reading and sense (hiragana/katakana readings are equivalent). Existing
+non-null ratings in either vocabulary table or the kanji table are preserved.
+Conflicting source levels are reported and skipped, not resolved by guessing.
+New word levels go into application-facing `vocabulary`; existing null
+`vocabulary_words` levels are updated too. Kanji updates include `jlpt_source`.
+
+Optional **heuristic v1** estimates use old JLPT, school grade or Mainichi rank
+(at most 2,500) for kanji; common canonical JMdict word forms use their hardest
+known constituent kanji, never easier than N3. Common kana-only words are
+tentatively N3. These signals do **not** establish lexical proficiency: estimates
+have `method=estimate`, `confidence=low`, a rationale and dictionary provenance.
+Unsupported rare entries remain unrated rather than being assigned N1.
+These are data/report labels, not a new proficiency-certification UI.
+
+`jlpt_assignments` retains provenance; `jlpt_changes` journals only these changes.
+The separate JLPT sync remaps word IDs using stable JMdict identities, validates
+permitted forms, refuses conflicting remote ratings, and transacts in batches
+of 25 with a destination-specific `jlpt_sync` checkpoint. Replaying a committed
+batch after a lost checkpoint is safe. Run dictionary enrichment sync first if
+the target lacks required words. Dry-run never contacts Turso; apply needs
+`TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` from `backend/.env` or the environment.
+Preserve the local journal and back it up: a full `db:import` discards it.
 
 ## Deploy
 

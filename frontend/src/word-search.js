@@ -77,7 +77,7 @@ $("wordSearchRoot").innerHTML = `<div class="shell">
     <section class="card board-card" aria-label="Word search puzzle">
       <div class="board-heading"><div><span class="eyebrow">言葉探し · Word search</span><h2 id="puzzleTitle">Ready for a little discovery?</h2></div></div>
       <div class="board-scroll" tabindex="0" aria-label="Scrollable puzzle area"><div id="grid" role="grid" aria-label="Japanese word search" aria-describedby="selectionHelp"></div><div id="emptyBoard"><span lang="ja">見つけよう</span><p>Your next discovery starts here.</p><p id="startError" class="start-error"></p></div><button id="exportPuzzle" type="button" hidden>Export puzzle</button></div>
-      <button id="startButton" class="primary" type="button">Create my first puzzle →</button>
+      <button id="startButton" class="primary" type="button">Create my puzzle →</button>
       <div class="selection-status" id="selectionStatus" aria-live="polite">Choose your settings, then create a puzzle.</div>
       <div class="board-bottom"><select id="hintType" aria-label="Hint type"><option value="first">First character</option><option value="direction">Direction</option><option value="length">Word length</option><option value="meaning">Meaning clue</option><option value="area">General area</option></select><button id="hintButton" type="button" disabled>✧ Hint</button><button id="revealButton" type="button" disabled>Reveal word</button><button id="endButton" type="button" disabled>End round</button></div>
       <p id="selectionHelp" class="small instructions">Drag a straight line, or tap the first and last characters.<br>Keyboard: arrows to move · Enter / Space to select · Esc to cancel.</p>
@@ -99,6 +99,7 @@ function showStartError(text) {
 function inform(message, error = false) {
   $("notice").textContent = message;
   $("notice").dataset.error = String(error);
+  if (error && !game) showStartError(message);
 }
 function persist() {
   try { localStorage.setItem(storageKey, JSON.stringify({ settings, progress, directionDefaultsVersion, customSize })); return true; }
@@ -133,7 +134,7 @@ for (let from = 5; from >= 2; from--) for (let to = from - 1; to >= 1; to--) lev
 const availability = { limited: "Limited", unlimited: "Unlimited", disabled: "Disabled" };
 $("settingsForm").innerHTML = `<fieldset><legend>Session</legend><div class="settings-grid">
   <div class="settings-wide">${selectSetting("mode", "Practice mode", MODES, null)}</div>
-  </div></fieldset><fieldset><legend>Vocabulary</legend><div class="settings-grid">
+  </div></fieldset><fieldset><legend>Vocabulary</legend><div class="settings-grid vocabulary-grid">
   ${selectSetting("level", "JLPT study levels", levels, null)}
   ${selectSetting("script", "Japanese script", { kana: "Kana", kanji: "Kanji", both: "Both" }, "Choose Kana, Kanji (written forms with necessary okurigana), or both for the next puzzle.")}
   ${plainSelect("category", "Vocabulary category", CATEGORIES)}
@@ -295,8 +296,8 @@ function snapshotDaily() {
   }
 }
 const sessionView = createSessionView({
-  settings: $("settingsPanel"), start: $("startButton"), results: $("results"),
-  play: [document.querySelector(".board-card"), document.querySelector(".layout aside"), $("wordList").closest("section")]
+  settings: $("settingsPanel"), start: $("startButton"), results: $("results"), footer: true,
+  play: [document.querySelector(".board-card"), document.querySelector(".layout aside"), $("wordList").closest("section"), $("modeBadge"), $("notice")]
 });
 async function startGame(nextRound = false) {
   if (busy) return;

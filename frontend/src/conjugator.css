@@ -89,6 +89,7 @@ body .register { display: block; font-size: 15px; font-weight: 750; color: var(-
 #settings .settings-section-grid:has(.conjugation-filter-field) { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
 @media (max-width: 480px) { #settings .settings-section-grid:has(.conjugation-filter-field) { grid-template-columns: minmax(0, 1fr); } }
 .level-note, .groups-note { margin: 8px 0 0; }
+@media (min-width: 761px) { .settings-section-grid.display-options { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .groups-note { grid-column: 1 / -1; }
 #formCount { margin: 0 2px 10px; font-size: 13px; font-weight: 650; }
 body details .view-options { margin: 0; grid-column: 1 / -1; }

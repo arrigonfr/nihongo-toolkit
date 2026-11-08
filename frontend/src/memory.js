@@ -62,7 +62,7 @@ $("memoryRoot").innerHTML = `<div class="shell">
     <p class="small">Valid settings save automatically and apply to your next puzzle. The top reading, audio and appearance controls stay live. Script conversions are recognition exercises, not alternative standard spellings.</p>
     <form id="settingsForm"></form>
   </div></details>
-  <div class="toolbar"><div class="content-choice" role="group" aria-label="Content for next puzzle"><button id="chooseWords" type="button">言 Words</button><button id="chooseKana" type="button">あ Syllabaries</button></div>
+  <div class="toolbar">
     <div class="actions"><button id="reviewButton" type="button">Notebook <span id="reviewCount">0</span></button></div></div>
   <p id="toolbarError" class="start-error" role="alert"></p>
   <div id="notice" role="status" aria-live="polite"></div>
@@ -205,8 +205,6 @@ function syncSettings() {
   $("setting-groups").value = settings.groups.includes("all") ? "all" : Object.keys(GROUPS).filter((key) => settings.groups.includes(key)).join(",");
   syncChips();
   $("setting-count").closest("label").hidden = settings.grid !== "custom";
-  $("chooseWords").setAttribute("aria-pressed", String(settings.content === "words"));
-  $("chooseKana").setAttribute("aria-pressed", String(settings.content === "kana"));
   syncAvailability();
 }
 function syncAvailability() {
@@ -237,7 +235,6 @@ function syncAvailability() {
     setSettingAvailability(input, daily && fixed.includes(key) ? "Daily uses fixed rules; your preference is kept for other modes." : reasons[key]);
   }
   setSettingAvailability($("setting-groups"), daily ? "Daily uses fixed kana groups." : value("content") !== "kana" ? "Used with syllabary content." : "");
-  $("chooseWords").disabled = $("chooseKana").disabled = daily;
 }
 function displaySettings() {
   const display = game?.rules || settings;
@@ -295,13 +292,6 @@ function saveSettings() {
 $("settingsForm").onsubmit = (event) => {
   event.preventDefault();
   saveSettings();
-};
-for (const [id, content] of [["chooseWords", "words"], ["chooseKana", "kana"]]) $(id).onclick = () => {
-  settings.content = content;
-  if (content === "kana" && !(settings.pairing in KANA_PAIRS)) settings.pairing = "ht";
-  if (content === "kana" && settings.display === "picture") settings.display = "text";
-  syncSettings(); persist();
-  notify(`${content === "words" ? "Words" : "Syllabaries"} selected for the next puzzle. Open Puzzle settings to choose your matching mode.`);
 };
 document.querySelectorAll("[data-close]").forEach((button) => { button.onclick = () => button.closest("dialog").close(); });
 

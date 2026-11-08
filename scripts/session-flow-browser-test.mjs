@@ -38,10 +38,11 @@ try {
   ]) {
     await page.goto(`${base}/${file}.html`);
     await page.locator("#audioQuickToggle").waitFor();
+    await page.locator(start).waitFor();
     assert.equal(await page.locator(settings).isVisible(), true, `${file} settings visible`);
     assert.equal(await page.locator(play).isVisible(), false, `${file} play hidden`);
     assert.equal(await page.locator(start).isVisible(), true, `${file} start visible`);
-    if (["goi", "kanji-kuizu", "eawase", "pazuru", "shiritori"].includes(file)) {
+    if (["goi", "kanji-kuizu", "eawase", "kotoba-sagashi", "pazuru", "shiritori"].includes(file)) {
       assert.equal(await page.locator(`.session-setup > .start-line ${start}`).count(), 1);
       const details = page.locator(`${settings} details, details${settings}`).first();
       await details.evaluate((node) => { node.open = false; });
@@ -67,6 +68,35 @@ try {
       assert.equal(await page.locator("#settingsPanel #sessionType").count(), 1);
       assert.equal(await page.locator("#questionLabel").isVisible(), false);
       assert.equal(await page.locator(".quiz-panel").evaluate((node) => getComputedStyle(node).overflowY), "visible");
+      assert.ok(await page.evaluate(() => document.getElementById("levelSelect").closest(".chips-field").getBoundingClientRect().left
+        >= document.getElementById("sessionType").closest(".practice-mode-field").getBoundingClientRect().right));
+    }
+    if (["kana", "imi", "yomi"].includes(file)) {
+      assert.equal(await page.locator("#skipButton, #showButton").count(), 0);
+      assert.equal(await page.locator(".quiz-card > .start-line").evaluate((node) => getComputedStyle(node).justifyContent), "flex-end");
+    }
+    if (["kotoba-sagashi", "shiritori"].includes(file)) assert.equal(await page.locator("#modeBadge").isVisible(), false);
+    if (file === "shiritori") {
+      await page.evaluate(() => localStorage.setItem("nihon:shiritori-settings-v1", JSON.stringify({ bonus: false })));
+      await page.reload();
+      assert.equal(await page.locator("#setting-bonusKana").isChecked(), false, "Old combined bonus preference migrates");
+      await page.check("#setting-bonus");
+      assert.equal(await page.locator("#setting-bonusKana").isChecked(), false, "Bonus switches are independent");
+      await page.reload();
+      assert.equal(await page.locator("#setting-bonus").isChecked(), true);
+      assert.equal(await page.locator("#setting-bonusKana").isChecked(), false);
+      await page.check("#setting-bonusKana");
+    }
+    if (file === "eawase") assert.equal(await page.locator(".content-choice, #chooseWords, #chooseKana").count(), 0);
+    if (file === "kotoba-sagashi") {
+      assert.equal(await page.locator("#notice").isVisible(), false);
+      assert.equal(await page.locator("#startButton").textContent(), "Create my puzzle →");
+      for (const [left, right] of [["setting-level", "setting-script"], ["setting-script", "setting-category"], ["setting-list", "setting-meanings"]]) {
+        assert.ok(await page.evaluate(([left, right]) => {
+          const field = (id) => document.getElementById(id).closest(".chips-field, .setting");
+          return field(left).getBoundingClientRect().right <= field(right).getBoundingClientRect().left;
+        }, [left, right]), `${left} is beside ${right}`);
+      }
     }
     if (file === "kanji-kuizu") {
       assert.equal(await page.locator("#seconds").isDisabled(), true);
@@ -87,6 +117,11 @@ try {
       assert.ok(await page.locator('#choices .missed[aria-pressed="false"]').count() >= 1);
       assert.equal(await page.locator('#choices .correct[aria-pressed="false"], #choices .wrong[aria-pressed="false"]').count(), 0);
       assert.match(await page.locator("#choices .missed").first().textContent(), /Correct, not selected/);
+      assert.equal(await page.locator("#game #details").isVisible(), true);
+      await page.uncheck("#details");
+      assert.equal(await page.locator(".imposters-feedback-details").isVisible(), false);
+      await page.check("#details");
+      assert.equal(await page.locator(".imposters-feedback-details").isVisible(), true);
       await page.setViewportSize({ width: 360, height: 900 });
       await page.locator("#choices").scrollIntoViewIfNeeded();
       await page.screenshot({ path: "/tmp/nihon-kuizu-answer-feedback.png" });
@@ -173,6 +208,9 @@ try {
   await page.locator(".request-loading-panel").waitFor({ state: "hidden" });
   assert.equal(words, 1);
   assert.equal(sentences, 0);
+  assert.ok(await page.locator(".result-card").first().locator(".sentence-item").count() <= 1);
+  assert.equal(await page.locator('.result-card:not([data-result-index="0"]) .sentence-item').count(), 0);
+  assert.equal(await page.locator(".result-card .sentence-next").count(), await page.locator(".result-card").count());
   await page.locator(".sentence-next").first().click();
   assert.equal(sentences, 1);
   await page.setViewportSize({ width: 360, height: 900 });

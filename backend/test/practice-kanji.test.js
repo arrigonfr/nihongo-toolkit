@@ -32,6 +32,14 @@ test("both quiz modes filter before sampling at every JLPT level", async () => {
         for (const item of items) assert.ok(isPracticeKanji(item.kanji, item.on_readings, item.kun_readings, item.meanings), item.kanji);
       }
     }
+    for (const reading of ["on", "kun"]) {
+      const response = await fetch(`http://127.0.0.1:${server.address().port}/api/kanji/batch?mode=reading&reading=${reading}&limit=100`);
+      assert.equal(response.status, 200);
+      const { items } = await response.json();
+      assert.ok(items.length > 0);
+      assert.ok(items.every((item) => item[`${reading}_readings`].length > 0));
+    }
+    assert.equal((await fetch(`http://127.0.0.1:${server.address().port}/api/kanji/batch?reading=invalid`)).status, 400);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     db.close();

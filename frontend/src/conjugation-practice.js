@@ -1,6 +1,6 @@
 import { bind } from "wanakana";
 import { API_BASE } from "./api.js";
-import { PracticeSession, cleanSettings, defaults, modes, createPool, exampleFor, ruleFor, normalizeAnswer, sampleChoices, taskList } from "./conjugation-practice-engine.js";
+import { PracticeSession, cleanSettings, defaults, modes, createPool, exampleFor, ruleFor, normalizeAnswer, sampleChoices, answerHint } from "./conjugation-practice-engine.js";
 import { wordCategories, formCatalog } from "./conjugation-practice-data.js";
 import { mountStudyControls, study, japaneseHTML, audioHTML } from "./study-controls.js";
 import { escape } from "./examples.js";
@@ -17,6 +17,19 @@ import { plainSelect, plainNumber, plainCheck, removeChipsTooltip } from "./plai
 const $ = (id) => document.getElementById(id);
 const storageKey = "nihon:conjugation-practice-v1";
 let settings = cleanSettings(), progress = {}, previousSessionWords = [], completed = 0, session, clock, composing = false;
+let autoAdvanceTimer;
+function cancelAutoAdvance() {
+  clearTimeout(autoAdvanceTimer);
+  autoAdvanceTimer = undefined;
+}
+function scheduleAutoAdvance() {
+  cancelAutoAdvance();
+  if (!session || session.ended || !session.settings.autoAdvance || session.feedback !== "correct") return;
+  const active = session, question = session.current;
+  autoAdvanceTimer = setTimeout(() => {
+    if (session === active && session.current === question && session.feedback === "correct" && session.settings.autoAdvance) nextQuestion();
+  }, 750);
+}
 const notice = (message) => { $("notice").textContent = message; };
 try {
   const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
@@ -68,20 +81,16 @@ $("questionSettings").innerHTML = [
   select("politeness", "Politeness", [["both", "All"], ["plain", "Plain"], ["polite", "Polite"]]),
   select("polarity", "Polarity", [["both", "All"], ["affirmative", "Affirmative"], ["negative", "Negative"]]),
   select("tense", "Tense", [["both", "All"], ["non-past", "Non-past"], ["past", "Past"]]),
-  select("input", "Answer input", [["either", "Kana or kanji · either"], ["kana", "Kana only"], ["kanji", "Kanji spelling"], ["both", "Both · spelling / reading"]], "Choose how do you want to type your answer"),
-  select("language", "Question language", [["ja", "日本語"], ["en", "English"], ["both", "Japanese & English"]]),
   select("prompt", "Requested form shown as", [["name", "Form name"], ["description", "Usage description"], ["sentence", "Example sentence with a blank"], ["mixed", "Mixed"]]),
-  select("priority", "Word priority", [["balanced", "Balanced"], ["new", "New words"], ["review", "Previously practiced words"]]),
   select("reverseTask", "Reverse mode: identify", [["base", "Base word"], ["form", "Form name"], ["polarity", "Polarity"], ["tense", "Tense"], ["politeness", "Politeness"]], "Choose what you will be quizzed on"),
   number("seconds", "Timed duration (s)", 10, 3600),
   plainNumber("mistakes", "Max. Marathon mistakes", 0, 100),
-  checkbox("repeat", "Repeat missed questions later"), checkbox("timer", "Show elapsed time in untimed modes")
+  checkbox("timer", "Show elapsed time in untimed modes")
 ].join("");
 $("supportSettings").innerHTML = select("hints", "Hints", options("unlimited", "limited", "disabled"), "Will you put a limit to your hints?")
   + number("hintLimit", "Hints Limit", 1, 100)
   + select("reveals", "Answer reveals", options("unlimited", "limited", "disabled"), "Will you put a limit to your answer reveals?")
   + number("revealLimit", "Reveals Limit", 1, 100)
-  + plainCheck("examples", "Example sentences after answering")
   + plainCheck("meaning", "Show meaning in the question") + plainCheck("type", "Show word type in the question");
 $("displaySettings").innerHTML = [
   select("font", "Japanese font", Object.entries(JAPANESE_FONTS)),
@@ -89,17 +98,16 @@ $("displaySettings").innerHTML = [
 ].join("");
 groupSettings($("questionSettings"), [
   ["Form filters", ["setting-politeness", "setting-polarity", "setting-tense"]],
-  ["Questions & answers", ["setting-input", "setting-language", "setting-prompt", "setting-reverseTask"]],
-  ["Practice flow", ["setting-priority", "setting-repeat"]],
+  ["Questions & answers", ["setting-prompt", "setting-reverseTask"]],
   ["Timer & challenge limits", ["setting-seconds", "field-mistakes", "setting-timer"]]
 ]);
 mountConjugationFilters();
 mountChips($("setting-reverseTask"), {
-  multiple: true, allValue: "all", fieldClass: "wide",
+  multiple: true, allValue: "all",
   options: [["base", "Base word"], ["form", "Form name"], ["polarity", "Polarity"], ["tense", "Tense"], ["politeness", "Politeness"]].map(([value, label]) => ({ value, label })),
   actions: [{ label: "All", run: "all" }]
 });
-groupSettings($("supportSettings"), [["Hints & reveals", []], ["Learning support", ["field-examples", "field-meaning", "field-type"]]]);
+groupSettings($("supportSettings"), [["Hints & reveals", []], ["Learning support", ["field-meaning", "field-type"]]]);
 const hintsGrid = $("supportSettings").querySelector(".settings-section-grid");
 hintsGrid.classList.add("assist-grid");
 for (const [name, ids] of [["Hints", ["setting-hints", "setting-hintLimit"]], ["Answer reveals", ["setting-reveals", "setting-revealLimit"]]]) {
@@ -147,19 +155,15 @@ function syncSettings() {
   document.documentElement.style.setProperty("--jp-size", (session?.settings.fontSize ?? settings.fontSize) + "px");
   applyJapaneseFont(session?.settings.font ?? settings.font, session?.started ?? "settings");
   const mode = settings.mode, recognition = ["comparison", "reverse"].includes(mode);
-  const choice = mode === "comparison" || mode === "reverse" && !taskList(settings.reverseTask).includes("base");
   const reasons = {
     questions: ["quick", "daily", "timed", "marathon", "sudden"].includes(mode) ? "Session length is determined by this mode." : "",
     seconds: mode !== "timed" ? "Used in Timed Challenge." : "",
     mistakes: mode !== "marathon" ? "Used in Marathon." : "",
     timer: mode === "timed" ? "Timed Challenge always shows the countdown." : "",
     reverseTask: mode !== "reverse" ? "Used in Reverse Mode." : "",
-    input: choice ? "This mode uses answer choices instead of typed answers." : "",
     prompt: recognition ? "Recognition modes provide their own question." : "",
-    priority: ["weak", "mixed"].includes(mode) ? "This mode selects from your practice history." : "",
     meaning: recognition ? "Hidden while identifying a conjugated form." : "",
     type: recognition ? "Hidden while identifying a conjugated form." : "",
-    repeat: ["sudden", "comparison", "reverse"].includes(mode) ? "Missed questions do not repeat in this mode." : "",
     hintLimit: settings.hints !== "limited" ? "Available when Hints is Limited." : "",
     revealLimit: settings.reveals !== "limited" ? "Available when Answer reveals is Limited." : ""
   };
@@ -179,6 +183,10 @@ function updateSettings(event) {
       if (!input.checkValidity() || !Number.isInteger(value)) { input.reportValidity(); return; }
     }
     settings[setting] = value;
+    if (setting === "autoAdvance" && session && !session.ended) {
+      session.settings.autoAdvance = value;
+      scheduleAutoAdvance();
+    }
   }
   startError(""); syncSettings(); persist();
 }
@@ -284,9 +292,12 @@ function renderQuestion() {
       : s.input === "kanji" ? "Use the displayed dictionary spelling’s kanji where available. Your own IME converts kana to kanji."
         : "Type Japanese or romaji — romaji converts to kana automatically. Enter to check.";
   $("answerInput").placeholder = s.input === "both" ? "漢字 / かな" : "ここに入力…";
-  $("answerInput").disabled = !session.canAnswer();
+  $("answerInput").disabled = Boolean(session.pendingEnd);
+  $("answerInput").readOnly = !session.canAnswer();
   $("answerChoice").disabled = !session.canAnswer();
-  $("checkButton").disabled = !session.canAnswer();
+  const canContinue = ["correct", "revealed"].includes(session.feedback) || session.pendingEnd;
+  $("checkButton").disabled = !session.canAnswer() && !canContinue;
+  $("checkButton").textContent = canContinue ? session.pendingEnd ? "See results" : "Next question" : "Check answer";
   $("hintButton").disabled = !session.canAssist("hints");
   $("revealButton").disabled = !session.canAssist("reveals");
   $("hintButton").textContent = `Hint${s.hints === "limited" ? ` · ${Math.max(0, s.hintLimit - session.hints)} left` : ""}`;
@@ -296,40 +307,25 @@ function renderQuestion() {
   $("sessionProgress").hidden = !Number.isFinite(session.limit);
   $("sessionProgress").max = Number.isFinite(session.limit) ? session.limit : 1;
   $("sessionProgress").value = session.questionCount - Number(!session.scored && !session.currentIsRepeat);
-  $("followup").hidden = !session.scored;
+  $("followup").hidden = true;
   $("retryButton").hidden = !session.feedback || session.feedback === "correct" || Boolean(session.pendingEnd);
   $("nextButton").textContent = session.pendingEnd || session.completionReady ? "See results →" : "Next question →";
   renderFeedback();
   tick();
 }
 function renderFeedback() {
-  $("feedback").hidden = !session.feedback;
-  const showSolution = ["correct", "revealed"].includes(session.feedback);
-  $("ruleCard").hidden = !showSolution;
-  if (!session.feedback) { $("feedback").replaceChildren(); $("ruleContent").replaceChildren(); $("ruleCard").open = false; return; }
-  const q = session.current;
-  const correct = session.settings.mode === "reverse" && session.task === "base" ? q.entry : q.row;
-  const titles = { correct: "✓ Correct", near: "≈ Nearly correct — check the ending", incorrect: "✕ Not quite — let’s learn the pattern", revealed: "Answer revealed — keep practicing" };
-  const example = exampleFor(q);
-  $("feedback").dataset.grade = session.feedback;
-  const answer = isChoice() ? session.answer && (formCatalog[session.answer]?.en || session.answer) : session.answer;
-  if (!showSolution) {
-    $("feedback").innerHTML = `<h3>${titles[session.feedback]}</h3><p><strong>Your answer:</strong> ${escape(answer)}</p>
-      <p>${session.pendingEnd ? "The challenge has ended. View your results or use Reveal answer." : "Edit your answer and check again, move on, or use Reveal answer for the correct form, explanation and example."} Checking alone does not reveal the answer.</p>
-      <p class="small muted">This first attempt is recorded for review. A retry helps you learn without changing that score.</p>`;
-    $("ruleContent").replaceChildren();
-    return;
-  }
-  $("feedback").innerHTML = `<h3>${titles[session.feedback]}</h3>
-    <p class="small"><strong>Your answer:</strong> ${escape(answer || "Revealed without an answer")}</p>
-    <div class="solution">${japanese(correct.word, correct.reading, { solution: true })} ${audioHTML(correct.reading)}</div>
-    ${isChoice() ? `<p>${[...new Set(session.identifications().map((item) => `${formCatalog[item.family].en} · ${item.row.politeness} · ${item.row.polarity} · ${item.row.tense}`))].map(escape).join("<br>")}</p>` : ""}
-    <p class="small"><strong>${escape(q.entry.word)} · ${escape(q.entry.reading)}</strong> — ${escape(q.entry.meanings.join("; "))}</p>
-    <p>${escape(ruleFor(q))}</p>
-    ${session.assisted || session.results.at(-1)?.grade !== session.feedback ? '<p class="small muted">Hints, reveals and retries are for learning. Only your first unassisted answer earns credit.</p>' : ""}
-    ${session.settings.examples ? `<div class="feedback-example"><p lang="ja">${escape(example.before)}${japaneseHTML(q.row.word, q.row.reading)}${escape(example.after)} ${audioHTML(example.japanese)}</p><p>${escape(example.english)}</p></div>` : ""}`;
-  $("ruleContent").innerHTML = `<h3>${escape(formCatalog[q.family].en)}</h3><p>${escape(formCatalog[q.family].use)}</p><p>${escape(ruleFor(q))}</p>`;
-  enableKanji($("feedback"));
+  $("feedback").hidden = true;
+  $("ruleCard").hidden = true;
+  const grade = session.feedback || "";
+  const wrong = ["incorrect", "near"].includes(grade);
+  $("answerInput").dataset.grade = grade;
+  $("answerInput").setAttribute("aria-invalid", String(wrong));
+  $("answerOptions").dataset.grade = grade;
+  $("correctCaption").hidden = grade !== "correct";
+  $("answerNotice").textContent = grade === "revealed" ? `Answer: ${isChoice()
+      ? session.identifications().map((q) => session.task && session.task !== "form" ? q.row[session.task] : formCatalog[q.family].en).join(" / ")
+      : (session.settings.mode === "reverse" ? session.current.entry : session.current.row).word}`
+    : wrong ? isChoice() ? "Check the requested grammatical feature." : answerHint(session.current, session.answer) : "";
 }
 function renderProgress() {
   const records = Object.entries(progress);
@@ -369,6 +365,8 @@ function startError(message) {
   if (message) $("startError").scrollIntoView({ block: "nearest" });
 }
 function start() {
+  cancelAutoAdvance();
+  composing = false;
   const invalid = [...document.querySelectorAll("[data-setting]")].find((input) => !input.disabled && !input.checkValidity());
   const missing = !settings.levels.length ? "Choose at least one JLPT level to start."
     : !settings.types.length ? "Choose at least one word type to start."
@@ -391,6 +389,7 @@ function start() {
   focusAnswer();
 }
 function finish() {
+  cancelAutoAdvance();
   clearInterval(clock);
   if (!session.ended) session.end("Session ended");
   if (!session.saved) {
@@ -429,32 +428,35 @@ $("answerInput").addEventListener("compositionend", () => { composing = false; }
 $("answerInput").addEventListener("keydown", (event) => { if (event.key === "Enter" && (event.isComposing || event.keyCode === 229)) event.preventDefault(); });
 $("answerForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  if (!session || composing || !session.canAnswer()) return;
+  if (!session || session.ended) return;
+  if (["correct", "revealed"].includes(session.feedback) || session.pendingEnd) { nextQuestion(); return; }
+  if (composing || !session.canAnswer()) return;
   const input = isChoice() ? $("answerChoice") : $("answerInput");
   if (!normalizeAnswer(input.value)) {
     $("answerNotice").textContent = "Enter an answer before checking, or use Reveal answer.";
     (isChoice() ? $("answerOptions").querySelector("button") : input).focus();
     return;
   }
-  $("answerNotice").textContent = ""; notice("");
+  $("answerNotice").textContent = "";
   session.submit(input.value, { choice: isChoice() });
   persist();
   if (session.ended) { finish(); return; }
   renderQuestion(); renderProgress();
-  if (["incorrect", "near"].includes(session.feedback)) {
-    $("feedback").focus({ preventScroll: true });
-    if (window.matchMedia("(max-width: 850px)").matches) $("feedback").scrollIntoView({ block: "start" });
-  } else {
-    $("nextButton").focus();
-  }
+  if (session.feedback === "correct" && session.settings.autoAdvance) scheduleAutoAdvance();
+  else if (["incorrect", "near"].includes(session.feedback) && !session.pendingEnd) focusAnswer();
+  else $("checkButton").focus();
 });
-$("nextButton").addEventListener("click", () => {
+function nextQuestion() {
+  if (!session || session.ended || !session.scored || !["correct", "revealed"].includes(session.feedback) && !session.pendingEnd) return;
+  cancelAutoAdvance();
+  composing = false;
   session.next();
   if (session.ended) { finish(); return; }
   $("answerInput").value = ""; $("answerChoice").value = ""; $("hintText").hidden = true;
   $("answerNotice").textContent = "";
   renderQuestion(); focusAnswer();
-});
+}
+$("nextButton").addEventListener("click", nextQuestion);
 $("answerOptions").addEventListener("click", (event) => {
   const button = event.target.closest("[data-answer]");
   if (!button || button.disabled) return;
@@ -467,7 +469,7 @@ document.addEventListener("keydown", (event) => {
     || event.target.closest("input, textarea, select, [contenteditable=true]")) return;
   const key = event.key.toLowerCase();
   const button = /^[1-9]$/.test(key) && isChoice() ? $("answerOptions").children[Number(key) - 1]
-    : $({ h: "hintButton", r: "revealButton", c: "checkButton", n: "nextButton" }[key]);
+    : $({ h: "hintButton", r: "revealButton", c: "checkButton", n: ["correct", "revealed"].includes(session.feedback) ? "checkButton" : "" }[key]);
   if (button && !button.disabled && !button.closest("[hidden]")) { event.preventDefault(); button.click(); }
 });
 $("retryButton").addEventListener("click", () => {
@@ -492,7 +494,7 @@ $("revealButton").addEventListener("click", () => {
   session.submit("", { reveal: true });
   persist();
   if (session.ended) { finish(); return; }
-  renderQuestion(); renderProgress(); $("nextButton").focus();
+  renderQuestion(); renderProgress(); $("checkButton").focus();
 });
 $("resetButton").addEventListener("click", async () => {
   if (!await confirmAction("Reset all conjugation practice scores and weak forms? Settings and other tools will not change.", { confirmLabel: "Reset progress" })) return;
@@ -501,9 +503,9 @@ $("resetButton").addEventListener("click", async () => {
   persist(); renderProgress(); syncSettings(); notice("Conjugation practice progress reset.");
 });
 document.addEventListener("visibilitychange", tick);
-window.addEventListener("pagehide", () => clearInterval(clock));
+window.addEventListener("pagehide", () => { clearInterval(clock); cancelAutoAdvance(); });
 window.addEventListener("pageshow", () => {
-  if (session && !session.ended) { tick(); clearInterval(clock); if (!session.ended) clock = setInterval(tick, 250); }
+  if (session && !session.ended) { tick(); clearInterval(clock); if (!session.ended) { clock = setInterval(tick, 250); scheduleAutoAdvance(); } }
 });
 let kanjiRequest = 0;
 document.addEventListener("click", async (event) => {

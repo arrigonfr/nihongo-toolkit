@@ -103,8 +103,6 @@ body[data-practice-tool="kana"] .glyph { height: clamp(104px, 20.4vw, 166px); di
 .feedback.correct { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); background: var(--accent-soft); }
 .feedback.incorrect { border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
 .feedback-title { margin-bottom: 4px; font-weight: 800; }
-.kana-feedback-slot { height: 36px; margin-top: 4px; }
-.kana-feedback-slot .feedback { margin: 0; padding: 7px 9px; font-size: 12px; line-height: 20px; white-space: nowrap; }
 .warning { display: none; margin-bottom: 12px; padding: 10px 12px; border: 1px solid #d8a959; border-radius: 9px; background: color-mix(in srgb, #e9b64f 13%, var(--card)); color: var(--ink); font-size: 12px; line-height: 1.5; }
 .warning.show { display: block; }
 .session-stats { margin: 0 0 13px; padding: 0 0 12px; border-bottom: 1px solid var(--line); }
@@ -174,3 +172,4 @@ body details.settings .direction-chips { align-items: flex-start; }
 .reading-badge-on { color: light-dark(#a1480f, #ffb27a); border-color: color-mix(in srgb, #e67e22 45%, var(--line)); background: color-mix(in srgb, #e67e22 12%, var(--card)); }
 .reading-badge-kun { color: light-dark(#0f6a52, #7be0bf); border-color: color-mix(in srgb, #1abc9c 45%, var(--line)); background: color-mix(in srgb, #1abc9c 12%, var(--card)); }
 .reading-badge.is-expected { box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 30%, transparent); }
+.quiz-card > .start-line { justify-content: flex-end; }

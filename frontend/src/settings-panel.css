@@ -26,6 +26,21 @@ body :is(.session-setup > details, details.puzzle-settings) > .settings-body { p
   gap: 16px;
 }
 .setting-unavailable { color: var(--muted); }
+.setting-relevant {
+  position: relative;
+  isolation: isolate;
+}
+.setting-relevant::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  z-index: -1;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 5%, var(--card));
+}
+.setting-unavailable { background: transparent; box-shadow: none; }
 .setting-unavailable input, .setting-unavailable select { opacity: .55; cursor: not-allowed; }
 .setting-availability {
   display: block;

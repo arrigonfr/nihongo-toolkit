@@ -3,7 +3,7 @@ import { matchesLevel } from "../../frontend/src/jlpt-levels.js";
 export const DEFAULT_RULES = {
   entry: "both", mode: "classic", level: "all", category: "all",
   voicing: false, proper: "none", wordType: "all",
-  hints: "limited", hintLimit: 3, reveal: true, revealLimit: 3, timer: 30, bonus: true
+  hints: "limited", hintLimit: 3, reveal: true, revealLimit: 3, timer: 30, bonus: true, bonusKana: true
 };
 
 export const CATEGORIES = {
@@ -161,7 +161,7 @@ export function scoreWord(word, previous, rules, bonusKana = "") {
   const base = word.level ? (6 - word.level) * 10 : 10;
   const overlap = connection(word, previous, rules)?.size || 0;
   const overlapBonus = rules.bonus ? Math.max(0, overlap - 1) * 5 : 0;
-  const kanaBonus = rules.bonus && bonusKana && kana(word.reading).includes(bonusKana) ? 15 : 0;
+  const kanaBonus = rules.bonusKana && bonusKana && kana(word.reading).includes(kana(bonusKana)) ? 15 : 0;
   const marathonBonus = rules.mode === "marathon" ? 5 : 0;
   return { base, overlapBonus, kanaBonus, marathonBonus, total: base + overlapBonus + kanaBonus + marathonBonus };
 }

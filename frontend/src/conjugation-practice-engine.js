@@ -16,9 +16,9 @@ export const defaults = {
   mode: "classic", levels: [5], types: Object.keys(wordCategories),
   forms: ["basic", "te"],
   politeness: "both", polarity: "both", tense: "both", script: "furigana", input: "either",
-  language: "ja", prompt: "name", questions: 10, seconds: 120, mistakes: 3,
+  language: "both", prompt: "name", questions: 10, seconds: 120, mistakes: 3,
   hints: "unlimited", reveals: "unlimited", hintLimit: 3, revealLimit: 3,
-  repeat: true, priority: "balanced", timer: true, examples: true,
+  repeat: true, priority: "balanced", timer: true, examples: false, autoAdvance: false,
   meaning: true, type: true, fontSize: 40, font: "Noto Sans JP", reverseTask: "base"
 };
 
@@ -64,7 +64,7 @@ export function cleanSettings(saved = {}) {
     }
     if (finite.every((form) => ["ta", "nai"].includes(form)) && result.politeness === "both") result.politeness = "plain";
   }
-  return result;
+  return { ...result, input: "either", language: "both", priority: "balanced", repeat: true, examples: false };
 }
 
 export function familyOf(row) {
@@ -198,6 +198,18 @@ export function evaluateAnswer(question, input, script = "either", reverseBase =
   return near ? "near" : "incorrect";
 }
 
+export function answerHint(question, input) {
+  const alternate = bank.find((candidate) => candidate.entry.word === question.entry.word
+    && evaluateAnswer(candidate, input) === "correct");
+  if (alternate) {
+    for (const [trait, label] of [["polarity", "polarity: affirmative or negative"], ["politeness", "politeness level"], ["tense", "tense: past or non-past"]]) {
+      if (alternate.row[trait] !== question.row[trait]) return `Check the ${label}.`;
+    }
+    if (alternate.family !== question.family) return "Check the requested conjugation form.";
+  }
+  return "Check the word type and its ending.";
+}
+
 export function chooseQuestion(pool, progress, { priority = "balanced", mode = "classic" } = {}, previous, random = Math.random) {
   const candidates = pool.length > 1 ? pool.filter((q) => q.key !== previous) : pool;
   if (!candidates.length) return null;
@@ -286,7 +298,7 @@ export class PracticeSession {
     if (this.current && !this.scored) return;
     if (this.pendingEnd) { this.end(this.pendingEnd, now); return; }
     if (this.completionReady) { this.end("Session complete", now); return; }
-    const due = this.repeats.findIndex((item) => item.after <= this.questionCount);
+    const due = this.questionCount >= this.limit && this.repeats.length ? 0 : -1;
     if (due < 0 && this.questionCount >= this.limit) { this.end("Session complete", now); return; }
     const previous = this.current?.key;
     let remaining = this.pool.filter((question) => !this.seen.has(question.key));
@@ -345,7 +357,7 @@ export class PracticeSession {
         wrong: record.wrong + Number(!correct), last: now };
       this.scored = true;
       if (!correct && this.settings.repeat && !this.repeatKeys.has(result.key)
-        && !["sudden", "comparison", "reverse"].includes(this.settings.mode)) {
+        && this.settings.mode !== "sudden") {
         this.repeatKeys.add(result.key);
         this.repeats.push({ question: this.current, after: Math.min(this.questionCount + 1, this.limit) });
       }

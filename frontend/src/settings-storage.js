@@ -40,6 +40,7 @@ export function rememberControls(key, ids, onError) {
       } else report("Some saved settings were invalid. Defaults are in use for those settings.", new Error(control.id));
     }
     values[control.id] = controlValue(control);
+    control.chipsApi?.sync();
   }
   function save() {
     for (const control of controls) {

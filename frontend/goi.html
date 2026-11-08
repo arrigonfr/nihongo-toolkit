@@ -109,6 +109,8 @@
     .badge { padding: 5px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-strong); font-size: 10px; font-weight: 750; white-space: nowrap; }
     .word { margin: 22px 0 3px; text-align: center; font: 650 clamp(36px,8vw,54px)/1.3 var(--jp-font,"Noto Sans JP"),"Yu Gothic",Meiryo,sans-serif; }
     .reading { min-height: 22px; color: var(--muted); text-align: center; font: 14px/1.5 var(--jp-font,"Noto Sans JP"),"Yu Gothic",Meiryo,sans-serif; }
+    .word-spelling-hint rt { font-size: 15px; color: var(--muted); }
+    .word-spelling-note { display: block; font-size: 14px; color: var(--muted); margin-top: 8px; }
     .reading:not(.visible) { visibility: hidden; }
     .reading-tools { display: flex; justify-content: center; margin: 7px 0 17px; }
     .text-button { padding: 4px 7px; border: 0; background: transparent; color: var(--accent); cursor: pointer; font-size: 12px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
@@ -140,7 +142,8 @@
     .breakdown { display: grid; grid-template-columns: 1fr auto auto; gap: 6px 10px; align-items: center; font-size: 11px; }
     .breakdown .head { color: var(--muted); font-size: 9px; }
     .breakdown .value { text-align: right; font-variant-numeric: tabular-nums; }
-    .status { min-height: 21px; margin-top: 10px; color: var(--muted); font-size: 11px; text-align: center; }
+    .stats-breakdowns .breakdown { height: 7rem; overflow: auto; align-content: start; }
+    .status { height: 3rem; overflow: auto; margin-top: 10px; color: var(--muted); font-size: 11px; text-align: center; }
     .status.error { color: var(--danger); }
     footer { padding: 17px 0 0; color: var(--muted); text-align: center; font-size: 10px; line-height: 1.6; }
     footer a { color: inherit; }
@@ -337,7 +340,7 @@
                 </label>
                 <label class="goi-field"><span class="field-label">Kana direction</span>
                   <select class="select" id="kanaDirection">
-                    <option value="to-romaji">Kana → romaji</option><option value="to-kana">Romaji → kana</option><option value="random">Randomize</option>
+                    <option value="to-romaji">Kanji / Kana → Romaji</option><option value="to-kana">Romaji → Kanji / Kana</option><option value="random">Randomize</option>
                   </select>
                 </label>
               </div>
@@ -405,7 +408,11 @@
               <div class="prompt" id="prompt"></div>
               <div class="answer-options" id="options" role="group" aria-label="Choose the meaning"></div>
               <label class="sr-only" for="answerInput">Type the Japanese word</label>
-              <input class="answer-input" id="answerInput" type="text" autocorrect="off" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Type the Japanese word" hidden>
+              <div class="answer-feedback-slot">
+                <p id="correctCaption" class="correct-caption" role="status" hidden>Correct!</p>
+                <p id="incorrectCaption" class="incorrect-caption" role="status"></p>
+              </div>
+              <input class="answer-input" id="answerInput" type="text" autocorrect="off" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Type the Japanese word" aria-describedby="correctCaption incorrectCaption" hidden>
               <div class="actions">
                 <button class="button primary" id="checkButton" type="button">Check</button>
                 <button class="button" id="showButton" type="button">Show answer <span class="quiz-shortcut" aria-hidden="true">(S)</span></button>

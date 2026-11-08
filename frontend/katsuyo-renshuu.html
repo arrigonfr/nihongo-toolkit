@@ -45,15 +45,18 @@
             <p id="startError" class="start-error" role="alert"></p>
           </section>
           <section id="practice" class="panel question-panel" hidden aria-label="Conjugation question">
-            <div class="session-bar"><span id="sessionMode" class="badge"></span><span id="questionCount"></span><span id="clock" role="timer"></span><button id="endButton" type="button">End session</button></div>
+            <div class="session-bar"><span id="sessionMode" class="badge"></span><span id="questionCount"></span><span id="clock" role="timer"></span><label class="check-label auto-advance"><input id="setting-autoAdvance" data-setting="autoAdvance" type="checkbox"> Advance automatically on right answer</label><button id="endButton" type="button">End session</button></div>
             <progress id="sessionProgress" max="10" value="0" aria-label="Session progress"></progress>
             <div id="questionBody"></div>
             <form id="answerForm">
+              <div class="answer-feedback-slot">
+                <p id="correctCaption" class="correct-caption" role="status" aria-live="polite" hidden>Correct!</p>
+                <p id="answerNotice" class="incorrect-caption" role="status" aria-live="polite"></p>
+              </div>
               <label id="answerLabel" for="answerInput">Your answer</label>
-              <input id="answerInput" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="160" aria-describedby="inputHelp">
+              <input id="answerInput" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="160" aria-describedby="inputHelp answerNotice">
               <select id="answerChoice" hidden aria-label="Your answer"></select>
               <div id="answerOptions" class="study-pills" role="group" aria-label="Your answer" hidden></div>
-              <p id="answerNotice" role="status" aria-live="polite"></p>
               <p id="inputHelp" class="muted small"></p>
               <p class="practice-shortcut small muted">1–9: choose · H: hint · R: reveal · C: check · N: next (outside the typing field)</p>
               <div class="answer-actions"><button id="checkButton" class="primary" type="submit">Check answer <kbd>↵</kbd></button><button id="hintButton" type="button">Hint</button><button id="revealButton" type="button">Reveal answer</button></div>

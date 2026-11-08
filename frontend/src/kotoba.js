@@ -106,7 +106,7 @@ import { toHiragana } from "wanakana";
       });
   }
   function missingExamples(term) {
-    return `<div class="sentence-panel" data-sentence-query="${escapeHTML(term)}"><div class="sentence-results"></div><div class="sentence-actions"><button type="button" class="sentence-next">Load examples</button><span class="sentence-status" role="status" aria-live="polite"></span></div></div>`;
+    return `<div class="sentence-panel" data-sentence-query="${escapeHTML(term)}"><div class="sentence-results"></div><div class="sentence-actions"><button type="button" class="sentence-next">Load example</button><span class="sentence-status" role="status" aria-live="polite"></span></div></div>`;
   }
   function renderWordResults(items, sentenceData, query, fromCache = false) {
     if (!items.length) {
@@ -122,7 +122,7 @@ import { toHiragana } from "wanakana";
       const parts = formatPos((item.senses || []).flatMap((sense) => sense.parts_of_speech || []));
       const meanings = [...new Set((item.senses || []).flatMap((sense) => sense.english_definitions || []))].slice(0,8);
       const jlpt = (item.jlpt || []).filter(Boolean).map((level) => String(level).toUpperCase());
-      const examples = matchingExamples(sentenceData,item), audio = audioURL(item);
+      const examples = index === 0 ? matchingExamples(sentenceData,item).slice(0, 1) : [], audio = audioURL(item);
       return `<article class="result-card" data-result-index="${index}" style="animation-delay:${Math.min(index*35,210)}ms">
         <div class="entry-head"><div><button class="word-button" type="button" data-search-word="${escapeHTML(word)}" aria-label="Search ${escapeHTML(word)}">${japaneseHTML(word, readings[0] || word)}</button>${audioHTML(readings[0] || word)}</div>
         ${audio ? `<button class="audio-button" type="button" data-audio="${escapeHTML(audio)}" aria-label="Play pronunciation"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l14-8Z"/></svg></button>` : item.is_common ? '<span class="common-badge">COMMON</span>' : ""}</div>

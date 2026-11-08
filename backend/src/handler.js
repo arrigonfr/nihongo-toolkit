@@ -8,6 +8,7 @@ import { isPracticeKanji, practiceMeanings } from "./practice-kanji.js";
 import { createWordFallback, shiritoriWords } from "./shiritori.js";
 import { findConjugationEntries } from "./conjugator.js";
 import { selectedLevels } from "../../frontend/src/jlpt-levels.js";
+import { vocabularyAnswers } from "./vocabulary-answers.js";
 
 const parse = JSON.parse;
 const unique = (items) => [...new Set(items)];
@@ -63,6 +64,7 @@ async function vocabularyRecord(row, { db, lookupKanji, tags = {}, sensesJson } 
   return {
     id: row.id, word: row.word, furigana: row.reading, romaji: row.romaji,
     meaning: meaningsList.join("; "), meanings: meaningsList, level: row.jlpt,
+    ...vocabularyAnswers(row),
     partOfSpeech: posList.map((tag) => tags[tag] ?? tag).join(", "),
     posTags: posList,
     example: examples[0]?.ja ?? "", exampleFurigana: examples[0]?.furigana ?? "",
@@ -321,7 +323,8 @@ export function createHandler({
         const filter = levelFilter(params, kanji ? "" : "v");
         let sql = kanji
           ? `SELECT * FROM kanjis WHERE 1=1${filter.sql}`
-          : `SELECT v.*, w.senses AS word_senses FROM vocabulary v LEFT JOIN words w ON v.word_id = w.id WHERE 1=1${filter.sql}`;
+          : `SELECT v.*, w.senses AS word_senses, w.kanji_forms AS word_kanji_forms, w.kana_forms AS word_kana_forms
+            FROM vocabulary v LEFT JOIN words w ON v.word_id = w.id WHERE 1=1${filter.sql}`;
         const args = [...filter.args];
         if (kanji) {
           if (!db.remote) sql += " AND is_practice_kanji(character, on_readings, kun_readings, meanings) = 1";
@@ -329,6 +332,9 @@ export function createHandler({
           if (!["meaning", "reading", "both"].includes(mode)) throw new HttpError(400, "Invalid kanji mode");
           if (mode !== "reading") sql += " AND json_array_length(meanings) > 0";
           if (mode !== "meaning") sql += " AND (json_array_length(on_readings) + json_array_length(kun_readings)) > 0";
+          const reading = params.get("reading") ?? "both";
+          if (!["on", "kun", "both"].includes(reading)) throw new HttpError(400, "Invalid reading type");
+          if (reading !== "both") sql += ` AND json_array_length(${reading}_readings) > 0`;
         }
         const excluded = params.getAll("exclude");
         if (excluded.length > 100 || excluded.some((id) => id.length > 30)) throw new HttpError(400, "Too many excluded IDs");

@@ -41,6 +41,7 @@ function validateSettings(value) {
 }
 try {
   const saved = JSON.parse(localStorage.getItem(settingsKey) || "{}");
+  if (!Object.hasOwn(saved, "bonusKana") && typeof saved.bonus === "boolean") saved.bonusKana = saved.bonus;
   delete saved.level;
   validateSettings(saved);
   settings = { ...defaults, ...saved };
@@ -110,7 +111,8 @@ function settingsMarkup() {
   </div></fieldset>
   <fieldset class="settings-section"><legend>Scoring and rules</legend><div class="settings-grid">
   ${checkboxSetting("voicing", "Allow voiced / unvoiced variation", "Treat か / が and は / ば / ぱ as equivalent at the connection. Off by default. Does not affect kanji connections.")}
-  ${checkboxSetting("bonus", "Bonus points and bonus kana", "Every third move assigns a bonus kana: +15 if your valid reading contains it. Reusing more than the last syllable (or more than the last kanji) of the previous word earns +5 per extra overlapping syllable or character. Marathon adds +5 per word.")}
+  ${checkboxSetting("bonus", "Bonus points", "A single final kana earns no overlap bonus. Start with two or more trailing syllables (or kanji) for +5 per extra unit, without reusing the whole previous word.")}
+  ${checkboxSetting("bonusKana", "Bonus kana", "Every third accepted move offers a bonus kana. Include it anywhere in your new accepted word for +15 points, independently of overlap bonuses.")}
   </div></fieldset>
   <fieldset class="settings-section help-section"><legend>Help during play</legend><div class="help-pair">
   <fieldset class="help-group" id="hintSettings"><legend>Hints</legend><div class="settings-grid">
@@ -327,7 +329,7 @@ function render() {
     const player = game.players[game.turn];
     const turnText = player.computer ? "Computer is thinking…" : player.name === "You" ? "Your turn" : `${player.name}’s turn`;
     $("turnLabel").textContent = game.active ? `${turnText}${game.rules.mode === "daily" ? ` · ${game.humanWords}/10 words` : ""}` : "Round complete";
-    $("bonusLabel").textContent = game.bonusKana && game.active ? `Bonus kana: ${game.bonusKana} · include it for +15 points` : "N5 → 10 pts · N1 → 50 pts · extra overlap +5";
+    $("bonusLabel").textContent = game.bonusKana && game.active ? `Bonus kana: ${game.bonusKana} · include it for +15 points` : `N5 → 10 pts · N1 → 50 pts${game.rules.bonus ? " · extra overlap +5" : ""}`;
   }
   enableControls();
 }
@@ -461,7 +463,7 @@ function beginTurn(preloaded = null) {
   resetEntry();
   game.hintStep = 0;
   game.nextWords = preloaded;
-  game.bonusKana = game.rules.bonus && game.stats.words % 3 === 2 ? [..."あいうえおかきくけこさしすせそ"][Math.floor(game.rng() * 15)] : "";
+  game.bonusKana = game.rules.bonusKana && game.stats.words % 3 === 2 ? [..."あいうえおかきくけこさしすせそ"][Math.floor(game.rng() * 15)] : "";
   game.deadline = game.rules.mode === "timed" ? Date.now() + game.rules.timer * 1000 : 0;
   clearInterval(timerHandle);
   $("timer").classList.remove("urgent");
@@ -601,7 +603,7 @@ function accept(word, result = validateWord(word, game.chain.at(-1), game.chain,
   if (!player.computer) game.humanWords++;
   if (!progress.known.includes(word.id)) { progress.known.push(word.id); persist(progressKey, progress); }
   renderChain(); showWord(played); speakJapanese(word.reading);
-  info(`${word.word} · ${word.reading} — ${word.meaning.split(";")[0]}. +${points.total} points${points.overlapBonus ? ` (overlap +${points.overlapBonus})` : ""}${points.kanaBonus ? " (bonus kana +15)" : ""}.`);
+  info(`${word.word} · ${word.reading} — ${word.meaning.split(";")[0]}. +${points.total} points (base ${points.base}${points.overlapBonus ? ` + overlap ${points.overlapBonus}` : ""}${points.kanaBonus ? " + bonus kana 15" : ""}${points.marathonBonus ? " + Marathon 5" : ""}).`);
   if (game.rules.mode === "daily" && game.humanWords >= 10) {
     finish("daily goal reached", "Ten valid human words — daily challenge complete!", null, true); return;
   }
@@ -757,7 +759,7 @@ $("resetProgress").addEventListener("click", async () => {
 });
 const sessionView = createSessionView({
   settings: $("settingsPanel"), start: $("newGame"), results: $("results"), footer: true,
-  play: [$("previousWord").closest(".card")],
+  play: [$("previousWord").closest(".card"), $("modeBadge")],
   keepResults: [$("chain").closest("section"), document.querySelector(".sidebar")]
 });
 $("newGame").addEventListener("click", startGame);

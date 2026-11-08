@@ -3,11 +3,11 @@ import "./tool-help.css";
 const tools = {
   "eawase.html": ["Eawase", "Flip two cards to match representations of the same word or kana. Choose Words or Syllabaries, a matching direction, and a board size in Settings. Arrow keys move between cards; Enter or Space flips one. A correct match keeps the turn in local two-player games; a mismatch passes it. Hints and reveals do not earn points or unassisted accuracy. Listening needs Audio On and Japanese device voices. Kana meaning clues describe sounds, not vocabulary meanings. Script conversions are recognition exercises. Daily uses eight date-seeded basic kana pairs, saves progress, and resumes rather than restarting. Mistake Review draws from missed, assisted, unfinished, and saved items in your notebook."],
   "kotoba-sagashi.html": ["Kotoba Sagashi", "Find Japanese words in straight lines. Drag from the first character to the last, or tap both endpoints. With a keyboard, use arrow keys to move, Enter or Space to set each endpoint, and Escape to cancel. Single-character words use the same cell twice. Settings apply to new puzzles; reading and appearance controls stay live. Quick uses 8×8 with five words. Daily uses fixed N5 kana rules and a date seed. Marathon increases the grid and word count between rounds. Sudden Death ends after your chosen mistake limit. Hints and reveals follow your limits; missed and revealed words go to review. Japanese clues and icons are category clues, not dictionary definitions. Kanji words retain necessary okurigana. JLPT levels and category filters are study estimates."],
-  "katsuyo-renshuu.html": ["Katsuyō Renshuu", "Choose one or more estimated JLPT levels, word types and forms, then start a focused session. Type Japanese or romaji and press Enter to check. Hints, reveals and retries support learning; only first, unassisted answers earn credit. Incorrect forms recur more often. Daily Practice tracks completed days. Comparison and Reverse accept all valid analyses of ambiguous forms. The built-in word bank and original teaching examples work offline; kanji lookups need the dictionary."],
+  "katsuyo-renshuu.html": ["Katsuyō Renshuu", "Choose estimated JLPT levels, word types and forms, then start a focused session. Questions are bilingual. Type kana, kanji, mixed spelling or romaji and press Enter to check. Inline hints help you correct mistakes; only first, unassisted answers earn credit. Missed questions return at the end of a finite session. After a correct answer, choose Next question or enable automatic advance. Comparison and Reverse accept all valid analyses of ambiguous forms. The built-in word bank works offline; kanji lookups need the dictionary."],
   "katsuyo.html": ["Katsuyō", "Enter a dictionary-form verb or adjective in Japanese or romaji. Choose an interpretation when a word is ambiguous. Explore plain and polite endings, open usage rules, filter forms and save words. Unknown words require a confirmed reading and class. Advanced forms are grammatical references, not guarantees of natural usage for every meaning."],
-  "kana.html": ["Kana", "Practice hiragana and katakana in either direction. Choose a script or mix both, type your answer, and use Show answer when you get stuck. Free, question-count and timed sessions track your progress."],
+  "kana.html": ["Kana", "Practice hiragana and katakana in either direction. Choose a script or mix both, type your answer, and check it. Incorrect answers show the correct answer before you continue. Free, question-count and timed sessions track your progress."],
   "imi.html": ["Imi", "Practice kanji meanings from Japanese to English or in reverse. Choose a JLPT level, type an answer and check it. Pause to review readings and example words before continuing."],
-  "yomi.html": ["Yomi", "Practice kanji readings using romaji, hiragana or katakana. Choose a JLPT level and session length. After answering, review the character's readings, meanings and example words."],
+  "yomi.html": ["Yomi", "Choose on'yomi, kun'yomi or both, a JLPT level and a session length. Romaji converts automatically; either kana script is accepted for the selected reading type. Kanji input is cleared. Toggle Pause to review kanji details at any time during the quiz."],
   "goi.html": ["Goi", "Build Japanese vocabulary with multiple-choice, typing and fill-in-the-blank practice. Choose a JLPT level and a session length, then start. Review definitions and example sentences after each answer; use Next when ready."],
   "kotoba.html": ["Kotoba", "Look up Japanese words, readings, romaji or English meanings. Kanji mode explores individual characters, readings, components and compounds. Example sentences include translations and source credits; request another example to see the word in a different context."],
   "fumitoki.html": ["Fumitoki", "Enter Japanese text and analyze it into words and particles. Select a token for its dictionary form, readings, definitions and examples. Enable translation for a sentence-level translation. Analysis and translation can be imperfect; use the dictionary details to check them."],
@@ -17,7 +17,6 @@ const tools = {
   "shiritori.html": ["Shiritori", ""]
 };
 const descriptions = {
-  "setting-language": "Choose Japanese, English, or both for the question instructions, requested form, grammatical features and answer choices. Japanese words and example sentences remain Japanese.",
   "setting-overlap": "Allow different hidden words to cross at a cell when they use the same character. Turning this off keeps every word's cells separate.",
   "setting-prompt": "Show the requested form by name, usage description, or a translated sentence with a blank. Mixed randomly chooses one of these for each new question; its politeness, polarity and tense stay explicit.",
   "setting-group-voiced": "Add kana with dakuten, such as が / ガ (ga) and ば / バ (ba), and handakuten, such as ぱ / パ (pa).",
@@ -25,7 +24,7 @@ const descriptions = {
   "setting-group-special": "Practice long vowels such as かあ / カー (kaa), doubled consonants such as きって / キッテ (kitte), and syllabic n in しんよう / シンヨウ (shin'you).",
   kanaDirection: "Choose which script appears in the question and which you type. Random mixes directions; either script accepts hiragana or katakana.",
   meaningDirection: "Practice kanji to English, English to kanji, or alternate between both directions.",
-  readingDirection: "Choose the writing system accepted for your reading answers.",
+  readingDirection: "Choose on'yomi, kun'yomi or both. Either kana script is accepted; romaji converts automatically.",
   modeSelect: "Choose multiple-choice, typing or cloze (fill-in-the-blank) vocabulary practice.",
   sessionMode: "Free practice continues until you stop; question count and timed practice end at the selected limit.",
   sessionType: "Free practice continues until you stop; questions and timed practice end at the selected limit.",
@@ -33,7 +32,7 @@ const descriptions = {
   questionLimit: "Number of questions to present before the session ends.",
   timeLimit: "Duration of the practice session in minutes.",
   showStatsToggle: "Choose whether statistics are visible in your next session. Answers are recorded either way.",
-  reviewKanjiToggle: "Pause after an answer to review readings, meanings and example words before moving on.",
+  reviewKanjiToggle: "Pause after an answer to review readings, meanings and example words. Changes apply immediately during the quiz.",
   showExampleToggle: "Show the definition and example sentences after answering, and pause for review.",
   kanjiMode: "Explore individual kanji, their readings and compounds instead of searching word definitions.",
   compoundMeaning: "Show or hide English meanings beside the Japanese compounds.",

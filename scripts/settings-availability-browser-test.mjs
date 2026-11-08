@@ -30,10 +30,14 @@ try {
     for (const id of ids) {
       assert.equal(await page.locator(`#${id}`).isDisabled(), true, `${id} must be disabled`);
       assert.ok(await page.locator(`#${id}`).getAttribute("aria-describedby"), `${id} explains why`);
+      assert.equal(await page.locator(`#${id}`).evaluate((node) => Boolean(node.closest(".setting-relevant"))), false, `${id} is not highlighted when irrelevant`);
     }
   };
   const enabled = async (...ids) => {
-    for (const id of ids) assert.equal(await page.locator(`#${id}`).isEnabled(), true, `${id} must be enabled`);
+    for (const id of ids) {
+      assert.equal(await page.locator(`#${id}`).isEnabled(), true, `${id} must be enabled`);
+      assert.equal(await page.locator(`#${id}`).evaluate((node) => Boolean(node.closest(".setting-relevant"))), true, `${id} stays subtly highlighted when relevant`);
+    }
   };
   const checkNotes = async () => {
     const misplaced = await page.evaluate(() => [...document.querySelectorAll(".setting-availability")].filter((note) => {
@@ -105,12 +109,12 @@ try {
   await go("活用練習");
   await disabled("setting-seconds", "setting-mistakes", "setting-reverseTask", "setting-hintLimit", "setting-revealLimit");
   await change("setting-mode", "reverse");
-  await enabled("setting-reverseTask", "setting-input");
-  await disabled("setting-prompt", "setting-meaning", "setting-type", "setting-repeat");
+  await enabled("setting-reverseTask");
+  await disabled("setting-prompt", "setting-meaning", "setting-type");
   await change("setting-reverseTask", "form");
-  await disabled("setting-input");
+  assert.equal(await page.locator("#setting-input, #setting-repeat").count(), 0);
   await change("setting-mode", "timed");
-  await enabled("setting-seconds", "setting-input", "setting-prompt");
+  await enabled("setting-seconds", "setting-prompt");
   await disabled("setting-questions", "setting-timer");
   await change("setting-hints", "limited");
   await enabled("setting-hintLimit");
@@ -121,7 +125,12 @@ try {
   await disabled("setting-politeness", "setting-polarity", "setting-tense");
   await page.locator("#list-groups ~ .chips .chip-action:text-is(\"All\")").evaluate((node) => node.click());
   await enabled("setting-politeness", "setting-polarity", "setting-tense");
-  assert.equal(await page.locator("#settings .settings-section").count(), 6);
+  assert.equal(await page.locator("#settings .settings-section").count(), 4);
+  assert.equal(await page.locator("#setting-examples, #setting-kanji, .view-options").count(), 0);
+  assert.ok(await page.evaluate(() => {
+    const fields = ["field-fontSize", "field-compact", "field-contrast"].map((id) => document.getElementById(id).getBoundingClientRect());
+    return fields[0].right <= fields[1].left && fields[1].right <= fields[2].left;
+  }), "Display controls share one desktop row");
   await go("パズル");
   await disabled("hintLimitInput", "timedMinutesInput", "customWordsInput");
   await change("checkAvailSelect", "limited");
@@ -135,6 +144,64 @@ try {
   await page.click('[data-mode="reverse"]');
   await disabled("kanjiFocusToggle");
   assert.equal(await page.locator(".cw-settings .settings-section").count(), 3);
+  for (const file of ["kana", "imi", "yomi"]) {
+    await go(file);
+    await change("sessionMode", "questions");
+    await enabled("sessionTarget");
+    await change("sessionMode", "free");
+    await disabled("sessionTarget");
+  }
+  await go("goi");
+  await change("modeSelect", "typing-ej");
+  await enabled("kanaDirection");
+  await change("modeSelect", "typing-je");
+  await disabled("kanaDirection");
+  await change("sessionType", "questions");
+  await enabled("questionLimit");
+  await change("sessionType", "time");
+  await disabled("questionLimit");
+  await enabled("timeLimit");
+  await go("kanji-kuizu");
+  await change("mode", "timed");
+  await enabled("seconds");
+  await change("mode", "practice");
+  await disabled("seconds");
+  await go("shiritori");
+  await change("setting-mode", "timed");
+  await enabled("setting-timer");
+  for (const width of [390, 1280]) {
+    await raw.setViewportSize({ width, height: 900 });
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate((value) => document.documentElement.dataset.theme = value, theme);
+      const decoration = await page.locator("#setting-timer").evaluate((control) => {
+        const label = control.closest(".setting-relevant");
+        const before = getComputedStyle(label, "::before");
+        const bounds = label.getBoundingClientRect();
+        const highlighted = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+        label.classList.remove("setting-relevant");
+        const plain = label.getBoundingClientRect();
+        const unhighlighted = { x: plain.x, y: plain.y, width: plain.width, height: plain.height };
+        label.classList.add("setting-relevant");
+        return {
+          borders: [before.borderTopWidth, before.borderRightWidth, before.borderBottomWidth, before.borderLeftWidth],
+          radius: before.borderRadius,
+          pointerEvents: before.pointerEvents,
+          inset: before.top,
+          shadow: getComputedStyle(label).boxShadow,
+          highlighted,
+          unhighlighted,
+        };
+      });
+      assert.deepEqual(decoration.borders, ["1px", "1px", "1px", "1px"], "Relevance outline surrounds the whole field");
+      assert.equal(decoration.radius, "10px");
+      assert.equal(decoration.inset, "-5px", "Outline leaves breathing room");
+      assert.equal(decoration.pointerEvents, "none", "Decoration does not intercept controls");
+      assert.equal(decoration.shadow, "none", "No bracket-like inset shadow");
+      assert.deepEqual(decoration.highlighted, decoration.unhighlighted, "Highlight does not shift layout");
+    }
+  }
+  await change("setting-mode", "relaxed");
+  await disabled("setting-timer");
   await raw.setViewportSize({ width: 390, height: 844 });
   for (const file of ["絵合わせ", "言葉探し", "活用練習", "活用", "パズル"]) {
     await go(file);
@@ -146,7 +213,7 @@ try {
     assert.deepEqual(overflow, [], `${file} settings fit on mobile`);
   }
   assert.deepEqual(errors, []);
-  console.log("Grouped settings and dependency checks passed for all five tools.");
+  console.log("Grouped settings, persistent relevance highlights and dependency checks passed across eleven tools.");
 } finally {
   await browser?.close();
   await vite?.close();

@@ -9,6 +9,7 @@ try {
   await server.listen();
   browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await page.route("**/*", (route) => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
   await page.addInitScript(() => {
     window.spokenQuestions = [];
     window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
@@ -62,10 +63,10 @@ try {
       const box = (selector) => document.querySelector(selector).getBoundingClientRect();
       const level = box('label[for="levelSelect"]');
       const variantBox = box('label[for="variants"]');
-      const prompt = box('label[for="readingPrompt"]'), size = box("#fontSizeLabel"), details = box('label:has(#details)');
+      const prompt = box('label[for="readingPrompt"]'), size = box("#fontSizeLabel");
       return { questionsSideBySide: Math.abs(level.top - variantBox.top) < 70 && variantBox.left > level.right,
-        displaySideBySide: Math.abs(prompt.top - size.top) < 10 && size.left > prompt.right && details.left > size.right,
-        questionsStacked: variantBox.top > level.bottom, displayStacked: size.top > prompt.bottom && details.top > size.bottom };
+        displaySideBySide: Math.abs(prompt.top - size.top) < 10 && size.left > prompt.right,
+        questionsStacked: variantBox.top > level.bottom, displayStacked: size.top > prompt.bottom };
     });
     if (width === 1280) {
       assert.equal(layout.questionsSideBySide, true, JSON.stringify(layout));
@@ -156,13 +157,21 @@ try {
     await stopSession();
     assert.match(await page.locator("#results").textContent(), /Correct: 1/);
   }
-  await page.locator("#details").uncheck();
   await page.locator("#start").click();
   await page.locator('#game:not([aria-busy="true"]) #choices button').first().waitFor();
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.ok(await page.locator("#details").evaluate((input) => {
+      const label = input.closest("label");
+      return getComputedStyle(label).display === "flex" && parseFloat(getComputedStyle(label).gap) >= 8;
+    }), `Details checkbox has at least 8px caption spacing at ${width}px`);
+  }
+  await page.locator("#details").uncheck();
   await page.locator("#reveal").click();
-  assert.equal(await page.locator("#feedback [data-feedback-kanji]").count(), 0, "Details remain hidden when disabled");
-  await stopSession();
+  assert.equal(await page.locator("#feedback [data-feedback-kanji]:visible").count(), 0, "Details remain hidden when disabled");
   await page.locator("#details").check();
+  assert.ok(await page.locator("#feedback [data-feedback-kanji]:visible").count() > 0, "Details can be enabled live after answering");
+  await stopSession();
   await page.locator("#variants").evaluate((select) => { select.value = "reading-kanji"; select.dispatchEvent(new Event("change", { bubbles: true })); });
   await page.locator("#readingPrompt").selectOption("audio");
   if (await page.locator("#audioQuickToggle").getAttribute("aria-pressed") !== "true") await page.locator("#audioQuickToggle").click();

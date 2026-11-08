@@ -24,6 +24,7 @@ export function setSettingAvailability(control, reason = "") {
   const label = control.closest("label") || control.closest(".setting") || ((control.dataset.levelChoices || control.dataset.chips) ? control.parentElement : null);
   if (!label) return;
   label.classList.toggle("setting-unavailable", Boolean(reason));
+  label.classList.toggle("setting-relevant", !reason);
   let note = label.querySelector(".setting-availability");
   if (!note && reason) {
     note = document.createElement("small");

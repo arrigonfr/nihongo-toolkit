@@ -11,6 +11,7 @@ import { bind, unbind, toHiragana, toKatakana } from "wanakana";
 import { mountChips } from "./chips.js";
 import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
 import { setSettingAvailability } from "./settings-panel.js";
+import { readingType, selectedReadings, matchesReading } from "./reading-answers.js";
 (() => {
   "use strict";
 
@@ -49,15 +50,18 @@ import { setSettingAvailability } from "./settings-panel.js";
     mountChips($("#readingDirection"), {
       presentation: "button", fieldClass: "direction-field", groupClass: "direction-chips",
       descriptions: {
-        "reading-hiragana": "Type readings in hiragana, traditionally used for kun'yomi (Japanese readings). On'yomi are accepted too.",
-        "reading-katakana": "Type readings in katakana, traditionally used for on'yomi (Chinese-derived readings). Kun'yomi are accepted too."
+        "reading-hiragana": "Answer with a kun'yomi reading. Romaji converts to hiragana; either kana script is accepted.",
+        "reading-katakana": "Answer with an on'yomi reading. Romaji converts to katakana; either kana script is accepted."
       }
     });
   }
-  mountPracticeMode($("#sessionMode"), { values: {} });
+  mountPracticeMode($("#sessionMode"), { values: {}, tooltips: { sudden: "Keep going until your first wrong answer. The session then shows your streak." } });
   mountStudyControls({ furigana: tool !== "kana", romaji: tool !== "kana" });
   const batches = new BatchQueue(
-    (level, limit, exclude) => fetchItems("/api/kanji/batch", { mode: tool, level, limit, exclude, projection: "practice" }),
+    (key, limit, exclude) => {
+      const [level, reading = "both"] = key.split("|");
+      return fetchItems("/api/kanji/batch", { mode: tool, level, reading, limit, exclude, projection: "practice" });
+    },
     { onError: () => showWarning("We’re having trouble loading more kanji right now. You can keep practicing with the questions already loaded while we retry.") }
   );
   const FONTS = ["Noto Sans JP", "Sawarabi Mincho", "M PLUS Rounded 1c", "Zen Kurenaido"];
@@ -135,7 +139,12 @@ import { setSettingAvailability } from "./settings-panel.js";
   candidates.setAttribute("aria-label", "Choose the kanji you meant");
   $("#answerForm").append(candidates);
   $("#answerInput").addEventListener("compositionstart", () => { composing = true; });
-  $("#answerInput").addEventListener("compositionend", () => { composing = false; });
+  function clearReadingKanji() {
+    if (tool === "reading" && !composing && /\p{Script=Han}/u.test($("#answerInput").value)) {
+      $("#answerInput").value = "";
+    }
+  }
+  $("#answerInput").addEventListener("compositionend", () => { composing = false; clearReadingKanji(); });
   function readSettings() {
     return Object.fromEntries(["kanaDirection", "meaningDirection", "readingDirection", "levelSelect",
       "fontChoice", "showStatsToggle", "reviewKanjiToggle"].map((id) => {
@@ -240,8 +249,6 @@ import { setSettingAvailability } from "./settings-panel.js";
     $("#startSessionButton").textContent = sessionPendingStart ? "Start session" : "Start new session";
     $("#answerInput").disabled = !sessionActive;
     $("#checkButton").disabled = !sessionActive || !current;
-    $("#skipButton").disabled = !sessionActive;
-    $("#showButton").disabled = !sessionActive;
     $("#nextButton").disabled = !sessionActive;
   }
   function updateSessionStatus() {
@@ -416,9 +423,8 @@ import { setSettingAvailability } from "./settings-panel.js";
       return {
         meaning: "Type an English meaning",
         reading: {
-          "reading-romaji": "Type a reading in romaji (kun-yomi or on-yomi)",
-          "reading-hiragana": "Type a reading in hiragana (kun-yomi or on-yomi)",
-          "reading-katakana": "Type a reading in katakana (on-yomi or kun-yomi)",
+          "reading-hiragana": "Type a kun'yomi reading",
+          "reading-katakana": "Type an on'yomi reading",
           "reading-any-kana": "Type a reading in hiragana or katakana (on-yomi or kun-yomi)"
         }[question.direction] || "Type an on-yomi or kun-yomi reading in kana or romaji",
       }[question.questionType];
@@ -455,13 +461,18 @@ import { setSettingAvailability } from "./settings-panel.js";
     const hasOn = Boolean(question.data?.on_readings?.length), hasKun = Boolean(question.data?.kun_readings?.length);
     const emphasis = { "reading-katakana": "on", "reading-hiragana": "kun" }[question.direction];
     badges.hidden = !(question.kind === "kanji" && question.questionType === "reading");
-    badges.innerHTML = [hasOn && ["on", "音 On’yomi"], hasKun && ["kun", "訓 Kun’yomi"]].filter(Boolean)
+    badges.innerHTML = [hasOn && ["on", "音 On’yomi"], hasKun && ["kun", "訓 Kun’yomi"]].filter((badge) => badge && (!emphasis || badge[0] === emphasis))
       .map(([kind, text]) => `<span class="reading-badge reading-badge-${kind}${emphasis === kind ? " is-expected" : ""}">${text}</span>`).join("");
     $("#glyph").textContent = question.display;
     $("#glyph").classList.toggle("romaji", question.kind !== "kanji" && question.direction === "to-kana");
     $("#glyph").setAttribute("lang", question.kind === "kanji" || question.direction !== "to-kana" ? "ja" : "en");
     $("#promptText").textContent = questionPrompt(question);
     $("#answerInput").value = "";
+    delete $("#answerInput").dataset.grade;
+    $("#answerInput").removeAttribute("aria-invalid");
+    $("#correctCaption").hidden = true;
+    $(".answer-feedback-slot .sudden-countdown")?.remove();
+    $("#incorrectCaption").textContent = "";
     $("#answerInput").readOnly = false;
     $("#answerInput").type = "text";
     $("#answerInput").inputMode = "text";
@@ -469,13 +480,12 @@ import { setSettingAvailability } from "./settings-panel.js";
     $("#answerInput").placeholder = "Type your answer…";
     $("#feedback").className = "feedback";
     $("#feedback").innerHTML = "";
+    $("#feedback").hidden = true;
     $("#answerInput").disabled = !sessionActive;
     $("#checkButton").disabled = !sessionActive;
     $("#checkButton").textContent = "Check";
     $("#nextButton").hidden = true;
     $("#nextButton").disabled = !sessionActive;
-    $("#skipButton").disabled = !sessionActive;
-    $("#showButton").disabled = !sessionActive;
     if (sessionActive) $("#answerInput").focus({ preventScroll: true });
     useFont();
   }
@@ -487,7 +497,7 @@ import { setSettingAvailability } from "./settings-panel.js";
     }
     const requestId = ++questionRequest;
     if (tool === "kana") { renderQuestion(randomKana(randomItem(["hiragana", "katakana"]))); return; }
-    const doneLoading = beginLoading([$("#startSessionButton"), $("#skipButton"), $("#nextButton")], $("#glyph").parentElement);
+    const doneLoading = beginLoading([$("#startSessionButton"), $("#nextButton")], $("#glyph").parentElement);
     try {
     current = null;
     $("#questionCount").textContent = "Loading kanji…";
@@ -495,18 +505,19 @@ import { setSettingAvailability } from "./settings-panel.js";
     $("#promptText").textContent = "Fetching kanji details";
     $("#answerInput").disabled = true;
     $("#checkButton").disabled = true;
-    $("#showButton").disabled = true;
     let data;
     try {
-      data = await batches.take(sessionSettings.levelSelect);
+      data = await batches.take(`${sessionSettings.levelSelect}|${readingType(sessionSettings.readingDirection)}`);
     } catch (error) {
       if (requestId !== questionRequest) return;
       current = null;
       showWarning(error.message && !/fetch|network|VITE_|backend|database|HTTP/i.test(error.message)
         ? `We couldn’t load kanji questions right now (${error.message}). Please try again in a moment.`
         : "We couldn’t load kanji questions right now. Please check your connection and try again.");
-      $("#promptText").textContent = "Could not load kanji. Use Skip to retry, or start a new session with another JLPT level.";
-      $("#skipButton").disabled = false;
+      $("#promptText").textContent = "Could not load kanji. Retry, or start a new session with another JLPT level.";
+      $("#nextButton").textContent = "Retry";
+      $("#nextButton").hidden = false;
+      $("#nextButton").disabled = false;
       return;
     }
     if (requestId !== questionRequest) return;
@@ -518,7 +529,7 @@ import { setSettingAvailability } from "./settings-panel.js";
       ? (Math.random() < .5 ? "meaning-forward" : "meaning-reverse")
       : directionChoice;
     const reverseMeaning = questionType === "meaning" && direction === "meaning-reverse";
-    const meanings = kanjiAnswers(data, questionType, character);
+    const meanings = questionType === "reading" ? selectedReadings(data, direction) : kanjiAnswers(data, questionType, character);
     const meaning = reverseMeaning ? randomItem(meanings) : null;
     renderQuestion({
       kind:"kanji", character, display: reverseMeaning ? meaning : character, data,
@@ -564,35 +575,12 @@ import { setSettingAvailability } from "./settings-panel.js";
     $("#checkButton").disabled = false;
     $("#checkButton").textContent = "Continue";
     $("#nextButton").hidden = true;
-    $("#skipButton").disabled = true;
-    $("#showButton").disabled = true;
     updateSessionStatus();
-    showSuddenCountdown($("#feedback"), 2000);
+    showSuddenCountdown($(".answer-feedback-slot"), 2000);
     autoAdvanceTimer = window.setTimeout(finishSuddenNow, 2000);
   }
   function finishSuddenNow() {
     if (suddenPending) finishSession(`Sudden Death over · streak of ${stats.correct}.`, true);
-  }
-  function skipQuestion() {
-    if (!sessionActive || sessionPendingStart) return;
-    if (sessionMode === "sudden" && current && !questionScored) { suddenDeathMiss(); return; }
-    if (sessionMode === "timed" && !sessionPausedAt && Date.now() >= sessionDeadline) {
-      finishSession("Time is up.");
-      return;
-    }
-    if (questionScored) {
-      advanceQuestion();
-      return;
-    }
-    if (sessionMode === "questions" && current) {
-      questionsUsed++;
-      updateSessionStatus();
-      if (questionsUsed >= sessionLimit) {
-        finishSession("Question goal reached.");
-        return;
-      }
-    }
-    advanceQuestion();
   }
   function acceptedAnswers(question) {
     if (question.kind !== "kanji") return question.answers;
@@ -610,31 +598,8 @@ import { setSettingAvailability } from "./settings-panel.js";
       return userText.trim().normalize("NFC") === question.character;
     }
     const isKanjiReading = question.kind === "kanji" && question.questionType === "reading";
-    const direction = question.direction || sessionSettings.readingDirection || "";
-    const rawReadings = isKanjiReading
-      ? [...(question.data.on_readings || []), ...(question.data.kun_readings || [])]
-        .map((reading) => reading.replace(/[.\-]/g, ""))
-      : [];
-    const directedKana = direction === "reading-hiragana" ? rawReadings.map(katakanaToHiragana)
-      : direction === "reading-katakana" ? rawReadings.map((reading) => [...reading].map((char) => {
-        const code = char.codePointAt(0);
-        return code >= 0x3041 && code <= 0x3096 ? String.fromCodePoint(code + 0x60) : char;
-      }).join(""))
-      : direction === "reading-any-kana" ? [...rawReadings, ...rawReadings.map(katakanaToHiragana)] : [];
-    const romajiAnswers = isKanjiReading
-      ? rawReadings.map(romanize).map(normalize)
-      : [];
-    return provided.some((answer) => answers.some((variant) => {
-      const expected = normalize(variant);
-      const isKanaInput = /[\u3040-\u30ff]/u.test(answer);
-      if (isKanjiReading && direction.startsWith("reading-")) {
-        if (direction === "reading-hiragana" || direction === "reading-katakana" || direction === "reading-any-kana") {
-          return directedKana.some((reading) => normalize(reading) === answer);
-        }
-        return romajiAnswers.includes(answer);
-      }
-      return expected === answer || (isKanjiReading && !isKanaInput && romajiAnswers.includes(answer));
-    }));
+    if (isKanjiReading) return matchesReading(userText, question.data, question.direction);
+    return provided.some((answer) => answers.some((variant) => normalize(variant) === answer));
   }
   function displayAnswers(question) {
     const answers = acceptedAnswers(question);
@@ -695,13 +660,18 @@ import { setSettingAvailability } from "./settings-panel.js";
       updateSessionStatus();
       $("#checkButton").disabled = correct;
       $("#checkButton").textContent = correct ? "Check" : "Continue";
-      const reviewKanji = current.kind === "kanji" && sessionSettings.reviewKanjiToggle;
+      const reviewKanji = current.kind === "kanji" && $("#reviewKanjiToggle").checked;
       $("#nextButton").hidden = !reviewKanji;
       $("#nextButton").textContent = correct ? "Next" : "Continue";
       if (reviewKanji || (!correct && current.kind === "kanji")) pauseSessionClock();
     }
     const feedback = $("#feedback");
     feedback.className = `feedback${revealOnly ? "" : correct ? " correct" : " incorrect"}`;
+    $("#correctCaption").hidden = !correct;
+    $("#incorrectCaption").textContent = correct ? "" : `Answer: ${displayAnswers(current)} · Enter to continue`;
+    $("#answerInput").dataset.grade = revealOnly ? "" : correct ? "correct" : "incorrect";
+    $("#answerInput").setAttribute("aria-invalid", String(!revealOnly && !correct));
+    feedback.hidden = current.kind !== "kanji" || !$("#reviewKanjiToggle").checked;
     if (current.kind !== "kanji") speakJapanese(current.character);
     if (current.kind !== "kanji") {
       feedback.textContent = !revealOnly && !correct ? `Answer: ${displayAnswers(current)} · Enter to continue` : "";
@@ -711,15 +681,15 @@ import { setSettingAvailability } from "./settings-panel.js";
       ${!revealOnly && !correct ? '<p class="feedback-note">Edit your answer, then press Enter to continue.</p>' : ""}`;
     if (!revealOnly && !correct && sessionMode === "sudden") {
       beginSuddenFinish();
-    } else if (reachedQuestionLimit && correct && !(current.kind === "kanji" && sessionSettings.reviewKanjiToggle)) {
-      finishSession("Question goal reached.", true);
-    } else if (correct && current.kind === "kanji" && sessionSettings.reviewKanjiToggle) {
+    } else if (reachedQuestionLimit && correct && !(current.kind === "kanji" && $("#reviewKanjiToggle").checked)) {
+      autoAdvanceTimer = window.setTimeout(() => finishSession("Question goal reached.", true), 750);
+    } else if (correct && current.kind === "kanji" && $("#reviewKanjiToggle").checked) {
       $("#answerInput").disabled = true;
     } else if (correct) {
       const answeredQuestion = current;
       autoAdvanceTimer = window.setTimeout(() => {
         if (current === answeredQuestion) advanceQuestion();
-      }, 500);
+      }, 750);
     } else if (!revealOnly) {
       $("#answerInput").focus({ preventScroll: true });
       $("#answerInput").select();
@@ -761,11 +731,17 @@ import { setSettingAvailability } from "./settings-panel.js";
     candidates.replaceChildren();
     checkAnswer(false);
   });
-  $("#answerInput").addEventListener("input", () => { candidateRequest++; candidates.replaceChildren(); });
+  $("#answerInput").addEventListener("input", () => { candidateRequest++; candidates.replaceChildren(); clearReadingKanji(); });
   $("#answerInput").addEventListener("input", startFreeClock);
-  $("#skipButton").addEventListener("click", skipQuestion);
   $("#nextButton").addEventListener("click", advanceQuestion);
-  $("#showButton").addEventListener("click", () => checkAnswer(true));
+  $("#reviewKanjiToggle")?.addEventListener("change", () => {
+    $("#feedback").hidden = !questionScored || !$("#reviewKanjiToggle").checked;
+    if (!sessionActive || !questionScored || suddenPending) return;
+    clearTimeout(autoAdvanceTimer);
+    $("#nextButton").hidden = !$("#reviewKanjiToggle").checked;
+    if ($("#reviewKanjiToggle").checked) pauseSessionClock();
+    else if (currentAnswerCorrect) advanceQuestion();
+  });
   $("#stopSessionButton").addEventListener("click", () => finishSession("Session stopped."));
   $("#fontChoice").addEventListener("change", () => { if (!sessionSettings) useFont(); });
   $("#sessionMode").addEventListener("change", updateSessionFields);

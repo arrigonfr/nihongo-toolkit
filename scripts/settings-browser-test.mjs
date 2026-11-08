@@ -18,13 +18,14 @@ const cases = [
   ["imi.html", { levelSelect: "3", meaningDirection: "meaning-reverse", fontChoice: "Zen Kurenaido", sessionMode: "timed", sessionTarget: 7, showStatsToggle: false, reviewKanjiToggle: true }],
   ["yomi.html", { levelSelect: "unrated", readingDirection: "reading-katakana", fontChoice: "M PLUS Rounded 1c", sessionMode: "questions", sessionTarget: 18, showStatsToggle: true, reviewKanjiToggle: true }],
   ["goi.html", { levelSelect: "N2", modeSelect: "cloze-ej", kanaDirection: "to-kana", fontChoice: "Noto Sans JP", sessionType: "time", questionLimit: 27, timeLimit: 6, showStatsToggle: false, showExampleToggle: false }],
+  ["kanji-kuizu.html", { mode: "timed", count: "custom", customCount: 17, seconds: "30", levelSelect: "3,2", variants: "reading-kanji", readingPrompt: "audio", fontSize: "80", hintMode: "limited", hintLimit: 7, revealMode: "disabled", revealLimit: 4, details: false }],
   ["kotoba.html", { kanjiMode: true }],
   ["fumitoki.html", { translationToggle: true }],
   ["kanji-chizucho.html", {}],
-  ["katsuyo.html", { "setting-politeness": "polite", "setting-polarity": "negative", "setting-tense": "past", "setting-fontSize": "30", "setting-level": "3", "setting-category": "adjective", "setting-compact": true, "setting-examples": false, "setting-kanji": false, "setting-contrast": true }],
-  ["katsuyo-renshuu.html", { "setting-mode": "reverse", "setting-questions": "20", "setting-language": "both", "setting-input": "kanji", "setting-seconds": 73, "setting-mistakes": 4, "setting-hints": "limited", "setting-hintLimit": 8, "setting-revealLimit": 6, "setting-meaning": false, "setting-type": false, "setting-repeat": false, "setting-timer": true, "setting-fontSize": "48" }],
+  ["katsuyo.html", { "setting-politeness": "polite", "setting-polarity": "negative", "setting-tense": "past", "setting-fontSize": "30", "setting-level": "3", "setting-category": "adjective", "setting-compact": true, "setting-contrast": true }],
+  ["katsuyo-renshuu.html", { "setting-mode": "reverse", "setting-questions": "20", "setting-seconds": 73, "setting-mistakes": 4, "setting-hints": "limited", "setting-hintLimit": 8, "setting-revealLimit": 6, "setting-meaning": false, "setting-type": false, "setting-timer": true, "setting-fontSize": "48", "setting-autoAdvance": true }],
   ["pazuru.html", { answerModeSelect: "kanji", levelSelect: "4", sizeSelect: "custom", customWordsInput: 6, fontScaleSelect: "large", checkAvailSelect: "limited", revealAvailSelect: "disabled", hintLimitInput: 7, timedMinutesInput: 9, layoutDirSelect: "rtl", inputStyleSelect: "clues", kanjiFocusToggle: true }],
-  ["shiritori.html", { "setting-mode": "timed", "setting-opponent": "local", "setting-players": 3, "setting-entry": "both", "setting-level": "N4", "setting-bonus": true, "setting-reveal": true, "setting-voicing": true, "setting-hints": "disabled", "setting-timer": "60", "setting-fontSize": "large", "setting-contrast": true }],
+  ["shiritori.html", { "setting-mode": "timed", "setting-opponent": "local", "setting-players": 3, "setting-entry": "both", "setting-bonus": true, "setting-bonusKana": false, "setting-reveal": true, "setting-voicing": true, "setting-hints": "disabled", "setting-timer": "60", "setting-fontSize": "large", "setting-contrast": true }],
   ["kotoba-sagashi.html", { "setting-mode": "timed", sizePreset: "custom", "setting-size": 10, "setting-overlap": false, "setting-meanings": false, "setting-seconds": 73, "setting-fontSize": 38, "setting-contrast": true, "setting-animation": false, hintType: "length" }],
   ["eawase.html", { "setting-examples": false, "setting-content": "kana", "setting-pairing": "same-katakana", "setting-grid": "custom", "setting-count": 7, "setting-mode": "moves", "setting-flips": 23, "setting-players": "2", "setting-shuffle": "all", "setting-disappear": true, "setting-learning": false, "setting-fontSize": 36, "setting-contrast": true, hintType: "reading" }]
 ];
@@ -102,7 +103,7 @@ try {
     assert.deepEqual(await snapshot(reopened), expected, `${file}: preferences survive in a new tab`);
     if (["kana.html", "imi.html", "yomi.html"].includes(file)) {
       assert.equal(await reopened.locator("#questionSection").isVisible(), false, "Restoring settings does not start a quiz");
-      assert.equal(await reopened.locator("#sessionStatsContent").isVisible(), values.showStatsToggle);
+      assert.equal(await reopened.locator("#sessionStatsContent").evaluate((node) => !node.hidden), values.showStatsToggle);
     }
     await reopenedRaw.close();
   }
@@ -176,6 +177,11 @@ try {
   sessionPage.on("pageerror", (error) => errors.push(error.message));
   sessionPage.on("dialog", (dialog) => dialog.accept());
   const sessionGo = (file) => sessionPage.goto(`${base}/${encodeURIComponent(file)}`);
+  const changePending = (id, value) => sessionPage.locator(`#${id}`).evaluate((node, value) => {
+    if (node.type === "checkbox") node.checked = value;
+    else node.value = String(value);
+    node.dispatchEvent(new Event("change", { bubbles: true }));
+  }, value);
   async function toggleStudy(snapshot) {
     const before = await snapshot();
     for (const id of ["furiganaQuickToggle", "romajiQuickToggle", "audioQuickToggle"]) {
@@ -190,7 +196,7 @@ try {
   for (const [file, direction, initial, next] of [
     ["kana.html", "kanaDirection", "hiragana-romaji", "romaji-katakana"],
     ["imi.html", "meaningDirection", "meaning-forward", "meaning-reverse"],
-    ["yomi.html", "readingDirection", "reading-romaji", "reading-katakana"]
+    ["yomi.html", "readingDirection", "reading-any-kana", "reading-katakana"]
   ]) {
     await sessionGo(file);
     await sessionPage.selectOption(`#${direction}`, initial, { force: true });
@@ -203,19 +209,22 @@ try {
       .map((id) => document.getElementById(id).textContent).concat(document.getElementById("answerInput").value));
     const before = await snapshot();
     const prompt = await sessionPage.textContent("#promptText");
-    await sessionPage.click("#settingsPanel summary");
-    await sessionPage.selectOption(`#${direction}`, next, { force: true });
+    assert.equal(await sessionPage.locator("#settingsPanel").isVisible(), false);
+    await changePending(direction, next);
     await sessionPage.locator("#fontChoice").evaluate((node, value) => { node.value = value; node.dispatchEvent(new Event("change", { bubbles: true })); }, "Sawarabi Mincho");
-    await sessionPage.selectOption("#sessionMode", "timed", { force: true });
-    await sessionPage.fill("#sessionTarget", "2");
+    await changePending("sessionMode", "timed");
+    await changePending("sessionTarget", "2");
     await sessionPage.uncheck("#showStatsToggle");
     assert.deepEqual(await snapshot(), before, `${file}: editing next-session settings leaves the active session untouched`);
     assert.equal(await sessionPage.locator("#sessionStatsContent").isVisible(), true);
     await toggleStudy(snapshot);
-    await sessionPage.click("#skipButton");
+    await sessionPage.fill("#answerInput", "wrong");
+    await sessionPage.click("#checkButton");
+    await sessionPage.click("#checkButton");
     await sessionPage.waitForFunction(() => !document.querySelector("#checkButton").disabled);
     assert.equal(await sessionPage.textContent("#promptText"), prompt, "Following questions keep the original direction");
     await sessionPage.click("#stopSessionButton");
+    await sessionPage.click("[data-play-again]");
     await sessionPage.click("#startSessionButton");
     await sessionPage.waitForFunction(() => !document.querySelector("#checkButton").disabled);
     assert.notEqual(await sessionPage.textContent("#promptText"), prompt, "The new session adopts the saved direction");
@@ -228,11 +237,11 @@ try {
   await sessionPage.selectOption("#modeSelect", "multiple-je", { force: true });
   await sessionPage.click("#startButton");
   await sessionPage.locator(".option").first().waitFor();
-  await sessionPage.click("#settingsPanel summary");
+  assert.equal(await sessionPage.locator("#settingsPanel").isVisible(), false);
   const choices = await sessionPage.locator(".option").allTextContents();
-  await sessionPage.selectOption("#modeSelect", "typing-ej", { force: true });
-  await sessionPage.selectOption("#sessionType", "questions", { force: true });
-  await sessionPage.fill("#questionLimit", "2");
+  await changePending("modeSelect", "typing-ej");
+  await changePending("sessionType", "questions");
+  await changePending("questionLimit", "2");
   assert.deepEqual(await sessionPage.locator(".option").allTextContents(), choices);
   await toggleStudy(() => sessionPage.evaluate(() => ["questionLabel", "answeredStat"].map((id) => document.getElementById(id).textContent)));
   await sessionPage.locator(".option").first().click();
@@ -242,6 +251,7 @@ try {
   await sessionPage.waitForFunction(() => document.querySelector("#questionLabel").textContent === "Question 2");
   assert.equal(await sessionPage.locator("#options").isVisible(), true);
   await sessionPage.click("#stopSessionButton");
+  await sessionPage.click("[data-play-again]");
   await sessionPage.click("#startButton");
   await sessionPage.locator("#answerInput").waitFor();
   assert.equal(await sessionPage.locator("#options").isVisible(), false);
@@ -251,7 +261,7 @@ try {
   await sessionPage.click("#startButton");
   await sessionPage.fill("#answerInput", "たべ");
   const question = await sessionPage.textContent("#questionBody");
-  await sessionPage.selectOption("#setting-fontSize", "48");
+  await changePending("setting-fontSize", "48");
   await sessionPage.locator("#setting-font").evaluate((node, value) => { node.value = value; node.dispatchEvent(new Event("change", { bubbles: true })); }, "Sawarabi Mincho");
   assert.equal(await sessionPage.textContent("#questionBody"), question);
   assert.equal(await sessionPage.evaluate(() => document.documentElement.style.getPropertyValue("--jp-size")), "40px");
@@ -266,6 +276,7 @@ try {
   assert.match(await sessionPage.locator(".base-word [lang=ja]").first().evaluate((node) => getComputedStyle(node).fontFamily), /Sawarabi Mincho/);
 
   await sessionGo("pazuru.html");
+  await changePending("revealAvailSelect", "disabled");
   await sessionPage.click("#newPuzzleBtn");
   await sessionPage.locator("#crosswordGrid .cw-cell").first().waitFor();
   await sessionPage.locator(".cw-cell.is-active").click();
@@ -275,13 +286,14 @@ try {
     document.getElementById("progressMetric").textContent, document.getElementById("popoverAnswerInput")?.value
   ]);
   const beforeCrossword = await crossword();
-  await sessionPage.locator("#settingsDrawer summary").click();
-  await sessionPage.selectOption("#inputStyleSelect", "clues", { force: true });
-  await sessionPage.selectOption("#fontScaleSelect", "large");
-  await sessionPage.selectOption("#levelSelect", "4", { force: true });
+  await changePending("inputStyleSelect", "clues");
+  await changePending("fontScaleSelect", "large");
+  await changePending("levelSelect", "4");
   assert.deepEqual(await crossword(), beforeCrossword, "Crossword edits never regenerate the board or lose typed input");
   assert.equal(await sessionPage.locator("#timerMetricWrap").isVisible(), true);
   await toggleStudy(crossword);
+  await sessionPage.click("#endPuzzleBtn");
+  await sessionPage.click("[data-play-again]");
   await sessionPage.click("#newPuzzleBtn");
   await sessionPage.waitForFunction(() => document.querySelector("#feedbackBanner").hidden);
   assert.ok(await sessionPage.locator(".cw-clue-inline-input").count() > 0);
@@ -301,24 +313,29 @@ try {
     }
     await sessionPage.click(`#${start}`);
     await sessionPage.waitForFunction(() => !document.getElementById("settingsPanel").open);
+    await sessionPage.waitForFunction((id) => !document.getElementById(id).disabled, start);
     const snapshot = () => sessionPage.evaluate((id) => [
       document.getElementById(id).textContent, document.getElementById("modeBadge").textContent
     ], progressId);
     const before = await snapshot();
-    await sessionPage.click("#settingsPanel summary");
+    assert.equal(await sessionPage.locator("#settingsPanel").isVisible(), false);
     if (await sessionPage.locator(`#modePills [data-mode="${mode}"]`).count()) {
-      await sessionPage.locator(`#modePills [data-mode="${mode}"]`).click();
-    } else await sessionPage.selectOption("#setting-mode", mode, { force: true });
+      await sessionPage.locator(`#modePills [data-mode="${mode}"]`).evaluate((node) => node.click());
+    } else await changePending("setting-mode", mode);
     await sessionPage.locator("#setting-font").evaluate((node, value) => { node.value = value; node.dispatchEvent(new Event("change", { bubbles: true })); }, fonts.get(file));
-    await sessionPage.check(`#${contrast}`);
+    await changePending(contrast, true);
     assert.deepEqual(await snapshot(), before, `${file}: pending game settings preserve progress and mode`);
     assert.equal(await sessionPage.getAttribute("html", "data-contrast"), "false");
     assert.equal(await sessionPage.getAttribute("html", "data-japanese-font"), "Noto Sans JP", "Font changes wait for the next game");
     assert.equal(await sessionPage.locator('#settingsForm button[type="submit"]').count(), 0);
     await toggleStudy(snapshot);
+    await sessionPage.click(file === "shiritori.html" ? "#stopGame" : "#endButton");
+    if (file !== "shiritori.html") {
+      assert.ok(await sessionPage.locator(".study-confirm-dialog").count(), `${file}: end-round confirmation appears`);
+      await sessionPage.locator(".study-confirm-dialog button").last().click();
+    }
+    await sessionPage.click("[data-play-again]");
     await sessionPage.click(`#${start}`);
-    await sessionPage.locator(".study-confirm-dialog .study-pills button").nth(1).click();
-    await sessionPage.locator(".study-confirm-dialog").waitFor({ state: "detached" });
     await sessionPage.waitForFunction(() => !document.getElementById("settingsPanel").open);
     assert.notEqual((await snapshot())[1], before[1], `${file}: the next game adopts the new mode`);
     assert.equal(await sessionPage.getAttribute("html", "data-contrast"), "true");
@@ -330,7 +347,7 @@ try {
   }
   await liveContext.close();
   assert.deepEqual(errors, []);
-  console.log("Settings checks passed: all thirteen tools, persistence, game-session snapshots, live study controls, invalid values and storage failures.");
+  console.log("Settings checks passed: all fourteen tools, persistence, game-session snapshots, live study controls, invalid values and storage failures.");
 } finally {
   await browser?.close();
   await vite?.close();

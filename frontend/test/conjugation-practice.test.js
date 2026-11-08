@@ -206,11 +206,15 @@ test("settings restoration validates enums, booleans, arrays and bounds", () => 
   assert.throws(() => cleanSettings(null));
 });
 
-test("removed display preferences migrate without affecting answer script or other settings", () => {
-  const cleaned = cleanSettings({ script: "both", kanji: false, input: "both", fontSize: 48 });
+test("removed preferences migrate to fixed practice behavior", () => {
+  const cleaned = cleanSettings({ script: "both", kanji: false, input: "both", language: "en", repeat: false, priority: "new", examples: true, fontSize: 48 });
   assert.equal(cleaned.script, "furigana");
   assert.equal(Object.hasOwn(cleaned, "kanji"), false);
-  assert.equal(cleaned.input, "both");
+  assert.equal(cleaned.input, "either");
+  assert.equal(cleaned.language, "both");
+  assert.equal(cleaned.repeat, true);
+  assert.equal(cleaned.priority, "balanced");
+  assert.equal(cleaned.examples, false);
   assert.equal(cleaned.fontSize, 48);
   for (const script of ["kana", "kanji", "furigana"]) assert.equal(cleanSettings({ script }).script, script);
 });
@@ -279,14 +283,14 @@ test("missed questions repeat without counting toward the session question limit
   assert.notEqual(session.current.key, first);
   assert.equal(session.questionCount, 2);
   answerCurrent(session); session.next(300);
-  assert.equal(session.current.key, first);
-  assert.equal(session.currentIsRepeat, true);
-  assert.equal(session.questionCount, 2);
-  session.submit("まちがい", {}, 350);
-  session.next(400);
   assert.equal(session.current.key === first, false);
   assert.equal(session.questionCount, 3);
-  answerCurrent(session, 450);
+  assert.equal(session.currentIsRepeat, false);
+  answerCurrent(session, 350); session.next(400);
+  assert.equal(session.current.key, first);
+  assert.equal(session.currentIsRepeat, true);
+  assert.equal(session.questionCount, 3);
+  session.submit("まちがい", {}, 450);
   session.next(500);
   assert.equal(session.ended, true);
   assert.equal(session.summary(500).total, 3);
@@ -303,9 +307,9 @@ test("missed questions repeat without counting toward the session question limit
   assert.equal(finalMiss.ended, true);
   assert.equal(finalMiss.summary(300).total, 1);
 
-  const noRepeat = sessionFor({ repeat: false });
-  noRepeat.submit("まちがい", {}, 100);
-  assert.equal(noRepeat.repeats.length, 0);
+  const legacy = sessionFor({ repeat: false });
+  legacy.submit("まちがい", {}, 100);
+  assert.equal(legacy.repeats.length, 1);
 });
 
 test("hints and reveals obey independent session limits and count as assisted", () => {

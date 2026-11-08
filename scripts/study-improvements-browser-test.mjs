@@ -73,10 +73,34 @@ try {
   await change("readingDirection", "reading-katakana");
   await page.click("#startSessionButton");
   await page.waitForFunction(() => !document.getElementById("answerInput").disabled);
+  await page.check("#reviewKanjiToggle");
+  await page.fill("#answerInput", "日");
+  assert.equal(await page.inputValue("#answerInput"), "");
+  await page.locator("#answerInput").evaluate((input) => {
+    input.dispatchEvent(new CompositionEvent("compositionstart"));
+    input.value = "日";
+    input.dispatchEvent(new CompositionEvent("compositionend"));
+  });
+  assert.equal(await page.inputValue("#answerInput"), "");
   await page.locator("#answerInput").pressSequentially("nichi");
   assert.equal(await page.inputValue("#answerInput"), "ニチ");
   await page.click("#checkButton");
   assert.equal(await page.textContent("#accuracyStat"), "100%");
+  assert.equal(await page.locator("#nextButton").isVisible(), true, "Review switch applies to this answer");
+  await page.uncheck("#reviewKanjiToggle");
+  await page.waitForFunction(() => document.getElementById("questionCount").textContent === "Question 2");
+  await go("読み");
+  await change("readingDirection", "reading-hiragana");
+  await page.click("#startSessionButton");
+  await page.waitForFunction(() => !document.getElementById("answerInput").disabled);
+  await page.check("#reviewKanjiToggle");
+  await page.fill("#answerInput", "ニチ");
+  await page.click("#checkButton");
+  assert.equal(await page.textContent("#accuracyStat"), "0%", "On'yomi is not accepted for a kun'yomi question");
+  await page.click("#nextButton");
+  await page.fill("#answerInput", "ヒ");
+  await page.click("#checkButton");
+  assert.equal(await page.textContent("#accuracyStat"), "50%", "Katakana is accepted for the selected kun'yomi reading");
   await go("読み");
   await change("readingDirection", "reading-any-kana");
   await page.click("#startSessionButton");
@@ -95,6 +119,10 @@ try {
   assert.equal(await page.textContent("#answeredStat"), "0", "Choosing candidates does not score a guess");
   await page.locator("#answerCandidates button").filter({ hasText: /^日$/ }).click();
   assert.equal(await page.textContent("#accuracyStat"), "100%");
+  await page.check("#reviewKanjiToggle");
+  assert.equal(await page.locator("#nextButton").isVisible(), true);
+  await page.uncheck("#reviewKanjiToggle");
+  await page.waitForFunction(() => document.getElementById("questionCount").textContent === "Question 2");
 
   await go("活用練習");
   assert.equal(await page.locator("#setting-script").count(), 0);
@@ -103,8 +131,8 @@ try {
   assert.equal(await page.locator('#formSettings .chip-option input[value="potential"]').isEnabled(), true);
   assert.equal(await page.locator('#formSettings .chip-option input[value="potential"]').isChecked(), false);
   await page.locator('#levelSettings .chip-option:has(input[value="4"]) .chip-label').click();
-  assert.equal(await page.locator('#formSettings .chip-option input[value="potential"]').isChecked(), true);
-  await change("setting-language", "en");
+  assert.equal(await page.locator('#formSettings .chip-option input[value="potential"]').isChecked(), false, "Changing levels preserves the selected forms");
+  assert.equal(await page.locator("#setting-language").count(), 0);
   await page.click("#startButton");
   assert.match(await page.textContent(".requested-form"), /Politeness/);
   await page.click("#checkButton");
@@ -137,7 +165,7 @@ try {
   await go("言葉探し");
   await change("sizePreset", "20");
   await change("setting-list", "japaneseClue");
-  await page.click("#newGame");
+  await page.click("#startButton");
   await page.locator("#grid [data-cell]").first().waitFor();
   assert.equal(await page.locator("#grid [data-cell]").count(), 400);
   assert.match(await page.textContent("#listNote"), /Category clues/);

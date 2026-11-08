@@ -1,5 +1,6 @@
 export const dictionaryRelease = "3.6.2+20261019180022";
 export const openJlptRevision = "0d1d3410bec90bd4098a7c72de820543cb4f707c";
+export const kezuruRevision = "a6b0161b8391bd542cb685bf58e60c12d754617d";
 export const kanjiVgRevision = "70a0b7ae0c18ceb5cb358274b029cce0234a43bc";
 export const dictionaryUrl = (name) =>
   `https://github.com/scriptin/jmdict-simplified/releases/download/${encodeURIComponent(dictionaryRelease)}/${name}-${encodeURIComponent(dictionaryRelease)}.json.tgz`;

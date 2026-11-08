@@ -4,7 +4,9 @@ import { beginLoading } from "./request-loading.js";
 import { setSettingAvailability } from "./settings-panel.js";
 import { BatchQueue } from "./batch-queue.js";
 import { mountSentenceExamples, loadSentences } from "./examples.js";
+import "./answer-feedback.css";
 import { romanizeKana } from "./romanize.js";
+import { meaningAnswers } from "./vocabulary-answers.js";
 import { meaningChoices } from "./quiz-choices.js";
 import { rememberControls } from "./settings-storage.js";
 import { mountFontControls, fontList, isFontSetting } from "./japanese-fonts.js";
@@ -73,6 +75,8 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
       word: item.word.trim(),
       furigana: typeof item.furigana === "string" ? item.furigana.trim() : (typeof item.reading === "string" ? item.reading.trim() : ""),
       meaning: item.meaning.trim(),
+      acceptedMeanings: [...new Set([item.meaning, ...(item.meanings || []), ...(item.acceptedMeanings || [])])],
+      writtenForms: (item.writtenForms || []).filter((word) => typeof word === "string" && /\p{Script=Han}/u.test(word)),
       level: Number.isInteger(levelNum) && levelNum >= 1 && levelNum <= 5 ? `N${levelNum}` :
         (LEVELS.includes(item.level) ? item.level : "N3"),
       romaji: typeof item.romaji === "string" ? item.romaji.trim() : "",
@@ -112,7 +116,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
       showStats: state.showStats, showExample: state.showExample
     };
   }
-  function currentSettings() { return state.session.settings || readSettings(); }
+  function currentSettings() { return { ...(state.session.settings || readSettings()), showExample: state.showExample }; }
   function useFont() {
     const font = currentSettings().font;
     const selected = randomItem(fontList(font));
@@ -200,6 +204,12 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
     state.questionStartedAt = Date.now();
     state.selectedOption = null;
     state.checked = false;
+    state.answerGrade = null;
+    $(".answer-feedback-slot .sudden-countdown")?.remove();
+    $("#correctCaption").hidden = true;
+    $("#incorrectCaption").textContent = "";
+    delete $("#answerInput").dataset.grade;
+    $("#answerInput").removeAttribute("aria-invalid");
     state.wrongAnswerPending = false;
     $("#question").hidden = false;
     $("#sessionStatsContent").hidden = !currentSettings().showStats;
@@ -236,19 +246,23 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
       $("#checkButton").hidden = true;
     } else if (mode === "typing" && dir === "je") {
       $("#prompt").textContent = "Type the English meaning";
-      $("#word").innerHTML = japaneseHTML(item.word, item.furigana);
+      $("#word").innerHTML = wordPrompt(item);
       $("#answerInput").hidden = false;
       $("#answerInput").placeholder = "Type the English meaning";
     } else if (mode === "cloze" && dir === "je") {
       const example = getExample(item);
       $("#prompt").textContent = `Type the English meaning of the highlighted word${example.synthetic ? ` · AI-generated, ${example.reviewed ? "reviewed" : "unverified"}` : ""}`;
-      $("#word").innerHTML = example.generated ? japaneseHTML(item.word, item.furigana)
+      $("#word").innerHTML = example.generated ? wordPrompt(item)
         : `<span class="japanese">${escapeHTML(example.sentence).replace(/(.*)/, (all) => highlightTerm(all, item))}</span>`;
+      if (!example.generated && item.writtenForms.length) {
+        $("#word").insertAdjacentHTML("beforeend", `<span class="word-spelling-note" lang="ja">Also written: ${item.writtenForms.map(escapeHTML).join(" / ")}</span>`);
+      }
       $("#answerInput").hidden = false;
       $("#answerInput").placeholder = "Type the English meaning";
     } else if (mode === "typing") {
       $("#prompt").innerHTML = `Type the Japanese vocabulary word for:<strong>${escapeHTML(item.meaning)}</strong>`;
-      $("#word").textContent = "？";
+      $("#word").innerHTML = state.questionDirection === "to-romaji" ? wordPrompt(item)
+        : `<span class="english-prompt">${escapeHTML(item.romaji || romanizeKana(item.furigana || item.word))}</span>`;
       $("#answerInput").hidden = false;
       $("#answerInput").placeholder = kanaPlaceholder("Type the Japanese word");
     } else {
@@ -338,7 +352,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
     $("#nextButton").innerHTML = 'Continue <span class="quiz-shortcut" aria-hidden="true">(Enter / N)</span>';
     setStatus("Sudden Death over. Here is the answer; your results follow in a moment.");
     clearTimeout(state.advanceTimer);
-    showSuddenCountdown($("#feedback"), 2000);
+    showSuddenCountdown($(".answer-feedback-slot"), 2000);
     state.advanceTimer = setTimeout(() => finishQuiz("sudden"), 2000);
   }
   function updateLiveStats() {
@@ -416,14 +430,15 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
   function acceptedAnswers(item, direction = null) {
     if (direction === "to-romaji") return romajiVariants(item.romaji || romanizeKana(item.furigana || item.word));
     if (direction === "to-kana") return [...new Set([item.word, item.furigana].filter(Boolean))];
-    if (direction === "meaning") return meaningVariants(item.meaning);
+    if (direction === "meaning") return meaningAnswers(item.acceptedMeanings);
     return [...new Set([item.word, item.furigana, ...romajiVariants(item.romaji || romanizeKana(item.furigana))])];
   }
-  function meaningVariants(meaning) {
-    const text = String(meaning || "");
-    const parts = text.split(/[;,/]/).map((part) => part.trim()).filter(Boolean);
-    const stripped = parts.map((part) => part.replace(/\([^)]*\)/g, "").trim()).filter(Boolean);
-    return [...new Set([text, ...parts, ...stripped])];
+  function wordPrompt(item) {
+    if (item.writtenForms.length && !/\p{Script=Han}/u.test(item.word)) {
+      return `<ruby class="word-spelling-hint" lang="ja">${escapeHTML(item.word)}<rt>${item.writtenForms.map(escapeHTML).join(" / ")}</rt></ruby>`;
+    }
+    return state.questionDirection === "to-romaji" && currentSettings().dir === "ej"
+      ? `<span lang="ja">${escapeHTML(item.word)}</span>` : japaneseHTML(item.word, item.furigana);
   }
   function expectedAnswers(item) {
     const { mode, dir } = currentSettings();
@@ -492,26 +507,27 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
       renderStats();
     } else if (state.session.type === "sudden") recordSuddenMiss();
     const feedback = $("#feedback");
-    feedback.hidden = false;
+    feedback.hidden = !state.showExample;
     feedback.className = `feedback ${isCorrect ? "correct" : revealed ? "" : "incorrect"}`;
     const title = revealed ? "Answer revealed" : isCorrect ? "Correct!" : "Not quite";
     const accepted = expectedAnswers(state.current);
     const acceptedText = accepted.length ? `<br>Accepted answers: ${accepted.map(escapeHTML).join(", ")}` : "";
     feedback.innerHTML = `<strong>${title}</strong>Answer: ${japaneseHTML(state.current.word, state.current.furigana)} — ${escapeHTML(state.current.meaning)}${acceptedText}`;
-    const reviewed = state.current;
-    const shouldShowExample = revealed || currentSettings().showExample || !isCorrect;
+    state.answerGrade = revealed ? "revealed" : isCorrect ? "correct" : "incorrect";
+    $("#correctCaption").hidden = !isCorrect;
+    $("#incorrectCaption").textContent = isCorrect ? "" : `${revealed ? "Answer" : "Not quite"}: ${accepted.length ? accepted.join(" / ") : `${state.current.word} — ${state.current.meaning}`} · Enter to continue`;
+    $("#answerInput").dataset.grade = revealed ? "" : state.answerGrade;
+    $("#answerInput").setAttribute("aria-invalid", String(!revealed && !isCorrect));
     const section = document.createElement("section");
     section.className = "feedback-section";
-    section.hidden = !shouldShowExample;
     section.innerHTML = `<h3>Example sentences</h3><div class="feedback-examples"></div>`;
     feedback.append(section);
-    if (shouldShowExample) mountSentenceExamples(section.querySelector(".feedback-examples"), reviewed.word, reviewed.examples);
     if (state.wrongAnswerPending && !$("#answerInput").hidden) {
       $("#answerInput").value = "";
       feedback.insertAdjacentHTML("beforeend", "<p>Your answer is counted as incorrect. Review it, then use Next question to continue.</p>");
     }
     $("#answerInput").readOnly = !state.wrongAnswerPending;
-    $("#word").innerHTML = japaneseHTML(state.current.word, state.current.furigana);
+    if (mode === "multiple") $("#word").innerHTML = japaneseHTML(state.current.word, state.current.furigana);
     speakJapanese(state.current.furigana || state.current.word);
     $("#example").hidden = true;
     $("#options").querySelectorAll(".option").forEach((button) => {
@@ -529,19 +545,34 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
     if (revealed) setStatus("Answer shown; this question is not included in your stats.");
     else if (state.wrongAnswerPending) setStatus("Incorrect answer recorded. Review it, then use Next question to continue.");
     else if (!isCorrect) setStatus("Incorrect answer recorded. Review the correct answer, then continue.");
-    else if (isCorrect && !currentSettings().showExample) {
-      setStatus("Correct — moving to the next question…");
-      state.advanceTimer = setTimeout(() => {
-        state.advanceTimer = null;
-        nextQuestion();
-      }, 600);
-    } else setStatus("");
-    if (shouldShowExample) {
-      pauseSessionClock();
-      const statusText = $("#status").textContent;
-      setStatus(`${statusText ? `${statusText} ` : ""}Session timer paused while you review.`);
-    }
+    else setStatus("");
+    syncAnswerReview();
     if (state.session.type === "sudden" && (revealed || !isCorrect)) beginSuddenFinish();
+  }
+  function syncAnswerReview() {
+    $("#feedback").hidden = !state.checked || !state.showExample;
+    if (!state.checked || state.session.finished) return;
+    if (state.showExample) {
+      const examples = $("#feedback .feedback-examples");
+      if (examples && !examples.dataset.loaded) {
+        examples.dataset.loaded = "true";
+        mountSentenceExamples(examples, state.current.word, state.current.examples);
+      }
+    }
+    if (state.suddenPending) return;
+    clearTimeout(state.advanceTimer);
+    state.advanceTimer = null;
+    if (state.showExample) pauseSessionClock();
+    else {
+      resumeSessionClock();
+      if (state.answerGrade === "correct") {
+        const question = state.current;
+        state.advanceTimer = setTimeout(() => {
+          state.advanceTimer = null;
+          if (state.current === question && state.checked && !state.showExample && !state.session.finished) nextQuestion();
+        }, 750);
+      }
+    }
   }
   function renderBreakdown(container, records) {
     const entries = Object.values(records).filter((item) => item.answered);
@@ -654,6 +685,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
   $("#showExampleToggle").checked = state.showExample;
   $("#showExampleToggle").addEventListener("change", (event) => {
     state.showExample = event.target.checked;
+    syncAnswerReview();
     try { localStorage.setItem(STORAGE.showExample, String(state.showExample)); }
     catch (error) { console.warn("Could not save example preference.", error); setStatus("Could not save example preference.", true); }
   });
@@ -685,6 +717,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
   for (const id of ["levelSelect", "sessionType", "questionLimit", "timeLimit"]) $(`#${id}`).addEventListener("change", () => setStartError(""));
   $("#modeSelect").addEventListener("change", () => { updateShortcutHint(); updateKanaDirection(); });
   $(".goi-settings").prepend($(".session-controls"));
+  $("#sessionType").closest(".practice-mode-field").after($("#levelSelect").closest(".chips-field"));
   $("#settingsPanel").after($("#startError"));
   const sessionView = createSessionView({
     settings: $("#settingsPanel"), start: $("#startButton"), results: $("#resultsPanel"), footer: true,

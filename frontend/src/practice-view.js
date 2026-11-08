@@ -1,4 +1,5 @@
 import "./practice.css";
+import "./answer-feedback.css";
 
 const tools = {
   kana: { name: "Kana", icon: "あ", description: "Hiragana and katakana", heading: "Make kana second nature." },
@@ -23,11 +24,10 @@ export function renderPractice(kind) {
           <option value="meaning-reverse">English meaning → Kanji</option>
           <option value="meaning-random">Both</option>
         </select></label>`
-      : `<label>Answer script<select id="readingDirection">
-          <option value="reading-romaji">Romaji</option>
-          <option value="reading-hiragana">Hiragana</option>
-          <option value="reading-katakana">Katakana</option>
-          <option value="reading-any-kana">Either kana script</option>
+      : `<label>Answer options<select id="readingDirection">
+          <option value="reading-katakana">On'yomi</option>
+          <option value="reading-hiragana">Kun'yomi</option>
+          <option value="reading-any-kana" selected>Both</option>
         </select></label>`;
   document.getElementById("practiceRoot").innerHTML = `
     <div class="shell">
@@ -88,14 +88,17 @@ export function renderPractice(kind) {
             ${kanji ? '<label class="switch-option review-option"><input id="reviewKanjiToggle" type="checkbox"> Pause to review kanji details</label>' : ""}
             <section id="questionSection" aria-label="Question" hidden>
             <div class="card-top"><span class="question-label" id="questionCount">Ready</span><span class="tag" id="typeTag">${kind}</span><button class="button stop-session" id="stopSessionButton" type="button">Stop session</button></div>
-            ${kanji ? "" : '<div class="kana-feedback-slot"><div class="feedback" id="feedback" role="status"></div></div>'}
             <div class="prompt" aria-live="polite"><div class="glyph" id="glyph" lang="ja">${tool.icon}</div><p class="question-text" id="promptText"></p></div>
             <form id="answerForm" autocomplete="off">
+              <div class="answer-feedback-slot">
+                <p id="correctCaption" class="correct-caption" role="status" hidden>Correct!</p>
+                <p id="incorrectCaption" class="incorrect-caption" role="status"></p>
+              </div>
               <label class="sr-only" for="answerInput">Your answer</label>
-              <div class="answer-row"><input class="answer-input" id="answerInput" type="text" placeholder="Type your answer…" autocorrect="off" autocapitalize="off" autocomplete="off" spellcheck="false"><button class="button primary" id="checkButton" type="submit">Check</button></div>
+              <div class="answer-row"><input class="answer-input" id="answerInput" type="text" placeholder="Type your answer…" autocorrect="off" autocapitalize="off" autocomplete="off" spellcheck="false" aria-describedby="correctCaption incorrectCaption"><button class="button primary" id="checkButton" type="submit">Check</button></div>
             </form>
-            <div class="button-row"><button class="button" id="skipButton" type="button">Skip</button><button class="button" id="showButton" type="button">Show answer</button><button class="button" id="nextButton" type="button" hidden>Next</button></div>
-            ${kanji ? '<div class="feedback" id="feedback" role="status"></div>' : ""}
+            <div class="button-row"><button class="button" id="nextButton" type="button" hidden>Next</button></div>
+            <div class="feedback" id="feedback" role="status" hidden></div>
             </section>
             <div class="session-results" id="sessionResults" aria-live="polite" hidden></div>
           </section>

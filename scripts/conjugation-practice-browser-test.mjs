@@ -101,32 +101,30 @@ try {
   await page.locator("#answerInput").pressSequentially("tabete");
   assert.equal(await page.inputValue("#answerInput"), "たべて");
   await page.press("#answerInput", "Enter");
-  assert.equal(await page.getAttribute("#feedback", "data-grade"), "correct");
-  assert.match(await writtenText("#feedback .solution"), /食べて/);
-  assert.ok(await page.locator("#feedback .solution").evaluate((solution) =>
-    solution.querySelector(".base-reading").getBoundingClientRect().top >= solution.querySelector(".study-japanese").getBoundingClientRect().bottom),
-  "Solution kana is beneath the written answer");
-  assert.match(await page.textContent("#feedback"), /rice/);
-  assert.equal(await page.locator("#ruleCard").isVisible(), true);
-  await page.locator('#feedback [data-kanji="食"]').first().click();
+  assert.equal(await page.getAttribute("#answerInput", "data-grade"), "correct");
+  assert.equal(await page.locator("#feedback").isVisible(), false);
+  assert.equal(await page.locator("#ruleCard").isVisible(), false);
+  assert.equal(await page.textContent("#checkButton"), "Next question");
+  await page.locator('#questionBody [data-kanji="食"]').first().click();
   await page.waitForFunction(() => document.getElementById("kanjiContent").textContent.includes("On’yomi"));
   assert.match(await page.textContent("#kanjiContent"), /ショク/);
   assert.match(await page.textContent("#kanjiContent"), /meal/);
   await page.locator("#kanjiDialog button").last().click();
-  await page.click("#nextButton");
+  await page.click("#checkButton");
   await answer("みで");
-  assert.equal(await page.getAttribute("#feedback", "data-grade"), "near");
+  assert.equal(await page.getAttribute("#answerInput", "data-grade"), "near");
   assert.equal(await page.locator("#feedback .solution").count(), 0, "Check must not auto-reveal");
   assert.equal(await page.locator("#answerInput").isDisabled(), false);
   assert.equal(await page.locator("#checkButton").isDisabled(), false);
   assert.equal(await page.inputValue("#answerInput"), "みで");
-  assert.equal(await page.locator("#feedback").evaluate((feedback) => feedback === document.activeElement), true);
+  assert.equal(await page.locator("#answerInput").evaluate((input) => input === document.activeElement), true);
+  assert.match(await page.textContent("#answerNotice"), /Check/);
   await answer("ちがう");
-  assert.equal(await page.getAttribute("#feedback", "data-grade"), "incorrect");
+  assert.equal(await page.getAttribute("#answerInput", "data-grade"), "incorrect");
   assert.equal(await page.locator("#answerInput").isDisabled(), false);
   await answer("みて");
-  assert.equal(await page.getAttribute("#feedback", "data-grade"), "correct");
-  assert.equal(await page.locator("#answerInput").isDisabled(), true);
+  assert.equal(await page.getAttribute("#answerInput", "data-grade"), "correct");
+  assert.equal(await page.locator("#answerInput").evaluate((input) => input.readOnly && !input.disabled), true);
   assert.equal(Object.values((await saved()).progress).reduce((n, r) => n + r.attempts, 0), 2, "Retry cannot add attempts");
   await endSession();
   await assertDisplayFirst("results");
@@ -140,10 +138,11 @@ try {
   await assertDisplayFirst("practice");
   assert.equal(previousWords.includes(await writtenText(".base-word")), false, "The next balanced quiz starts with a different word");
   await answer("ちがう");
-  await page.click("#nextButton");
   await page.click("#revealButton");
-  await page.click("#nextButton");
-  assert.equal(await page.textContent("#questionCount"), "Question 2 · Review / 4");
+  await page.click("#checkButton");
+  await page.click("#revealButton");
+  await page.click("#checkButton");
+  assert.equal(await page.textContent("#questionCount"), "Question 3 / 4", "Reviews wait until all primary questions have been asked");
   assert.equal(await page.locator("#sessionProgress").evaluate((progress) => progress.value), 2);
   await endSession();
   await assertDisplayFirst("results");
@@ -157,10 +156,10 @@ try {
   assert.equal(await page.locator("#hintButton").isDisabled(), true);
   assert.match(await page.textContent("#hintText"), /Ru-verbs/);
   await answer("たべて");
-  await page.click("#nextButton");
+  await page.click("#checkButton");
   await page.click("#revealButton");
-  assert.match(await writtenText("#feedback .solution"), /見て/);
-  await page.click("#nextButton");
+  assert.match(await page.textContent("#answerNotice"), /見て/);
+  await page.click("#checkButton");
   assert.equal(await page.locator("#revealButton").isDisabled(), true);
   assert.equal(await page.locator("#hintButton").isDisabled(), true);
   await endSession();
@@ -179,18 +178,18 @@ try {
     await page.click("#startButton");
     for (const [text, grade] of [["たべで", "near"], ["ちがう", "incorrect"]]) {
       await answer(text);
-      assert.equal(await page.getAttribute("#feedback", "data-grade"), grade);
+      assert.equal(await page.getAttribute("#answerInput", "data-grade"), grade);
       assert.equal(await page.locator("#answerInput").isDisabled(), false);
-      const feedbackPosition = await page.locator("#feedback").evaluate((feedback) => {
+      const feedbackPosition = await page.locator("#answerNotice").evaluate((feedback) => {
         const rect = feedback.getBoundingClientRect();
-        return { focused: document.activeElement === feedback, top: rect.top, bottom: rect.bottom, height: innerHeight };
+        return { focused: document.activeElement.id === "answerInput", top: rect.top, bottom: rect.bottom, height: innerHeight };
       });
       assert.ok(feedbackPosition.focused && feedbackPosition.top >= -1 && feedbackPosition.bottom <= feedbackPosition.height + 1,
         `${width}px: ${grade} feedback receives focus and scrolls into view: ${JSON.stringify(feedbackPosition)}`);
       assert.equal(await page.inputValue("#answerInput"), text);
     }
     await answer("たべて");
-    assert.equal(await page.getAttribute("#feedback", "data-grade"), "correct");
+    assert.equal(await page.getAttribute("#answerInput", "data-grade"), "correct");
   }
   await page.setViewportSize({ width: 1280, height: 900 });
 
@@ -212,12 +211,11 @@ try {
   await page.click("#startButton");
   assert.match(await page.textContent(".requested-register"), /Politeness.*丁寧体 · polite/);
   await answer("しずかじゃないです");
-  assert.equal(await page.getAttribute("#feedback", "data-grade"), "correct");
+  assert.equal(await page.getAttribute("#answerInput", "data-grade"), "correct");
   for (const width of [360, 768, 1280]) {
     await page.setViewportSize({ width, height: 900 });
-    assert.ok(await page.locator("#feedback .solution").evaluate((solution) =>
-      solution.querySelector(".base-reading").getBoundingClientRect().top >= solution.querySelector(".study-japanese").getBoundingClientRect().bottom),
-    `Long solution reading stays below the answer at ${width}px`);
+    assert.equal(await page.locator("#feedback").isVisible(), false);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Long answers fit at ${width}px`);
   }
 
   for (const [mode, text] of [["sentence", /＿＿＿/], ["reverse", /辞書形/], ["comparison", /何形/]]) {
@@ -230,24 +228,24 @@ try {
       assert.equal(options.length, 5, "Choice answers are capped at five");
       await page.click(`[data-answer="${options.find((value) => !["potential", "passive"].includes(value))}"]`);
       await page.click("#checkButton");
-      assert.equal(await page.getAttribute("#feedback", "data-grade"), "incorrect");
+      assert.equal(await page.getAttribute("#answerOptions", "data-grade"), "incorrect");
       assert.equal(await page.locator("#answerChoice").isDisabled(), false);
       assert.equal(await page.locator("#checkButton").isDisabled(), false);
       await page.click(`[data-answer="${options.includes("passive") ? "passive" : "potential"}"]`);
       await page.click("#checkButton");
-      assert.equal(await page.getAttribute("#feedback", "data-grade"), "correct", "Ambiguous form accepts both analyses");
+      assert.equal(await page.getAttribute("#answerOptions", "data-grade"), "correct", "Ambiguous form accepts both analyses");
     } else {
       await answer(mode === "reverse" ? "たべる" : "たべて");
-      assert.equal(await page.getAttribute("#feedback", "data-grade"), "correct");
+      assert.equal(await page.getAttribute("#answerInput", "data-grade"), "correct");
     }
     for (const language of ["ja", "en", "both"]) {
       await configure({ language, prompt: "description", forms: ["basic"], polarity: "negative", tense: "past", politeness: "polite" });
       await page.click("#startButton");
-      assert.equal(await page.textContent("#answerLabel"), language === "ja" ? "答え" : language === "en" ? "Your answer" : "答え · Your answer");
+      assert.equal(await page.textContent("#answerLabel"), "答え · Your answer");
       const prompt = await page.textContent(".requested-form");
-      assert.equal(prompt.includes("State an action or condition"), language !== "ja");
-      assert.equal(prompt.includes("指定された時制"), language !== "en");
-      assert.equal(prompt.includes("polite"), language !== "ja");
+      assert.equal(prompt.includes("State an action or condition"), true);
+      assert.equal(prompt.includes("指定された時制"), true);
+      assert.equal(prompt.includes("polite"), true);
     }
   }
   for (const task of ["form", "polarity", "tense", "politeness"]) {
@@ -255,14 +253,14 @@ try {
     await page.click("#startButton");
     await page.click(`[data-answer="${{ form: "te", polarity: "affirmative", tense: "neutral", politeness: "neutral" }[task]}"]`);
     await page.click("#checkButton");
-    assert.equal(await page.getAttribute("#feedback", "data-grade"), "correct");
+    assert.equal(await page.getAttribute("#answerOptions", "data-grade"), "correct");
   }
   await configure({ mode: "daily", levels: [5, 4, 3, 2, 1], repeat: false });
   await page.click("#startButton");
-  for (let index = 0; index < 5; index++) {
+  for (let index = 0; index < 10; index++) {
     await page.click("#revealButton");
     if (index === 4) assert.equal("days" in await saved(), false);
-    await page.click("#nextButton");
+    await page.click("#checkButton");
   }
   assert.equal(await page.locator("#results").isVisible(), true);
   assert.equal(await page.locator("#streak").count(), 0);
@@ -274,14 +272,70 @@ try {
     await page.click("#startButton"); await answer("ちがう");
     assert.equal(await page.locator("#retryButton").isVisible(), false);
     assert.equal(await page.locator("#answerInput").isDisabled(), true);
-    assert.equal(await page.locator("#checkButton").isDisabled(), true);
-    assert.match(await page.textContent("#nextButton"), /results/);
-    await page.click("#nextButton");
+    assert.equal(await page.locator("#checkButton").isDisabled(), false);
+    assert.match(await page.textContent("#checkButton"), /results/);
+    await page.click("#checkButton");
     assert.equal(await page.locator("#results").isVisible(), true);
   }
 
-  await configure({ mode: "timed", seconds: 10 });
+  await configure({ questions: 2 });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  assert.equal(await page.locator("#setting-input, #setting-language, #setting-priority, #setting-repeat, #setting-examples").count(), 0);
+  for (const [left, right] of [["setting-prompt", "setting-reverseTask"], ["setting-font", "setting-fontSize"]]) {
+    assert.ok(await page.evaluate(([left, right]) => {
+      const field = (id) => document.getElementById(id).closest(".chips-field, label, .plain-field");
+      return field(left).getBoundingClientRect().right <= field(right).getBoundingClientRect().left;
+    }, [left, right]), `${left} is beside ${right} on desktop`);
+  }
+  assert.equal(await page.locator("#displaySettings .font-picker").evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(" ").length), 4);
+  await page.setViewportSize({ width: 390, height: 900 });
+  assert.equal(await page.locator("#displaySettings .font-picker").evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(" ").length), 2);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.clock.install();
+  await page.clock.pauseAt(new Date());
+  await page.click("#startButton");
+  assert.equal(await page.locator(".session-bar #setting-autoAdvance").count(), 1);
+  await page.check("#setting-autoAdvance");
+  await answer("たべて");
+  assert.equal(await page.textContent("#questionCount"), "Question 1 / 2");
+  assert.equal(await page.locator("#correctCaption").isVisible(), true);
+  assert.equal(await page.textContent("#answerNotice"), "");
+  await page.locator("#answerInput").press("Backspace");
+  assert.equal(await page.inputValue("#answerInput"), "たべて", "Graded answers cannot be deleted into a stuck state");
+  await page.clock.runFor(500);
+  await page.uncheck("#setting-autoAdvance");
+  await page.clock.runFor(1000);
+  assert.equal(await page.textContent("#questionCount"), "Question 1 / 2");
+  assert.equal(await page.locator("#correctCaption").isVisible(), true, "Manual feedback persists");
+  await page.check("#setting-autoAdvance");
+  await page.uncheck("#setting-autoAdvance");
+  await page.check("#setting-autoAdvance");
+  await page.clock.runFor(749);
+  assert.equal(await page.textContent("#questionCount"), "Question 1 / 2");
+  await page.clock.runFor(1);
+  assert.equal(await page.textContent("#questionCount"), "Question 2 / 2");
+  assert.equal(await page.locator("#correctCaption").isVisible(), false);
+  await page.clock.runFor(1000);
+  assert.equal(await page.textContent("#questionCount"), "Question 2 / 2", "No duplicate timer progression");
+  await page.uncheck("#setting-autoAdvance");
+  await answer("ちがう");
+  assert.equal(await page.locator("#answerNotice").evaluate((notice) =>
+    notice.getBoundingClientRect().bottom <= document.getElementById("answerInput").getBoundingClientRect().top
+    && parseFloat(getComputedStyle(notice).fontSize) <= 12), true);
+  await answer("みて");
+  assert.equal(await page.textContent("#questionCount"), "Question 2 / 2");
+  assert.equal(await page.textContent("#checkButton"), "Next question");
+  await page.check("#setting-autoAdvance");
+  await page.locator("#answerInput").press("Enter");
+  // The earlier miss is repeated after the two primary questions.
+  await answer("みて");
+  await page.clock.runFor(750);
+  assert.equal(await page.locator("#results").isVisible(), true);
+  await page.clock.runFor(2000);
+  assert.equal(await page.locator("#results").isVisible(), true);
+
+  await configure({ mode: "timed", seconds: 10 });
   await page.click("#startButton");
   await page.clock.fastForward(11000);
   assert.equal(await page.locator("#results").isVisible(), true);
@@ -312,7 +366,7 @@ try {
   assert.equal(await page.inputValue("#setting-fontSize"), "64");
   await page.click("#startButton");
   await answer("たべませんでした");
-  assert.equal(await page.getAttribute("#feedback", "data-grade"), "correct");
+  assert.equal(await page.getAttribute("#answerInput", "data-grade"), "correct");
   for (const width of [360, 768, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `No overflow at ${width}px`);

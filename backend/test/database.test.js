@@ -35,6 +35,26 @@ function fixture() {
   return db;
 }
 
+test("vocabulary practice projection includes restricted dictionary answer meanings", async () => {
+  const db = fixture();
+  db.prepare("UPDATE vocabulary SET word=?,reading=?,meanings=?").run("プール", "プール", '["swimming pool"]');
+  db.prepare("UPDATE words SET senses=?").run(JSON.stringify([
+    { appliesToKanji: ["*"], appliesToKana: ["プール"], gloss: [{ lang: "eng", text: "(swimming) pool" }] },
+    { appliesToKanji: ["*"], appliesToKana: ["べつ"], gloss: [{ lang: "eng", text: "unrelated" }] }
+  ]));
+  const server = createServer(createHandler({ database: db, sentenceFallback: async () => [] }));
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  try {
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/words/batch?projection=practice`);
+    assert.equal(response.status, 200);
+    const { items } = await response.json();
+    assert.deepEqual(items[0].acceptedMeanings, ["swimming pool", "(swimming) pool"]);
+    assert.deepEqual(items[0].writtenForms, []);
+    assert.equal(items[0].meaning, "swimming pool", "Display gloss remains unchanged");
+  } finally { await new Promise((resolve) => server.close(resolve)); db.close(); }
+});
+
 test("lightweight startup and ordered bulk kanji keep feedback with bounded remote queries", async (t) => {
   let now = Date.now();
   t.mock.method(Date, "now", () => now);

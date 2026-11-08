@@ -11,6 +11,8 @@ Code licensing is separate; this notice does not relicense application code.
 | [jmdict-simplified](https://github.com/scriptin/jmdict-simplified) | JSON conversion by scriptin and contributors; derived files retain upstream licenses | Downloadable KANJIDIC2/JMdict JSON snapshots |
 | [OpenJLPT](https://github.com/evanclan/OpenJLPT) | OpenJLPT contributors, CC BY-SA 4.0; [per-field notice](https://github.com/evanclan/OpenJLPT/blob/main/NOTICE.md) | Study records, romaji, modern JLPT estimates and examples |
 | [JLPT resources](https://www.tanos.co.uk/jlpt/) | Jonathan Waller, CC BY, via OpenJLPT | Community JLPT lists |
+| [open-anki-jlpt-decks](https://github.com/jamsinclair/open-anki-jlpt-decks) | Jonathan Waller's vocabulary lists, CC BY; deck conversion by repository contributors | Exact spelling/reading JLPT enrichment; pinned commit `1ad66734417aca9dbcca6b2d5ee440cb13ab3ba0` by default |
+| [Kezuru JLPT Data](https://github.com/julillermo/kezuru-jlpt-data) | TulioG_Projects and Wikibooks JLPT Guide contributors, CC BY-SA 4.0; [upstream attribution](https://github.com/julillermo/kezuru-jlpt-data/blob/a6b0161b8391bd542cb685bf58e60c12d754617d/ATTRIBUTION.md) also credits Jitendex for supplementary classifications | N4/N5 spelling/reading study-level matches only, pinned commit `a6b0161b8391bd542cb685bf58e60c12d754617d`; no definitions, classifications, examples or audio copied |
 | [Tatoeba](https://tatoeba.org) / Tanaka Corpus | Sentence contributors, [CC BY 2.0 FR](https://creativecommons.org/licenses/by/2.0/fr/) or the license returned per sentence | Example sentences via OpenJLPT and optional live API fallback; sentence IDs, authors, translation IDs/authors and links retained when supplied |
 | [ManyThings bilingual sentence pairs](https://www.manythings.org/anki/) | Tatoeba contributors, CC BY 2.0 FR; collection by Charles Kelly | Bulk Japanese/English examples; original Japanese and English sentence IDs and author credits retained |
 | [Japanese Wikinews](https://ja.wikinews.org/) / [Wikibooks Japanese](https://en.wikibooks.org/wiki/Japanese) | Wikimedia contributors; see each page's reuse terms | Discovery only: unknown lexical candidates and source URLs are retained locally for validation, not article prose or unverified dictionary definitions |
@@ -44,6 +46,20 @@ identify modifications, and provide derivative dictionary data under CC BY-SA 4.
 KanjiVG SVGs retain their separate CC BY-SA 3.0 license. Keep source snapshots
 reasonably current. The original root `kanjidb.sqlite` is not part of this derived
 dataset and is not used because its provenance was not provided.
+
+## Additional JLPT assignments
+
+The optional JLPT enrichment scripts retain source URLs, immutable revisions,
+download SHA-256 hashes and attribution in `jlpt_assignments`. Community lists
+are approximate study resources, not official modern JLPT classifications;
+OpenJLPT and open-anki largely reuse the same Waller lists.
+
+Opt-in `Nihon heuristic v1` estimates derive from EDRDG dictionary information
+(legacy JLPT, school grade, Mainichi frequency, common-form flags and constituent
+kanji). They retain CC BY-SA 4.0 attribution and are marked `estimate` /
+`low` confidence with a rationale and dictionary metadata fingerprint. They are
+application-generated modifications, not assertions by EDRDG or JLPT organizers.
+Retain assignment provenance and these notices when syncing or redistributing.
 
 ## Synthetic example sentences
 

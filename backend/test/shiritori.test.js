@@ -128,7 +128,12 @@ test("scoring uses true level metadata, optional overlap, bonus kana and maratho
   assert.equal(points.overlapBonus, 5);
   assert.equal(points.kanaBonus, 15);
   assert.equal(points.total, 30);
-  assert.equal(scoreWord(answer, previous, rules({ bonus: false }), "ろ").total, 10);
+  assert.equal(scoreWord(answer, previous, rules({ bonus: false }), "ろ").total, 25);
+  assert.equal(scoreWord(answer, previous, rules({ bonusKana: false }), "ろ").total, 15);
+  assert.equal(scoreWord(answer, previous, rules({ bonus: false, bonusKana: false }), "ろ").total, 10);
+  assert.equal(scoreWord(word("こま"), previous, rules()).overlapBonus, 0);
+  assert.equal(scoreWord(answer, previous, rules(), "ロ").kanaBonus, 15);
+  assert.equal(scoreWord(answer, previous, rules(), "ぬ").kanaBonus, 0);
   assert.equal(scoreWord(word("からす"), null, rules({ mode: "marathon" })).total, 15);
 });
 test("presets and malformed rules are explicit rather than silently relaxed", () => {

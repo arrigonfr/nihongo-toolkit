@@ -2,6 +2,7 @@ import "./imposters.css";
 import "./chips.css";
 import { createSessionView } from "./session-view.js";
 import { setSettingAvailability } from "./settings-panel.js";
+import { rememberControls } from "./settings-storage.js";
 import { API_BASE } from "./api.js";
 import { mountChips } from "./chips.js";
 import { mountStudyControls, study, japaneseHTML, readingsHTML, audioHTML, speakJapanese } from "./study-controls.js";
@@ -29,7 +30,6 @@ root.innerHTML = `<div class="shell imposters-shell"><header><div class="brand">
 <fieldset class="settings-section"><legend>Display and feedback</legend><div class="settings-grid imposters-display-settings">
 <div class="setting"><label for="readingPrompt" data-setting-description="How do you want your questions to be? Show the reading as kana or play it as audio.">Reading prompt</label><select id="readingPrompt">${options([["text", "Show kana"], ["audio", "Play audio"]])}</select><small id="volumeNotice" hidden>Check your volume and enable Audio in the study controls.</small></div>
 <div class="setting"><span class="field-label" id="fontSizeLabel">Kanji size</span><select id="fontSize" aria-labelledby="fontSizeLabel">${options([["48", "Small"], ["64", "Standard"], ["80", "Large"]])}</select></div>
-<label class="check-label"><input id="details" type="checkbox" checked> Show readings and example after each answer</label>
 </div></fieldset>
 <fieldset class="settings-section help-section"><legend>Help during play</legend><div class="help-pair">
 <fieldset class="help-group"><legend>Hints</legend><div class="settings-grid"><div class="setting"><span class="field-label" id="hintModeLabel">Availability</span><select id="hintMode" aria-labelledby="hintModeLabel">${options([["limited", "Limited"], ["unlimited", "Unlimited"], ["disabled", "Disabled"]])}</select></div><div class="setting"><span class="field-label" id="hintLimitLabel">Hints per session</span><input id="hintLimit" type="number" min="0" max="200" value="3" aria-labelledby="hintLimitLabel"></div></div></fieldset>
@@ -39,6 +39,11 @@ root.innerHTML = `<div class="shell imposters-shell"><header><div class="brand">
 <section id="game" class="card imposters-game" hidden><div class="imposters-status"><span id="progress"></span><span id="score"></span><span id="timer"></span></div><div class="imposters-prompt"><span id="promptLabel" class="eyebrow"></span><h2 id="prompt"></h2><p id="secondary"></p><div id="promptAudio"></div></div><div id="choices" class="imposters-choices" role="group" aria-label="Select all correct answers"></div><div class="imposters-actions"><button id="check" class="primary" type="button" disabled>Check answers</button><button id="hint" type="button">Hint</button><button id="reveal" type="button">Reveal answer</button><button id="stop" type="button">Stop session</button><button id="next" type="button" hidden>Next question</button></div><div id="feedback" class="imposters-feedback" role="status" aria-live="polite"></div></section>
 <section id="results" class="card imposters-results" hidden></section></div>`;
 const $ = (id) => document.getElementById(id);
+$("game").insertAdjacentHTML("afterbegin", '<label class="check-label"><input id="details" type="checkbox" checked> Show readings and example after each answer</label>');
+$("details").addEventListener("change", () => {
+  const details = $("feedback").querySelector(".imposters-feedback-details");
+  if (details) details.hidden = !$("details").checked;
+});
 mountChips($("mode"), { presentation: "radio", label: "Game mode" });
 mountChips($("variants"), { multiple: true, options: variants.map(([value, label]) => ({ value, label })), allValue: "all", emptyValue: "none" });
 $("variants").value = "all";
@@ -61,6 +66,10 @@ function updateAvailability() {
   for (const kind of ["hint", "reveal"]) setSettingAvailability($(`${kind}Limit`), $(`${kind}Mode`).value === "limited" ? "" : "Used with limited assistance.");
 }
 $("settingsForm").addEventListener("change", updateAvailability);
+rememberControls("nihon:imposters-settings-v1", [
+  "mode", "count", "customCount", "seconds", "levelSelect", "variants", "readingPrompt",
+  "fontSize", "hintMode", "hintLimit", "revealMode", "revealLimit", "details"
+], (message) => { $("error").textContent = message; });
 updateAvailability();
 const dateKey = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; };
 function status() { $("reviewList").textContent = `Review list (${Object.keys(review).length})`; }
@@ -68,7 +77,12 @@ status();
 $("count").addEventListener("change", () => { $("customWrap").hidden = $("count").value !== "custom"; });
 $("readingPrompt").addEventListener("change", () => { $("volumeNotice").hidden = $("readingPrompt").value !== "audio"; });
 for (const kind of ["hint", "reveal"]) $(`${kind}Mode`).addEventListener("change", () => { $(`${kind}Limit`).disabled = $(`${kind}Mode`).value !== "limited"; });
-$("fontSize").addEventListener("change", () => { root.style.setProperty("--kanji-size", `${$("fontSize").value}px`); root.style.setProperty("--kanji-mobile-size", `${Number($("fontSize").value) * 0.75}px`); });
+function applyFontSize() {
+  root.style.setProperty("--kanji-size", `${$("fontSize").value}px`);
+  root.style.setProperty("--kanji-mobile-size", `${Number($("fontSize").value) * 0.75}px`);
+}
+$("fontSize").addEventListener("change", applyFontSize);
+applyFontSize();
 function showReview(items, heading) {
   $("results").hidden = false;
   $("results").innerHTML = `<h2>${escape(heading)}</h2>${items.length ? `<ul>${items.map((item) => `<li><span lang="ja">${escape(item.kanji)}</span> · ${escape(item.meaning || "")} <button type="button" data-remove="${escape(item.kanji)}">Remove</button></li>`).join("")}</ul>` : "<p>No missed kanji yet.</p>"}`;
@@ -179,7 +193,7 @@ function answer(result, revealed = false) {
       ${example ? `<p>${japaneseHTML(example.word, example.reading)} ${escape((example.meanings || []).join(", "))} ${audioHTML(example.word)}</p>` : ""}
     </div>`;
   }).join("");
-  $("feedback").innerHTML = `<strong>${correct ? "Correct" : revealed ? "Answer revealed" : result === null ? "Time is up" : "Not quite"}</strong>${$("details").checked ? `<div class="imposters-feedback-details">${details}</div>` : ""}`;
+  $("feedback").innerHTML = `<strong>${correct ? "Correct" : revealed ? "Answer revealed" : result === null ? "Time is up" : "Not quite"}</strong><div class="imposters-feedback-details"${$("details").checked ? "" : " hidden"}>${details}</div>`;
   if (session.mode === "sudden" && !correct) $("next").textContent = "See results"; else $("next").textContent = session.index + 1 === session.questions.length ? "See results" : "Next question";
 }
 $("hint").addEventListener("click", () => { if (!session || session.answered || !allowance("hint")) return; const wrong = session.question.choices.map((choice, index) => !choice.correct && !session.removed.has(index) ? index : -1).filter((index) => index >= 0); if (!wrong.length) return; const removed = wrong[Math.floor(Math.random() * wrong.length)]; session.removed.add(removed); session.selected.delete(removed); session.hints++; renderQuestion(); });
