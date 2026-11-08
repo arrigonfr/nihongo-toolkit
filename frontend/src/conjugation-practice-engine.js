@@ -14,7 +14,7 @@ export const reverseTasks = ["base", "form", "polarity", "tense", "politeness"];
 export const taskList = (value) => value === "all" ? [...reverseTasks] : String(value).split(",").filter((task) => reverseTasks.includes(task));
 export const defaults = {
   mode: "classic", levels: [5], types: Object.keys(wordCategories),
-  forms: ["present", "negative", "past", "pastNegative", "te"],
+  forms: ["basic", "te"],
   politeness: "both", polarity: "both", tense: "both", script: "furigana", input: "either",
   language: "ja", prompt: "name", questions: 10, seconds: 120, mistakes: 3,
   hints: "unlimited", reveals: "unlimited", hintLimit: 3, revealLimit: 3,
@@ -45,23 +45,43 @@ export function cleanSettings(saved = {}) {
   }
   if (saved.font === "default") result.font = defaults.font;
   for (const [key, allowed] of [["levels", [5, 4, 3, 2, 1]], ["types", Object.keys(wordCategories)], ["forms", Object.keys(formCatalog)]]) {
-    result[key] = Array.isArray(saved[key]) ? [...new Set(saved[key].filter((item) => allowed.includes(item)))] : [...defaults[key]];
+    const values = key === "forms" && Array.isArray(saved[key])
+      ? saved[key].map((item) => ["present", "negative", "past", "pastNegative", "ta", "nai", "formalNegative"].includes(item) ? "basic" : item)
+      : saved[key];
+    result[key] = Array.isArray(values) ? [...new Set(values.filter((item) => allowed.includes(item)))] : [...defaults[key]];
+  }
+  const legacyTraits = {
+    present: ["affirmative", "non-past"], negative: ["negative", "non-past"],
+    past: ["affirmative", "past"], pastNegative: ["negative", "past"],
+    ta: ["affirmative", "past"], nai: ["negative", "non-past"]
+  };
+  if (Array.isArray(saved.forms) && saved.forms.some((form) => legacyTraits[form])
+    && saved.forms.every((form) => legacyTraits[form] || form === "te")) {
+    const finite = saved.forms.filter((form) => legacyTraits[form]);
+    for (const [index, field] of ["polarity", "tense"].entries()) {
+      const selected = [...new Set(finite.map((form) => legacyTraits[form][index]))];
+      if (result[field] === "both" && selected.length === 1) result[field] = selected[0];
+    }
+    if (finite.every((form) => ["ta", "nai"].includes(form)) && result.politeness === "both") result.politeness = "plain";
   }
   return result;
 }
 
 export function familyOf(row) {
   const id = row.id;
-  if (id.startsWith("basic-")) {
-    return id.includes("past-negative") ? "pastNegative" : id.includes("past") ? "past" : id.includes("negative") ? "negative" : "present";
-  }
+  if (id.startsWith("basic-") || /^(present|negative|past|pastNegative)-(plain|polite)$/.test(id)) return "basic";
+  if (["ta", "nai"].includes(id)) return null;
+  if (["negative-te", "polite-te"].includes(id)) return "te";
+  if (id === "negative-request") return "request";
+  if (id === "prohibitive") return "imperative";
+  if (id === "formal-copula") return "formalCopula";
   for (const family of ["potential", "passive", "causativePassive", "causative", "progressive", "desire", "volitional"]) {
     if (id.startsWith(family + "-")) return family;
   }
   if (id === "honor-0") return "respectful";
   if (id === "honor-1") return "humble";
   if (id === "contracted-causative-passive") return "contracted";
-  if (id === "formal-negative" || id === "formal-past-negative") return "formalNegative";
+  if (id === "formal-negative" || id === "formal-past-negative") return "basic";
   if (/^(negative-|polite-)?(negative-)?(ba|tara)/.test(id) || id === "negativeBa" || id === "negativeTara") {
     return /tara/i.test(id) ? "tara" : "ba";
   }
@@ -71,10 +91,10 @@ export function familyOf(row) {
 
 export function supportsExample(entry, family) {
   if (!family) return false;
-  if (entry.existential) return ["present", "negative", "past", "pastNegative", "te", "ta", "nai", "ba", "tara"].includes(family);
-  if (entry.category === "auxiliary") return ["present", "negative", "past", "pastNegative", "te", "ta", "nai", "ba", "tara"].includes(family);
+  if (entry.existential) return ["basic", "te", "ba", "tara"].includes(family);
+  if (entry.category === "auxiliary") return ["basic", "te", "ba", "tara", "formalCopula"].includes(family);
   if (family === "passive" && (!entry.participle || !entry.object)) return false;
-  if (entry.word === "申す") return ["present", "negative", "past", "pastNegative", "te", "ta", "nai", "formal"].includes(family);
+  if (entry.word === "申す") return ["basic", "te", "formal"].includes(family);
   return true;
 }
 
@@ -210,7 +230,7 @@ export function ruleFor(question) {
 }
 
 export class PracticeSession {
-  constructor(settings, progress = {}, now = Date.now(), random = Math.random) {
+  constructor(settings, progress = {}, now = Date.now(), random = Math.random, previousSessionWords = []) {
     this.settings = cleanSettings(settings);
     this.pool = createPool(this.settings, progress);
     if (!this.pool.length) throw new Error(this.settings.mode === "weak"
@@ -218,19 +238,40 @@ export class PracticeSession {
       : this.settings.mode === "mixed"
       ? "No previously practiced questions match. Try Classic Drill first or broaden your filters."
       : "No questions match. Broaden the level, word type or form selection. Comparison needs voice forms at N4–N1; honorifics need N2–N1.");
+    if (!Array.isArray(previousSessionWords) || previousSessionWords.some((word) => typeof word !== "string")) {
+      throw new Error("Invalid previous practice session words.");
+    }
     this.progress = progress;
     this.started = now;
     this.random = random;
-    this.limit = ["quick", "daily"].includes(this.settings.mode) ? 5
+    const requestedLimit = ["quick", "daily"].includes(this.settings.mode) ? 5
       : ["marathon", "timed", "sudden"].includes(this.settings.mode) ? Infinity : this.settings.questions;
+    this.requestedLimit = requestedLimit;
+    this.limit = Number.isFinite(requestedLimit) ? Math.min(requestedLimit, this.pool.length) : requestedLimit;
+    this.recent = new Set();
+    if (this.settings.priority === "balanced" && !["weak", "mixed", "daily"].includes(this.settings.mode)) {
+      for (const word of previousSessionWords) this.recent.add(word);
+      const recentQuestions = this.pool
+        .filter(({ key }) => progress[key]?.attempts > 0)
+        .sort((first, second) => (progress[second.key].last || 0) - (progress[first.key].last || 0))
+        .slice(0, Math.min(Number.isFinite(this.limit) ? this.limit : 10, Math.floor(this.pool.length / 2)));
+      for (const question of recentQuestions) this.recent.add(question.entry.word);
+    }
     this.deadline = this.settings.mode === "timed" ? now + this.settings.seconds * 1000 : Infinity;
     this.results = [];
+    this.seen = new Set();
+    this.askedWords = new Set();
+    this.questionCount = 0;
     this.repeats = [];
+    this.repeatKeys = new Set();
     this.hints = 0;
     this.reveals = 0;
     this.ended = false;
     this.reason = "";
     this.next(now);
+  }
+  get completionReady() {
+    return this.questionCount >= this.limit && this.repeats.length === 0;
   }
   end(reason, now = Date.now()) {
     if (this.ended) return;
@@ -244,11 +285,22 @@ export class PracticeSession {
     if (this.expire(now)) return;
     if (this.current && !this.scored) return;
     if (this.pendingEnd) { this.end(this.pendingEnd, now); return; }
-    if (this.results.length >= this.limit) { this.end("Session complete", now); return; }
-    const due = this.repeats.findIndex((item) => item.after <= this.results.length);
+    if (this.completionReady) { this.end("Session complete", now); return; }
+    const due = this.repeats.findIndex((item) => item.after <= this.questionCount);
+    if (due < 0 && this.questionCount >= this.limit) { this.end("Session complete", now); return; }
     const previous = this.current?.key;
-    this.current = due >= 0 ? this.repeats.splice(due, 1)[0].question
-      : chooseQuestion(this.pool, this.progress, this.settings, previous, this.random);
+    let remaining = this.pool.filter((question) => !this.seen.has(question.key));
+    if (!remaining.length) { this.seen.clear(); remaining = this.pool; }
+    const fresh = remaining.filter((question) => !this.recent.has(question.entry.word));
+    if (fresh.length) remaining = fresh;
+    this.currentIsRepeat = due >= 0;
+    this.current = this.currentIsRepeat ? this.repeats.splice(due, 1)[0].question
+      : chooseQuestion(remaining, this.progress, this.settings, previous, this.random);
+    if (!this.currentIsRepeat) {
+      this.questionCount++;
+      this.askedWords.add(this.current.entry.word);
+    }
+    this.seen.add(this.current.key);
     this.prompt = this.settings.mode === "sentence" ? "sentence" : this.settings.prompt === "mixed"
       ? ["name", "description", "sentence"][Math.floor(this.random() * 3)] : this.settings.prompt;
     if (this.settings.mode === "reverse") {
@@ -286,19 +338,21 @@ export class PracticeSession {
     if (!this.scored) {
       const correct = grade === "correct" && !this.assisted;
       const result = { key: this.current.key, word: this.current.entry.word, family: this.current.family,
-        correct, assisted: this.assisted, grade, answer, seconds: Math.max(0, (now - this.started) / 1000) };
+        correct, assisted: this.assisted, grade, answer, repeat: this.currentIsRepeat, seconds: Math.max(0, (now - this.started) / 1000) };
       this.results.push(result);
       const record = this.progress[result.key] || { attempts: 0, correct: 0, wrong: 0 };
       this.progress[result.key] = { attempts: record.attempts + 1, correct: record.correct + Number(correct),
         wrong: record.wrong + Number(!correct), last: now };
       this.scored = true;
-      if (!correct && this.settings.repeat && !["sudden", "comparison", "reverse"].includes(this.settings.mode)) {
-        this.repeats.push({ question: this.current, after: this.results.length + 1 });
+      if (!correct && this.settings.repeat && !this.repeatKeys.has(result.key)
+        && !["sudden", "comparison", "reverse"].includes(this.settings.mode)) {
+        this.repeatKeys.add(result.key);
+        this.repeats.push({ question: this.current, after: Math.min(this.questionCount + 1, this.limit) });
       }
       const wrong = this.results.filter((r) => !r.correct).length;
       if (!correct && this.settings.mode === "sudden") this.pendingEnd = "Sudden Death ended";
       if (this.settings.mode === "marathon" && this.settings.mistakes > 0 && wrong >= this.settings.mistakes) this.pendingEnd = "Mistake limit reached";
-      if (this.pendingEnd || this.results.length >= this.limit) this.finished = now;
+      if (this.pendingEnd || this.completionReady) this.finished = now;
     }
     return grade;
   }
@@ -313,12 +367,13 @@ export class PracticeSession {
     return bank.filter((q) => q.entry.word === this.current.entry.word && q.row.word === this.current.row.word);
   }
   summary(now = Date.now()) {
-    const correct = this.results.filter((r) => r.correct).length;
-    return { total: this.results.length, correct, incorrect: this.results.length - correct,
-      accuracy: this.results.length ? Math.round(correct / this.results.length * 100) : 0,
+    const questions = this.results.filter((result) => !result.repeat);
+    const correct = questions.filter((r) => r.correct).length;
+    return { total: questions.length, correct, incorrect: questions.length - correct,
+      accuracy: questions.length ? Math.round(correct / questions.length * 100) : 0,
       seconds: Math.max(0, Math.round(((this.finished ?? now) - this.started) / 1000)),
-      forms: [...new Set(this.results.map((r) => r.family))],
-      review: [...new Set(this.results.filter((r) => !r.correct).map((r) => r.word))] };
+      forms: [...new Set(questions.map((r) => r.family))],
+      review: [...new Set(questions.filter((r) => !r.correct).map((r) => r.word))] };
   }
 }
 
@@ -363,12 +418,25 @@ export function exampleFor({ entry: e, row: r, family }) {
       before = e.context; english = `Let’s ${action}.`;
     }
     if (family === "imperative") {
-      before = "「" + e.context; after = "」と言われた。"; english = `I was told, “${action[0].toUpperCase() + action.slice(1)}!”`;
+      before = "「" + e.context; after = "」と言われた。"; english = `I was told, “${negative ? "Don't " + action : action[0].toUpperCase() + action.slice(1)}!”`;
+    }
+    if (family === "request") {
+      before = e.context; english = `Please ${negative ? "do not " : ""}${action}.`;
+    }
+    if (family === "naide") {
+      before = e.context; after = "、休んだ。"; english = `I rested without ${e.ing}${object}.`;
+    }
+    if (family === "tari") {
+      after = "する。"; english = `I do things such as ${e.ing}${object}.`;
     }
     if (family === "respectful") {
       before = "先生は" + e.context; english = `The teacher will ${action}. (Respectful.)`;
     }
     if (family === "humble") english = `I will ${action}. (Humble.)`;
+  }
+  if (family === "too") english = `${e.english} is too ${e.meanings[0]}.`;
+  if (family === "attributive") {
+    after = "状態だ。"; english = `${e.english} is in a ${e.meanings[0]} state.`;
   }
   if (family === "te" || family === "formal") {
     after = "、その後、休んだ。";

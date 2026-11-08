@@ -87,6 +87,27 @@ changes in an issue before implementing them.
 
 ## Using the tools
 
+Games and practice pages open in setup with their settings expanded. Starting a
+session hides setup; finishing or stopping shows results. **Practice again**
+returns to setup without starting another session. Shiritori keeps its word chain
+and sidebar after the round; Eawase keeps its sidebar, and Pazuru keeps its study
+inspector. Start buttons in Kanji Kuizu, Pazuru, Shiritori, Eawase and Goi remain
+available in the settings footer even when settings are collapsed.
+Japanese font controls for conjugation practice
+are in **Accessibility** at the bottom of setup.
+
+Kotoba and Katsuyo search on Enter or Search, not after a typing delay. Missing sentence
+examples load only through **Load examples**. Existing examples bundled with a
+dictionary result remain visible without another request. Kanji Kuizu uses
+`kanji-kuizu.html`; the former `kanji-imposters.html` URL redirects there.
+
+Conjugation sessions avoid random repeats until their available question pool is
+exhausted, and ordinary balanced sessions avoid recent pairs when alternatives
+exist. The explicit repeat-missed setting can still deliberately repeat a mistake.
+Firefox uses an installed Japanese voice when available; the local model fallback
+queues successive clips. Its first model download and uncached synthesis can
+still be slow on low-powered devices.
+
 Each tool's intro includes links to report suggestions or bugs and send pull
 requests on GitHub, alongside the PayPal support button.
 
@@ -941,6 +962,49 @@ backup and an explicit full-snapshot replacement plan. Enrichment snapshots,
 download caches and generated database files remain gitignored.
 
 ## Deploy
+
+### JSON versus a database on Workers Free
+
+Assessment (2026-11-07): keep Turso for dictionary search and relational data;
+consider static JSON only for bounded, read-only practice pools. No storage
+migration has been made.
+
+The production API uses `backend/src/turso.js`, not a SQLite file loaded into a
+Worker. D1 is separate and stores mutable page-view counters. The local dictionary
+snapshot measured 377.4 MiB, including SQL indexes; this is not a measurement of
+JSON export size or parsed JavaScript heap usage.
+
+Cloudflare currently documents 10 ms CPU per Free HTTP invocation, 128 MB per
+isolate, 100,000 Worker requests per day, 20,000 static asset files per version,
+and 25 MiB per asset. Network waiting does not count as CPU, while JSON parsing,
+filtering and sorting do. A warm isolate cache is opportunistic, not persistent
+storage. Loading or scanning the whole dictionary would introduce cold-start,
+memory and CPU risks, even if a compressed download looked small.
+
+Sharded JSON is technically possible, but preserving current behavior needs
+build-time indexes for spelling/reading, word forms, kanji compounds, sentence
+relationships, JLPT/category filtering and Shiritori continuations. Otherwise
+each lookup scans many files. Per-word files also risk the asset-count limit.
+Publishing changes requires rebuilding consistent, versioned data and indexes;
+source attribution and sentence review/provenance must remain intact. Browser-side
+search moves these costs to users' devices rather than eliminating them.
+
+A conservative pilot would export one JLPT practice pool into versioned shards,
+serve it directly as static assets, retain the API as fallback, and compare cold
+and warm latency, bytes downloaded, parsed memory and Worker CPU against Turso.
+Keep sentence lookup on demand. Do not convert counters or enrichment bookkeeping
+to immutable files. The current Worker handles only `/api/` paths and returns 404
+elsewhere with `run_worker_first: true`; static hosting/routing must be reviewed
+before relying on Worker-hosted JSON instead of the separately hosted frontend.
+
+D1 is an alternative SQL backend, not a prerequisite for this pilot. Its Free
+per-database limit is 500 MB, so the current snapshot leaves limited room for
+growth. Query compatibility, read/write quotas and index sizes need measurement
+before a migration; no claim of lower production cost or latency is made here.
+
+Sources: [Workers limits](https://developers.cloudflare.com/workers/platform/limits/)
+and [D1 limits](https://developers.cloudflare.com/d1/platform/limits/).
+Recheck plan limits before deployment.
 
 ### Optional daily page views (D1)
 

@@ -1,3 +1,10 @@
+.cw-review-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; padding: 0; margin: 16px 0 0; list-style: none; }
+.cw-review-word { padding: 16px; border: 1px solid var(--line); border-left: 4px solid #a47713; border-radius: 8px; background: color-mix(in srgb, #d9a628 12%, var(--card)); }
+.cw-review-word.answered { border-left-color: #318454; background: color-mix(in srgb, #318454 12%, var(--card)); }
+.cw-review-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.cw-review-heading strong { font-size: 24px; }
+.cw-review-heading span { font-size: 12px; font-weight: 700; }
+.cw-review-word p { margin: 8px 0; }
 :root {
   color-scheme: light;
   --page: #f5f4ef;

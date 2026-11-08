@@ -1,3 +1,4 @@
+import { createSessionView } from "./session-view.js";
 import "./word-search.css";
 import { mountGameExport } from "./game-export.js";
 import { setSettingAvailability } from "./settings-panel.js";
@@ -293,6 +294,10 @@ function snapshotDaily() {
       elapsed: elapsed(), ended: game.ended, won: game.won, newWords: game.newWords };
   }
 }
+const sessionView = createSessionView({
+  settings: $("settingsPanel"), start: $("startButton"), results: $("results"),
+  play: [document.querySelector(".board-card"), document.querySelector(".layout aside"), $("wordList").closest("section")]
+});
 async function startGame(nextRound = false) {
   if (busy) return;
   if (game && !game.ended) {
@@ -301,6 +306,7 @@ async function startGame(nextRound = false) {
     finish(false, "Round ended", choice === "save");
   }
   busy = true;
+  sessionView.start();
   const doneLoading = beginLoading([$("startButton"), $("nextRound")], $("grid").parentElement);
   $("startButton").disabled = true;
   if ($("nextRound")) $("nextRound").disabled = true;
@@ -352,7 +358,7 @@ async function startGame(nextRound = false) {
     if (game.ended) renderResults(game.won ? "Daily puzzle complete" : "Daily round ended");
     else timerHandle = setInterval(tick, 250);
     inform(saved ? "Today's puzzle restored. Daily progress cannot be rerolled." : "Your puzzle is ready. Find your first word.");
-  } catch (error) { console.error("Word Search generation failed.", error); inform("", false); showStartError(error.message); }
+  } catch (error) { sessionView.setup(); console.error("Word Search generation failed.", error); inform("", false); showStartError(error.message); }
   finally {
     await doneLoading();
     busy = false; $("startButton").disabled = false;
@@ -616,6 +622,7 @@ function renderResults(title) {
     ${game.rules.mode === "marathon" && game.won && round < game.rules.rounds ? '<button id="nextRound" type="button" class="primary">Next round →</button>' : ""}
     ${game.rules.mode === "marathon" && game.won && round === game.rules.rounds ? "<p>Marathon complete. Well done!</p>" : ""}`;
   if ($("nextRound")) $("nextRound").onclick = () => startGame(true);
+  sessionView.finish();
   $("results").focus({ preventScroll: true });
 }
 $("endButton").onclick = async () => {

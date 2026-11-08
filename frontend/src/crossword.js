@@ -1,3 +1,4 @@
+import { createSessionView } from "./session-view.js";
 import "./crossword.css";
 import { mountGameExport } from "./game-export.js";
 import { mountChips } from "./chips.js";
@@ -609,6 +610,7 @@ import {
           state.roundEnded = true;
           showFeedback("Time is up! Review the remaining words or start a new puzzle.", "bad");
           updateAssistButtons();
+          showResults("Time is up");
         }
       } else {
         state.timerSeconds++;
@@ -620,7 +622,8 @@ import {
   async function buildNewPuzzle() {
     if (state.loading) return;
     state.loading = true;
-    const doneLoading = beginLoading([...document.querySelectorAll("#newPuzzleBtn, #nextPuzzleBtn")], document.getElementById("cwWorkspace").parentElement);
+    sessionView.start();
+    const doneLoading = beginLoading([...document.querySelectorAll("#newPuzzleBtn, #nextPuzzleBtn")], document.getElementById("cwWorkspace"));
     const startError = document.getElementById("startError");
     startError.hidden = true;
     showFeedback("Generating your Japanese vocabulary crossword…");
@@ -710,6 +713,7 @@ import {
       updateAssistButtons();
       startTimer();
     } catch (error) {
+      sessionView.setup();
       if (!state.puzzle) {
         renderPuzzleBoard();
         document.getElementById("activeClueText").textContent = "No crossword available.";
@@ -773,6 +777,7 @@ import {
       showFeedback("🎉 おめでとう！ Puzzle completed! Hover or tap any completed word or kanji to review.", "good");
       updateAssistButtons();
       renderLifetimeStats();
+      showResults("Puzzle complete");
     }
   }
 
@@ -1078,6 +1083,21 @@ import {
       return;
     }
 
+    if (state.roundEnded) {
+      body.innerHTML = `<ul class="cw-review-list">${state.puzzle.entries.map((entry) => {
+        const answered = entry.completed && !entry.revealed;
+        const item = entry.item;
+        const reading = item.furigana || item.word;
+        const word = state.settings.furigana ? alignFuriganaRuby(item.word, reading) : escapeHTML(item.word);
+        return `<li class="cw-review-word ${answered ? "answered" : "unanswered"}" data-review-entry="${escapeHTML(entry.id)}">
+          <div class="cw-review-heading"><strong lang="ja">${word}</strong><span>${answered ? "Answered" : entry.revealed ? "Revealed" : "Not answered"}</span></div>
+          <p><span lang="ja">${escapeHTML(reading)}</span>${state.settings.romanization ? ` · ${escapeHTML(romanizeKana(reading))}` : ""}</p>
+          <p>${escapeHTML(item.meaning)}</p><button class="cw-btn" type="button" data-speak-ja="${escapeHTML(reading)}" aria-label="Pronounce ${escapeHTML(item.word)}">▶ Word</button>
+        </li>`;
+      }).join("")}</ul>`;
+      return;
+    }
+
     const entry = state.puzzle.entries.find((e) => e.id === state.inspectedEntryId && e.completed)
       || state.puzzle.entries.find((e) => e.completed);
 
@@ -1308,6 +1328,7 @@ import {
     clearInterval(state.timerHandle);
     showFeedback(reasonMsg || "💀 Sudden Death! An incorrect answer ended the round.", "bad");
     updateAssistButtons();
+    showResults("Sudden Death ended");
   }
 
   function setCellChar(row, col, charValue, { autoAdvanceEmpty = false } = {}) {
@@ -1702,6 +1723,7 @@ import {
         state.roundEnded = true;
         clearInterval(state.timerHandle);
         showFeedback(`Sudden Death! An incorrect character ended the round (${rightCount} correct, ${wrongCount} wrong).`, "bad");
+        showResults("Sudden Death ended");
       } else {
         showFeedback(`Checked word: ${rightCount} correct, ${wrongCount} needs correction.`, "bad");
       }
@@ -1801,7 +1823,7 @@ import {
         if (cell.status !== "correct") cell.status = "revealed";
         cell.locked = true;
       });
-      entry.revealed = true;
+      entry.revealed ||= !entry.completed;
       entry.completed = true;
     }
     saveJSON(STORAGE_KEYS.stats, state.stats);
@@ -1809,8 +1831,6 @@ import {
 
     state.roundEnded = true;
     clearInterval(state.timerHandle);
-    const first = state.puzzle.entries[0];
-    if (first) inspectCompletedCell(first, first.chars[0]);
 
     showFeedback("Entire puzzle revealed. Hover or tap any word or kanji to study its details.");
     renderPuzzleBoard();
@@ -1819,6 +1839,7 @@ import {
     renderStudyInspector();
     updateProgressMetrics();
     updateAssistButtons();
+    showResults("Puzzle revealed");
   }
 
   function updateSetting(key, value) {
@@ -1912,6 +1933,7 @@ import {
       clearInterval(state.timerHandle);
       showFeedback("Puzzle ended. Start a new puzzle when you are ready.");
       updateAssistButtons();
+      showResults("Puzzle ended");
     });
 
     document.getElementById("flipDirBtn").addEventListener("click", () => {
@@ -2305,6 +2327,22 @@ import {
   }
 
   renderShell();
+  const results = document.createElement("section");
+  results.id = "puzzleResults";
+  results.className = "cw-study-panel";
+  document.getElementById("cwWorkspace").after(results);
+  const sessionView = createSessionView({
+    settings: document.querySelector(".cw-top-card"), start: document.getElementById("newPuzzleBtn"), results, footer: true,
+    play: [document.getElementById("cwWorkspace"), document.querySelector(".cw-status-bar")],
+    keepResults: [document.getElementById("studyInspector")]
+  });
+  document.getElementById("cwEmpty").hidden = true;
+  function showResults(title) {
+    const solved = state.puzzle.entries.filter((entry) => entry.completed && !entry.revealed).length;
+    results.innerHTML = `<h2>${title}</h2><p>${solved} / ${state.puzzle.entries.length} words solved · ${state.stats.wordsRevealed} revealed · ${state.hintsUsed} hints</p>`;
+    sessionView.finish();
+    renderStudyInspector();
+  }
   mountGameExport(document.getElementById("crosswordGrid").parentElement, () => {
     const puzzle = state.puzzle;
     if (!puzzle?.entries.length) return null;

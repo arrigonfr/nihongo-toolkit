@@ -3,6 +3,14 @@ import { createSupportButton } from "./support.js";
 import { legacyRoutes } from "./routes.js";
 
 initializeAppearance();
+for (const link of document.querySelectorAll(".helper-link, .dashboard-link")) {
+  const name = link.querySelector(".helper-name");
+  const icon = link.querySelector(".helper-icon");
+  if (!name || !icon) continue;
+  const title = name.firstChild.textContent.replace(/\s*·\s*$/, "").trim();
+  link.prepend(icon);
+  name.textContent = title;
+}
 document.querySelector(".dashboard")?.prepend(createSupportButton());
 const menuButton = document.getElementById("menuButton");
 const helperMenu = document.getElementById("helperMenu");

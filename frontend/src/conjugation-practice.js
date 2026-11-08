@@ -16,7 +16,7 @@ import { plainSelect, plainNumber, plainCheck, removeChipsTooltip } from "./plai
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "nihon:conjugation-practice-v1";
-let settings = cleanSettings(), progress = {}, completed = 0, session, clock, composing = false;
+let settings = cleanSettings(), progress = {}, previousSessionWords = [], completed = 0, session, clock, composing = false;
 const notice = (message) => { $("notice").textContent = message; };
 try {
   const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
@@ -26,19 +26,24 @@ try {
     if (key.length > 200 || !value || !["attempts", "correct", "wrong"].every((field) => Number.isSafeInteger(value[field]) && value[field] >= 0)
       || value.attempts !== value.correct + value.wrong || !Number.isFinite(value.last)) throw new Error("Invalid progress totals.");
   }
+  const savedWords = saved.previousSessionWords ?? [];
+  if (!Array.isArray(savedWords) || savedWords.length > 5000
+    || savedWords.some((word) => typeof word !== "string" || word.length > 200)) {
+    throw new Error("Invalid previous session words.");
+  }
   if (saved.completed !== undefined && (!Number.isSafeInteger(saved.completed) || saved.completed < 0)) throw new Error("Invalid completed count.");
   settings = cleanSettings(saved.settings);
-  progress = records; completed = saved.completed || 0;
+  progress = records; previousSessionWords = [...new Set(savedWords)]; completed = saved.completed || 0;
 } catch (error) {
   console.warn("Could not restore conjugation practice.", error);
   notice("Saved practice data could not be restored. Defaults are in use; your other tools are unaffected.");
 }
 function persist() {
-  if (session && !session.completedRecorded && (session.results.length >= session.limit || session.reason === "Time is up")) {
+  if (session && !session.completedRecorded && (session.completionReady || session.reason === "Time is up")) {
     completed++;
     session.completedRecorded = true;
   }
-  try { localStorage.setItem(storageKey, JSON.stringify({ settings, progress, completed })); }
+  try { localStorage.setItem(storageKey, JSON.stringify({ settings, progress, previousSessionWords, completed })); }
   catch (error) {
     console.warn("Could not save conjugation practice.", error);
     notice("Your browser could not save practice progress. Keep this tab open; progress may be lost when it closes.");
@@ -126,9 +131,6 @@ mountList("typeSettings", "types", Object.entries(wordCategories), "Word types")
 mountList("formSettings", "forms", Object.entries(formCatalog).map(([id, form]) => [id, `${form.en} · N${form.level}`]), "Conjugation forms");
 mountStudyControls({ onChange: () => { syncSettings(); if (session && !session.ended) renderQuestion(); } });
 removeChipsTooltip($("setting-font"));
-function formsForLevels(levels) {
-  return Object.keys(formCatalog).filter((form) => levels.includes(formCatalog[form].level));
-}
 function syncSettings() {
   for (const [name, value] of Object.entries(settings)) {
     const control = $("setting-" + name);
@@ -169,7 +171,6 @@ function updateSettings(event) {
   if (list) {
     const picked = event.target.chipsApi.current();
     settings[list] = list === "levels" ? picked.map(Number) : picked;
-    if (list === "levels") settings.forms = formsForLevels(settings.levels);
   } else {
     const input = event.target;
     let value = input.type === "checkbox" ? input.checked : input.value;
@@ -214,15 +215,16 @@ function enableKanji(root) {
 }
 const traitsJa = { plain: "普通体", polite: "丁寧体", neutral: "共通形", affirmative: "肯定", negative: "否定", "non-past": "非過去", past: "過去" };
 const descriptionsJa = {
-  present: "習慣や現在・未来のことを表す", negative: "しないこと・そうではないことを表す", past: "過去の出来事を表す",
-  pastNegative: "過去にしなかったことを表す", te: "文をつなぐ形にする", ta: "たで終わる過去の形にする",
-  nai: "ないで終わる否定の形にする", desire: "したい気持ちを表す", progressive: "動作の進行や結果の状態を表す",
+  basic: "指定された時制・肯否・丁寧さで述べる", te: "文をつなぐ形にする",
+  naide: "ある動作をせずに別の動作をする", tari: "代表的な動作を挙げる", request: "動作をする・しないように頼む",
+  attributive: "名詞を修飾する", too: "程度が過ぎることを表す", formalCopula: "ございますを使って述べる",
+  desire: "したい気持ちを表す", progressive: "動作の進行や結果の状態を表す",
   potential: "できることを表す", passive: "動作を受けることを表す", causative: "人に何かをさせることを表す",
   causativePassive: "人に何かをさせられることを表す", volitional: "一緒にすることを提案する",
   imperative: "強い命令を表す", ba: "ばを使って条件を表す", tara: "たらを使って条件を表す",
   nara: "ならを使って条件を表す", adverb: "動詞を修飾する形にする", respectful: "動作をする人を高める",
   humble: "自分側を低めて敬意を表す", formal: "ますを使わず、連用形で文をつなぐ",
-  contracted: "短い形で、させられることを表す", formalNegative: "ありませんを使って否定する"
+  contracted: "短い形で、させられることを表す"
 };
 function localized(ja, en) {
   const language = session?.settings.language || settings.language;
@@ -290,13 +292,13 @@ function renderQuestion() {
   $("hintButton").textContent = `Hint${s.hints === "limited" ? ` · ${Math.max(0, s.hintLimit - session.hints)} left` : ""}`;
   $("revealButton").textContent = `Reveal answer${s.reveals === "limited" ? ` · ${Math.max(0, s.revealLimit - session.reveals)} left` : ""}`;
   $("sessionMode").textContent = modes[s.mode];
-  $("questionCount").textContent = `Question ${session.results.length + Number(!session.scored)}${Number.isFinite(session.limit) ? ` / ${session.limit}` : ""}`;
+  $("questionCount").textContent = `Question ${session.questionCount}${session.currentIsRepeat ? " · Review" : ""}${Number.isFinite(session.limit) ? ` / ${session.limit}` : ""}`;
   $("sessionProgress").hidden = !Number.isFinite(session.limit);
   $("sessionProgress").max = Number.isFinite(session.limit) ? session.limit : 1;
-  $("sessionProgress").value = session.results.length;
+  $("sessionProgress").value = session.questionCount - Number(!session.scored && !session.currentIsRepeat);
   $("followup").hidden = !session.scored;
   $("retryButton").hidden = !session.feedback || session.feedback === "correct" || Boolean(session.pendingEnd);
-  $("nextButton").textContent = session.pendingEnd || session.results.length >= session.limit ? "See results →" : "Next question →";
+  $("nextButton").textContent = session.pendingEnd || session.completionReady ? "See results →" : "Next question →";
   renderFeedback();
   tick();
 }
@@ -360,7 +362,7 @@ function tick() {
 }
 function focusAnswer() {
   (isChoice() ? $("answerOptions").querySelector("button") : $("answerInput")).focus({ preventScroll: true });
-  $("practiceDisplay").scrollIntoView({ block: "start" });
+  $("practice").scrollIntoView({ block: "start" });
 }
 function startError(message) {
   $("startError").textContent = message;
@@ -375,10 +377,13 @@ function start() {
     startError(missing || "Check your numeric settings before starting.");
     return;
   }
-  try { session = new PracticeSession(settings, progress); }
+  try { session = new PracticeSession(settings, progress, Date.now(), Math.random, previousSessionWords); }
   catch (error) { startError(error.message); return; }
   syncSettings();
-  startError(""); notice(""); $("setup").hidden = true; $("results").hidden = true; $("practice").hidden = false;
+  startError("");
+  notice(session.limit < session.requestedLimit
+    ? `Only ${session.limit} distinct questions match these filters. This session will use ${session.limit}.` : "");
+  $("setup").hidden = true; $("results").hidden = true; $("practice").hidden = false;
   document.body.dataset.practicing = "true";
   $("resetButton").disabled = true;
   $("answerInput").value = ""; $("answerChoice").value = ""; $("hintText").hidden = true;
@@ -389,6 +394,7 @@ function finish() {
   clearInterval(clock);
   if (!session.ended) session.end("Session ended");
   if (!session.saved) {
+    previousSessionWords = [...session.askedWords];
     session.saved = true; persist();
   }
   const summary = session.summary();
@@ -399,7 +405,7 @@ function finish() {
     [summary.correct, "Correct"], [summary.incorrect, "Incorrect / assisted"], [`${summary.accuracy}%`, "Accuracy"],
     [`${Math.floor(summary.seconds / 60)}:${String(summary.seconds % 60).padStart(2, "0")}`, "Time spent"]
   ].map(([value, label]) => `<div class="result-stat"><strong>${value}</strong>${label}</div>`).join("")}</div>
-    <p>${summary.total} answers recorded. Accuracy counts first, unassisted answers; retries cannot inflate your score.</p>
+    <p>${summary.total} questions counted. Repeated review questions do not count toward the session total.</p>
     <h3>Forms practiced</h3><p>${summary.forms.map((family) => escape(formCatalog[family].en)).join(" · ") || "No answers yet."}</p>
     <h3>Words to revisit</h3><p class="review-words" lang="ja">${summary.review.map(escape).join(" · ") || "—"}</p>
     <p class="muted small">${summary.review.length ? "These patterns will appear more often in future practice." : "Every focused session builds recall."}</p>`;
@@ -490,7 +496,7 @@ $("revealButton").addEventListener("click", () => {
 });
 $("resetButton").addEventListener("click", async () => {
   if (!await confirmAction("Reset all conjugation practice scores and weak forms? Settings and other tools will not change.", { confirmLabel: "Reset progress" })) return;
-  progress = {}; completed = 0; session = null;
+  progress = {}; previousSessionWords = []; completed = 0; session = null;
   $("results").hidden = true; $("setup").hidden = false;
   persist(); renderProgress(); syncSettings(); notice("Conjugation practice progress reset.");
 });

@@ -2,7 +2,7 @@ import { parseArgs } from "node:util";
 import { openEnrichment, missingWords, coverage, transaction, validateGeneratedExamples, queueGenerated, exampleGenerationPrompt } from "./enrichment-lib.js";
 
 const { values } = parseArgs({ options: {
-  db: { type: "string" }, model: { type: "string", default: "llama3.2:latest" },
+  db: { type: "string" }, model: { type: "string", default: "gemma3:latest" },
   minutes: { type: "string", default: "10" }, limit: { type: "string", default: "100" },
   "retry-failed": { type: "boolean" }
 } });

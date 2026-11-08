@@ -25,7 +25,7 @@ const choices = {
   category: ["all", "verb", "adjective"]
 };
 let settings = { ...defaults }, recent = [], saved = [], randomHistory = [];
-let current, allForms = [], candidates = [], request = 0, timer, composing = false;
+let current, allForms = [], candidates = [], request = 0, composing = false;
 function status(message, error = false) {
   $("status").textContent = message;
   $("status").dataset.error = String(error);
@@ -281,21 +281,19 @@ async function lookup(value, { suggest = false, preferred } = {}) {
   }
 }
 bind($("wordInput"), { IMEMode: true });
-$("wordInput").addEventListener("compositionstart", () => { composing = true; clearTimeout(timer); request++; });
-$("wordInput").addEventListener("compositionend", () => { composing = false; scheduleSuggestions(); });
-function scheduleSuggestions() {
-  clearTimeout(timer); request++;
+$("wordInput").addEventListener("compositionstart", () => { composing = true; request++; });
+$("wordInput").addEventListener("compositionend", () => { composing = false; });
+function clearSuggestions() {
+  request++;
   $("suggestions").replaceChildren();
-  if (composing || !$("wordInput").value.trim()) return;
-  timer = setTimeout(() => lookup($("wordInput").value, { suggest: true }), 250);
 }
-$("wordInput").addEventListener("input", scheduleSuggestions);
+$("wordInput").addEventListener("input", clearSuggestions);
 $("searchForm").addEventListener("submit", (event) => {
-  event.preventDefault(); if (composing) return; clearTimeout(timer); lookup($("wordInput").value);
+  event.preventDefault(); if (composing) return; lookup($("wordInput").value);
 });
 $("suggestions").addEventListener("click", (event) => {
   const button = event.target.closest("[data-candidate]");
-  if (button) { clearTimeout(timer); showEntry(candidates[Number(button.dataset.candidate)]); }
+  if (button) showEntry(candidates[Number(button.dataset.candidate)]);
 });
 $("manualForm").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -303,7 +301,6 @@ $("manualForm").addEventListener("submit", (event) => {
     type: $("manualType").value, manual: true, meanings: [], level: null });
 });
 $("randomButton").addEventListener("click", async () => {
-  clearTimeout(timer);
   const token = ++request;
   const doneLoading = beginLoading([...document.querySelectorAll("#searchForm button")], $("result").parentElement);
   $("randomButton").disabled = true; status("Finding a new word…");
@@ -323,9 +320,8 @@ function renderLists() {
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button");
   if (!button) return;
-  if (button.dataset.query) { clearTimeout(timer); lookup(button.dataset.query); }
+  if (button.dataset.query) lookup(button.dataset.query);
   if (button.dataset.recent !== undefined || button.dataset.saved !== undefined) {
-    clearTimeout(timer);
     const entry = button.dataset.recent !== undefined ? recent[Number(button.dataset.recent)] : saved[Number(button.dataset.saved)];
     if (entry.manual) showEntry(entry); else lookup(entry.word, { preferred: entry });
   }

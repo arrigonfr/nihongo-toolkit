@@ -1,6 +1,6 @@
 export const PAGE_PATHS = Object.freeze([
   "/", "/data-sources.html", "/eawase.html", "/fumitoki.html", "/goi.html",
-  "/imi.html", "/kana.html", "/kanji-chizucho.html", "/kanji-imposters.html",
+  "/imi.html", "/kana.html", "/kanji-chizucho.html", "/kanji-kuizu.html",
   "/katsuyo-renshuu.html", "/katsuyo.html", "/kotoba-sagashi.html",
   "/kotoba.html", "/pazuru.html", "/shiritori.html", "/shiryo.html", "/yomi.html"
 ]);

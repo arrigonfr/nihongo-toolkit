@@ -16,7 +16,8 @@ const key = "nihon:study-controls-v1";
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 export const study = { audio: true, furigana: true, romaji: false };
-const usesLocalSpeech = () => /Firefox\//.test(navigator.userAgent);
+const usesLocalSpeech = () => /Firefox\//.test(navigator.userAgent)
+  && !window.speechSynthesis?.getVoices().some((voice) => /^ja(?:[-_]|$)/i.test(voice.lang));
 try {
   const saved = JSON.parse(localStorage.getItem(key) || "{}");
   for (const name of Object.keys(study)) if (typeof saved[name] === "boolean") study[name] = saved[name];
@@ -57,7 +58,6 @@ export function speakJapanese(text) {
       window.alert("Japanese speech playback is unavailable. Check your device's Japanese speech voices.");
     }
   };
-  window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }
 
@@ -93,6 +93,8 @@ export function mountStudyControls({ furigana = true, romaji = true, onChange = 
   const theme = document.querySelector("#themeButton, #themeCycleBtn");
   header.classList.add("study-header");
   header.classList.add("study-embedded");
+  for (const note of header.querySelectorAll(".brand-note, .cw-brand-note, .brand-sub")) note.textContent = "at NihongoKit";
+  for (const panel of document.querySelectorAll("details#settingsPanel, details#settingsDrawer, details:has(> #settings)")) panel.open = true;
   const toolbar = header.querySelector(".study-toolbar");
   for (const [name, visible] of Object.entries({ audio: true, furigana, romaji })) {
     const button = document.createElement("button");

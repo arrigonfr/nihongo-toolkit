@@ -25,23 +25,21 @@
       <div id="notice" role="status" aria-live="polite"></div>
       <div class="practice-layout">
         <div>
-          <section id="practiceDisplay" class="panel" aria-label="Practice display">
-            <p class="muted small">Settings save automatically and apply to your next session. The top study controls stay live.</p>
-            <div class="settings-grid" id="displaySettings"></div>
-          </section>
           <section id="setup" class="panel">
             <div class="section-heading"><h2>Your practice, your pace</h2><span class="badge">活用練習</span></div>
             <p class="muted">Start small. Your missed forms will return more often as you practice.</p>
             <div class="settings-grid" id="quickSettings"></div>
             <fieldset id="levelSettings"><legend>JLPT study level</legend></fieldset>
             <p class="muted small">Select one level or several for a range. Question difficulty combines the word and the form; advanced forms can use familiar words.</p>
-            <details id="settingsPanel">
+            <details id="settingsPanel" open>
               <summary>Customize your practice <span class="muted">· forms, input & more</span></summary>
               <fieldset id="typeSettings"><legend>Word types</legend></fieldset>
               <fieldset id="formSettings"><legend>Conjugation forms</legend></fieldset>
               <div class="settings-grid" id="questionSettings"></div>
               <h3>Hints & learning support</h3>
               <div class="settings-grid" id="supportSettings"></div>
+              <fieldset id="practiceDisplay"><legend>Accessibility</legend><div class="settings-grid" id="displaySettings"></div></fieldset>
+              <div class="practice-settings-footer" data-reset-slot="button"></div>
             </details>
             <div class="start-line"><button id="startButton" class="primary" type="button">Start practice →</button></div>
             <p id="startError" class="start-error" role="alert"></p>
@@ -68,7 +66,7 @@
           <section id="results" class="panel" hidden aria-labelledby="resultsTitle">
             <p class="eyebrow">PRACTICE MAKES PROGRESS</p><h2 id="resultsTitle" tabindex="-1">Session complete</h2>
             <div id="resultContent"></div>
-            <button id="restartButton" class="primary" type="button">Practice again →</button>
+            <div class="replay-actions"><button id="restartButton" class="primary" type="button">Practice again →</button></div>
           </section>
         </div>
         <aside class="practice-sidebar">

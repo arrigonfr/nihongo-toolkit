@@ -1,6 +1,6 @@
 import { API_BASE } from "./api.js";
 import { rememberControls } from "./settings-storage.js";
-import { sentencesHTML, loadSentences } from "./examples.js";
+import { sentencesHTML } from "./examples.js";
 import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML } from "./study-controls.js";
 import { toHiragana } from "wanakana";
 (() => {
@@ -10,12 +10,11 @@ import { toHiragana } from "wanakana";
   const HISTORY_KEY = "kotoba-history-v1";
   const CACHE_KEY = `kotoba-sqlite-cache-v10:${API_BASE}`;
   const COMPOUND_OPTIONS_KEY = "kotoba-compound-options-v1";
-  const DEBOUNCE_MS = 350;
   const MAX_HISTORY = 20;
   const $ = (selector) => document.querySelector(selector);
   const input = $("#query"), results = $("#results"), searchButton = $("#searchButton");
   const resultLabel = $("#resultLabel"), kanjiMode = $("#kanjiMode");
-  let debounceTimer, activeController, activeSearchKey, requestNumber = 0, selectedIndex = -1;
+  let activeController, activeSearchKey, requestNumber = 0, selectedIndex = -1;
 
   function readStorage(key, fallback) {
     try { const value = localStorage.getItem(key); return value ? JSON.parse(value) : fallback; }
@@ -107,31 +106,7 @@ import { toHiragana } from "wanakana";
       });
   }
   function missingExamples(term) {
-    return `<div class="example-empty" data-sentence-term="${escapeHTML(term)}" aria-live="polite">Looking for example sentences…</div>`;
-  }
-  async function fillMissingExamples(token, signal) {
-    const pending = [...results.querySelectorAll("[data-sentence-term]")];
-    const requests = new Map();
-    async function worker() {
-      while (pending.length && token === requestNumber && !signal.aborted) {
-        const element = pending.shift();
-        const term = element.dataset.sentenceTerm;
-        try {
-          const key = `live-examples:${term}`;
-          if (!requests.has(term)) requests.set(term, Promise.resolve(cacheRead(key) || loadSentences(term, signal)));
-          const examples = await requests.get(term);
-          if (token !== requestNumber || !element.isConnected) return;
-          if (examples.length) cacheWrite(key, examples);
-          element.innerHTML = sentencesHTML(examples, term);
-        } catch (error) {
-          if (signal.aborted || token !== requestNumber) return;
-          console.warn("Example sentence lookup failed:", error);
-          element.innerHTML = sentencesHTML([], term);
-          element.querySelector(".sentence-status").textContent = "Example sentences could not be loaded. Try again.";
-        }
-      }
-    }
-    await Promise.all([worker(), worker()]);
+    return `<div class="sentence-panel" data-sentence-query="${escapeHTML(term)}"><div class="sentence-results"></div><div class="sentence-actions"><button type="button" class="sentence-next">Load examples</button><span class="sentence-status" role="status" aria-live="polite"></span></div></div>`;
   }
   function renderWordResults(items, sentenceData, query, fromCache = false) {
     if (!items.length) {
@@ -232,10 +207,8 @@ import { toHiragana } from "wanakana";
       </section>
     </article>`;
     setIdle();
-    await fillMissingExamples(token, signal);
   }
   async function search(requestedQuery = null, requestedMode = null) {
-    clearTimeout(debounceTimer);
     const query = toHiragana((requestedQuery ?? input.value).trim());
     const isKanji = requestedMode ?? kanjiMode.checked;
     const searchKey = `${isKanji}:${query}`;
@@ -274,7 +247,6 @@ import { toHiragana } from "wanakana";
       }
       if (token !== requestNumber) return;
       renderWordResults(words, [], query, Boolean(cached));
-      await fillMissingExamples(token, controller.signal);
     } catch (error) {
       if (error.name === "AbortError" || token !== requestNumber) return;
       console.error("Search failed:",error);
@@ -294,21 +266,15 @@ import { toHiragana } from "wanakana";
       }
     } finally { await doneLoading(); if (token === requestNumber) { activeSearchKey = null; setIdle(); } }
   }
-  function scheduleSearch() {
-    clearTimeout(debounceTimer);
-    if (input.value.trim()) debounceTimer = setTimeout(() => search(),DEBOUNCE_MS);
-  }
   input.addEventListener("input", (event) => {
     if (event.isComposing) return;
     const position = input.selectionStart;
     const before = toHiragana(input.value.slice(0, position), { IMEMode: true });
     input.value = before + toHiragana(input.value.slice(position), { IMEMode: true });
     input.setSelectionRange(before.length, before.length);
-    scheduleSearch();
   });
-  input.addEventListener("compositionend", scheduleSearch);
   input.addEventListener("keydown",(event) => {
-    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); search(); return; }
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); search(); return; }
     if (event.key === "Escape") {
       event.preventDefault(); input.value = ""; activeController?.abort(); activeSearchKey = null; requestNumber++;
       resultLabel.textContent = "Ready when you are";
@@ -329,7 +295,6 @@ import { toHiragana } from "wanakana";
     results.querySelectorAll(".compound-meaning").forEach((element) => { element.hidden = !showMeaning; });
     writeStorage(COMPOUND_OPTIONS_KEY, { meaning: showMeaning });
   });
-  kanjiMode.addEventListener("change",() => { if (input.value.trim()) search(); });
   $("#clearButton").addEventListener("click",() => {
     input.value = ""; activeController?.abort(); activeSearchKey = null; requestNumber++;
     resultLabel.textContent = "Ready when you are";

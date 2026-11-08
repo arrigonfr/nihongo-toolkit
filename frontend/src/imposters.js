@@ -1,5 +1,7 @@
 import "./imposters.css";
 import "./chips.css";
+import { createSessionView } from "./session-view.js";
+import { setSettingAvailability } from "./settings-panel.js";
 import { API_BASE } from "./api.js";
 import { mountChips } from "./chips.js";
 import { mountStudyControls, study, japaneseHTML, readingsHTML, audioHTML, speakJapanese } from "./study-controls.js";
@@ -46,6 +48,20 @@ const reviewKey = "nihon:imposters-review-v1";
 function load(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } }
 function save(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { $("error").textContent = "Could not save your progress on this device."; } }
 let review = load(reviewKey, {}), session = null, timerHandle = null;
+const sessionView = createSessionView({ settings: $("settings"), start: $("start"), results: $("results"), play: [$("game")], setup: [$("reviewList")], footer: true });
+function updateAvailability() {
+  const daily = $("mode").value === "daily";
+  for (const id of ["count", "levelSelect", "variants"]) setSettingAvailability($(id), daily ? "Fixed by the daily challenge." : "");
+  setSettingAvailability($("customCount"), daily || $("count").value !== "custom" ? "Choose a custom question count." : "");
+  $("customWrap").hidden = daily || $("count").value !== "custom";
+  setSettingAvailability($("seconds"), ["timed", "high"].includes($("mode").value) ? "" : "Used in Timed Challenge and High Score.");
+  const reading = daily || $("variants").value === "all" || $("variants").value.includes("reading-kanji");
+  setSettingAvailability($("readingPrompt"), reading ? "" : "Used for Reading to Kanji questions.");
+  $("volumeNotice").hidden = !reading || $("readingPrompt").value !== "audio";
+  for (const kind of ["hint", "reveal"]) setSettingAvailability($(`${kind}Limit`), $(`${kind}Mode`).value === "limited" ? "" : "Used with limited assistance.");
+}
+$("settingsForm").addEventListener("change", updateAvailability);
+updateAvailability();
 const dateKey = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; };
 function status() { $("reviewList").textContent = `Review list (${Object.keys(review).length})`; }
 status();
@@ -72,12 +88,13 @@ async function loadPool(mode, level, random, needed) {
 $("start").addEventListener("click", async () => {
   $("error").textContent = "";
   const mode = $("mode").value, level = $("levelSelect").value;
-  const count = $("count").value === "custom" ? Number($("customCount").value) : Number($("count").value);
-  const selectedVariants = $("variants").value === "all" ? variants.map(([value]) => value) : $("variants").value.split(",").filter((value) => value !== "none");
-  if (level === "none" || !selectedVariants.length || !Number.isInteger(count) || count < 1 || count > 200 || !$("settingsForm").checkValidity()) { $("error").textContent = "Choose levels and question variants, and enter valid session settings."; return; }
+  const count = mode === "daily" ? 10 : $("count").value === "custom" ? Number($("customCount").value) : Number($("count").value);
+  const selectedVariants = mode === "daily" || $("variants").value === "all" ? variants.map(([value]) => value) : $("variants").value.split(",").filter((value) => value !== "none");
+  if (mode !== "daily" && level === "none" || !selectedVariants.length || !Number.isInteger(count) || count < 1 || count > 200 || !$("settingsForm").checkValidity()) { $("error").textContent = "Choose levels and question variants, and enter valid session settings."; return; }
   if (mode === "review" && !Object.keys(review).length) { $("error").textContent = "Your review list is empty."; return; }
   if ($("readingPrompt").value === "audio" && !study.audio && (selectedVariants.includes("reading-kanji") || mode === "daily")) { $("error").textContent = "Enable Audio in the study controls or choose Show kana."; return; }
-  const doneLoading = beginLoading($("start"), $("game").parentElement);
+  sessionView.start();
+  const doneLoading = beginLoading($("start"), $("game"));
   $("start").disabled = true;
   $("error").textContent = "Loading kanji…";
   try {
@@ -103,7 +120,7 @@ $("start").addEventListener("click", async () => {
     session = { mode, questions, index: 0, correct: 0, mistakes: [], score: 0, combo: 0, hints: 0, reveals: 0, answered: false, removed: new Set(), selected: new Set() };
     $("settings").open = false; $("results").hidden = true; $("game").hidden = false; $("error").textContent = "";
     renderQuestion(); playPrompt(); startTimer();
-  } catch (error) { $("error").textContent = error.message || "Could not start the session."; }
+  } catch (error) { sessionView.setup(); $("error").textContent = error.message || "Could not start the session."; }
   finally { await doneLoading(); $("start").disabled = Boolean(session); $("reviewList").disabled = Boolean(session); }
 });
 function startTimer() {
@@ -128,7 +145,12 @@ function renderQuestion() {
     ? audioOnly ? `<button type="button" class="study-audio" data-study-speak="${escape(question.prompt)}" aria-label="Replay question audio">Replay ▶</button>` : audioHTML(question.prompt)
     : "";
   $("secondary").textContent = "";
-  $("choices").innerHTML = question.choices.map((choice, index) => `<button type="button" data-choice="${index}" ${question.variant === "reading-kanji" ? 'data-kanji lang="ja"' : 'lang="ja"'} aria-pressed="${session.selected.has(index)}" class="${session.removed.has(index) ? "removed" : session.answered && choice.correct ? "correct" : session.answered && session.selected.has(index) ? "wrong" : ""}" ${session.answered || session.removed.has(index) ? "disabled" : ""}>${escape(choice.value)}</button>`).join("");
+  $("choices").innerHTML = question.choices.map((choice, index) => {
+    const selected = session.selected.has(index);
+    const result = session.answered ? choice.correct ? selected ? "correct" : "missed" : selected ? "wrong" : "" : "";
+    const label = { correct: "Correct selection", wrong: "Incorrect selection", missed: "Correct, not selected" }[result];
+    return `<button type="button" data-choice="${index}" ${question.variant === "reading-kanji" ? 'data-kanji' : ''} aria-pressed="${selected}" class="${session.removed.has(index) ? "removed" : result}" ${session.answered || session.removed.has(index) ? "disabled" : ""}><span class="choice-value" lang="ja">${escape(choice.value)}</span>${label ? `<span class="choice-result" lang="en">${label}</span>` : ""}</button>`;
+  }).join("");
   $("check").hidden = session.answered;
   $("check").disabled = !session.selected.size;
   $("hint").disabled = session.answered || !allowance("hint") || !question.choices.some((choice, index) => !choice.correct && !session.removed.has(index));
@@ -171,6 +193,7 @@ function finish(completed) {
   $("start").disabled = false; $("reviewList").disabled = false;
   showReview(result.mistakes, "Session results");
   $("results").insertAdjacentHTML("afterbegin", `<p>Correct: ${result.correct} · Mistakes: ${result.mistakes.length} · Accuracy: ${accuracy}%${result.mode === "high" ? ` · Score: ${result.score}` : ""}</p>`);
+  sessionView.finish();
   status();
 }
 import { beginLoading } from "./request-loading.js";

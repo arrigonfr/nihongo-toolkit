@@ -1,3 +1,4 @@
+import { createSessionView } from "./session-view.js";
 import { fetchItems } from "./api.js";
 import { beginLoading } from "./request-loading.js";
 import { setSettingAvailability } from "./settings-panel.js";
@@ -410,6 +411,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
       ? `<ul>${state.failedTerms.map((item) => `<li><strong lang="ja">${escapeHTML(item.word)}</strong>${item.furigana ? ` <span lang="ja">［${escapeHTML(item.furigana)}］</span>` : ""}${item.romaji ? ` <span>(${escapeHTML(item.romaji)})</span>` : ""} — ${escapeHTML(item.meaning)} <span>(${escapeHTML(item.level)})</span></li>`).join("")}</ul>`
       : "<p>No failed terms. Great work!</p>"}`;
     setStatus("Quiz complete. Start another quiz whenever you're ready.");
+    sessionView.finish();
   }
   function acceptedAnswers(item, direction = null) {
     if (direction === "to-romaji") return romajiVariants(item.romaji || romanizeKana(item.furigana || item.word));
@@ -622,6 +624,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
       pausedAt: 0, pausedMs: 0, presented: 0, skipped: 0, finished: false, clockTimer: null
     };
     $("#settingsPanel").open = false;
+    sessionView.start();
     $("#question").hidden = false;
     $("#questionContent").hidden = true;
     $("#questionTop").hidden = false;
@@ -681,6 +684,12 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
   $("#sessionType").addEventListener("change", updateSessionTypeFields);
   for (const id of ["levelSelect", "sessionType", "questionLimit", "timeLimit"]) $(`#${id}`).addEventListener("change", () => setStartError(""));
   $("#modeSelect").addEventListener("change", () => { updateShortcutHint(); updateKanaDirection(); });
+  $(".goi-settings").prepend($(".session-controls"));
+  $("#settingsPanel").after($("#startError"));
+  const sessionView = createSessionView({
+    settings: $("#settingsPanel"), start: $("#startButton"), results: $("#resultsPanel"), footer: true,
+    play: [$("#sessionStats"), $("#questionTop"), $("#questionContent"), $(".review-option"), $("#example")]
+  });
   $("#startButton").addEventListener("click", startQuiz);
   $("#stopSessionButton").addEventListener("click", () => finishQuiz("stopped"));
   $("#checkButton").addEventListener("click", () => checkAnswer(false));

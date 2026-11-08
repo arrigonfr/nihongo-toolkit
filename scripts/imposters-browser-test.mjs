@@ -17,6 +17,10 @@ try {
     } });
   });
   const errors = [];
+  async function stopSession() {
+    await page.locator("#stop").click();
+    await page.locator("#results [data-play-again]").click();
+  }
   page.on("pageerror", (error) => errors.push(error.message));
   const characters = ["木", "本", "日", "白", "目", "自", "人", "入", "大", "犬", "力", "刀"];
   const pool = characters.map((kanji, index) => ({ kanji, jlpt: 5, meanings: [`meaning ${index}`], on_readings: [index < 6 ? "コウ" : "セイ", `カ${"アイウエオキクケコサシス"[index]}`], kun_readings: [`た${"あいうえおかきくけこさし"[index]}`], examples: [{ word: `${kanji}語`, reading: "ご", meanings: [`example ${index}`] }] }));
@@ -29,7 +33,7 @@ try {
     return route.fulfill({ json: { items: characters.map((character) => pool.find((item) => item.kanji === character)) } });
   });
   await page.route(/\/api\/kanji\/[^/?]+$/, (route) => route.fulfill({ json: pool.find((item) => item.kanji === decodeURIComponent(new URL(route.request().url()).pathname.split("/").at(-1))) }));
-  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/kanji-imposters.html`);
+  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/kanji-kuizu.html`);
   assert.match(await page.locator(".brand-name").textContent(), /Kanji Kuizu/);
   await page.locator("#settings > summary").click();
   const collapsed = await page.evaluate(() => ({ bodyHeight: document.body.getBoundingClientRect().height, viewportHeight: window.innerHeight, panelHeight: document.querySelector("#settings").getBoundingClientRect().height, summaryHeight: document.querySelector("#settings > summary").getBoundingClientRect().height }));
@@ -73,7 +77,7 @@ try {
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator("#start").click();
-  await page.locator("#game").waitFor({ state: "visible" });
+  await page.locator('#game:not([aria-busy="true"]) #choices button').first().waitFor();
   assert.equal(await page.locator("#choices button").count(), 5);
   const prompt = await page.locator("#prompt").textContent();
   const isKanji = characters.includes(prompt);
@@ -87,21 +91,22 @@ try {
   assert.equal(await page.locator("#next").isVisible(), false);
   await page.locator("#check").click();
   assert.match(await page.locator("#feedback").textContent(), /Not quite/);
-  assert.equal(await page.locator("#choices .correct").count(), correct.length);
+  assert.equal(await page.locator("#choices .correct").count(), 1);
+  assert.equal(await page.locator("#choices .missed").count(), correct.length - 1);
+  assert.equal(await page.locator("#choices .missed").first().getAttribute("aria-pressed"), "false");
   await page.locator("#next").click();
   await page.locator("#hint").click();
   assert.equal(await page.locator("#choices .removed").count(), 1);
   await page.locator("#reveal").click();
-  assert.ok(await page.locator("#choices .correct").count() >= 2);
-  await page.locator("#stop").click();
+  assert.ok(await page.locator("#choices .missed").count() >= 2);
+  await stopSession();
   assert.match(await page.locator("#results").textContent(), /Mistakes: 2/);
   assert.ok((await page.locator("#reviewList").textContent()).includes("(") );
   for (const variant of ["kanji-reading", "reading-kanji"]) {
     await page.locator("#variants").evaluate((select, value) => { select.value = value; select.dispatchEvent(new Event("change", { bubbles: true })); }, variant);
     await page.locator("#start").click();
-    await page.waitForFunction(() => !document.querySelector("#start").disabled || !document.querySelector("#game").hidden);
+    await page.locator('#game:not([aria-busy="true"]) #choices button').first().waitFor();
     assert.equal(await page.locator("#error").textContent(), "", variant);
-    await page.locator("#game").waitFor({ state: "visible" });
     const currentPrompt = await page.locator("#prompt").textContent();
     const valid = await page.locator("#choices button").evaluateAll((buttons, { pool, currentPrompt, variant }) => {
       const normalize = (text) => text.replace(/[ァ-ヶ]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
@@ -113,7 +118,7 @@ try {
     await page.locator("#check").click();
     assert.match(await page.locator("#feedback").textContent(), /Not quite/, "All correct choices are required");
     if (variant === "reading-kanji") {
-      const choices = await page.locator("#choices button").allTextContents();
+      const choices = await page.locator("#choices .choice-value").allTextContents();
       const items = page.locator("#feedback [data-feedback-kanji]");
       assert.equal(await items.count(), 5);
       for (const [index, kanji] of choices.entries()) {
@@ -148,22 +153,22 @@ try {
     for (const index of nextValid) await page.locator(`#choices button[data-choice="${index}"]`).click();
     await page.locator("#check").click();
     assert.match(await page.locator("#feedback").textContent(), /Correct/);
-    await page.locator("#stop").click();
+    await stopSession();
     assert.match(await page.locator("#results").textContent(), /Correct: 1/);
   }
   await page.locator("#details").uncheck();
   await page.locator("#start").click();
-  await page.locator("#game").waitFor({ state: "visible" });
+  await page.locator('#game:not([aria-busy="true"]) #choices button').first().waitFor();
   await page.locator("#reveal").click();
   assert.equal(await page.locator("#feedback [data-feedback-kanji]").count(), 0, "Details remain hidden when disabled");
-  await page.locator("#stop").click();
+  await stopSession();
   await page.locator("#details").check();
   await page.locator("#variants").evaluate((select) => { select.value = "reading-kanji"; select.dispatchEvent(new Event("change", { bubbles: true })); });
   await page.locator("#readingPrompt").selectOption("audio");
   if (await page.locator("#audioQuickToggle").getAttribute("aria-pressed") !== "true") await page.locator("#audioQuickToggle").click();
   await page.evaluate(() => { window.spokenQuestions = []; });
   await page.locator("#start").click();
-  await page.locator("#game").waitFor({ state: "visible" });
+  await page.locator('#game:not([aria-busy="true"]) #choices button').first().waitFor();
   const firstAudio = await page.locator("#promptAudio button").getAttribute("data-study-speak");
   assert.deepEqual(await page.evaluate(() => window.spokenQuestions), [firstAudio], "The first question plays automatically");
   assert.equal(await page.locator("#prompt").textContent(), "");
@@ -176,13 +181,13 @@ try {
   await page.locator("#next").click();
   const secondAudio = await page.locator("#promptAudio button").getAttribute("data-study-speak");
   assert.deepEqual(await page.evaluate(() => window.spokenQuestions), [firstAudio, firstAudio, secondAudio], "The next question plays automatically");
-  await page.locator("#stop").click();
+  await stopSession();
   await page.locator("#readingPrompt").selectOption("text");
   await page.locator("#mode").evaluate((select) => { select.value = "daily"; select.dispatchEvent(new Event("change", { bubbles: true })); });
   const dailySets = [];
   for (let attempt = 0; attempt < 2; attempt++) {
     await page.locator("#start").click();
-    await page.locator("#game").waitFor({ state: "visible" });
+    await page.locator('#game:not([aria-busy="true"]) #choices button').first().waitFor();
     const questions = [];
     for (let index = 0; index < 3; index++) {
       questions.push([await page.locator("#prompt").textContent(), await page.locator("#choices button").allTextContents()]);
@@ -190,7 +195,7 @@ try {
       await page.locator("#next").click();
     }
     dailySets.push(questions);
-    await page.locator("#stop").click();
+    await stopSession();
   }
   assert.deepEqual(dailySets[0], dailySets[1]);
   assert.equal(bulkCalls, 2, "one bulk detail request per daily startup");

@@ -34,6 +34,7 @@ legend { font-size: 13px; font-weight: 650; padding: 0 5px; }
 fieldset > button { font-size: 12px; padding: 5px 9px; min-height: 34px; }
 #settingsPanel { border-top: 1px solid var(--line); padding-top: 18px; margin-top: 20px; }
 #settingsPanel > summary { font-size: 13px; }
+.practice-settings-footer { display: flex; justify-content: flex-end; padding-block: 12px; }
 .start-line { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid var(--line); padding-top: 20px; margin-top: 22px; }
 .start-line p { margin: 0; }
 .start-line button { flex-shrink: 0; }

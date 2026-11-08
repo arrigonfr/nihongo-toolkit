@@ -22,7 +22,7 @@ const payload = {
 
 try {
   process.env.TRACK_VISITS = "true";
-  vite = await createServer({ root, server: { host: "127.0.0.1", port: 0 } });
+  vite = await createServer({ root, server: { host: "127.0.0.1", port: 0, strictPort: false } });
   await vite.listen();
   const base = `http://127.0.0.1:${vite.httpServer.address().port}`;
   browser = await chromium.launch();
@@ -130,12 +130,16 @@ try {
     ["kotoba-sagashi.html", "#startButton"],
     ["pazuru.html", "#newPuzzleBtn"],
     ["shiritori.html", "#newGame"],
-    ["kanji-imposters.html", "#start"]
+    ["kanji-kuizu.html", "#start"]
   ];
   for (const [name, selector, input, value] of cases) {
     await go(name);
     if (input) await page.fill(input, value);
     await page.click(selector);
+    if (name === "pazuru.html") {
+      assert.equal(await page.locator(".request-loading-panel").getAttribute("id"), "cwWorkspace");
+      assert.equal(await page.locator("#cwWorkspace").evaluate((node) => getComputedStyle(node).position), "relative");
+    }
     await assertCooldown(selector, await nextRequest());
     assert.equal(await page.locator(selector).isEnabled(), true, `${name}: failure allows retry`);
     console.log(`PASS loading/error/cooldown: ${name}`);
@@ -189,7 +193,7 @@ try {
 
   for (const flag of ["", "false", "TRUE", "1"]) {
     process.env.TRACK_VISITS = flag;
-    vite = await createServer({ root, server: { host: "127.0.0.1", port: 0 } });
+    vite = await createServer({ root, server: { host: "127.0.0.1", port: 0, strictPort: false } });
     await vite.listen();
     const origin = `http://127.0.0.1:${vite.httpServer.address().port}`;
     const off = await browser.newContext();

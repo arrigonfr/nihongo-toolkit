@@ -299,6 +299,14 @@
     .goi-settings .chips-field > .chips-title { margin-bottom: 6px; }
     .settings-panel .study-settings-note { margin: 0; padding: 12px 18px 0; }
     @media(max-width:430px) { .settings.session-controls > .limit-field, .settings.session-controls > .start-button { flex: 1 1 140px; } .goi-settings { padding: 12px; gap: 14px; } }
+    html, body { height: auto; overflow: visible; }
+    .shell, main, .layout { height: auto; min-height: 0; overflow: visible; }
+    .quiz-panel { height: auto; overflow: visible; padding: 0; }
+    details.settings-panel, .session-stats { background: var(--card); }
+    body .goi-settings { padding: 20px; }
+    body :is(.session-stats, .results-panel, #questionContent) { padding: 20px; }
+    body .settings-panel .study-settings-note { padding-inline: 20px; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
@@ -316,7 +324,7 @@
         <p>Choose a level, set a practice goal, and build your Japanese vocabulary one word at a time.</p>
       </section>
       <div class="layout">
-        <section class="panel quiz-panel" aria-label="Vocabulary quiz">
+        <section class="quiz-panel" aria-label="Vocabulary quiz">
           <details class="settings-panel" id="settingsPanel" open>
             <summary>Quiz settings</summary>
             <p class="study-settings-note">Settings save automatically and apply to your next session. The top study controls stay live.</p>
@@ -386,7 +394,7 @@
               <div class="example-en" id="exampleEn"></div>
             </div>
             <div class="question-top" id="questionTop" hidden>
-                <span class="question-label" id="questionLabel">Question 1</span>
+                <span class="question-label" id="questionLabel"></span>
                 <span class="badge" id="levelBadge">N3</span>
                 <span class="badge timer-badge" id="sessionTimer" hidden></span>
                 <button class="button stop-session" id="stopSessionButton" type="button" hidden>Stop session</button>

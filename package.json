@@ -32,6 +32,7 @@
     "test:tool-fixes": "VITE_SITE_URL=https://nihongo-toolkit.pages.dev npm run build && node scripts/tool-fixes-browser-test.mjs",
     "test:settings": "node scripts/settings-browser-test.mjs && node scripts/settings-availability-browser-test.mjs",
     "test:study-improvements": "node scripts/study-improvements-browser-test.mjs",
+    "test:session-flow": "node scripts/session-flow-browser-test.mjs",
     "test:selects": "node scripts/select-browser-test.mjs",
     "test:shiritori": "node --test backend/test/shiritori.test.js && node scripts/shiritori-browser-test.mjs",
     "test:word-search": "node --test frontend/test/word-search.test.js backend/test/database.test.js && node scripts/word-search-browser-test.mjs",

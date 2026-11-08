@@ -17,11 +17,11 @@ async function reset() {
 }
 
 function attach(panel) {
-  if (panel.querySelector(".reset-defaults")) return;
+  if (panel.querySelector(".reset-defaults, .reset-defaults-button")) return;
   const slot = panel.querySelector("[data-reset-slot]");
   if (slot) {
     const inline = document.createElement("button");
-    inline.type = "button"; inline.className = "button reset-defaults reset-defaults-button reset-defaults-inline"; inline.textContent = "Reset to defaults";
+    inline.type = "button"; inline.className = slot.dataset.resetSlot === "button" ? "button reset-defaults-button" : "button reset-defaults reset-defaults-button reset-defaults-inline"; inline.textContent = "Reset to defaults";
     inline.addEventListener("click", reset);
     slot.append(inline);
     return;

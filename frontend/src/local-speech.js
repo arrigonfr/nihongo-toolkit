@@ -1,6 +1,7 @@
 let enginePromise;
 let context;
-let source;
+const sources = new Set();
+let nextStart = 0;
 let requestId = 0;
 let status;
 let worker;
@@ -64,16 +65,16 @@ export function preloadLocalSpeech() {
 
 export function cancelLocalSpeech() {
   requestId++;
-  if (source) {
+  for (const source of sources) {
     source.stop();
     source.disconnect();
-    source = undefined;
   }
+  sources.clear();
+  nextStart = 0;
   if (status) showStatus("");
 }
 
 export async function speakLocalJapanese(text) {
-  cancelLocalSpeech();
   const id = requestId;
   try {
     context ||= new AudioContext();
@@ -88,15 +89,17 @@ export async function speakLocalJapanese(text) {
     if (context.state !== "running") throw new Error("Audio playback was blocked by the browser.");
     const buffer = context.createBuffer(1, audio.audio.length, audio.sampling_rate);
     buffer.copyToChannel(audio.audio, 0);
-    source = context.createBufferSource();
+    const source = context.createBufferSource();
     source.buffer = buffer;
     source.connect(context.destination);
-    const playing = source;
+    sources.add(source);
     source.onended = () => {
-      playing.disconnect();
-      if (source === playing) source = undefined;
+      source.disconnect();
+      sources.delete(source);
     };
-    source.start();
+    const start = Math.max(context.currentTime, nextStart);
+    nextStart = start + buffer.duration;
+    source.start(start);
     showStatus("");
   } catch (error) {
     if (id !== requestId) return;

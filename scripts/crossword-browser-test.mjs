@@ -90,13 +90,18 @@ try {
         meaning: clue.querySelector(".cw-clue-body > div:nth-child(2)").textContent.trim()
       }))
     }));
-    async function newPuzzle() {
-      if (await page.locator("#newPuzzleBtn").isVisible()) {
-        await page.click("#newPuzzleBtn");
-      } else {
-        if (!await page.locator("#nextPuzzleBtn").isVisible()) await page.click("#revealPuzzleBtn");
-        await page.click("#nextPuzzleBtn");
+    async function customize() {
+      if (await page.locator("#newPuzzleBtn").isVisible()) return;
+      if (!await page.locator("#puzzleResults").isVisible()) {
+        await page.click("#revealPuzzleBtn");
+        const confirmation = page.locator(".study-confirm-dialog[open]");
+        if (await confirmation.count()) await confirmation.locator("button").last().click();
       }
+      await page.click("[data-play-again]");
+    }
+    async function newPuzzle() {
+      await customize();
+      await page.click("#newPuzzleBtn");
       await page.waitForFunction(() => !document.getElementById("feedbackBanner").textContent.startsWith("Generating"));
     }
     async function revealAndCheck(mode) {
@@ -167,7 +172,8 @@ try {
       return document.querySelector(".navigation").contains(document.elementFromPoint(x + 2, y + 2));
     }), true, "Navigation overlays the active crossword tile");
     await page.click("#menuButton");
-    await page.click("#settingsDrawer summary");
+    await customize();
+    await page.locator("#settingsDrawer").evaluate((node) => { node.open = true; });
     for (const [id, text] of [["kanjiFocusToggle", "Use Kanji meanings & readings as clues"]]) {
       assert.equal(await page.locator(`#${id}`).evaluate((input) => input.labels[0].textContent.trim()), text);
       assert.equal(await page.locator(`#${id}`).evaluate((input) => input.labels[0].querySelectorAll("small").length), 0);
@@ -187,9 +193,11 @@ try {
     await newPuzzle();
     await revealAndCheck("kanji");
 
+    await customize();
     await page.click('[data-mode="classic"]');
     await page.selectOption("#answerModeSelect", "kana", { force: true });
     await newPuzzle();
+    await customize();
     const kanaPuzzle = await snapshot();
     await page.click('[data-mode="kanjiChallenge"]');
     assert.equal(await page.locator("#answerModeSelect").isDisabled(), true);
@@ -199,6 +207,7 @@ try {
     await revealAndCheck("kanji");
 
     const previous = await snapshot();
+    await customize();
     for (const level of ["1", "2"]) {
       await page.selectOption("#levelSelect", level, { force: true });
       await newPuzzle();
@@ -316,6 +325,12 @@ try {
       }
       await cellAt(entry.cells[0]).press("Backspace");
       assert.equal(await cellAt(entry.cells[0]).getAttribute("data-char"), [...entry.item.word][0], "Solved characters stay protected");
+
+      await page.click("#revealPuzzleBtn");
+      await page.locator("#puzzleResults").waitFor();
+      assert.equal(await page.locator(`.cw-review-word.answered[data-review-entry="${entry.id}"]`).count(), 1, "Reveal preserves answered words");
+      assert.equal(await page.locator(".cw-review-word").count(), (await snapshot()).entries.length, "Review includes every puzzle word");
+      assert.ok(await page.locator(".cw-review-word.unanswered").count() > 0);
 
       await inputPuzzle(mode);
       const imeEntry = await selectTypedEntry(true);

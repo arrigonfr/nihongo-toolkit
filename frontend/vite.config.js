@@ -5,6 +5,76 @@ import { legacyRoutes } from "./src/routes.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const toolFiles = readdirSync(root).filter((file) => file.endsWith(".html") && !["index.html", "data-sources.html", "文字.html"].includes(file));
+const seoPages = {
+  "index.html": {
+    title: "Japanese Learning Tools | Nihongo Toolkit",
+    description: "Explore free Japanese learning tools for hiragana, katakana, kanji, vocabulary, reading, grammar, and word games."
+  },
+  "kana.html": {
+    title: "Hiragana and Katakana Practice | Nihongo Toolkit",
+    description: "Practice reading and recognizing Japanese hiragana and katakana with interactive kana exercises."
+  },
+  "yomi.html": {
+    title: "Kanji Reading Practice | Nihongo Toolkit",
+    description: "Practice Japanese kanji readings with interactive exercises for reading characters in context."
+  },
+  "imi.html": {
+    title: "Kanji Meaning Practice | Nihongo Toolkit",
+    description: "Build your understanding of Japanese kanji with focused meaning practice and review."
+  },
+  "goi.html": {
+    title: "Japanese Vocabulary Practice | Nihongo Toolkit",
+    description: "Build Japanese vocabulary with interactive JLPT-focused practice, review, and study sessions."
+  },
+  "katsuyo-renshuu.html": {
+    title: "Japanese Conjugation Practice | Nihongo Toolkit",
+    description: "Practice Japanese verb and adjective conjugations with focused interactive exercises."
+  },
+  "kotoba.html": {
+    title: "Japanese Dictionary | Nihongo Toolkit",
+    description: "Look up Japanese words, readings, meanings, and example information in an interactive dictionary."
+  },
+  "kanji-chizucho.html": {
+    title: "Explore Kanji and Compounds | Nihongo Toolkit",
+    description: "Explore Japanese kanji, their components, and related compounds in an interactive character atlas."
+  },
+  "katsuyo.html": {
+    title: "Japanese Verb and Adjective Conjugator | Nihongo Toolkit",
+    description: "Look up Japanese verb and adjective conjugations across common forms with an interactive conjugator."
+  },
+  "shiryo.html": {
+    title: "Printable Japanese Study Sheets | Nihongo Toolkit",
+    description: "Browse and print Japanese learning reference sheets and study cheatsheets."
+  },
+  "fumitoki.html": {
+    title: "Japanese Sentence Breakdown | Nihongo Toolkit",
+    description: "Break down Japanese sentences to explore words, readings, and grammatical structure."
+  },
+  "eawase.html": {
+    title: "Japanese Vocabulary Matching Game | Nihongo Toolkit",
+    description: "Play a Japanese memory-matching game pairing vocabulary words with their kana readings."
+  },
+  "kotoba-sagashi.html": {
+    title: "Japanese Vocabulary Word Search | Nihongo Toolkit",
+    description: "Find Japanese vocabulary in an interactive word-search puzzle and practice as you play."
+  },
+  "pazuru.html": {
+    title: "Japanese Vocabulary Crossword | Nihongo Toolkit",
+    description: "Solve a Japanese vocabulary crossword puzzle to practice words and their meanings."
+  },
+  "shiritori.html": {
+    title: "Japanese Shiritori Word Game | Nihongo Toolkit",
+    description: "Play shiritori, the Japanese word-chain game, and keep the chain going with Japanese words."
+  },
+  "kanji-kuizu.html": {
+    title: "Kanji Quiz Game | Nihongo Toolkit",
+    description: "Play a Japanese kanji quiz and spot the matching character in an interactive game."
+  },
+  "data-sources.html": {
+    title: "Data Sources and Licenses | Nihongo Toolkit",
+    description: "Review the data sources, attributions, and licenses used by Nihongo Toolkit's Japanese learning tools."
+  }
+};
 
 function toolNavigation(site) {
   function addTagManager(html) {
@@ -37,7 +107,7 @@ function toolNavigation(site) {
             html = html.replace("<!-- dashboard-tools -->", groups);
           } else {
             const name = menu.match(new RegExp(`data-file="${file}"[^>]*>\\s*<span class="helper-name">([^<]+)`))?.[1].replace(/\s*·\s*$/, "");
-            if (name) html = html.replace(/<title>[^<]*<\/title>/, `<title>${name} · Nihongo Toolkit</title>`);
+            if (name && !seoPages[file]) html = html.replace(/<title>[^<]*<\/title>/, `<title>${name} · Nihongo Toolkit</title>`);
             const menuCSS = launcher.slice(launcher.indexOf("    .navigation {"), launcher.indexOf("    .helper-frame {"));
             tags.push(
               { tag: "style", injectTo: "head", children: `${menuCSS}
@@ -59,6 +129,23 @@ function toolNavigation(site) {
           tags.push({ tag: "noscript", injectTo: "body", children: "<style>.navigation .menu[hidden] { display: block; } .navigation .menu-button { display: none; }</style>" });
         }
         html = html.replace(/href="\.\/#helper=([^"]+)"/g, 'href="./$1"');
+        const seo = seoPages[file];
+        if (seo) {
+          html = html.replace(/<title>[^<]*<\/title>/i, `<title>${seo.title}</title>`);
+          tags.push(
+            { tag: "meta", attrs: { name: "description", content: seo.description }, injectTo: "head" },
+            { tag: "meta", attrs: { property: "og:title", content: seo.title }, injectTo: "head" },
+            { tag: "meta", attrs: { property: "og:description", content: seo.description }, injectTo: "head" },
+            { tag: "meta", attrs: { property: "og:type", content: "website" }, injectTo: "head" },
+            { tag: "meta", attrs: { name: "twitter:card", content: "summary" }, injectTo: "head" },
+            { tag: "meta", attrs: { name: "twitter:title", content: seo.title }, injectTo: "head" },
+            { tag: "meta", attrs: { name: "twitter:description", content: seo.description }, injectTo: "head" }
+          );
+          if (file !== "index.html") {
+            tags.push({ tag: "meta", attrs: { property: "og:site_name", content: "Nihongo Toolkit" }, injectTo: "head" });
+          }
+          if (canonical) tags.push({ tag: "meta", attrs: { property: "og:url", content: canonical }, injectTo: "head" });
+        }
         return { html: addTagManager(html), tags };
       }
     }

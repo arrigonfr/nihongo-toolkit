@@ -1,4 +1,5 @@
 @import "./study-controls.css";
+body #shiritoriRoot .card:not(.game-settings) { padding: 20px; }
 
 :root {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;

@@ -8,7 +8,6 @@ async function loadEngine() {
   if (!enginePromise) {
     enginePromise = (async () => {
       const engine = await KokoroJP.load({ device: "wasm", dtype: "q8" });
-      clips.set("こんにちは", await engine.speak("こんにちは", "jf_alpha"));
       return engine;
     })().catch((error) => {
       enginePromise = undefined;

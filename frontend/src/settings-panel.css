@@ -1,4 +1,14 @@
 @import "./chips.css";
+[hidden] { display: none !important; }
+.start-line { display: flex; justify-content: flex-start; margin-block: 16px; }
+.session-setup { min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.session-setup > :first-child { margin: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+.session-setup > .start-line { justify-content: flex-end; margin: 0; padding: 16px; }
+.replay-actions { display: flex; justify-content: flex-end; margin-top: 20px; }
+.session-setup + .toolbar { margin-top: 16px; }
+body :is(.session-setup > details, details.puzzle-settings) > summary { padding: 16px 20px; }
+body :is(.session-setup > details#settingsPanel, details#settingsPanel.puzzle-settings) > summary { padding-inline: 20px; }
+body :is(.session-setup > details, details.puzzle-settings) > .settings-body { padding: 20px; }
 .settings-sections { display: block !important; }
 .settings-section {
   display: block;

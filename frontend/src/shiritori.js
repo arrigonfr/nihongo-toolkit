@@ -1,3 +1,4 @@
+import { createSessionView } from "./session-view.js";
 import "./shiritori.css";
 import { mountGameExport } from "./game-export.js";
 import { bind, toKana } from "wanakana";
@@ -398,6 +399,7 @@ async function startGame() {
     rules = parseRules(settings);
   } catch (error) { startError(error.message); return; }
   const token = ++generation;
+  sessionView.start();
   const doneLoading = beginLoading($("newGame"), $("previousWord").closest(".card"));
   clearInterval(timerHandle);
   const date = today();
@@ -449,6 +451,7 @@ async function startGame() {
   } catch (error) {
     if (generation !== token) return;
     game.active = false; busy = false; render(); info("");
+    sessionView.setup();
     startError(error.message);
   } finally {
     await doneLoading();
@@ -517,10 +520,7 @@ async function computerTurn() {
     accept(word);
   } catch (error) {
     if (generation !== token) return;
-    busy = false; game.deadline = 0; clearInterval(timerHandle);
-    $("timer").textContent = "Paused";
-    info(`${error.message} The computer turn is paused; retry or end the round.`, true);
-    $("retryComputer").hidden = false; render();
+    finish("dictionary unavailable", `${error.message} The round ended because the computer's next word could not be loaded. No winner or loser is declared.`, null);
   } finally {
     await doneLoading();
   }
@@ -683,7 +683,7 @@ function finish(reason, explanation, loser = null, dailyGoal = false) {
   const missed = Object.entries(game.stats.missed).sort((a, b) => b[1] - a[1]).map(([k, count]) => `${escape(k)} (${count})`).join(" · ");
   $("results").innerHTML = `<span class="eyebrow">${escape(reason)}</span><h2>${title}</h2><p>${escape(explanation)}${winners ? ` Winner${game.players.length > 2 ? "s" : ""}: ${escape(winners)}.` : ""}</p><p class="small">${game.stats.words} words played · ${game.stats.unique.size} unique words · longest chain ${game.stats.longest}<br>${game.stats.hints} hints · ${game.stats.revealed} reveals${missed ? `<br>Starting kana to practice: ${missed}` : ""}</p><h3>Words in this round</h3><p class="small">${discoveries.length ? "Tap a word to revisit it and save it for later." : "No words were played this round."}</p><div class="discovery-list">${discoveries.map((word) => `<button type="button" data-player="${word.playerIndex === undefined ? "starter" : word.playerIndex % 6}" data-word-index="${game.chain.indexOf(word)}"><strong>${escape(word.word)}</strong>${escape(word.reading)}<br><span class="small">${escape(word.meaning.split(";")[0])}</span></button>`).join("")}</div>`;
   mountGameExport($("results"), () => ({ title: "Shiritori", filename: "shiritori", chain: discoveries.map((word) => ({ ...word, meaning: word.meaning.split(";")[0] })) }));
-  $("results").hidden = false; render(); $("results").focus();
+  $("results").hidden = false; render(); sessionView.finish(); $("results").focus();
 }
 
 async function showWord(word) {
@@ -754,6 +754,11 @@ $("resetProgress").addEventListener("click", async () => {
   if (!await confirmAction("Clear all discoveries, saved review words and daily progress on this browser?", { confirmLabel: "Delete progress" })) return;
   progress = { known: [], review: [] };
   persist(progressKey, progress); render(); showSettingsError("Progress reset.");
+});
+const sessionView = createSessionView({
+  settings: $("settingsPanel"), start: $("newGame"), results: $("results"), footer: true,
+  play: [$("previousWord").closest(".card")],
+  keepResults: [$("chain").closest("section"), document.querySelector(".sidebar")]
 });
 $("newGame").addEventListener("click", startGame);
 $("stopGame").addEventListener("click", () => finish("round stopped", "You ended this round. No winner or loser is declared.", null));

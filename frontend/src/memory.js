@@ -1,3 +1,4 @@
+import { createSessionView } from "./session-view.js";
 import "./memory.css";
 import { confirmAction } from "./confirm-dialog.js";
 import { setSettingAvailability } from "./settings-panel.js";
@@ -304,15 +305,23 @@ for (const [id, content] of [["chooseWords", "words"], ["chooseKana", "kana"]]) 
 };
 document.querySelectorAll("[data-close]").forEach((button) => { button.onclick = () => button.closest("dialog").close(); });
 
+const sessionView = createSessionView({
+  settings: $("settingsPanel"), start: $("startButton"), results: $("results"), footer: true,
+  play: [document.querySelector(".board-panel"), $("stats").closest("section")],
+  keepResults: [document.querySelector(".sidebar")]
+});
+$("settingsPanel").after($("startError"));
 async function startGame(nextRound = false) {
   if (busy) return;
   if (game?.rules.mode === "daily" && settings.mode === "daily" && gameDay === localDay()) {
+    if (game.ended) renderResults(); else sessionView.start();
     notify("Today's puzzle is already open. Daily progress is kept until the next day.");
     return;
   }
   const choice = game && !game.ended ? await confirmAction("Leave this round?", { review: true }) : "save";
   if (!choice) return;
   busy = true;
+  sessionView.start();
   const doneLoading = beginLoading([$("startButton"), $("nextRound")], $("board").parentElement);
   $("startButton").disabled = true;
   if ($("nextRound")) $("nextRound").disabled = true;
@@ -360,6 +369,7 @@ async function startGame(nextRound = false) {
     if (game.ended) renderResults();
     notify(saved ? "Today's puzzle restored." : `${game.deck.pairs.length} pairs, ready when you are.`);
   } catch (error) {
+    sessionView.setup();
     console.error("Could not start Memory round.", error); notify("", false); showStartError(error.message);
   } finally {
     await doneLoading();
@@ -375,6 +385,7 @@ async function restart() {
   const old = game;
   if (!game.ended) { finishRound(game, "Restarted"); finalize(choice === "save"); }
   game = createRound(old.deck, old.rules);
+  sessionView.start();
   finalized = false; hint = null; focusedId = null; detailItem = null;
   $("results").hidden = true;
   $("details").innerHTML = `<p class="small">Match a pair to explore its details.</p>`;
@@ -552,6 +563,7 @@ function renderResults() {
     <p class="small">Accuracy counts unassisted correct moves only. Missed and assisted items are in your notebook.</p>
     ${game.won && game.rules.mode === "marathon" ? round < game.rules.rounds ? '<button id="nextRound" class="primary" type="button">Next board →</button>' : "<p>Marathon complete. Beautiful work!</p>" : ""}`;
   if ($("nextRound")) $("nextRound").onclick = () => startGame(true);
+  sessionView.finish();
   $("results").focus({ preventScroll: true });
 }
 function renderMatches() {

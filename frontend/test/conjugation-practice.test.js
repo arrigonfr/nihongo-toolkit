@@ -17,6 +17,30 @@ const question = (word, id) => {
 function sessionFor(overrides = {}) { return new PracticeSession({ ...defaults, ...overrides }, {}, 0, () => 0); }
 function answerCurrent(session, now = 100) { return session.submit(session.current.row.reading, {}, now); }
 
+test("sessions do not randomly repeat questions before exhausting the pool", () => {
+  const session = sessionFor({ questions: 20, repeat: false });
+  const seen = new Set();
+  while (!session.ended) {
+    assert.ok(!seen.has(session.current.key), session.current.key);
+    seen.add(session.current.key);
+    answerCurrent(session);
+    session.next(100);
+  }
+  assert.equal(seen.size, 20);
+});
+
+test("balanced sessions avoid the previous session when alternative questions exist", () => {
+  const first = sessionFor({ questions: 5, repeat: false });
+  while (!first.ended) { answerCurrent(first); first.next(100); }
+  const previous = first.askedWords;
+  const second = new PracticeSession({ ...defaults, questions: 5, repeat: false }, first.progress, 200, () => 0, [...previous]);
+  while (!second.ended) {
+    assert.ok(!previous.has(second.current.entry.word));
+    answerCurrent(second, 300);
+    second.next(300);
+  }
+});
+
 test("bank covers every category, level and selected form with valid generated answers and examples", () => {
   assert.ok(practiceWords.length >= 45);
   assert.ok(pool.length > 1000);
@@ -146,10 +170,29 @@ test("level and multi-select filters combine vocabulary and grammatical difficul
   for (const level of [5, 4, 3, 2, 1]) assert.ok(createPool({ ...all, levels: [level] }).length);
   const n2Honorific = createPool({ ...all, levels: [2], forms: ["respectful", "humble"] });
   assert.ok(n2Honorific.some((q) => q.entry.word === "食べる"));
-  const selected = createPool({ ...all, levels: [5, 4], types: ["ichidan", "na-adjective"], forms: ["pastNegative"], politeness: "polite", polarity: "negative", tense: "past" });
+  const selected = createPool({ ...all, levels: [5, 4], types: ["ichidan", "na-adjective"], forms: ["basic"], politeness: "polite", polarity: "negative", tense: "past" });
   assert.ok(selected.length);
   assert.ok(selected.every((q) => ["ichidan", "na-adjective"].includes(q.entry.category) && q.row.politeness === "polite" && q.row.polarity === "negative" && q.row.tense === "past"));
   for (const field of ["levels", "types", "forms"]) assert.equal(createPool({ ...all, [field]: [] }).length, 0);
+});
+
+test("basic family exposes every trait combination without ta/nai duplicates", () => {
+  for (const politeness of ["plain", "polite"]) for (const polarity of ["affirmative", "negative"]) for (const tense of ["non-past", "past"]) {
+    const matches = createPool({ ...defaults, forms: ["basic"], politeness, polarity, tense }).filter((question) => question.entry.word === "食べる");
+    assert.equal(matches.length, 1, `${politeness}/${polarity}/${tense}`);
+    assert.equal(matches[0].family, "basic");
+  }
+  assert.deepEqual(cleanSettings({ forms: ["present", "past", "pastNegative", "nai", "ta", "te"] }).forms, ["basic", "te"]);
+  const migrated = cleanSettings({ forms: ["pastNegative"] });
+  assert.deepEqual(migrated.forms, ["basic"]);
+  assert.equal(migrated.polarity, "negative");
+  assert.equal(migrated.tense, "past");
+  assert.equal(cleanSettings({ forms: ["ta"] }).politeness, "plain");
+  const allForms = createPool(all);
+  for (const [family, id] of [["te", "negative-te"], ["request", "negative-request"], ["imperative", "prohibitive"], ["naide", "naide"], ["tari", "tari"]]) {
+    assert.ok(allForms.some((question) => question.family === family && question.row.id === id));
+  }
+  assert.ok(!allForms.some((question) => ["ta", "nai"].includes(question.row.id)));
 });
 
 test("settings restoration validates enums, booleans, arrays and bounds", () => {
@@ -205,7 +248,11 @@ test("retry learns without changing the first attempt or adding progress", () =>
   assert.equal(session.progress[session.current.key].attempts, 1);
   assert.equal(session.summary(200).correct, 0);
   session.next(200);
+  assert.equal(session.currentIsRepeat, true);
+  answerCurrent(session, 250);
+  session.next(300);
   assert.equal(session.ended, true);
+  assert.equal(session.summary(300).total, 1);
 });
 
 test("wrong and near answers can be corrected directly without rescoring the question", () => {
@@ -225,13 +272,37 @@ test("wrong and near answers can be corrected directly without rescoring the que
   assert.equal(session.summary(200).correct, 0);
 });
 
-test("missed questions repeat later, not immediately, within the chosen session length", () => {
+test("missed questions repeat without counting toward the session question limit", () => {
   const session = sessionFor({ questions: 3 });
   const first = session.current.key;
   session.submit("まちがい", {}, 100); session.next(200);
   assert.notEqual(session.current.key, first);
+  assert.equal(session.questionCount, 2);
   answerCurrent(session); session.next(300);
   assert.equal(session.current.key, first);
+  assert.equal(session.currentIsRepeat, true);
+  assert.equal(session.questionCount, 2);
+  session.submit("まちがい", {}, 350);
+  session.next(400);
+  assert.equal(session.current.key === first, false);
+  assert.equal(session.questionCount, 3);
+  answerCurrent(session, 450);
+  session.next(500);
+  assert.equal(session.ended, true);
+  assert.equal(session.summary(500).total, 3);
+  assert.equal(session.results.length, 4);
+
+  const finalMiss = sessionFor({ questions: 1 });
+  finalMiss.submit("まちがい", {}, 100);
+  finalMiss.next(200);
+  assert.equal(finalMiss.ended, false);
+  assert.equal(finalMiss.currentIsRepeat, true);
+  assert.equal(finalMiss.questionCount, 1);
+  answerCurrent(finalMiss, 250);
+  finalMiss.next(300);
+  assert.equal(finalMiss.ended, true);
+  assert.equal(finalMiss.summary(300).total, 1);
+
   const noRepeat = sessionFor({ repeat: false });
   noRepeat.submit("まちがい", {}, 100);
   assert.equal(noRepeat.repeats.length, 0);
@@ -326,9 +397,9 @@ test("comparison and reverse accept ambiguous analyses, even outside selected fa
   const session = sessionFor({ mode: "comparison", levels: [4], types: ["ichidan"], forms: ["potential"] });
   session.current = question("食べる", "potential-plain");
   assert.equal(session.submit("passive", { choice: true }, 100), "correct");
-  const reverse = sessionFor({ mode: "reverse", reverseTask: "form", forms: ["past"] });
+  const reverse = sessionFor({ mode: "reverse", reverseTask: "form", forms: ["basic"] });
   reverse.current = question("食べる", "basic-past-plain");
-  assert.equal(reverse.submit("ta", { choice: true }, 100), "correct");
+  assert.equal(reverse.submit("basic", { choice: true }, 100), "correct");
   const base = sessionFor({ mode: "reverse" });
   base.current = question("来る", "basic-polite");
   assert.equal(base.submit("くる", {}, 100), "correct");
@@ -346,7 +417,7 @@ test("politeness, polarity and tense accept comma lists and reject invalid ones"
   assert.equal(cleaned.politeness, "plain,polite");
   assert.equal(cleaned.polarity, "negative");
   assert.equal(cleaned.tense, "both");
-  const some = createPool({ ...defaults, levels: [5, 4], forms: ["present", "past"], politeness: "plain", polarity: "affirmative,negative", tense: "past,non-past" });
+  const some = createPool({ ...defaults, levels: [5, 4], forms: ["basic"], politeness: "plain", polarity: "affirmative,negative", tense: "past,non-past" });
   assert.ok(some.length && some.every((q) => q.row.politeness === "plain"));
 });
 

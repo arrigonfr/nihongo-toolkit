@@ -1,3 +1,4 @@
+import { createSessionView } from "./session-view.js";
 import { fetchItems } from "./api.js";
 import { beginLoading } from "./request-loading.js";
 import { BatchQueue } from "./batch-queue.js";
@@ -313,6 +314,7 @@ import { setSettingAvailability } from "./settings-panel.js";
       : "<div>No incorrect answers.</div>";
     $("#sessionResults").innerHTML = `<strong>${escapeHTML(message)}</strong><span>${stats.correct} / ${stats.total} correct · ${accuracy} accuracy${skippedText} · ${escapeHTML(formatElapsed(elapsed))} total</span><div><strong>Incorrect terms</strong>${missed}</div>`;
     $("#sessionResults").hidden = false;
+    sessionView.finish();
   }
   function showStartError(message) {
     const element = $("#startError");
@@ -343,6 +345,7 @@ import { setSettingAvailability } from "./settings-panel.js";
     sessionActive = true;
     sessionPendingStart = false;
     $("#questionSection").hidden = false;
+    sessionView.start();
     $("#settingsPanel").open = false;
     sessionClockStarted = mode !== "free";
     sessionPausedAt = 0;
@@ -768,6 +771,12 @@ import { setSettingAvailability } from "./settings-panel.js";
   $("#sessionMode").addEventListener("change", updateSessionFields);
   for (const id of ["sessionMode", "sessionTarget", "levelSelect"]) $(`#${id}`)?.addEventListener("change", () => showStartError(""));
   $("#sessionTarget").addEventListener("input", () => showStartError(""));
+  $("#settingsPanel .settings-body").prepend($(".session-controls"));
+  $("#settingsPanel").after($("#startError"));
+  const sessionView = createSessionView({
+    settings: $("#settingsPanel"), start: $("#startSessionButton"), results: $("#sessionResults"),
+    play: [$("#questionSection"), $("#sessionStats"), ...document.querySelectorAll(".review-option")]
+  });
   $("#startSessionButton").addEventListener("click", startSession);
   $("#showStatsToggle").addEventListener("change", () => {
     if (!sessionSettings) $("#sessionStatsContent").hidden = !$("#showStatsToggle").checked;

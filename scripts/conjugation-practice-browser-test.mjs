@@ -39,13 +39,19 @@ try {
     await page.goto(url);
     await page.evaluate(({ key, settings }) => {
       localStorage.setItem(key, JSON.stringify({ settings, progress: {}, days: [], completed: 0 }));
-    }, { key: storageKey, settings: { types: ["ichidan"], forms: ["te"], levels: [5], questions: 5, language: "both", ...settings } });
+    }, { key: storageKey, settings: { types: ["ichidan"], forms: ["te"], polarity: "affirmative", levels: [5], questions: 5, language: "both", ...settings } });
     await page.reload();
   }
   async function answer(text) {
     await page.fill("#answerInput", text);
     await page.press("#answerInput", "Enter");
   }
+
+  await configure({ forms: ["basic", "te"], polarity: "both", tense: "both", politeness: "both" });
+  assert.match(await page.locator("#formSettings").textContent(), /Basic predicate/);
+  assert.doesNotMatch(await page.locator("#formSettings").textContent(), /Non-past affirmative|Past negative|Ta-form|Nai-form/);
+  await page.click('#levelSettings .chip-action:text-is("All")');
+  assert.deepEqual(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)).settings.forms, storageKey), ["basic", "te"]);
   const saved = () => page.evaluate((key) => JSON.parse(localStorage.getItem(key)), storageKey);
   async function endSession() {
     await page.click("#endButton");
@@ -53,13 +59,9 @@ try {
     await page.locator("#results").waitFor();
   }
   async function assertDisplayFirst(activeSection) {
-    assert.equal(await page.locator("#practiceDisplay").isVisible(), true);
-    assert.deepEqual(await page.locator("#practiceDisplay").evaluate((panel) =>
-      [...panel.parentElement.children].map((element) => element.id)), ["practiceDisplay", "setup", "practice", "results"]);
+    assert.equal(await page.locator("#practiceDisplay").isVisible(), activeSection === "setup");
+    assert.equal(await page.locator("#setup #practiceDisplay > legend").textContent(), "Accessibility");
     assert.equal(await page.locator(`#${activeSection}`).isVisible(), true);
-    assert.ok(await page.locator("#practiceDisplay").evaluate((panel, active) =>
-      panel.getBoundingClientRect().bottom <= document.getElementById(active).getBoundingClientRect().top, activeSection),
-    `Display controls stay above ${activeSection}`);
   }
 
   await configure({ mode: "classic", questions: 5, script: "both", kanji: false });
@@ -67,7 +69,7 @@ try {
   assert.equal(await page.locator("#displayPanel, #setting-appearance, #setting-furigana, #setting-romaji, #setting-audio, #setting-kanji").count(), 0);
   assert.equal(await page.locator("#practiceDisplay select").count(), 2);
   await assertDisplayFirst("setup");
-  await page.click("#settingsPanel > summary");
+  await page.locator("#settingsPanel").evaluate((panel) => { panel.open = true; });
   for (const width of [360, 768, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     assert.ok(await page.locator("#formSettings").evaluate((fieldset) => {
@@ -83,10 +85,11 @@ try {
   await page.fill("#answerInput", "たべ");
   await page.click("#furiganaQuickToggle");
   assert.equal(await writtenText(".base-word").then((text) => text.includes("食")), true, "Furigana does not replace the written word");
-  await page.selectOption("#setting-fontSize", "48");
+  assert.equal(await page.locator("#setting-fontSize").isVisible(), false);
   assert.equal(await page.inputValue("#answerInput"), "たべ", "Display changes preserve the answer in progress");
   assert.equal(await page.evaluate(() => document.documentElement.style.getPropertyValue("--jp-size")), "40px");
-  assert.equal(await page.textContent("#questionCount"), "Question 1 / 5");
+  assert.equal(await page.textContent("#questionCount"), "Question 1 / 4");
+  assert.match(await page.textContent("#notice"), /Only 4 distinct questions/);
   await page.click("#furiganaQuickToggle");
   await page.fill("#answerInput", "");
   assert.ok(await page.locator(".base-word").evaluate((element) => element.getBoundingClientRect().top >= 0), "Starting keeps the base word visible above the focused answer");
@@ -127,17 +130,26 @@ try {
   assert.equal(Object.values((await saved()).progress).reduce((n, r) => n + r.attempts, 0), 2, "Retry cannot add attempts");
   await endSession();
   await assertDisplayFirst("results");
-  assert.match(await page.textContent("#resultContent"), /2 answers recorded/);
+  assert.match(await page.textContent("#resultContent"), /2 questions counted/);
   assert.match(await page.textContent("#resultContent"), /50%/);
   await page.click("#restartButton");
   await assertDisplayFirst("setup");
+  const previousWords = (await saved()).previousSessionWords;
+  assert.ok(previousWords.length > 0, "The completed session's words are saved for the next quiz");
   await page.click("#startButton");
   await assertDisplayFirst("practice");
+  assert.equal(previousWords.includes(await writtenText(".base-word")), false, "The next balanced quiz starts with a different word");
+  await answer("ちがう");
+  await page.click("#nextButton");
+  await page.click("#revealButton");
+  await page.click("#nextButton");
+  assert.equal(await page.textContent("#questionCount"), "Question 2 · Review / 4");
+  assert.equal(await page.locator("#sessionProgress").evaluate((progress) => progress.value), 2);
   await endSession();
   await assertDisplayFirst("results");
   await page.reload();
   await assertDisplayFirst("setup");
-  assert.match(await page.textContent("#lifetime"), /50%/);
+  assert.match(await page.textContent("#lifetime"), /25%/);
 
   await configure({ hints: "limited", reveals: "limited", assistanceLimit: 1 });
   await page.click("#startButton");
@@ -196,7 +208,7 @@ try {
     await page.reload();
     assert.equal(await page.inputValue("#setting-prompt"), "mixed");
   }
-  await configure({ types: ["na-adjective"], forms: ["negative"], politeness: "polite", fontSize: 64 });
+  await configure({ types: ["na-adjective"], forms: ["basic"], polarity: "negative", tense: "non-past", politeness: "polite", fontSize: 64 });
   await page.click("#startButton");
   assert.match(await page.textContent(".requested-register"), /Politeness.*丁寧体 · polite/);
   await answer("しずかじゃないです");
@@ -229,12 +241,12 @@ try {
       assert.equal(await page.getAttribute("#feedback", "data-grade"), "correct");
     }
     for (const language of ["ja", "en", "both"]) {
-      await configure({ language, prompt: "description", forms: ["pastNegative"], politeness: "polite" });
+      await configure({ language, prompt: "description", forms: ["basic"], polarity: "negative", tense: "past", politeness: "polite" });
       await page.click("#startButton");
       assert.equal(await page.textContent("#answerLabel"), language === "ja" ? "答え" : language === "en" ? "Your answer" : "答え · Your answer");
       const prompt = await page.textContent(".requested-form");
-      assert.equal(prompt.includes("Say something did not happen"), language !== "ja");
-      assert.equal(prompt.includes("過去にしなかった"), language !== "en");
+      assert.equal(prompt.includes("State an action or condition"), language !== "ja");
+      assert.equal(prompt.includes("指定された時制"), language !== "en");
       assert.equal(prompt.includes("polite"), language !== "ja");
     }
   }
@@ -245,11 +257,10 @@ try {
     await page.click("#checkButton");
     assert.equal(await page.getAttribute("#feedback", "data-grade"), "correct");
   }
-  await configure({ mode: "daily" });
+  await configure({ mode: "daily", levels: [5, 4, 3, 2, 1], repeat: false });
   await page.click("#startButton");
-  const dailyAnswers = ["たべて", "みて", "たべて", "みて", "たべて"];
-  for (const [index, reading] of dailyAnswers.entries()) {
-    await answer(reading);
+  for (let index = 0; index < 5; index++) {
+    await page.click("#revealButton");
     if (index === 4) assert.equal("days" in await saved(), false);
     await page.click("#nextButton");
   }
@@ -286,7 +297,7 @@ try {
   await page.click("#startButton");
   assert.match(await page.textContent("#startError"), /Choose at least one JLPT level/);
   await page.click('#levelSettings .chip-action:text-is("All")');
-  await page.click("#settingsPanel > summary");
+  await page.locator("#settingsPanel").evaluate((panel) => { panel.open = true; });
   await page.click('#typeSettings .chip-action:text-is("All")');
   await page.click('#formSettings .chip-action:text-is("All")');
   await page.evaluate(([sel, value]) => { const el = document.querySelector(sel); el.value = value; el.dispatchEvent(new Event("change", { bubbles: true })); }, ["#setting-politeness", "polite"]);
