@@ -16,8 +16,7 @@ const key = "nihon:study-controls-v1";
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 export const study = { audio: true, furigana: true, romaji: false };
-const usesLocalSpeech = () => /Firefox\//.test(navigator.userAgent)
-  && !window.speechSynthesis?.getVoices().some((voice) => /^ja(?:[-_]|$)/i.test(voice.lang));
+const usesLocalSpeech = () => /Firefox\//.test(navigator.userAgent);
 try {
   const saved = JSON.parse(localStorage.getItem(key) || "{}");
   for (const name of Object.keys(study)) if (typeof saved[name] === "boolean") study[name] = saved[name];

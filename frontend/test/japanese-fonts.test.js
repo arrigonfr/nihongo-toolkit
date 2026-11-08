@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { JAPANESE_FONTS, FONT_FAMILIES, fontList, encodeFonts, isFontSetting } from "../src/japanese-fonts.js";
 import { defaults, cleanSettings } from "../src/conjugation-practice-engine.js";
-import { DEFAULTS as memoryDefaults, validateSettings as memorySettings, effectiveSettings, generateDeck, createRound, restoreDaily } from "../src/memory-engine.js";
+import { DEFAULTS as memoryDefaults, validateSettings as memorySettings } from "../src/memory-engine.js";
 import { DEFAULTS as searchDefaults, validateSettings as searchSettings } from "../src/word-search-engine.js";
 
 test("Japanese fonts validate and old profiles retain their defaults", () => {
@@ -20,15 +20,13 @@ test("Japanese fonts validate and old profiles retain their defaults", () => {
   assert.equal(cleanSettings({ font: "unknown" }).font, defaults.font);
 });
 
-test("adding a font preference does not invalidate an existing daily memory board", () => {
-  const day = "2026-10-24";
-  const rules = effectiveSettings({ ...memoryDefaults, mode: "daily" });
-  const game = createRound(generateDeck([], rules, { seed: `memory-v1:${day}` }), rules, 1000);
-  delete game.rules.font;
-  const restored = restoreDaily({ day, game }, day);
-  assert.deepEqual(restored.deck, game.deck);
-  assert.equal(restored.rules.font, "Noto Sans JP");
-  assert.equal(restored.started, 1000);
+test("legacy daily memory preferences migrate and retain the default font", () => {
+  const settings = { ...memoryDefaults, mode: "daily", category: "animals" };
+  delete settings.font;
+  const restored = memorySettings(settings);
+  assert.equal(restored.mode, "classic");
+  assert.equal(restored.font, "Noto Sans JP");
+  assert.equal("category" in restored, false);
 });
 
 test("font settings decode and encode every supported shape", () => {

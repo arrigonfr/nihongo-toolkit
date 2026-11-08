@@ -1,14 +1,14 @@
 import { toHiragana, toKana } from "wanakana";
 import { conjugate } from "./conjugation.js";
-import { practiceWords, wordCategories, formCatalog } from "./conjugation-practice-data.js";
+import { wordCategories, formCatalog } from "./conjugation-practice-data.js";
 import { isFontSetting } from "./japanese-fonts.js";
 import { matchesFilters, validFilter } from "./conjugation-filter-match.js";
 
 export const modes = {
   classic: "Classic Drill", quick: "Quick Practice", marathon: "Marathon",
-  timed: "Timed Challenge", sudden: "Sudden Death", daily: "Daily Practice",
+  timed: "Timed Challenge", sudden: "Sudden Death",
   weak: "Weak Form Focus", mixed: "Mixed Review", comparison: "Form Comparison",
-  sentence: "Sentence Mode", reverse: "Reverse Mode", irregular: "Irregular Verbs Focus"
+  reverse: "Reverse Mode", irregular: "Irregular Verbs Focus"
 };
 export const reverseTasks = ["base", "form", "polarity", "tense", "politeness"];
 export const taskList = (value) => value === "all" ? [...reverseTasks] : String(value).split(",").filter((task) => reverseTasks.includes(task));
@@ -29,7 +29,7 @@ export function cleanSettings(saved = {}) {
     mode: Object.keys(modes), font: { includes: isFontSetting }, politeness: { includes: (value) => validFilter("politeness", value) },
     polarity: { includes: (value) => validFilter("polarity", value) }, tense: { includes: (value) => validFilter("tense", value) }, script: ["kanji", "kana", "furigana"],
     input: ["kana", "kanji", "both", "either"], language: ["ja", "en", "both"],
-    prompt: ["name", "description", "sentence", "mixed"], hints: ["unlimited", "limited", "disabled"],
+    prompt: ["name", "description", "mixed"], hints: ["unlimited", "limited", "disabled"],
     reveals: ["unlimited", "limited", "disabled"], priority: ["balanced", "new", "review"],
     reverseTask: { includes: (value) => typeof value === "string" && (value === "all" || value.split(",").every((task) => reverseTasks.includes(task))) }
   };
@@ -89,20 +89,32 @@ export function familyOf(row) {
   return Object.hasOwn(formCatalog, simple) ? simple : null;
 }
 
-export function supportsExample(entry, family) {
-  if (!family) return false;
-  if (entry.existential) return ["basic", "te", "ba", "tara"].includes(family);
-  if (entry.category === "auxiliary") return ["basic", "te", "ba", "tara", "formalCopula"].includes(family);
-  if (family === "passive" && (!entry.participle || !entry.object)) return false;
-  if (entry.word === "申す") return ["basic", "te", "formal"].includes(family);
-  return true;
-}
+let bank = [];
 
-const bank = practiceWords.flatMap((entry) => conjugate(entry).flatMap((row) => {
-  const family = familyOf(row);
-  if (!supportsExample(entry, family)) return [];
-  return [{ key: `${entry.word}|${row.id}`, entry, row, family, level: Math.min(entry.level, formCatalog[family].level) }];
-}));
+export function loadPracticeEntries(entries) {
+  if (!Array.isArray(entries)) throw new Error("Invalid dictionary practice response.");
+  const seen = new Set();
+  bank = entries.flatMap((value) => {
+    if (!value.id || !value.tag || typeof value.word !== "string" || typeof value.reading !== "string"
+      || !Array.isArray(value.meanings) || !value.meanings.length || ![1, 2, 3, 4, 5].includes(value.level)) return [];
+    const reading = toHiragana(value.reading);
+    const suffix = { ichidan: "る", suru: "する", kuru: "くる", zuru: "ずる", "i-adjective": "い" }[value.type];
+    if (!/^[ぁ-ゖー]+$/.test(reading) || suffix && !reading.endsWith(suffix)) return [];
+    if (value.type === "godan" && !/[うくぐすつぬぶむる]$/.test(reading)) return [];
+    const category = ["kuru", "zuru"].includes(value.type) || value.type === "suru" && reading === "する" ? "irregular" : value.type;
+    if (!Object.hasOwn(wordCategories, category)) return [];
+    const entry = { ...value, reading, category, irregular: category === "irregular" || ["v1-s", "v5u-s", "v5k-s", "v5r-i", "v5aru", "vs-s"].includes(value.tag) };
+    return conjugate(entry).flatMap((row) => {
+      const family = familyOf(row);
+      if (!family) return [];
+      const key = `${entry.id}|${row.id}`;
+      if (seen.has(key)) return [];
+      seen.add(key);
+      return [{ key, entry, row, family, level: Math.min(entry.level, formCatalog[family].level) }];
+    });
+  });
+  return bank.length;
+}
 
 export function createPool(settings, progress = {}) {
   if (!settings.levels.length || !settings.types.length || !settings.forms.length) return [];
@@ -133,7 +145,7 @@ function spellings(question) {
   }
   if (!entry.type.endsWith("adjective") && entry.type !== "copula" && question.family !== "desire"
     && row.politeness === "polite" && row.polarity === "negative" && row.tense !== "neutral") {
-    const plain = bank.find((candidate) => candidate.key === `${entry.word}|${row.id.replace(/-polite$/, "-plain")}`);
+    const plain = bank.find((candidate) => candidate.key === `${entry.id}|${row.id.replace(/-polite$/, "-plain")}`);
     if (plain && /ない$|なかった$/.test(plain.row.reading)) {
       pairs.push([plain.row.word + "です", plain.row.reading + "です"]);
     }
@@ -225,8 +237,8 @@ export function chooseQuestion(pool, progress, { priority = "balanced", mode = "
     const errors = (record?.wrong || 0) + Number(Boolean(record?.review));
     const formErrors = errorsByForm[q.row.id] || 0;
     const weakness = Math.min(8, errors * 2 / Math.max(1, record?.correct || 0) + formErrors / 4);
-    return 1 + weakness * (["weak", "daily"].includes(mode) ? 3 : 1)
-      + (priority === "new" && !seenWords.has(q.entry.word) ? 6 : priority === "review" && seenWords.has(q.entry.word) ? 6 : 0);
+    return 1 + weakness * (mode === "weak" ? 3 : 1)
+      + (priority === "new" && !seenWords.has(q.entry.id) ? 6 : priority === "review" && seenWords.has(q.entry.id) ? 6 : 0);
   });
   let target = random() * weights.reduce((sum, n) => sum + n, 0);
   for (let i = 0; i < candidates.length; i++) {
@@ -244,6 +256,7 @@ export function ruleFor(question) {
 export class PracticeSession {
   constructor(settings, progress = {}, now = Date.now(), random = Math.random, previousSessionWords = []) {
     this.settings = cleanSettings(settings);
+    if (!bank.length) throw new Error("No dictionary-backed practice vocabulary is available. Load the dictionary and JLPT vocabulary database, then retry.");
     this.pool = createPool(this.settings, progress);
     if (!this.pool.length) throw new Error(this.settings.mode === "weak"
       ? "No missed word–form pairs match. Practice first or broaden your filters."
@@ -256,12 +269,12 @@ export class PracticeSession {
     this.progress = progress;
     this.started = now;
     this.random = random;
-    const requestedLimit = ["quick", "daily"].includes(this.settings.mode) ? 5
+    const requestedLimit = this.settings.mode === "quick" ? 5
       : ["marathon", "timed", "sudden"].includes(this.settings.mode) ? Infinity : this.settings.questions;
     this.requestedLimit = requestedLimit;
     this.limit = Number.isFinite(requestedLimit) ? Math.min(requestedLimit, this.pool.length) : requestedLimit;
     this.recent = new Set();
-    if (this.settings.priority === "balanced" && !["weak", "mixed", "daily"].includes(this.settings.mode)) {
+    if (this.settings.priority === "balanced" && !["weak", "mixed"].includes(this.settings.mode)) {
       for (const word of previousSessionWords) this.recent.add(word);
       const recentQuestions = this.pool
         .filter(({ key }) => progress[key]?.attempts > 0)
@@ -313,8 +326,8 @@ export class PracticeSession {
       this.askedWords.add(this.current.entry.word);
     }
     this.seen.add(this.current.key);
-    this.prompt = this.settings.mode === "sentence" ? "sentence" : this.settings.prompt === "mixed"
-      ? ["name", "description", "sentence"][Math.floor(this.random() * 3)] : this.settings.prompt;
+    this.prompt = this.settings.prompt === "mixed"
+      ? ["name", "description"][Math.floor(this.random() * 2)] : this.settings.prompt;
     if (this.settings.mode === "reverse") {
       const tasks = taskList(this.settings.reverseTask);
       this.task = tasks.length > 1 ? tasks[Math.floor(this.random() * tasks.length)] : tasks[0] || "base";
@@ -387,81 +400,6 @@ export class PracticeSession {
       forms: [...new Set(questions.map((r) => r.family))],
       review: [...new Set(questions.filter((r) => !r.correct).map((r) => r.word))] };
   }
-}
-
-export function exampleFor({ entry: e, row: r, family }) {
-  const negative = r.polarity === "negative", past = r.tense === "past" || ["te", "formal"].includes(family);
-  let before = "", after = "。", english;
-  if (e.existential) {
-    before = "時間が";
-    english = past ? negative ? "There was no time." : "There was time." : negative ? "There is no time." : "There is time.";
-  } else if (e.type.endsWith("adjective") || e.type === "copula") {
-    before = e.noun + (e.desire || e.type === "copula" ? "" : "は");
-    const predicate = e.predicate || e.meanings[0];
-    english = e.desire ? `I ${past ? negative ? "did not want" : "wanted" : negative ? "do not want" : "want"} to eat rice.`
-      : `${e.english} ${past ? "was" : "is"}${negative ? " not" : ""} ${predicate}.`;
-    if (family === "adverb") {
-      before = e.noun + "を"; after = "する。";
-      english = `Make ${e.english.toLowerCase()} ${predicate}.`;
-    }
-  } else {
-    const object = e.object ? " " + e.object : "";
-    const action = e.verb + object;
-    before = "私は" + e.context;
-    english = e.ongoing
-      ? `I ${past ? "was" : "am"}${negative ? " not" : ""} eating rice.`
-      : `I ${negative ? (past ? "did not " : "do not ") + action : (past ? e.past : e.verb) + object}.`;
-    if (family === "potential") english = `I ${past ? negative ? "could not" : "could" : negative ? "cannot" : "can"} ${action}.`;
-    if (family === "passive") {
-      before = `${e.context.replace(/を$/, "")}は`;
-      english = `${e.object[0].toUpperCase() + e.object.slice(1)} ${past ? e.objectPlural ? "were" : "was" : e.objectPlural ? "are" : "is"}${negative ? " not" : ""} ${e.participle}.`;
-    }
-    if (family === "causative") {
-      before = "先生は私に" + e.context;
-      english = `The teacher ${negative ? past ? "did not make" : "does not make" : past ? "made" : "makes"} me ${action}.`;
-    }
-    if (family === "causativePassive" || family === "contracted") {
-      before = "私は先生に" + e.context;
-      english = `I ${past ? "was" : "am"}${negative ? " not" : ""} made to ${action}.`;
-    }
-    if (family === "desire") english = `I ${past ? negative ? "did not want" : "wanted" : negative ? "do not want" : "want"} to ${action}.`;
-    if (family === "progressive") english = `I ${past ? "was" : "am"}${negative ? " not" : ""} ${e.ing}${object}. (An ongoing action or resulting state, depending on context.)`;
-    if (family === "volitional") {
-      before = e.context; english = `Let’s ${action}.`;
-    }
-    if (family === "imperative") {
-      before = "「" + e.context; after = "」と言われた。"; english = `I was told, “${negative ? "Don't " + action : action[0].toUpperCase() + action.slice(1)}!”`;
-    }
-    if (family === "request") {
-      before = e.context; english = `Please ${negative ? "do not " : ""}${action}.`;
-    }
-    if (family === "naide") {
-      before = e.context; after = "、休んだ。"; english = `I rested without ${e.ing}${object}.`;
-    }
-    if (family === "tari") {
-      after = "する。"; english = `I do things such as ${e.ing}${object}.`;
-    }
-    if (family === "respectful") {
-      before = "先生は" + e.context; english = `The teacher will ${action}. (Respectful.)`;
-    }
-    if (family === "humble") english = `I will ${action}. (Humble.)`;
-  }
-  if (family === "too") english = `${e.english} is too ${e.meanings[0]}.`;
-  if (family === "attributive") {
-    after = "状態だ。"; english = `${e.english} is in a ${e.meanings[0]} state.`;
-  }
-  if (family === "te" || family === "formal") {
-    after = "、その後、休んだ。";
-    english = `${english.replace(/\.$/, "")}, and afterward I rested.`;
-    if (e.type.endsWith("adjective") || e.existential || e.type === "copula") {
-      after = "、よかった。"; english = `${english.replace(/\.$/, "")}, which was good.`;
-    }
-  }
-  if (["ba", "tara", "nara"].includes(family)) {
-    after = "、教えてください。";
-    english = `If ${english.replace(/\.$/, "").replace(/^I /, "I ").replace(/^(This|Tanaka|There)/, (s) => s.toLowerCase())}, please let me know.`;
-  }
-  return { before, after, japanese: before + r.word + after, english };
 }
 
 function shuffled(values, random) {

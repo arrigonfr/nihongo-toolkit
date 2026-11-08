@@ -65,6 +65,7 @@ export function preloadLocalSpeech() {
 
 export function cancelLocalSpeech() {
   requestId++;
+  worker?.postMessage({ cancelThrough: jobId });
   for (const source of sources) {
     source.stop();
     source.disconnect();
@@ -79,12 +80,12 @@ export async function speakLocalJapanese(text) {
   try {
     context ||= new AudioContext();
     const resumed = context.resume().then(() => null, (error) => error);
-    showStatus("Loading Japanese audio; the first download may take a while...");
+    showStatus("Preparing Japanese audio; the first download may take a while...");
     await loadEngine();
     if (id !== requestId) return;
     const audio = await speechJob(text);
     const resumeError = await resumed;
-    if (id !== requestId) return;
+    if (id !== requestId || audio.cancelled) return;
     if (resumeError) throw resumeError;
     if (context.state !== "running") throw new Error("Audio playback was blocked by the browser.");
     const buffer = context.createBuffer(1, audio.audio.length, audio.sampling_rate);

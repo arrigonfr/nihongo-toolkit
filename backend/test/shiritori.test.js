@@ -5,7 +5,7 @@ import { once } from "node:events";
 import { createDatabase } from "../src/database.js";
 import { insertWords, insertVocabulary } from "../scripts/import-data.js";
 import { createHandler } from "../src/app.js";
-import { DEFAULT_RULES, READING_ENDING_RULE, kana, morae, requiredStart, startOptions, startChoices, connection, connects, matchesCategory, eligibility, wordEndingError, validateWord, scoreWord, parseRules, assistAllowed } from "../src/shiritori-rules.js";
+import { DEFAULT_RULES, READING_ENDING_RULE, kana, morae, requiredStart, startOptions, startChoices, connection, connects, eligibility, wordEndingError, validateWord, scoreWord, parseRules, assistAllowed } from "../src/shiritori-rules.js";
 import { dictionaryForms, createWordFallback, shiritoriWords } from "../src/shiritori.js";
 
 const word = (reading, extra = {}) => ({ id: reading, word: reading, reading, meaning: "word", partOfSpeech: "noun", level: 5, ...extra });
@@ -64,8 +64,8 @@ test("validation distinguishes connection, repeated entries, vocabulary and both
   }
   assert.match(validateWord(word("ながいなまえ"), null, [], rules({ mode: "beginner" })).message, /up to 4 morae/);
 });
-test("Kana entry rejects forbidden endings in either script and half-width katakana", () => {
-  const kanaRules = rules({ entry: "kana" });
+test("Kanji mode rejects forbidden endings in either script and half-width katakana", () => {
+  const kanaRules = rules({ mode: "kanji" });
   for (const reading of ["ぱん", "パン", "ﾊﾟﾝ", "を", "ヲ", "ｦ", "こーひー", "コーヒー", "ｺｰﾋｰ"]) {
     assert.equal(wordEndingError(reading, kanaRules), READING_ENDING_RULE, reading);
     assert.equal(eligibility(word(reading), kanaRules), READING_ENDING_RULE, reading);
@@ -74,12 +74,12 @@ test("Kana entry rejects forbidden endings in either script and half-width katak
   }
   for (const reading of ["ケーキ", "ｹｰｷ", "ゴール", "しんよう", "コーヒーカップ"]) {
     assert.equal(wordEndingError(reading, kanaRules), "", reading);
-    assert.equal(eligibility(word(reading), kanaRules), "", "Only terminal characters trigger the ending rule");
+    assert.equal(eligibility(word(reading, { word: "漢字" }), kanaRules), "", "Only terminal characters trigger the ending rule");
   }
   assert.match(eligibility(word("ヲタク"), kanaRules), /cannot be used/, "Existing wo restrictions still apply within words");
 });
-test("Kanji entry and Kanji Shiritori validate the reading rather than the spelling", () => {
-  for (const settings of [{ entry: "kanji" }, { mode: "kanji", entry: "both" }]) {
+test("Kanji Shiritori validates the reading rather than the spelling", () => {
+  for (const settings of [{ mode: "kanji" }, { mode: "kanji", entry: "kana" }]) {
     const kanjiRules = rules(settings);
     for (const reading of ["かん", "カン", "ｶﾝ", "かを", "カヲ", "ｶｦ", "かー", "カー", "ｶｰ"]) {
       const item = word(reading, { word: "漢字" });
@@ -92,30 +92,39 @@ test("Kanji entry and Kanji Shiritori validate the reading rather than the spell
     assert.equal(validateWord(word("こうてい", { word: "校庭" }), word("がっこう", { word: "学校" }), [], kanjiRules).ok, true);
   }
 });
-test("the reading ending rule preserves ordinary Both and fixed Daily behavior", () => {
+test("removed word entry and modes cannot change classic rules", () => {
   const coffee = word("こーひー", { word: "珈琲" });
   assert.equal(eligibility(coffee, rules({ entry: "both" })), "");
   assert.match(eligibility(word("ほん", { word: "本" }), rules({ entry: "both" })), /ん \/ ン/);
   assert.equal(validateWord(word("ヒーロー"), word("コーヒー"), [], rules({ entry: "both" })).ok, true);
   const daily = rules({ entry: "kana", mode: "daily" });
-  assert.equal(daily.entry, DEFAULT_RULES.entry);
+  assert.equal(daily.mode, "classic");
+  assert.equal(Object.hasOwn(daily, "entry"), false);
   assert.equal(eligibility(word("コーヒー"), daily), "");
 });
-test("JLPT, category, proper nouns, part of speech and mora filters", () => {
+test("JLPT and Katakana mode filters remain while removed word rules have no effect", () => {
   assert.equal(eligibility(word("ねこ", { meaning: "cat" }), rules({ level: "N5-N4", category: "animals" })), "");
   assert.match(eligibility(word("ねこ", { level: 1 }), rules({ level: "N5-N4" })), /Outside JLPT/);
   assert.match(eligibility(word("ねこ", { level: null }), rules({ level: "N5-N1" })), /unrated/);
   assert.equal(eligibility(word("ねこ", { level: null }), rules()), "");
-  assert.equal(matchesCategory(word("ぎゅうにゅう", { meaning: "(cow's) milk" }), "animals"), false);
-  assert.equal(matchesCategory(word("おぼえる", { meaning: "to bear in mind", partOfSpeech: "verb" }), "animals"), false);
-  assert.equal(matchesCategory(word("りんご", { meaning: "apple (fruit)" }), "food"), true);
-  assert.equal(matchesCategory(word("タクシー"), "katakana"), true);
-  assert.equal(matchesCategory(word("たくしー"), "katakana"), false);
-  assert.match(eligibility(word("とうきょう", { proper: true, nameAllowed: true }), rules()), /Proper nouns/);
+  assert.equal(eligibility(word("タクシー"), rules({ mode: "katakana" })), "");
+  assert.match(eligibility(word("たくしー"), rules({ mode: "katakana" })), /Katakana/);
+  assert.equal(eligibility(word("とうきょう", { proper: true, nameAllowed: true }), rules()), "");
   assert.equal(eligibility(word("とうきょう", { proper: true, nameAllowed: true }), rules({ proper: "names" })), "");
-  assert.match(eligibility(word("あるく", { partOfSpeech: "Godan verb" }), rules({ wordType: "nouns" })), /part of speech/);
+  assert.equal(eligibility(word("あるく", { partOfSpeech: "Godan verb" }), rules({ wordType: "nouns" })), "");
   assert.equal(eligibility(word("あるく", { partOfSpeech: "Godan verb" }), rules({ wordType: "verbs" })), "");
   assert.equal(eligibility(word("あかい", { partOfSpeech: "adjective" }), rules({ wordType: "adjectives" })), "");
+});
+test("removed word rules are discarded even when malformed and cannot affect validation", () => {
+  const removed = { entry: "kanji", category: "animals", proper: "none", wordType: "nouns" };
+  assert.deepEqual(rules(removed), rules());
+  assert.deepEqual(rules({ entry: null, category: [], proper: 42, wordType: {} }), rules());
+  const previous = word("ごーる");
+  const answer = word("るびー", { word: "ルビー", proper: true, partOfSpeech: "adjective" });
+  const legacy = { ...rules(), ...removed };
+  assert.deepEqual(validateWord(answer, previous, [], legacy), { ok: true });
+  assert.deepEqual(startOptions(previous, legacy), startOptions(previous, rules()));
+  assert.deepEqual(scoreWord(answer, previous, legacy), scoreWord(answer, previous, rules()));
 });
 test("scoring uses true level metadata, optional overlap, bonus kana and marathon points", () => {
   assert.equal(scoreWord(word("らっぱ"), null, rules()).base, 10);
@@ -139,10 +148,10 @@ test("scoring uses true level metadata, optional overlap, bonus kana and maratho
 test("presets and malformed rules are explicit rather than silently relaxed", () => {
   assert.equal(rules().voicing, false);
   assert.equal(rules({ mode: "relaxed", hints: "disabled" }).hints, "unlimited");
-  assert.equal(rules({ mode: "katakana" }).category, "katakana");
-  assert.throws(() => rules({ mode: "kanji", entry: "kana" }), /Kanji chains/);
-  assert.equal(rules({ mode: "daily" }).hints, "disabled");
-  for (const bad of [null, [], { level: "N6" }, { mode: "category" }, { voicing: "yes" }]) {
+  assert.match(eligibility(word("ねこ"), rules({ mode: "katakana" })), /Katakana/);
+  assert.equal(rules({ mode: "kanji", entry: "kana" }).mode, "kanji");
+  for (const mode of ["daily", "category"]) assert.deepEqual(rules({ mode }), rules());
+  for (const bad of [null, [], { level: "N6" }, { mode: "unknown" }, { voicing: "yes" }]) {
     assert.throws(() => parseRules(bad));
   }
 });
@@ -155,7 +164,7 @@ test("reveal limit is validated, defaulted and enforced per player", () => {
   assert.equal(assistAllowed(limited, { reveals: 1 }, "reveal"), true);
   assert.equal(assistAllowed(limited, { reveals: 2 }, "reveal"), false);
   assert.equal(assistAllowed(rules({ reveal: false }), { reveals: 0 }, "reveal"), false);
-  assert.equal(assistAllowed(rules({ mode: "daily" }), { reveals: 0 }, "reveal"), false);
+  assert.equal(assistAllowed(rules({ mode: "daily" }), { reveals: 0 }, "reveal"), true);
   assert.equal(assistAllowed(rules({ hintLimit: 1 }), { hints: 1 }, "hint"), false);
   assert.equal(assistAllowed(rules({ hints: "unlimited" }), { hints: 99 }, "hint"), true);
 });
@@ -180,7 +189,7 @@ function fixture() {
   })));
   return db;
 }
-test("random opening pools span the dictionary, honor exclusions and leave Daily deterministic", async () => {
+test("random opening pools span the dictionary and honor exclusions", async () => {
   const db = createDatabase(":memory:");
   insertWords(db, { tags: { n: "noun" }, words: Array.from({ length: 180 }, (_, i) => ({
     id: String(i + 1), kanji: [{ text: String.fromCodePoint(0x4e00 + i), common: true, tags: [] }],
@@ -202,11 +211,6 @@ test("random opening pools span the dictionary, honor exclusions and leave Daily
       items.forEach((item) => seen.add(item.id));
     }
     assert.ok(seen.size > 100, `Expected a broad pool, got ${seen.size} distinct entries`);
-    const daily = new URLSearchParams({ random: "1", rules: '{"mode":"daily"}' });
-    const dailyPool = await shiritoriWords(db, daily, { n: "noun" }, async () => []);
-    assert.equal(dailyPool.items.length, 60);
-    assert.deepEqual(dailyPool,
-      await shiritoriWords(db, daily, { n: "noun" }, async () => []));
   } finally { db.close(); }
 });
 test("candidate endpoint respects filters, exact matches, exclusions and fallback errors", async () => {
@@ -221,7 +225,7 @@ test("candidate endpoint respects filters, exact matches, exclusions and fallbac
   const get = (params) => fetch(`http://127.0.0.1:${server.address().port}/api/shiritori/words?${new URLSearchParams(params)}`);
   try {
     const cats = await (await get({ rules: JSON.stringify({ category: "animals", level: "N5" }) })).json();
-    assert.deepEqual(cats.items.map((w) => w.word), ["ゴリラ", "猫"]);
+    assert.deepEqual(cats, await (await get({ rules: JSON.stringify({ level: "N5" }) })).json(), "Removed category does not filter candidates");
     assert.equal(cats.items[0].level, 5);
     const continuation = await (await get({ prev: JSON.stringify({ word: "林檎", reading: "りんご" }) })).json();
     assert.deepEqual(continuation.items.map((w) => w.word), ["ゴリラ"]);
@@ -271,7 +275,7 @@ test("ru continuations respect selected JLPT levels and used words", async () =>
     assert.deepEqual((await search()).items.map((item) => item.word), ["ルール"]);
   } finally { db.close(); }
 });
-test("Kana opening and continuation pools exclude every forbidden ending but exact lookups remain inspectable", async () => {
+test("removed Kana entry leaves ordinary pools and exact lookups unchanged", async () => {
   const db = fixture(), kanaRules = rules({ entry: "kana" });
   const query = (params) => shiritoriWords(db, new URLSearchParams({
     rules: JSON.stringify(kanaRules), ...params
@@ -279,23 +283,23 @@ test("Kana opening and continuation pools exclude every forbidden ending but exa
   try {
     const opening = await query({});
     assert.ok(opening.items.length > 0);
-    assert.ok(opening.items.every((item) => !/[んをー]$/.test(kana(item.reading))));
+    assert.ok(opening.items.every((item) => !/[んを]$/.test(kana(item.reading))));
     assert.ok(opening.items.some((item) => item.word === "ケーキ"), "Internal long vowels remain playable");
     const previous = JSON.stringify({ word: "ゴリラ", reading: "ごりら" });
-    assert.deepEqual((await query({ prev: previous })).items.map((item) => item.word), ["ラッパ"]);
+    assert.deepEqual((await query({ prev: previous })).items.map((item) => item.word), ["ラッパ", "ライター"]);
     const both = await query({ prev: previous, rules: JSON.stringify(rules({ entry: "both" })) });
     assert.ok(both.items.some((item) => item.word === "ライター"), "Both entry keeps final long vowels");
     for (const q of ["パン", "を", "ｺｰﾋｰ"]) {
       const found = await query({ q });
       assert.ok(found.items.length > 0, "Exact lookups retain evidence for validation and explanations");
-      assert.ok(found.items.every((item) => eligibility(item, kanaRules) === READING_ENDING_RULE));
+      assert.ok(found.items.every((item) => eligibility(item, kanaRules) === eligibility(item, rules())));
     }
   } finally { db.close(); }
 });
 test("Kanji candidate pools filter pronunciation endings while exact kanji lookups explain rejection", async () => {
   const db = fixture();
   try {
-    for (const settings of [{ entry: "kanji" }, { mode: "kanji", entry: "both" }]) {
+    for (const settings of [{ mode: "kanji" }, { mode: "kanji", entry: "both" }]) {
       const kanjiRules = rules(settings);
       const query = (params) => shiritoriWords(db, new URLSearchParams({
         rules: JSON.stringify(kanjiRules), ...params
@@ -385,8 +389,8 @@ test("kanji mode: the repeater 々 cannot end a word or start a chain link", () 
   assert.deepEqual(startOptions(word("国々", { reading: "くにぐに" }), kanjiRules).kanji, []);
 });
 
-test("kanji entry connects by spelling, not pronunciation", () => {
-  const entryRules = rules({ entry: "kanji" });
+test("kanji mode connects by spelling, not pronunciation", () => {
+  const entryRules = rules({ mode: "kanji" });
   assert.equal(connects(word("桜", { reading: "さくら" }), word("原作", { reading: "げんさく" }), entryRules), false);
   assert.equal(connects(word("作家", { reading: "さっか" }), word("原作", { reading: "げんさく" }), entryRules), true);
 });

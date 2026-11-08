@@ -31,6 +31,7 @@ try {
   const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem("nihon:word-search-v1")));
   const cell = (index) => page.locator(`[data-cell="${index}"]`);
   async function configure(values) {
+    await setup();
     if (!await page.locator("#settingsPanel").evaluate((panel) => panel.open)) await page.click("#settingsPanel summary");
     for (const [key, value] of Object.entries(values)) {
       const input = page.locator(`#setting-${key}`);
@@ -43,14 +44,23 @@ try {
     assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), true, "Autosaving leaves the inline panel open");
   }
   async function start() {
+    await setup();
     await page.click("#startButton");
     await page.locator(".study-confirm-dialog").waitFor({ state: "detached" });
     await page.waitForFunction(() => !document.getElementById("startButton").disabled);
     assert.equal(await page.getAttribute("#notice", "data-error"), "false", await page.textContent("#notice"));
     assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), false, "Starting collapses settings");
   }
-  async function solutions(directions = allDirections) {
-    return page.evaluate((directions) => {
+  async function setup() {
+    if (await page.locator("#startButton").isVisible()) return;
+    if (await page.locator("#endButton").isVisible() && await page.locator("#endButton").isEnabled()) {
+      await page.click("#endButton");
+      await page.locator(".study-confirm-dialog").waitFor({ state: "detached" });
+    }
+    await page.locator("[data-play-again]").click();
+  }
+  async function solutions(directions = allDirections, target = page) {
+    return target.evaluate((directions) => {
       const grid = [...document.querySelectorAll("[data-cell]")].map((cell) => cell.textContent);
       const size = Math.sqrt(grid.length);
       return [...document.querySelectorAll("#wordList li:not(.is-found) .study-japanese")].map((label) => {
@@ -77,6 +87,7 @@ try {
   }
   const allDirections = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]];
   await page.goto(url);
+  assert.equal(await page.locator('#setting-list').evaluate((select) => select.chipsApi.group.querySelector('[data-value="japaneseClue"] input').disabled), true);
   assert.equal(await page.locator("#exportPuzzle").isVisible(), false);
   assert.deepEqual(await page.locator("#settingsForm > fieldset > legend").allTextContents(), ["Session", "Vocabulary", "Grid & word placement", "Clue list", "Hints & reveals", "Timer & special mode limits", "Display & accessibility"]);
   for (const width of [390, 1280]) {
@@ -91,7 +102,7 @@ try {
     return Math.abs(discoveries.top - stats.top) < 1 && stats.left >= discoveries.right && notebook.top >= stats.bottom;
   }), true, "Stats sit beside discoveries and above the notebook");
   assert.equal(await page.locator("#settingsDialog, #settingsButton").count(), 0);
-  assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open && panel.previousElementSibling.classList.contains("intro")), true);
+  assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), true);
   await page.locator("#settingsPanel summary").focus();
   await page.keyboard.press("Enter");
   assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), false);
@@ -156,20 +167,22 @@ try {
   assert.ok((await saved()).progress.recent.slice(-8).every((key) => !prior.has(key)), "No repeats when fresh vocabulary exists");
   if (process.env.WORD_SEARCH_SCREENSHOT) await page.screenshot({ path: process.env.WORD_SEARCH_SCREENSHOT, fullPage: true });
 
-  await configure({ mode: "daily" });
+  await page.evaluate(() => {
+    const key = "nihon:word-search-v1", saved = JSON.parse(localStorage.getItem(key));
+    saved.settings.mode = "daily";
+    saved.settings.category = "animals";
+    saved.settings.list = "icon,japanese";
+    saved.progress.daily = { invalid: "obsolete snapshot" };
+    localStorage.setItem(key, JSON.stringify(saved));
+  });
+  await page.reload();
+  assert.equal((await saved()).settings.mode, "classic");
+  assert.equal((await saved()).settings.list, "japanese");
+  assert.equal("category" in (await saved()).settings, false);
+  assert.equal("daily" in (await saved()).progress, false);
+  assert.equal(await page.locator('#setting-mode option[value="daily"], #setting-category, #setting-list option[value="icon"]').count(), 0);
   await start();
-  const daily = (await saved()).progress.daily;
-  assert.equal(daily.puzzle.entries.length, 8);
-  await tapPath(daily.puzzle.entries[0].cells);
-  await page.reload(); await start();
-  assert.deepEqual((await saved()).progress.daily.puzzle.grid, daily.puzzle.grid);
-  assert.match(await page.textContent("#progressText"), /1 of 8/);
-  assert.equal(await page.locator("#revealButton").isDisabled(), true);
   await solveAll(allDirections);
-  assert.equal("days" in (await saved()).progress, false);
-  await page.reload(); await start();
-  assert.equal(await page.locator("#results").isVisible(), true);
-  assert.equal("days" in (await saved()).progress, false);
 
   await configure({ mode: "memory" }); await start();
   assert.equal(await page.locator("#wordList li").count(), 0);
@@ -210,7 +223,7 @@ try {
   await page.waitForFunction(() => document.getElementById("kanjiContent").textContent.includes("On’yomi"));
   assert.match(await page.textContent("#kanjiContent"), /Kun’yomi|Example words/);
   await page.locator("#kanjiDialog [data-close]").click();
-  await configure({ mode: "review", category: "all" }); await start();
+  await configure({ mode: "review" }); await start();
   assert.equal(await page.locator("#wordList li").count(), 8);
 
   await page.click("#reviewButton");
@@ -249,17 +262,16 @@ try {
   const touchPage = toolPage(touchBrowserPage);
   touchPage.on("pageerror", (error) => errors.push(error.message));
   await touchPage.goto(url);
-  await touchPage.selectOption("#setting-mode", "daily", { force: true });
   await touchPage.click("#startButton"); await touchPage.waitForSelector("[data-cell]");
-  const touchDaily = await touchPage.evaluate(() => JSON.parse(localStorage.getItem("nihon:word-search-v1")).progress.daily);
-  assert.deepEqual(touchDaily.puzzle.grid, daily.puzzle.grid, "Daily grid matches in a fresh browser");
-  const path = touchDaily.puzzle.entries[0].cells;
+  await touchPage.waitForFunction(() => !document.getElementById("startButton").disabled);
+  await touchPage.setViewportSize({ width: 600, height: 1100 });
+  await touchPage.locator("#grid").scrollIntoViewIfNeeded();
+  const touchSolutions = await solutions(allDirections, touchPage);
+  const path = touchSolutions[0].cells;
   await touchPage.locator(`[data-cell="${path[0]}"]`).tap();
   await touchPage.locator(`[data-cell="${path.at(-1)}"]`).tap();
   assert.match(await touchPage.textContent("#progressText"), /1 of 8/);
-  await touchPage.setViewportSize({ width: 600, height: 1100 });
-  await touchPage.locator("#grid").scrollIntoViewIfNeeded();
-  const touchDrag = touchDaily.puzzle.entries.slice(1).find((entry) => entry.cells.length > 1).cells;
+  const touchDrag = touchSolutions.slice(1).find((entry) => entry.cells.length > 1).cells;
   const touchStart = await touchPage.locator(`[data-cell="${touchDrag[0]}"]`).boundingBox();
   const touchEnd = await touchPage.locator(`[data-cell="${touchDrag.at(-1)}"]`).boundingBox();
   const cdp = await touchContext.newCDPSession(touchBrowserPage);
@@ -273,6 +285,7 @@ try {
   assert.match(await touchPage.textContent("#progressText"), /2 of 8/, "Native touch drag selects a word");
   await touchContext.close();
 
+  await setup();
   if (!await page.locator("#settingsPanel").evaluate((panel) => panel.open)) await page.click("#settingsPanel summary");
   await page.selectOption("#setting-mode", "classic", { force: true });
   await page.selectOption("#setting-level", "1", { force: true });
@@ -289,7 +302,16 @@ try {
   await page.waitForURL(`${base}/kotoba-sagashi.html`);
   await page.locator("#startButton").waitFor();
   assert.deepEqual(errors, []);
-  console.log("Word Search browser checks passed: pointer, keyboard, touch, modes, daily persistence, notebook, and display.");
+  await page.goto(`${base}/index.html`);
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem("nihon:word-search-v1"));
+    saved.settings.list = "english,japaneseClue";
+    localStorage.setItem("nihon:word-search-v1", JSON.stringify(saved));
+  });
+  await page.goto(url);
+  assert.equal(await page.locator("#setting-list").inputValue(), "english");
+  assert.match(await page.textContent("#notice"), /Japanese descriptions are unavailable/);
+  console.log("Word Search browser checks passed: pointer, keyboard, touch, modes, legacy migration, notebook, and display.");
 } finally {
   await browser?.close();
   await vite?.close();

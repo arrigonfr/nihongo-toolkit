@@ -4,11 +4,9 @@ import { beginLoading } from "./request-loading.js";
 import { conjugate, filterForms, groups, typeNames, copyTable } from "./conjugation.js";
 import { mountStudyControls, study, japaneseHTML, audioHTML } from "./study-controls.js";
 import { romanizeKana } from "./romanize.js";
-import { escape, mountSentenceExamples, wordsHTML } from "./examples.js";
+import { escape, mountSentenceExamples, wordsHTML, loadSentences, sentencesHTML } from "./examples.js";
 import "./conjugator.css";
 import { groupSettings, setSettingAvailability } from "./settings-panel.js";
-import { practiceWords } from "./conjugation-practice-data.js";
-import { exampleFor, familyOf, supportsExample } from "./conjugation-practice-engine.js";
 import { selectedLevels } from "./jlpt-levels.js";
 import { mountChips } from "./chips.js";
 import { plainSelect, plainCheck, removeChipsTooltip } from "./plain-fields.js";
@@ -174,7 +172,7 @@ function renderResult() {
         <th scope="row">${row.label}<span class="register">${row.politeness === "neutral" ? "Shared / connective" : row.politeness}</span></th>
         <td><span class="conjugated">${japanese(row.word, row.reading, { compact: settings.compact })}</span>
           <div class="form-tools"><button type="button" data-copy="${row.id}" aria-label="Copy ${row.label} ${row.politeness}">Copy</button>${audioHTML(row.reading)}</div></td>
-        ${settings.compact ? "" : `<td>${escape(row.gloss)}<details class="form-note"><summary>Rule & usage</summary><p>${escape(row.note)}</p>${settings.examples ? `<button type="button" data-example="${row.id}">Find sentence with this form</button><div class="form-examples"></div>` : ""}</details></td>`}
+        ${settings.compact ? "" : `<td>${escape(row.gloss)}<details class="form-note"><summary>Rule & usage</summary><p>${escape(row.note)}</p>${settings.examples ? `<button type="button" data-example="${row.id}">Find sourced sentence with this form</button><div class="form-examples" role="status"></div>` : ""}</details></td>`}
       </tr>`).join("")}</tbody></table></div></section>`;
   }).join("") : '<div class="panel">No forms match these filters. Enable a form group or broaden the filters.</div>';
   $("copyTable").disabled = !rows.length;
@@ -350,23 +348,24 @@ mountGameExport($("exportConjugations").parentElement, () => {
   });
   return { title: `${current.word} · Conjugations`, filename: `${current.word}-conjugations`, table };
 }, { button: $("exportConjugations"), label: "Export conjugations", answers: false });
-$("tables").addEventListener("click", (event) => {
+$("tables").addEventListener("click", async (event) => {
   const button = event.target.closest("[data-copy], [data-example]");
   if (!button) return;
   const row = allForms.find((form) => form.id === (button.dataset.copy || button.dataset.example));
-  if (button.dataset.copy) copy(settings.script === "kana" ? row.reading : row.word);
-  else {
-    const target = button.nextElementSibling;
-    button.hidden = true;
-    const entry = practiceWords.find((word) => word.word === current.word && word.reading === current.reading && word.type === current.type);
-    const family = familyOf(row);
-    if (!entry || !supportsExample(entry, family)) {
-      target.textContent = "No verified example for this exact form is available. Base-word examples are available in Word information, but may use other forms.";
-      return;
-    }
-    const example = exampleFor({ entry, row, family });
-    target.innerHTML = `<p lang="ja">${escape(example.before)}${japaneseHTML(row.word, row.reading)}${escape(example.after)} ${audioHTML(example.japanese)}</p><p>${escape(example.english)}</p><p class="small muted">Original teaching example · ${escape(row.politeness)} · ${escape(row.polarity)} · ${escape(row.tense)}</p>`;
-  }
+  if (button.dataset.copy) { copy(settings.script === "kana" ? row.reading : row.word); return; }
+  const target = button.nextElementSibling;
+  button.disabled = true;
+  target.textContent = "Looking for a sourced sentence containing this form…";
+  try {
+    const examples = (await loadSentences(row.word, undefined, { corpusOnly: true }))
+      .filter((example) => !example.generated && example.english && example.japanese.includes(row.word));
+    if (!target.isConnected) return;
+    target.innerHTML = examples.length ? sentencesHTML(examples)
+      : "No sourced sentence containing this form was found. Try again later or view base-word examples in Word information.";
+  } catch (error) {
+    console.warn("Exact-form example lookup failed:", error);
+    if (target.isConnected) target.textContent = error.message;
+  } finally { button.disabled = false; }
 });
 $("exportWords").addEventListener("click", () => {
   const url = URL.createObjectURL(new Blob([JSON.stringify({ version: 1, words: saved }, null, 2)], { type: "application/json" }));

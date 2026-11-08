@@ -3,10 +3,9 @@ import "./shiritori.css";
 import { mountGameExport } from "./game-export.js";
 import { bind, toKana } from "wanakana";
 import { API_BASE } from "./api.js";
-import { mountChips } from "./chips.js";
 import { mountStudyControls, study, japaneseHTML, audioHTML, readingsHTML, speakJapanese } from "./study-controls.js";
 import { mountSentenceExamples } from "./examples.js";
-import { DEFAULT_RULES, CATEGORIES, READING_ENDING_RULE, parseRules, kana, morae, requiredStart, startOptions, kanjiChain, connection, wordEndingError, validateWord, scoreWord, assistAllowed, matchesCategory, isKanji } from "../../backend/src/shiritori-rules.js";
+import { DEFAULT_RULES, READING_ENDING_RULE, parseRules, kana, morae, requiredStart, startOptions, kanjiChain, connection, wordEndingError, validateWord, scoreWord, assistAllowed, isKanji } from "../../backend/src/shiritori-rules.js";
 import { createSeededRandom } from "./crossword-engine.js";
 import { JAPANESE_FONTS, isFontSetting, applyJapaneseFont } from "./japanese-fonts.js";
 import { confirmAction } from "./confirm-dialog.js";
@@ -17,13 +16,12 @@ const $ = (id) => document.getElementById(id);
 const escape = (text) => String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const settingsKey = "nihon:shiritori-settings-v1";
 const progressKey = "nihon:shiritori-progress-v1";
-const modes = { classic: "Classic", relaxed: "Relaxed", timed: "Timed", sudden: "Sudden Death", daily: "Daily Challenge", category: "Category Shiritori", kanji: "Kanji Shiritori", katakana: "Katakana Challenge", beginner: "Beginner", marathon: "Marathon" };
+const modes = { classic: "Classic", relaxed: "Relaxed", timed: "Timed", sudden: "Sudden Death", kanji: "Kanji Shiritori", katakana: "Katakana Challenge", beginner: "Beginner", marathon: "Marathon" };
 const modeDescriptions = {
   classic: "Build a chain by connecting each word to the previous word's ending.",
   relaxed: "No timer and unlimited hints. An invalid connection still ends the round.",
   timed: "Play a valid word before the turn countdown expires.", sudden: "Any invalid play ends the round with a loss.",
-  daily: "Play ten valid words against the computer with fixed daily rules and no assistance.",
-  category: "Build a chain within your selected vocabulary category.", kanji: "Connect words using kanji, rather than kana endings.",
+  kanji: "Connect words using kanji, rather than kana endings.",
   katakana: "Use words written in katakana.", beginner: "Words up to four morae, unlimited hints and furigana.",
   marathon: "Build a long chain and earn extra points as it grows."
 };
@@ -44,13 +42,13 @@ try {
   if (!Object.hasOwn(saved, "bonusKana") && typeof saved.bonus === "boolean") saved.bonusKana = saved.bonus;
   delete saved.level;
   validateSettings(saved);
-  settings = { ...defaults, ...saved };
-  delete settings.appearance;
+  settings = { ...defaults, ...Object.fromEntries(Object.entries(saved).filter(([key]) => Object.hasOwn(defaults, key))), ...parseRules(saved) };
+  localStorage.setItem(settingsKey, JSON.stringify(settings));
   const stored = JSON.parse(localStorage.getItem(progressKey) || "null");
   if (stored) {
     if (!Array.isArray(stored.known) || !Array.isArray(stored.review)) throw new Error("Invalid saved progress");
-    const { daily: _daily, ...savedProgress } = stored;
-    progress = savedProgress;
+    progress = { known: stored.known, review: stored.review };
+    localStorage.setItem(progressKey, JSON.stringify(progress));
   }
 } catch (error) {
   console.error("Could not restore Shiritori preferences.", error);
@@ -71,10 +69,6 @@ try {
   if (Array.isArray(saved) && saved.every((id) => typeof id === "string")) recentStarters = saved.slice(-12);
 } catch (error) { console.warn("Could not restore recent opening words.", error); }
 const exampleCache = new Map();
-const today = () => {
-  const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-};
 const info = (message, error = false) => {
   $("feedback").textContent = message;
   $("feedback").dataset.error = String(error);
@@ -99,15 +93,9 @@ function settingsMarkup() {
   <div class="mode-pills" id="modePills" role="group" aria-label="Game mode">${Object.entries(modes).map(([key, label]) => `<button class="mode-pill" type="button" data-mode="${key}" data-setting-description="${escape(modeDescriptions[key])}" aria-pressed="false">${label}</button>`).join("")}</div>
   <fieldset class="settings-section" id="gameSettings"><legend>Game</legend><div class="settings-grid">
   <input type="hidden" id="setting-mode" data-setting="mode">
-  ${selectSetting("opponent", "Play against", { computer: "Computer", local: "Local players / solo" }, "Computer alternates with you. Local mode supports one learner or up to six players sharing this device. Daily always uses the computer.")}
+  ${selectSetting("opponent", "Play against", { computer: "Computer", local: "Local players / solo" }, "Computer alternates with you. Local mode supports one learner or up to six players sharing this device.")}
   ${numberSetting("players", "Local players", 1, 6, "Number of players taking turns on this device. Ignored when playing the computer. A losing move ends the round for everyone.")}
   ${selectSetting("timer", "Seconds per turn", { 10: "10 seconds", 20: "20 seconds", 30: "30 seconds", 60: "60 seconds" }, "Only Timed mode uses a countdown. It includes checks, hints, dictionary requests and time in dialogs. Other modes have no timer.")}
-  </div></fieldset>
-  <fieldset class="settings-section"><legend>Word Rules</legend><div class="settings-grid">
-  ${selectSetting("category", "Vocabulary category", CATEGORIES)}
-  ${selectSetting("entry", "Word entry", { kana: "Kana", kanji: "Kanji", both: "Both" }, `Romaji converts automatically to kana. Kana accepts either script. Kanji entry confirms a dictionary spelling and links by kanji. Both accepts either form. For Kana entry and kanji chains: ${READING_ENDING_RULE}`)}
-  ${selectSetting("wordType", "Allowed word types", { all: "All", nouns: "Nouns", verbs: "Verbs", adjectives: "Adjectives" }, "Use dictionary parts of speech to limit playable vocabulary. All includes expressions, verbs, adjectives and other dictionary words. Verbs and Adjectives also allow nouns.")}
-  ${selectSetting("proper", "Proper nouns allowed", { names: "Yes", none: "No" }, "Names must have dictionary evidence. Only names identified by the dictionary are available.")}
   </div></fieldset>
   <fieldset class="settings-section"><legend>Scoring and rules</legend><div class="settings-grid">
   ${checkboxSetting("voicing", "Allow voiced / unvoiced variation", "Treat か / が and は / ば / ぱ as equivalent at the connection. Off by default. Does not affect kanji connections.")}
@@ -165,10 +153,10 @@ $("shiritoriRoot").innerHTML = `<div class="shell">
     <div class="help-example" lang="ja">りんご → ごりら → らっぱ</div>
     <p><strong>Shiritori means “taking the tail”.</strong> Start your word with the last syllable of the previous word, or with more of it: the last two or three syllables, or its last kanji or kanji compound. The answer must be longer than the overlap, so it can never begin with the entire previous word. Small kana stay attached (しょ needs しょ, and しょう works). Hiragana and katakana are equivalent. Submit with Enter or Play. Words ending in <strong>ん / ン</strong> and the particle <strong>を / ヲ</strong> are not accepted. Stuck? Use <strong>Pass</strong> to skip your turn; if everyone passes in a row, the round ends.</p>
     <h3>Play your way</h3><p>Play the computer, practice alone, or share this device with up to six local players. Classic retries invalid entries. Sudden Death loses on any invalid submission. Relaxed has unlimited hints and no timer: an invalid connection ends the round. Timed includes dictionary-check time. Beginner caps words at four morae and enables furigana. Marathon adds points for every word.</p>
-    <p>Category and Katakana challenges filter the vocabulary. Advanced Kanji Shiritori only accepts overlaps made of the last kanji or kanji compound. Daily uses a date-seeded match with fixed rules: play ten valid human words to win.</p>
-    <h3>Make the rules yours</h3><p>Choose Kana, Kanji or Both, a category and parts of speech. Conjugated verbs and adjectives are accepted. Romaji converts as you type; pick the right spelling when a reading is ambiguous. Kanji entry accepts a typed reading only after you confirm its spelling.</p>
-    <p>For Kana entry and kanji chains: ${escape(READING_ENDING_RULE)} Dictionary readings are checked even when you type kanji. A long-vowel mark inside a word is fine, as in ケーキ. Outside Kanji Shiritori, Both entry keeps a final ー attached to its syllable (コーヒー requires ヒー). Repeated words and words ending in ん / ン are never accepted. You can allow voiced/unvoiced pairs. No available dictionary continuation ends the round with an explanation, not an invented word.</p>
-    <h3>Learn, don’t just guess</h3><p>Hints cycle through first kana, morae, category and a hidden word; Reveal gives a legal word and meaning. Hover, focus or tap chain words to explore them. Kanji buttons show meanings, on’yomi, kun’yomi and compounds. Audio uses an installed Japanese device voice. Sentence availability depends on the dictionary and Tatoeba.</p>
+    <p>Katakana Challenge uses words written in katakana. Advanced Kanji Shiritori only accepts overlaps made of the last kanji or kanji compound.</p>
+    <h3>Make the rules yours</h3><p>Choose a game mode, assistance and scoring options. Conjugated verbs and adjectives are accepted. Romaji converts as you type; pick the right spelling when a reading is ambiguous. Kanji Shiritori accepts a typed reading after you confirm its spelling.</p>
+    <p>For kanji chains: ${escape(READING_ENDING_RULE)} Dictionary readings are checked even when you type kanji. A long-vowel mark inside a word is fine, as in ケーキ. Outside Kanji Shiritori, a final ー stays attached to its syllable (コーヒー requires ヒー). Repeated words and words ending in ん / ン are never accepted. You can allow voiced/unvoiced pairs. No available dictionary continuation ends the round with an explanation, not an invented word.</p>
+    <h3>Learn, don’t just guess</h3><p>Hints cycle through first kana, morae and a hidden reading; Reveal gives a legal word and meaning. Hover, focus or tap chain words to explore them. Kanji buttons show meanings, on’yomi, kun’yomi and compounds. Audio uses an installed Japanese device voice. Sentence availability depends on the dictionary and Tatoeba.</p>
     <h3>Points &amp; progress</h3><p>N5 / N4 / N3 / N2 / N1 earn 10 / 20 / 30 / 40 / 50 points. Unrated words earn 10 and appear only in All. Bonus kana earns 15; extra overlap earns 5 per additional syllable or character. Marathon adds 5 per valid word. Statistics reset for each new game. Save words to a local review list and export/import it in Settings.</p>
     <p class="small">JLPT levels are community estimates. Categories are approximate dictionary-gloss filters. Name coverage is limited to dictionary entries, not an exhaustive list of famous people. Unknown submissions may be sent to the optional Jisho fallback; example lookups may use Tatoeba. Provider errors are shown and are never treated as proof that a word is invalid.</p>
   </div></dialog>
@@ -177,8 +165,6 @@ $("shiritoriRoot").innerHTML = `<div class="shell">
 </div>`;
 
 mountStudyControls();
-mountChips($("setting-wordType"), { fieldClass: "word-type-field" });
-mountChips($("setting-proper"), { presentation: "radio", fieldClass: "proper-field" });
 bind($("wordInput"), { IMEMode: true });
 function applyAccessibility() {
   const display = game?.settings || settings;
@@ -202,22 +188,20 @@ function populateSettings() {
   $("settingsError").hidden = true;
 }
 function syncAvailability() {
-  const mode = $("setting-mode").value, daily = mode === "daily";
-  const forcedHints = ["daily", "relaxed", "beginner"].includes(mode);
+  const mode = $("setting-mode").value;
+  const forcedHints = ["relaxed", "beginner"].includes(mode);
   const reasons = {
     players: $("setting-opponent").value !== "local" ? "Choose local players." : "",
     timer: mode !== "timed" ? "Used in Timed mode." : "",
     hints: forcedHints ? "Hint availability is determined by this mode." : "",
     hintLimit: forcedHints || $("setting-hints").value !== "limited" ? "Choose limited hints outside a fixed-hint mode." : "",
-    category: mode === "katakana" ? "Katakana Challenge sets its vocabulary category." : "",
     revealLimit: !$("setting-reveal").checked ? "Allow Reveal Answer to set a limit." : "",
-    voicing: mode === "kanji" || $("setting-entry").value === "kanji" ? "Kana voicing does not affect kanji connections." : ""
+    voicing: mode === "kanji" ? "Kana voicing does not affect kanji connections." : ""
   };
   for (const control of document.querySelectorAll("[data-setting]")) {
     const key = control.dataset.setting;
     if (key === "mode") continue;
-    setSettingAvailability(control, daily && !["font", "fontSize", "contrast", "translations"].includes(key)
-      ? "Daily uses fixed rules; your preference is kept." : reasons[key] || "");
+    setSettingAvailability(control, reasons[key] || "");
   }
 }
 function showSettingsError(message) {
@@ -279,7 +263,7 @@ async function api(path, params = {}) {
   return payload;
 }
 async function roundWords(query = "") {
-  const randomOpening = !query && !game.chain.length && game.rules.mode !== "daily";
+  const randomOpening = !query && !game.chain.length;
   const params = {
     rules: game.rules, ...(query ? { q: query, examples: "0" } : {
       ...(game.chain.length ? { prev: { word: game.chain.at(-1).word, reading: game.chain.at(-1).reading } } : {}),
@@ -302,17 +286,17 @@ function enableControls() {
   $("revealButton").disabled = !playable || !assistAllowed(game.rules, player, "reveal");
   $("hintButton").textContent = game?.active && game.rules.hints === "limited" ? `Hint · ${Math.max(0, game.rules.hintLimit - player.hints)} left` : "Hint";
   $("revealButton").textContent = game?.active && game.rules.reveal ? `Reveal Answer · ${Math.max(0, game.rules.revealLimit - player.reveals)} left` : "Reveal Answer";
-  $("passButton").disabled = !playable || game.rules.mode === "daily";
+  $("passButton").disabled = !playable;
   $("newGame").disabled = busy;
   $("stopGame").hidden = !game?.active;
 }
 function render() {
   const rules = game?.rules || parseRules(settings);
   const players = game?.settings || settings;
-  $("modeBadge").textContent = `${modes[rules.mode]} · ${rules.mode === "daily" || players.opponent === "computer" ? "vs. computer" : players.players === 1 ? "solo practice" : `${players.players} local players`}`;
+  $("modeBadge").textContent = `${modes[rules.mode]} · ${players.opponent === "computer" ? "vs. computer" : players.players === 1 ? "solo practice" : `${players.players} local players`}`;
   $("newGame").textContent = game ? "New game →" : "Start game →";
   $("reviewCount").textContent = progress.review.length;
-  const restrictedEndings = rules.entry === "kana" || kanjiChain(rules);
+  const restrictedEndings = kanjiChain(rules);
   $("ruleSummary").textContent = `${kanjiChain(rules) ? "Reuse the final kanji or kanji compound" : "Reuse the last syllable or more, or the final kanji / compound"}. No repeated words. ${restrictedEndings ? READING_ENDING_RULE : "Words ending in ん / ン are not accepted."}`;
   $("entryNote").textContent = `Romaji converts to kana as you type. You can also use a Japanese keyboard.${restrictedEndings ? ` ${READING_ENDING_RULE}` : ""}`;
   const stats = game?.stats || { words: 0, unique: new Set(), hints: 0, revealed: 0, longest: 0 };
@@ -322,13 +306,13 @@ function render() {
     $("scores").innerHTML = game.players.map((player, i) => `<div class="score-row ${game.active && game.turn === i ? "active" : ""}" data-player="${i % 6}"><span><i class="swatch" aria-hidden="true"></i>${game.active && game.turn === i ? "→ " : ""}${escape(player.name)}</span><strong>${player.score} <span class="small">pts</span></strong></div>`).join("");
     const previous = game.chain.at(-1);
     if (previous) {
-      $("previousWord").innerHTML = japaneseHTML(rules.entry === "kana" ? previous.reading : previous.word, previous.reading);
+      $("previousWord").innerHTML = japaneseHTML(previous.word, previous.reading);
       $("previousReading").textContent = `${previous.reading} · ${previous.meaning.split(";")[0]}`;
       $("startOptions").innerHTML = startOptionList(previous, game.rules).map(({ text, size }) => `<li><span>${escape(text)}</span>${game.rules.bonus && size > 1 ? `<small>+${(size - 1) * 5}</small>` : ""}</li>`).join("");
     }
     const player = game.players[game.turn];
     const turnText = player.computer ? "Computer is thinking…" : player.name === "You" ? "Your turn" : `${player.name}’s turn`;
-    $("turnLabel").textContent = game.active ? `${turnText}${game.rules.mode === "daily" ? ` · ${game.humanWords}/10 words` : ""}` : "Round complete";
+    $("turnLabel").textContent = game.active ? turnText : "Round complete";
     $("bonusLabel").textContent = game.bonusKana && game.active ? `Bonus kana: ${game.bonusKana} · include it for +15 points` : `N5 → 10 pts · N1 → 50 pts${game.rules.bonus ? " · extra overlap +5" : ""}`;
   }
   enableControls();
@@ -404,12 +388,11 @@ async function startGame() {
   sessionView.start();
   const doneLoading = beginLoading($("newGame"), $("previousWord").closest(".card"));
   clearInterval(timerHandle);
-  const date = today();
   game = {
-    rules, settings: { ...settings }, active: false, turn: 0, chain: [], humanWords: 0, bonusKana: "", deadline: 0, hintStep: 0,
-    rng: createSeededRandom(rules.mode === "daily" ? date : `${Date.now()}-${Math.random()}`),
+    rules, settings: { ...settings }, active: false, turn: 0, chain: [], bonusKana: "", deadline: 0, hintStep: 0,
+    rng: createSeededRandom(`${Date.now()}-${Math.random()}`),
     knownBefore: new Set(progress.known),
-    players: rules.mode === "daily" || settings.opponent === "computer"
+    players: settings.opponent === "computer"
       ? [{ name: "You", score: 0, hints: 0, reveals: 0 }, { name: "Computer", score: 0, hints: 0, reveals: 0, computer: true }]
       : Array.from({ length: settings.players }, (_, i) => ({ name: `Player ${i + 1}`, score: 0, hints: 0, reveals: 0 })),
     stats: { words: 0, unique: new Set(), longest: 0, hints: 0, revealed: 0, missed: {} }
@@ -424,7 +407,7 @@ async function startGame() {
   try {
     const words = await roundWords();
     if (generation !== token) return;
-    if (!words.length) throw new Error("No playable words match these settings. Try a wider JLPT range, another category or fewer restrictions.");
+    if (!words.length) throw new Error("No playable words match these settings. Try another game mode.");
     const offset = Math.floor(game.rng() * words.length);
     let starter;
     let following;
@@ -437,19 +420,16 @@ async function startGame() {
     }
     if (!starter) {
       game.chain = [];
-      throw new Error("No playable opening pair was found for these rules. Try a wider JLPT range, another category.");
+      throw new Error("No playable opening pair was found for these rules. Try another game mode.");
     }
     game.stats.longest = 1;
-    if (rules.mode !== "daily") {
-      recentStarters = [...recentStarters.filter((id) => id !== starter.id), starter.id].slice(-12);
-      try { sessionStorage.setItem("nihon:shiritori-starters", JSON.stringify(recentStarters)); }
-      catch (error) { console.warn("Could not save recent opening words.", error); }
-    }
+    recentStarters = [...recentStarters.filter((id) => id !== starter.id), starter.id].slice(-12);
+    try { sessionStorage.setItem("nihon:shiritori-starters", JSON.stringify(recentStarters)); }
+    catch (error) { console.warn("Could not save recent opening words.", error); }
     game.active = true; busy = false;
     $("settingsPanel").open = false;
     renderChain(); showWord(starter); speakJapanese(starter.reading); beginTurn(following);
-    if (rules.mode === "daily") info("Daily challenge: play 10 valid words.");
-    else info(`Your opening word is ${starter.word} (${starter.reading}). Continue with ${requiredStart(starter, rules)}.`);
+    info(`Your opening word is ${starter.word} (${starter.reading}). Continue with ${requiredStart(starter, rules)}.`);
   } catch (error) {
     if (generation !== token) return;
     game.active = false; busy = false; render(); info("");
@@ -543,9 +523,6 @@ async function submit() {
   const text = toKana($("wordInput").value.trim(), { IMEMode: false }).normalize("NFKC");
   $("wordInput").value = text;
   if (!text) { info("Enter a word first.", true); return; }
-  if (game.rules.entry === "kana" && !/^[ぁ-ゖァ-ヶー]+$/.test(text)) {
-    reject({ reason: "vocabulary rule", message: "Kana mode accepts hiragana or katakana only." }); return;
-  }
   const endingError = wordEndingError(text, game.rules);
   if (endingError) {
     reject({ reason: "vocabulary rule", message: `${endingError} Choose a different word.` }); return;
@@ -568,7 +545,7 @@ async function submit() {
     const legal = candidates.filter((word) => validateWord(word, game.chain.at(-1), game.chain, game.rules).ok);
     if (!legal.length) { const { ok, ...result } = validateWord(candidates[0], game.chain.at(-1), game.chain, game.rules); reject(result); return; }
     candidates = legal;
-    const requiresConfirmation = candidates.length > 1 || game.rules.entry === "kanji" && ![...text].some(isKanji);
+    const requiresConfirmation = candidates.length > 1 || kanjiChain(game.rules) && ![...text].some(isKanji);
     if (requiresConfirmation) {
       $("choices").innerHTML = `<p class="small">Pick the spelling and reading you mean; it is played right away.</p>${candidates.map((word, i) => `<button type="button" data-choice="${i}"><strong lang="ja">${escape(word.word)}</strong> · ${escape(word.reading)}<br><span class="small">${escape(word.meaning)} · ${word.level ? `N${word.level}` : "Unrated"}</span></button>`).join("")}`;
       info("Choose the dictionary entry below to play it.");
@@ -600,13 +577,9 @@ function accept(word, result = validateWord(word, game.chain.at(-1), game.chain,
   game.stats.words++;
   game.stats.unique.add(word.id);
   game.stats.longest = game.chain.length;
-  if (!player.computer) game.humanWords++;
   if (!progress.known.includes(word.id)) { progress.known.push(word.id); persist(progressKey, progress); }
   renderChain(); showWord(played); speakJapanese(word.reading);
   info(`${word.word} · ${word.reading} — ${word.meaning.split(";")[0]}. +${points.total} points (base ${points.base}${points.overlapBonus ? ` + overlap ${points.overlapBonus}` : ""}${points.kanaBonus ? " + bonus kana 15" : ""}${points.marathonBonus ? " + Marathon 5" : ""}).`);
-  if (game.rules.mode === "daily" && game.humanWords >= 10) {
-    finish("daily goal reached", "Ten valid human words — daily challenge complete!", null, true); return;
-  }
   game.passes = 0;
   advanceTurn();
 }
@@ -622,7 +595,7 @@ function advanceTurn(preloaded = null) {
   }, 2200);
 }
 function pass() {
-  if (!humanTurn() || busy || expired() || game.rules.mode === "daily") return;
+  if (!humanTurn() || busy || expired()) return;
   const player = game.players[game.turn];
   game.passes = (game.passes || 0) + 1;
   if (game.passes >= game.players.length) {
@@ -653,18 +626,16 @@ async function assist(reveal, automatic = false) {
     if (reveal) {
       game.stats.revealed++; player.reveals++;
       $("hintPanel").textContent = `${word.word} · ${word.reading} — ${word.meaning}`;
-      $("wordInput").value = game.rules.entry === "kana" ? word.reading : word.word;
+      $("wordInput").value = word.word;
       checkedText = $("wordInput").value; selected = word;
       $("choices").replaceChildren();
     } else {
       player.hints++; game.stats.hints++;
-      const categories = Object.keys(CATEGORIES).filter((c) => !["all", "nouns"].includes(c) && matchesCategory(word, c));
       const letters = [...word.reading];
       const partial = letters.map((c, i) => i === 0 || i === letters.length - 1 && letters.length > 2 ? c : "_").join(" ");
       const messages = [
         `First kana: ${word.reading[0]}`,
         `A possible word has ${morae(word.reading)} morae.`,
-        `Category hint: ${categories.map((c) => CATEGORIES[c]).join(", ") || word.partOfSpeech || "general vocabulary"}.`,
         `Hidden reading: ${partial}`
       ];
       $("hintPanel").textContent = `${automatic ? "Beginner hint · " : ""}${messages[game.hintStep++ % messages.length]}`;
@@ -673,13 +644,12 @@ async function assist(reveal, automatic = false) {
   } catch (error) { if (generation === token) info(error.message, true); }
   finally { await doneLoading(); if (generation === token) { busy = false; enableControls(); if (humanTurn()) $("wordInput").focus(); } }
 }
-function finish(reason, explanation, loser = null, dailyGoal = false) {
+function finish(reason, explanation, loser = null) {
   if (!game?.active) return;
   game.active = false; generation++; busy = false; game.deadline = 0;
   info("Round complete — see the results below.");
   clearInterval(timerHandle); $("timer").textContent = "Round ended"; $("choices").replaceChildren(); $("retryComputer").hidden = true;
-  const dailyWin = game.rules.mode === "daily" && (dailyGoal || loser !== null && game.players[loser].computer);
-  const title = dailyWin ? "Daily challenge complete!" : loser === null ? "A chain worth remembering" : game.players.length === 1 ? "Round lost" : game.players[loser].computer ? "You win!" : `${game.players[loser].name} ${game.players[loser].name === "You" ? "lose" : "loses"}`;
+  const title = loser === null ? "A chain worth remembering" : game.players.length === 1 ? "Round lost" : game.players[loser].computer ? "You win!" : `${game.players[loser].name} ${game.players[loser].name === "You" ? "lose" : "loses"}`;
   const winners = loser === null ? "" : game.players.filter((_, i) => i !== loser).map((p) => p.name).join(", ");
   const discoveries = game.chain.filter((word, i, list) => list.findIndex((item) => item.id === word.id) === i);
   const missed = Object.entries(game.stats.missed).sort((a, b) => b[1] - a[1]).map(([k, count]) => `${escape(k)} (${count})`).join(" · ");
@@ -728,9 +698,11 @@ $("reviewBody").addEventListener("click", (event) => {
   progress.review.splice(Number(button.dataset.removeReview), 1); persist(progressKey, progress); renderReview(); render();
 });
 $("exportReview").addEventListener("click", () => {
+  const date = new Date();
+  const stamp = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   const blob = new Blob([JSON.stringify({ version: 1, words: progress.review }, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a"); link.href = url; link.download = `shiritori-review-${today()}.json`; link.click();
+  const link = document.createElement("a"); link.href = url; link.download = `shiritori-review-${stamp}.json`; link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 $("importReview").addEventListener("click", () => $("reviewFile").click());
@@ -753,7 +725,7 @@ $("reviewFile").addEventListener("change", async () => {
 });
 $("resetProgress").addEventListener("click", async () => {
   if (game?.active) { showSettingsError("End the current round before resetting progress."); return; }
-  if (!await confirmAction("Clear all discoveries, saved review words and daily progress on this browser?", { confirmLabel: "Delete progress" })) return;
+  if (!await confirmAction("Clear all discoveries and saved review words on this browser?", { confirmLabel: "Delete progress" })) return;
   progress = { known: [], review: [] };
   persist(progressKey, progress); render(); showSettingsError("Progress reset.");
 });

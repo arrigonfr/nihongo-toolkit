@@ -16,9 +16,34 @@ try {
   await context.route(/googletagmanager\.com/, (route) => route.fulfill({ body: "" }));
   const page = await context.newPage();
   const errors = [];
+  const pendingRequests = new Set();
+  page.on("request", (request) => pendingRequests.add(request.url()));
+  page.on("requestfinished", (request) => pendingRequests.delete(request.url()));
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("requestfailed", (request) => errors.push(`${request.url()}: ${request.failure()?.errorText}`));
   await page.addInitScript(() => {
     window.speechBuffers = [];
+    window.speechStarts = [];
+    window.speechEvents = [];
+    const start = AudioBufferSourceNode.prototype.start;
+    AudioBufferSourceNode.prototype.start = function (time) {
+      window.speechStarts.push({ time, duration: this.buffer.duration });
+      return start.call(this, time);
+    };
+    const WorkerClass = window.Worker;
+    window.Worker = class extends WorkerClass {
+      constructor(...args) {
+        super(...args);
+        this.addEventListener("message", ({ data }) => window.speechEvents.push({ id: data.id, error: data.error, samples: data.audio?.length }));
+      }
+    };
+    const resume = AudioContext.prototype.resume;
+    AudioContext.prototype.resume = function () {
+      window.speechEvents.push({ resume: this.state });
+      this.addEventListener("statechange", () => window.speechEvents.push({ state: this.state }));
+      return resume.call(this);
+    };
     const createBuffer = AudioContext.prototype.createBuffer;
     AudioContext.prototype.createBuffer = function (...args) {
       const buffer = createBuffer.apply(this, args);
@@ -35,6 +60,8 @@ try {
   await preload;
   await page.waitForSelector("#audioQuickToggle");
   await page.evaluate(() => {
+    Object.defineProperty(speechSynthesis, "getVoices", { value: () => [{ lang: "ja-JP", name: "Late system voice" }] });
+    speechSynthesis.speak = () => { throw new Error("Firefox must not switch to a late system voice."); };
     const button = document.createElement("button");
     button.id = "testSpeech";
     button.dataset.studySpeak = "こんにちは";
@@ -45,16 +72,37 @@ try {
   await page.click("#audioQuickToggle");
   await page.click("#audioQuickToggle");
   await page.click("#testSpeech");
-  await page.waitForFunction(() => window.speechBuffers.length > 0 || document.querySelector(".study-speech-status")?.textContent.includes("could not"), null, { timeout: 180000 });
+  await page.waitForFunction(() => window.speechBuffers.length > 0 || document.querySelector(".study-speech-status")?.textContent.includes("could not"), null, { timeout: 180000 }).catch(async (error) => {
+    const resources = await Promise.all(page.workers().map((worker) => worker.evaluate(() => performance.getEntriesByType("resource").map((entry) => entry.name))));
+    const events = await page.evaluate(() => window.speechEvents);
+    throw new Error(`${error.message}\n${errors.join("\n")}\nPending requests:\n${[...pendingRequests].join("\n")}\nWorker resources: ${JSON.stringify(resources)}\nSpeech events: ${JSON.stringify(events)}`, { cause: error });
+  });
   const status = await page.locator(".study-speech-status").textContent();
   assert.ok(!status.includes("could not"), `${status}\n${errors.join("\n")}`);
   const [audio] = await page.evaluate(() => window.speechBuffers);
   assert.ok(audio.length > 1000 && audio.peak > 0.01, JSON.stringify(audio));
   assert.equal(await page.evaluate(() => window.speechBuffers.length), 1, "cancelled speech must not play");
+  const cachedStart = Date.now();
+  await page.click("#testSpeech");
+  await page.waitForFunction(() => window.speechBuffers.length === 2);
+  assert.ok(Date.now() - cachedStart < 1500, "a warmed cached word should be scheduled within 1.5 seconds");
+  await page.evaluate(() => {
+    const button = document.querySelector("#testSpeech");
+    button.dataset.studySpeak = "ありがとう";
+    button.click();
+    button.dataset.studySpeak = "こんにちは";
+    button.click();
+  });
+  await page.waitForFunction(() => window.speechBuffers.length === 4, null, { timeout: 30000 });
+  const starts = await page.evaluate(() => window.speechStarts);
+  assert.equal(starts.length, 4, "every successive word must be scheduled");
+  for (let index = 1; index < starts.length; index++) {
+    assert.ok(starts[index].time >= starts[index - 1].time + starts[index - 1].duration, "successive words must not overlap");
+  }
   await page.click("#audioQuickToggle");
   await page.click("#testSpeech");
   await page.waitForTimeout(500);
-  assert.equal(await page.evaluate(() => window.speechBuffers.length), 1);
+  assert.equal(await page.evaluate(() => window.speechBuffers.length), 4);
   await page.click("#audioQuickToggle");
   let repeatedDownloads = 0;
   const assetPattern = /\/Kokoro-82M-v1\.0-ONNX\//;
@@ -105,7 +153,7 @@ try {
   const enabledPreload = offPage.waitForRequest((request) => request.url().includes("/Kokoro-82M-v1.0-ONNX/"));
   await offPage.click("#audioQuickToggle");
   await enabledPreload;
-  console.log("Firefox preloaded speech, synthesized non-silent audio, and respected Audio Off.");
+  console.log("Firefox kept local speech despite late system voices, scheduled cached speech within 1.5s, queued every word without overlap, reused cached assets, and respected Audio Off.");
 } finally {
   await browser?.close();
   if (dev) await server.close();

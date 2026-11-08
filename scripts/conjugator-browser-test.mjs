@@ -71,6 +71,22 @@ try {
   assert.equal(pdf.getPageCount(), pages.count);
   assert.deepEqual(pdf.getPage(0).getSize(), { width: 842.25, height: 595.5 });
   await page.locator('.game-export-dialog button[aria-label="Close"]').click();
+  assert.ok(await page.locator("#tables [data-example]").count());
+  const form = page.locator('[data-form="basic-past-negative-polite"]');
+  await form.locator("summary").click();
+  await context.route("**/api/sentences?**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("corpus") !== "1") return route.continue();
+    assert.equal(url.searchParams.get("q"), "食べませんでした");
+    return route.fulfill({ json: { data: [{ id: 123, text: "昨日は食べませんでした。", source: "Tatoeba",
+      translations: [{ lang: "eng", text: "I did not eat yesterday." }] }] } });
+  });
+  await form.locator("[data-example]").click();
+  await form.locator(".sentence-item").waitFor();
+  assert.match(await form.locator(".form-examples").textContent(), /I did not eat yesterday/);
+  await context.unroute("**/api/sentences?**");
+  await form.locator("summary").click();
+  assert.doesNotMatch(await page.textContent("#tables"), /Original teaching example/);
   await page.click("#wordInfo > summary");
   const examples = lookup.items.find((entry) => entry.word === "食べる").examples;
   assert.ok(examples.length, "The dictionary fixture has translated examples");
@@ -86,7 +102,7 @@ try {
     assert.ok((await page.textContent("#baseExamples")).includes(examples[0].english), "Translations survive shared study toggles");
   }
   await page.click("#wordInfo > summary");
-  await page.click("#settingsPanel > summary");
+  await page.locator("#settingsPanel").evaluate((node) => { node.open = true; });
   await page.evaluate(([sel, value]) => { const el = document.querySelector(sel); el.value = value; el.dispatchEvent(new Event("change", { bubbles: true })); }, ["#setting-polarity", "negative"]);
   await page.evaluate(([sel, value]) => { const el = document.querySelector(sel); el.value = value; el.dispatchEvent(new Event("change", { bubbles: true })); }, ["#setting-tense", "past"]);
   await page.evaluate(([sel, value]) => { const el = document.querySelector(sel); el.value = value; el.dispatchEvent(new Event("change", { bubbles: true })); }, ["#setting-politeness", "polite"]);
@@ -106,6 +122,7 @@ try {
   await exportDialog.locator('button[aria-label="Close"]').click();
   await page.click("#copyTable");
   assert.match(await page.evaluate(() => navigator.clipboard.readText()), /食べませんでした/);
+  await page.locator("#settingsPanel").evaluate((node) => { node.open = true; });
   await page.check("#setting-compact");
   assert.equal(await page.locator("#tables .kana-reading").count(), 0);
   await page.check("#setting-contrast");
@@ -138,7 +155,7 @@ try {
   await page.locator("#searchForm").evaluate((form) => form.requestSubmit());
   await page.locator('[data-form="pastNegative-polite"]').waitFor();
   assert.match(await writtenText('[data-form="pastNegative-polite"]'), /静かではありませんでした/);
-  await page.click("#settingsPanel > summary");
+  await page.locator("#settingsPanel").evaluate((node) => { node.open = true; });
   await page.evaluate(([sel, value]) => { const el = document.querySelector(sel); el.value = value; el.dispatchEvent(new Event("change", { bubbles: true })); }, ["#setting-polarity", "both"]);
   await page.evaluate(([sel, value]) => { const el = document.querySelector(sel); el.value = value; el.dispatchEvent(new Event("change", { bubbles: true })); }, ["#setting-tense", "both"]);
   await page.evaluate(([sel, value]) => { const el = document.querySelector(sel); el.value = value; el.dispatchEvent(new Event("change", { bubbles: true })); }, ["#setting-politeness", "both"]);

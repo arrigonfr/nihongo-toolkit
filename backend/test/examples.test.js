@@ -141,3 +141,29 @@ test("sentence fallback can be disabled and provider failures are not cached as 
   await assert.rejects(failing("日本"), /429/);
   assert.equal(calls, 2);
 });
+
+test("corpus-only questions try the external provider instead of reviewed generated sentences", async () => {
+  const db = createDatabase(":memory:");
+  db.prepare("INSERT INTO words VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)").run(1, "test", "日本", "にほん", '["Japan"]', 1,
+    '[{"text":"日本"}]', '[{"text":"にほん","appliesToKanji":["*"]}]', "[]");
+  db.exec(`CREATE TABLE sentences (id TEXT PRIMARY KEY, source TEXT, source_id TEXT, ja TEXT, en TEXT, license TEXT, attribution TEXT);
+    CREATE TABLE word_sentences (word_id INTEGER, sentence_id TEXT);
+    INSERT INTO sentences VALUES ('generated', 'ai-generated', '1', '日本です。', 'It is Japan.', 'test', '{"reviewed":true}');
+    INSERT INTO word_sentences VALUES (1, 'generated');`);
+  let calls = 0;
+  const server = createServer(createHandler({ database: db, sentenceFallback: async () => {
+    calls++;
+    return [{ id: 2, japanese: "日本に住む。", english: "I live in Japan.", source: "Tatoeba" }];
+  } }));
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  try {
+    const url = `http://127.0.0.1:${server.address().port}/api/sentences?q=${encodeURIComponent("日本")}`;
+    const stored = await (await fetch(url)).json();
+    assert.equal(stored.data[0].generated, true, "Existing reviewed feedback examples remain available");
+    const corpus = await (await fetch(`${url}&corpus=1`)).json();
+    assert.equal(calls, 1);
+    assert.deepEqual(corpus.data.map((item) => item.text), ["日本に住む。"]);
+    assert.equal(corpus.data[0].generated, false);
+  } finally { server.close(); await once(server, "close"); db.close(); }
+});

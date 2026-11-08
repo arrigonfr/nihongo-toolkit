@@ -40,6 +40,7 @@ try {
     await page.locator(".study-confirm-dialog").waitFor({ state: "detached" });
   }
   async function configure(values) {
+    await setup();
     if (!await page.locator("#settingsPanel").evaluate((panel) => panel.open)) await page.click("#settingsPanel summary");
     for (const [key, value] of Object.entries(values)) {
       const input = page.locator(`#setting-${key}`);
@@ -52,15 +53,28 @@ try {
     assert.equal(await page.locator("#settingsPanel").evaluate((element) => element.open), true);
   }
   async function start() {
+    await setup();
     await page.click("#startButton");
     await page.locator(".study-confirm-dialog").waitFor({ state: "detached" });
     await page.waitForFunction(() => !document.getElementById("startButton").disabled);
     assert.equal(await page.getAttribute("#notice", "data-error"), "false", await page.textContent("#notice"));
   }
+  async function setup() {
+    if (await page.locator("#startButton").isVisible()) return;
+    if (await page.locator("#endButton").isVisible() && await page.locator("#endButton").isEnabled()) await confirmedClick("#endButton");
+    await page.locator("[data-play-again]").click();
+  }
   async function scan() {
     const ids = await page.locator("[data-card]").evaluateAll((cards) => cards.map((card) => Number(card.dataset.card)));
     const pairs = new Map();
     for (const id of ids) {
+      if (id === ids.at(-1)) {
+        const remaining = [...pairs].filter(([, pair]) => pair.length === 1);
+        if (remaining.length === 1) {
+          pairs.get(remaining[0][0]).push(id);
+          break;
+        }
+      }
       if (!(await card(id).getAttribute("class")).includes("matched")) await card(id).click();
       const text = await card(id).locator(".study-japanese").evaluate((label) => {
         const copy = label.cloneNode(true); copy.querySelectorAll("rt").forEach((node) => node.remove()); return copy.textContent;
@@ -78,15 +92,11 @@ try {
     await page.locator("#results").waitFor({ state: "visible" });
   }
   await page.goto(url);
+  assert.equal(await page.locator('#setting-display option[value="picture"]').isDisabled(), true);
+  assert.equal(await page.locator('#setting-display').evaluate((select) => select.chipsApi.group.querySelector('[data-value="picture"]').disabled), true);
   assert.equal(await page.locator("[data-card]").count(), 0);
   await page.setViewportSize({ width: 1280, height: 1000 });
-  assert.equal(await page.evaluate(() => {
-    const stats = document.querySelector("#stats").closest(".panel").getBoundingClientRect();
-    const layout = document.querySelector(".layout").getBoundingClientRect();
-    const board = document.querySelector(".board-panel").getBoundingClientRect();
-    const notebook = document.querySelector(".sidebar .notebook").getBoundingClientRect();
-    return Math.abs(stats.width - layout.width) < 1 && Math.abs(board.top - notebook.top) < 1;
-  }), true, "Full-width stats precede the aligned board and notebook");
+  assert.equal(await page.locator(".board-panel").isVisible(), false, "The board stays hidden until a session starts");
   await page.click("#helpButton");
   assert.match(await page.textContent("#helpDialog"), /Flip two cards/);
   await page.keyboard.press("Escape");
@@ -120,7 +130,7 @@ try {
     for (const [group, examples] of [
       ["voiced", ["が / ガ (ga)", "ぱ / パ (pa)"]],
       ["yoon", ["きゃ / キャ (kya)", "しゅ / シュ (shu)"]],
-      ["special", ["かあ / カー (kaa)", "きって / キッテ (kitte)", "しんよう / シンヨウ (shin'you)"]]
+      ["special", ["かあ / カー (kaa)"]]
     ]) {
       const input = page.locator(`#setting-groups ~ .chips [data-value="${group}"] input`);
       const checked = await input.isChecked();
@@ -218,32 +228,23 @@ try {
   await confirmedClick("#endButton");
   assert.match(await page.textContent("#results"), /Round ended/);
 
-  await configure({ disappear: false, shuffle: "all", mode: "daily" });
-  assert.equal(await page.locator("#setting-shuffle").isDisabled(), true);
-  await start();
-  let daily = (await saved()).progress.daily;
-  assert.equal(daily.game.rules.shuffle, "never");
+  await configure({ disappear: false, shuffle: "all" });
+  await page.evaluate(() => {
+    const key = "nihon:memory-v1", saved = JSON.parse(localStorage.getItem(key));
+    saved.settings.mode = "daily";
+    saved.settings.category = "animals";
+    saved.progress.daily = { invalid: "obsolete snapshot" };
+    localStorage.setItem(key, JSON.stringify(saved));
+  });
+  await page.reload();
+  assert.equal((await saved()).settings.mode, "classic");
   assert.equal((await saved()).settings.shuffle, "all");
-  assert.equal(daily.game.deck.cards.length, 16);
-  const first = daily.game.deck.cards.filter((card) => card.key === daily.game.deck.pairs[0].key);
-  await card(first[0].id).click();
-  await page.reload(); await start();
-  assert.equal(await page.locator(".selected").count(), 1);
-  await card(first[1].id).click();
-  assert.match(await page.textContent("#progressText"), /1 of 8/);
+  assert.equal("category" in (await saved()).settings, false);
+  assert.equal("daily" in (await saved()).progress, false);
+  assert.equal(await page.locator('#setting-mode option[value="daily"], #setting-category').count(), 0);
+  assert.equal(await page.locator("#setting-shuffle").isDisabled(), false);
   await start();
-  assert.match(await page.textContent("#progressText"), /1 of 8/, "Opening the active daily round does not end it");
-  await page.reload(); await start();
-  assert.match(await page.textContent("#progressText"), /1 of 8/);
-  assert.equal(await page.locator("#restartButton").isDisabled(), true);
-  daily = (await saved()).progress.daily;
-  const dailyPairs = daily.game.deck.pairs.map((pair) => daily.game.deck.cards.filter((card) => card.key === pair.key).map((card) => card.id));
-  await solve(dailyPairs);
-  assert.equal("days" in (await saved()).progress, false);
-  const completed = (await saved()).progress.completed;
-  await page.reload(); await start();
-  assert.equal(await page.locator("#results").isVisible(), true);
-  assert.equal((await saved()).progress.completed, completed);
+  assert.equal(await page.locator("#restartButton").isDisabled(), false);
 
   await configure({ mode: "moves", shuffle: "never", flips: 2, count: 2 });
   await start();
@@ -319,9 +320,7 @@ try {
   await card(a.audio).click();
   assert.deepEqual(await page.evaluate(() => window.__spoken), expectedSpeech, "Replays respect Audio Off");
   await page.click("#audioQuickToggle");
-  await card(c.written).click(); await hear(c);
   await hear(a);
-  assert.equal(await page.locator("#results").isVisible(), true);
 
   await confirmedClick("#restartButton");
   await card(a.written).click(); await card(b.written).click();
@@ -373,6 +372,7 @@ try {
   assert.equal((await saved()).progress.completed, 0);
   assert.equal(await page.locator("[data-card]").count(), 0);
   await page.keyboard.press("Escape");
+  await page.reload();
   for (const [pairing, content] of [
     ["same-katakana", "kana"], ["same-hiragana", "kana"],
     ["same-katakana", "words"], ["same-hiragana", "words"], ["same-kanji", "words"]
@@ -394,7 +394,16 @@ try {
   await page.waitForURL(`${base}/eawase.html`);
   await page.locator("#startButton").waitFor();
   assert.deepEqual(errors, []);
-  console.log("Memory browser checks passed: matching, keyboard, turn locking, assistance, persistence, daily, challenges, audio, dictionary, mobile, notebook, shared controls, launcher.");
+  await page.goto(`${base}/index.html`);
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem("nihon:memory-v1"));
+    saved.settings.display = "picture";
+    localStorage.setItem("nihon:memory-v1", JSON.stringify(saved));
+  });
+  await page.goto(url);
+  assert.equal(await page.locator("#setting-display").inputValue(), "text");
+  assert.match(await page.textContent("#notice"), /Picture clues are unavailable/);
+  console.log("Memory browser checks passed: matching, keyboard, turn locking, assistance, legacy migration, challenges, audio, dictionary, mobile, notebook, shared controls, launcher.");
 } finally {
   await browser?.close();
   await vite?.close();

@@ -17,6 +17,11 @@ try {
   const context = await browser.newContext();
   await context.addInitScript(() => { Math.random = () => 0; });
   await context.route("**/*", (route) => {
+    if (route.request().url().includes("/api/conjugation-practice")) return route.fulfill({ json: { source: "test dictionary", entries: [
+      ["食べる", "たべる", "ichidan", "v1"], ["見る", "みる", "ichidan", "v1"],
+      ["起きる", "おきる", "ichidan", "v1"], ["寝る", "ねる", "ichidan", "v1"],
+      ["教える", "おしえる", "ichidan", "v1"], ["静か", "しずか", "na-adjective", "adj-na"]
+    ].map(([word, reading, type, tag], i) => ({ id: `test:${i}`, word, reading, type, tag, level: i === 4 ? 4 : 5, meanings: ["test dictionary gloss"] })) } });
     if (route.request().url().includes("/api/kanji/")) {
       if (route.request().url().includes("/words")) return route.fulfill({ json: { items: [{
         japanese: [{ word: "食事", reading: "しょくじ" }], senses: [{ english_definitions: ["meal"] }]
@@ -26,6 +31,12 @@ try {
     return new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort();
   });
   const page = toolPage(await context.newPage());
+  const click = page.click.bind(page);
+  page.click = async (selector, ...args) => {
+    await click(selector, ...args);
+    if (selector === "#startButton") await page.waitForFunction(() =>
+      !document.querySelector("#practice").hidden || /Could not start|Choose at least|No questions/.test(document.querySelector("#startError").textContent));
+  };
   const errors = [];
   const writtenText = (selector) => page.locator(selector).evaluate((element) => {
     const copy = element.cloneNode(true);
@@ -193,7 +204,7 @@ try {
   }
   await page.setViewportSize({ width: 1280, height: 900 });
 
-  for (const [random, prompt] of [[0, "name"], [0.5, "description"], [0.99, "sentence"]]) {
+  for (const [random, prompt] of [[0, "name"], [0.5, "description"], [0.99, "description"]]) {
     await configure({ prompt: "mixed" });
     assert.equal(await page.inputValue("#setting-prompt"), "mixed");
     await page.evaluate((value) => { Math.random = () => value; }, random);
@@ -218,7 +229,27 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Long answers fit at ${width}px`);
   }
 
-  for (const [mode, text] of [["sentence", /＿＿＿/], ["reverse", /辞書形/], ["comparison", /何形/]]) {
+  await configure({ mode: "sentence", prompt: "sentence", fontSize: 48 });
+  await page.evaluate((key) => {
+    const saved = JSON.parse(localStorage.getItem(key));
+    saved.progress["test:preserved|te"] = { attempts: 1, correct: 1, wrong: 0, last: 1 };
+    saved.completed = 2;
+    localStorage.setItem(key, JSON.stringify(saved));
+  }, storageKey);
+  await page.reload();
+  assert.equal(await page.locator('#setting-mode option[value="sentence"], #setting-prompt option[value="sentence"]').count(), 0);
+  assert.equal(await page.inputValue("#setting-mode"), "classic");
+  assert.equal(await page.inputValue("#setting-prompt"), "name");
+  assert.equal(await page.inputValue("#setting-fontSize"), "48");
+  await page.click("#startButton");
+  assert.equal(await page.locator("#practice").isVisible(), true);
+  await answer("たべて");
+  assert.equal(await page.getAttribute("#answerInput", "data-grade"), "correct");
+  assert.equal((await saved()).settings.mode, "classic");
+  assert.equal((await saved()).settings.prompt, "name");
+  assert.equal((await saved()).progress["test:preserved|te"].correct, 1);
+  assert.equal((await saved()).completed, 2);
+  for (const [mode, text] of [["reverse", /辞書形/], ["comparison", /何形/]]) {
     await configure({ mode, levels: mode === "comparison" ? [4] : [5], forms: mode === "comparison" ? ["potential"] : ["te"] });
     await page.click("#startButton");
     assert.match(await page.textContent("#questionBody"), text);
@@ -255,7 +286,7 @@ try {
     await page.click("#checkButton");
     assert.equal(await page.getAttribute("#answerOptions", "data-grade"), "correct");
   }
-  await configure({ mode: "daily", levels: [5, 4, 3, 2, 1], repeat: false });
+  await configure({ mode: "quick", levels: [5, 4, 3, 2, 1], repeat: false });
   await page.click("#startButton");
   for (let index = 0; index < 10; index++) {
     await page.click("#revealButton");
@@ -378,13 +409,26 @@ try {
   assert.deepEqual((await saved()).progress, {});
   assert.equal((await saved()).settings.fontSize, 64, "Reset must preserve settings");
 
+  await configure({});
+  await page.route("**/api/conjugation-practice?*", (route) => route.fulfill({ status: 503, json: { error: "unavailable" } }));
+  await page.click("#startButton");
+  assert.match(await page.textContent("#startError"), /source is unavailable/);
+  assert.equal(await page.locator("#practice").isVisible(), false);
+  await page.unroute("**/api/conjugation-practice?*");
+  await page.route("**/api/conjugation-practice?*", (route) => route.fulfill({ json: { entries: [] } }));
+  await page.click("#startButton");
+  assert.match(await page.textContent("#startError"), /No dictionary-backed/);
+  await page.unroute("**/api/conjugation-practice?*");
+  await page.click("#startButton");
+  assert.equal(await page.locator("#practice").isVisible(), true, "Source recovery retries without a substitute bank");
+
   await page.goto(base);
   await page.click("#menuButton");
   await page.click('#helperMenu [data-file="katsuyo-renshuu.html"]');
   await page.waitForURL(`${base}/katsuyo-renshuu.html`);
   await page.locator("#startButton").waitFor();
   assert.deepEqual(errors, []);
-  console.log("Conjugation practice browser checks passed: typing, grading, no auto-reveal, retry scoring, assistance limits, kanji, every recognition task, daily practice, sudden death, marathon, timer, filters, persistence, mobile, reset and launcher.");
+  console.log("Conjugation practice browser checks passed: typing, grading, no auto-reveal, retry scoring, assistance limits, kanji, every recognition task, quick practice, sudden death, marathon, timer, filters, persistence, mobile, reset and launcher.");
 } finally {
   await browser?.close();
   await vite?.close();

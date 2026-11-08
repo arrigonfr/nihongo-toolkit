@@ -2,7 +2,6 @@ import { kana, connects, eligibility, parseRules, startOptions } from "./shirito
 import { localExamples } from "./examples.js";
 import { findConjugationEntries } from "./conjugator.js";
 import { segmentText } from "./tokenizer.js";
-import { isPlaceName } from "./proper-nouns.js";
 import { selectedLevels } from "../../frontend/src/jlpt-levels.js";
 
 const unique = (values) => [...new Set(values)];
@@ -22,14 +21,13 @@ export function dictionaryForms(row, tags, levels = []) {
         && (sense.appliesToKana.includes("*") || sense.appliesToKana.includes(reading.text)));
       const pos = unique(senses.flatMap((s) => s.partOfSpeech));
       const misc = senses.flatMap((s) => s.misc || []);
-      const place = isPlaceName(form.text, senses.flatMap((s) => s.gloss.filter((g) => g.lang === "eng").map((g) => g.text)));
       const named = misc.some((p) => ["place", "person", "given", "surname"].includes(p));
       return {
         id: `jm-${row.id}`, word: form.text, reading: reading.text,
         meaning: unique(senses.flatMap((s) => s.gloss.filter((g) => g.lang === "eng").map((g) => g.text))).join("; "),
         partOfSpeech: pos.map((p) => tags[p] || p).join(", "),
         level: levels.find((v) => v.word === form.text && kana(v.reading) === kana(reading.text))?.jlpt ?? null,
-        proper: pos.includes("n-pr") || named || place, nameAllowed: pos.includes("n-pr") || named || place,
+        proper: pos.includes("n-pr") || named, nameAllowed: pos.includes("n-pr") || named,
         source: "JMdict"
       };
     });
@@ -54,8 +52,8 @@ async function jishoLookup(fetchImpl, query) {
       id: `jisho-${entry.slug}`, word: form.word || form.reading, reading: form.reading,
       meaning: unique(senses.flatMap((s) => s.english_definitions || [])).join("; "),
       partOfSpeech: pos, level: null, source: "Jisho · unrated spelling",
-      proper: /proper noun|place|name/i.test(pos) || isPlaceName(form.word || form.reading, senses.flatMap((s) => s.english_definitions || [])),
-      nameAllowed: /place|person|given name|surname/i.test(pos) || isPlaceName(form.word || form.reading, senses.flatMap((s) => s.english_definitions || [])), examples: []
+      proper: /proper noun|place|name/i.test(pos),
+      nameAllowed: /place|person|given name|surname/i.test(pos), examples: []
     }];
   }));
 }
@@ -78,8 +76,8 @@ async function jotobaLookup(fetchImpl, query) {
       id: `jotoba-${kanji || reading}-${reading}-${index}`, word: kanji || reading, reading,
       meaning: unique(senses.flatMap((s) => s.glosses || [])).join("; "),
       partOfSpeech: pos, level: null, source: "Jotoba · unrated spelling",
-      proper: /proper|name/i.test(pos) || isPlaceName(kanji || reading, senses.flatMap((s) => s.glosses || [])),
-      nameAllowed: /place|person|given|surname/i.test(pos) || isPlaceName(kanji || reading, senses.flatMap((s) => s.glosses || [])), examples: []
+      proper: /proper|name/i.test(pos),
+      nameAllowed: /place|person|given|surname/i.test(pos), examples: []
     }];
   });
 }
@@ -151,7 +149,7 @@ export async function shiritoriWords(db, params, tags, fallback, segment = segme
   const query = (params.get("q") || "").trim().normalize("NFKC");
   const includeExamples = params.get("examples") !== "0";
   const previous = params.get("prev") ? JSON.parse(params.get("prev")) : null;
-  const randomOpening = !query && !previous && params.get("random") === "1" && rules.mode !== "daily";
+  const randomOpening = !query && !previous && params.get("random") === "1";
   const used = JSON.parse(params.get("used") || "[]");
   if (query.length > 60 || !Array.isArray(used) || used.length > 5000
       || used.some((id) => typeof id !== "string" || id.length > 100)

@@ -1,46 +1,6 @@
 import { romanizeKana } from "./romanize.js";
 import { alignFuriganaRuby, formatFurigana } from "./furigana.js";
 
-export const THEMES = {
-  all: { label: "All vocabulary", ja: "総合" },
-  food: {
-    label: "Food & drink", ja: "食事",
-    pattern: /\b(food|eat|drink|meal|fruit|vegetable|meat|fish|rice|tea|coffee|water|bread|cake|sweet|cook|kitchen|restaurant|taste|delicious|hungry|thirsty|breakfast|lunch|dinner|soup|egg|milk|sugar|salt|wine|beer|alcohol|dish|plate|cup|glass|bowl|chopstick|spoon|fork|knife|bake|boil|fry)\b/i
-  },
-  travel: {
-    label: "Travel & directions", ja: "旅行",
-    pattern: /\b(travel|trip|journey|train|station|bus|car|airplane|airport|flight|hotel|ticket|passport|map|road|street|bridge|port|ship|boat|bicycle|ride|drive|walk|arrive|depart|leave|return|tour|sightseeing|luggage|baggage|embassy|foreign|abroad|direction|north|south|east|west|left|right)\b/i
-  },
-  work: {
-    label: "Work & business", ja: "仕事",
-    pattern: /\b(work|job|company|office|business|boss|president|manager|colleague|meeting|conference|salary|wage|pay|money|bank|economy|industry|factory|manufacture|produce|sell|buy|trade|market|contract|document|report|project|schedule|career|employ|hire|retire|profession|task|duty)\b/i
-  },
-  nature: {
-    label: "Nature & weather", ja: "自然",
-    pattern: /\b(nature|tree|flower|grass|forest|woods|mountain|hill|river|sea|ocean|lake|pond|water|sky|cloud|rain|snow|wind|storm|weather|sun|moon|star|earth|ground|stone|rock|sand|island|valley|field|animal|bird|dog|cat|fish|insect|season|spring|summer|autumn|fall|winter|warm|cold|hot|cool)\b/i
-  },
-  emotions: {
-    label: "Emotions & mind", ja: "感情",
-    pattern: /\b(feel|feeling|emotion|happy|glad|joy|delight|sad|sorrow|grief|cry|weep|angry|anger|mad|fear|afraid|scared|worry|anxious|anxiety|nervous|calm|peace|relief|relieved|surprise|surprised|shock|lonely|loneliness|love|like|hate|dislike|envy|jealous|proud|pride|shame|ashamed|embarrassed|regret|hope|wish|mood|heart|mind)\b/i
-  },
-  school: {
-    label: "School & study", ja: "学校",
-    pattern: /\b(school|university|college|class|classroom|lesson|study|learn|teach|teacher|professor|student|pupil|exam|test|grade|score|homework|textbook|book|dictionary|notebook|pen|pencil|paper|letter|read|write|question|answer|library|graduate|education|knowledge|subject|math|science|history|language|english|japanese)\b/i
-  },
-  technology: {
-    label: "Technology & science", ja: "技術",
-    pattern: /\b(technology|computer|machine|device|tool|electricity|electric|electronic|internet|network|website|data|information|system|program|software|hardware|phone|telephone|camera|television|radio|video|screen|button|switch|engine|motor|energy|power|science|research|experiment|invent|modern|digital|robot)\b/i
-  },
-  daily: {
-    label: "Daily routines & home", ja: "日常",
-    pattern: /\b(morning|noon|afternoon|evening|night|today|tomorrow|yesterday|wake|sleep|bed|get up|wash|bath|shower|brush|wear|clothes|shirt|shoes|hat|coat|room|house|home|door|window|chair|table|desk|light|clock|watch|key|umbrella|wallet|bag|clean|sweep|laundry|shop|shopping|buy|walk|rest|habit|routine)\b/i
-  },
-  verbs: { label: "Verbs", ja: "動詞" },
-  adjectives: { label: "Adjectives", ja: "形容詞" },
-  katakana: { label: "Katakana loanwords", ja: "カタカナ語" },
-  expressions: { label: "Common expressions", ja: "表現" }
-};
-
 export const PUZZLE_SIZES = {
   small: { label: "Small (8×8 · ~6 words)", gridSize: 8, targetWords: 6 },
   medium: { label: "Medium (11×11 · ~10 words)", gridSize: 11, targetWords: 10 },
@@ -62,30 +22,6 @@ export function createSeededRandom(seedInput) {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-}
-
-export function matchesTheme(item, themeKey) {
-  if (!themeKey || themeKey === "all" || !THEMES[themeKey]) return true;
-  const posTags = item.posTags || [];
-  const posStr = String(item.partOfSpeech || "").toLowerCase();
-  const word = String(item.word || "");
-  const reading = String(item.furigana || item.reading || "");
-  const meaning = String(item.meaning || "");
-  if (themeKey === "verbs") {
-    return posTags.some((p) => p.startsWith("v")) || posStr.includes("verb");
-  }
-  if (themeKey === "adjectives") {
-    return posTags.some((p) => p.startsWith("adj")) || posStr.includes("adjective");
-  }
-  if (themeKey === "katakana") {
-    return /^[\u30A0-\u30FFー]+$/.test(word) || /^[\u30A0-\u30FFー]+$/.test(reading);
-  }
-  if (themeKey === "expressions") {
-    return posTags.some((p) => ["exp", "int", "conj", "adv", "prt"].includes(p))
-      || /\b(expression|interjection|conjunction|adverb)\b/i.test(posStr);
-  }
-  const theme = THEMES[themeKey];
-  return theme.pattern ? theme.pattern.test(meaning) : true;
 }
 
 export function cleanEnglishToken(meaning) {
@@ -185,7 +121,6 @@ export function buildClue(item, {
   script = "kana",
   answerMode = "kana",
   kanjiFocus = false,
-  themeKey = "all",
   rng = Math.random
 } = {}) {
   const word = String(item.word || "").trim();
@@ -193,7 +128,6 @@ export function buildClue(item, {
   const romaji = item.romaji || romanizeKana(reading);
   const meaning = String(item.meaning || "").trim();
   const pos = String(item.partOfSpeech || "").split(",")[0]?.trim() || "";
-  const themeLabel = themeKey !== "all" && THEMES[themeKey] ? THEMES[themeKey].label : "";
 
   if (answerMode === "reverse") {
     return {
@@ -231,7 +165,7 @@ export function buildClue(item, {
     text: meaning,
     furiganaHTML: "",
     romaji: "",
-    hint: [pos, themeLabel].filter(Boolean).join(" · ")
+    hint: pos
   });
 
   // 2. Fill-in-the-blank cloze sentence clue if example contains word or reading
@@ -244,11 +178,12 @@ export function buildClue(item, {
       (reading && (blanked.includes(reading) || blankedFuri.includes(reading)));
 
     if (!leaksAnswer && blanked.includes("［＿＿］")) {
+      const translation = item.exampleMeaning ? ` — “${item.exampleMeaning}”` : "";
       candidates.push({
         type: "cloze",
         badge: `Cloze · ${script === "kanji" ? "漢字" : "かな"}`,
-        text: `${blanked} — “${item.exampleMeaning || meaning}”`,
-        furiganaHTML: `${formatFuriganaHTML(blankedFuri)} — “${item.exampleMeaning || meaning}”`,
+        text: `${blanked}${translation}`,
+        furiganaHTML: `${formatFuriganaHTML(blankedFuri)}${translation}`,
         romaji: "",
         hint: `Meaning: ${meaning}`
       });
@@ -276,9 +211,9 @@ export function buildClue(item, {
     });
   }
 
-  // 4. Usage / Category hint
-  if (item.usageNotes?.length || item.fields?.length) {
-    const note = item.usageNotes?.[0] || item.fields?.[0];
+  // 4. Usage note
+  if (item.usageNotes?.length) {
+    const note = item.usageNotes[0];
     candidates.push({
       type: "usage",
       badge: `Usage · ${script === "kanji" ? "漢字" : "かな"}`,
@@ -301,7 +236,6 @@ export function generateCrossword(pool, {
   targetWords = 10,
   answerMode = "kana",
   kanjiFocus = false,
-  themeKey = "all",
   priorityIds = [],
   recentIds = [],
   seed = Date.now()
@@ -555,7 +489,6 @@ export function generateCrossword(pool, {
         script: p.script,
         answerMode,
         kanjiFocus,
-        themeKey,
         rng
       });
       return {

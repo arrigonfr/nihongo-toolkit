@@ -5,7 +5,7 @@ import { chromium } from "playwright";
 
 let vite, browser;
 try {
-  vite = await createServer({ root: fileURLToPath(new URL("../frontend", import.meta.url)), server: { host: "127.0.0.1", port: 0, strictPort: false } });
+  vite = await createServer({ root: fileURLToPath(new URL("../frontend", import.meta.url)), server: { host: "127.0.0.1", port: 0, strictPort: false, hmr: false, watch: null } });
   await vite.listen();
   browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } }), errors = [];
@@ -13,10 +13,15 @@ try {
   await page.addInitScript(() => {
     localStorage.setItem("nihon:study-controls-v1", JSON.stringify({ audio: false, furigana: false, romaji: true }));
   });
-  let word;
+  let word, sentences = [], sentenceRequests = 0;
   await page.route("**/*", (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === "/api/words/batch") return route.fulfill({ json: { items: Array.from({ length: 20 }, (_, id) => ({ id, level: 5, ...word })) } });
+    if (url.pathname === "/api/sentences") {
+      sentenceRequests++;
+      assert.equal(url.searchParams.get("corpus"), "1", "Cloze requests corpus examples");
+      return route.fulfill({ json: { data: sentences } });
+    }
     if (url.pathname.startsWith("/api/")) return route.fulfill({ json: { items: [] } });
     return url.hostname === "127.0.0.1" ? route.continue() : route.abort();
   });
@@ -63,6 +68,24 @@ try {
     assert.equal(await page.locator("#correctCaption").isVisible(), true);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   }
+  word = { word: "プール", reading: "プール", meaning: "pool", examples: [
+    { ja: "プールに行く。", en: "Go to the pool.", generated: true, reviewed: true }
+  ] };
+  await open();
+  await change("modeSelect", "cloze-ej");
+  await page.click("#startButton");
+  await page.waitForFunction(() => document.querySelector("#status").textContent.includes("Could not load a word"));
+  assert.match(await page.locator("#warning").textContent(), /No matching sourced sentences/);
+  assert.equal(await page.locator("#questionContent").isVisible(), false, "No invented cloze question is shown");
+  assert.equal(sentenceRequests, 5, "Sentence search is bounded");
+  sentences = [{ id: 123, text: "プールで泳ぎます。", source: "Tatoeba",
+    translations: [{ lang: "eng", text: "I swim in the pool." }] }];
+  await open();
+  await change("modeSelect", "cloze-ej");
+  await page.click("#startButton");
+  await page.locator("#answerInput").waitFor();
+  assert.match(await page.locator("#prompt").textContent(), /___で泳ぎます/);
+  assert.doesNotMatch(await page.locator("#prompt").textContent(), /Meaning clue|という意味/);
   assert.deepEqual(errors, []);
   console.log("Goi alternative meanings, kana writing hints, both direction labels and randomized directions passed.");
 } finally { await browser?.close(); await vite?.close(); }

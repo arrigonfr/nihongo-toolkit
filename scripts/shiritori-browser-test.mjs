@@ -18,7 +18,7 @@ try {
   browser = await chromium.launch({ headless: true });
   const page = toolPage(await browser.newPage({ reducedMotion: "reduce", viewport: { width: 1280, height: 1000 } }));
   const errors = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("pageerror", (error) => errors.push(error.stack || error.message));
   await acceptStudyDialogs(page);
   await page.route("**/*", (route) => ["127.0.0.1", "localhost"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
   await page.addInitScript(() => localStorage.setItem("nihon:study-controls-v1", JSON.stringify({ audio: false, furigana: true, romaji: false })));
@@ -27,6 +27,7 @@ try {
   });
   const go = () => page.goto("http://127.0.0.1:5181/shiritori.html");
   await go();
+  assert.deepEqual(errors, [], "Shiritori initializes without runtime errors");
   await page.click("#helpButton");
   assert.equal(await page.locator("#helpDialog").isVisible(), true);
   assert.ok((await page.locator("#helpDialog").textContent()).includes(READING_ENDING_RULE));
@@ -36,7 +37,7 @@ try {
   assert.equal(await page.locator("#setting-furigana, #setting-romaji, #setting-audio, #setting-appearance").count(), 0);
   assert.equal(await page.locator("header #furiganaQuickToggle, header #romajiQuickToggle, header #audioQuickToggle, header #themeButton, header #colorThemeSelect").count(), 5);
   assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), true);
-  assert.equal(await page.locator(".intro + #settingsPanel + .toolbar").count(), 1);
+  assert.equal(await page.locator(".session-setup #settingsPanel").count(), 1);
   assert.equal(await page.locator("#modeNote").count(), 0);
   for (const width of [375, 768, 1280]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -60,8 +61,9 @@ try {
   assert.equal(await page.locator("#settingsForm [type=submit]").count(), 0);
   assert.equal(await page.locator("#setting-level").count(), 0);
   const wordRules = page.locator("#settingsForm > fieldset").filter({ has: page.locator("legend", { hasText: "Word Rules" }) });
-  assert.equal(await wordRules.count(), 1);
-  for (const setting of ["category", "entry", "wordType", "proper"]) assert.equal(await wordRules.locator(`[data-setting="${setting}"]`).count(), 1);
+  assert.equal(await wordRules.count(), 0);
+  for (const setting of ["category", "entry", "wordType", "proper"]) assert.equal(await page.locator(`[data-setting="${setting}"]`).count(), 0);
+  assert.equal(await page.locator('[data-mode="daily"], [data-mode="category"]').count(), 0);
   assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem("nihon:shiritori-settings-v1"))).level, "all");
   const openingRequest = page.waitForRequest((request) => new URL(request.url()).pathname === "/api/shiritori/words");
   await page.click("#newGame");
@@ -69,13 +71,13 @@ try {
   await page.waitForFunction(() => !document.querySelector("#wordInput").disabled || !document.querySelector("#results").hidden);
   assert.equal(await page.locator("#results").isVisible(), false, "Real dictionary should provide a playable opening");
   assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), false, "Starting a game collapses settings");
-  await page.click("#settingsPanel > summary");
-  assert.equal(await page.locator("#gameSettings").evaluate((node) => node.disabled), false, "Next-game settings remain editable");
-  await page.click("#settingsPanel > summary");
+  assert.equal(await page.locator("#settingsPanel").isVisible(), false, "Setup is hidden during a round");
   await page.click("#revealButton");
   await page.waitForFunction(() => !document.querySelector("#hintPanel").hidden && !document.querySelector("#playWord").disabled);
   await page.click("#playWord");
-  await page.waitForFunction(() => document.querySelector("#chainCount").textContent === "2 words");
+  await page.waitForFunction(() => document.querySelector("#chainCount").textContent === "2 words").catch(async (error) => {
+    throw new Error(`${error.message}: ${await page.locator("#feedback").textContent()}; input=${await page.inputValue("#wordInput")}; errors=${errors.join("; ")}`);
+  });
   await page.waitForFunction(() => !document.querySelector("#wordInput").disabled || !document.querySelector("#results").hidden);
   assert.match(await page.locator("#turnLabel").textContent(), /Player 2/);
   await page.click("#stopGame");
@@ -134,42 +136,16 @@ try {
     await page.click("#playWord");
     await page.waitForFunction(() => !document.querySelector("#wordInput").disabled || !document.querySelector("#results").hidden);
   }
-  await reset({ entry: "kana" });
-  assert.ok((await page.locator("#ruleSummary").textContent()).includes(READING_ENDING_RULE));
-  assert.ok((await page.locator("#entryNote").textContent()).includes(READING_ENDING_RULE));
-  const beforeRejected = lookups;
-  for (const text of ["ごん", "ゴン", "ｺﾞﾝ", "ごを", "ゴヲ", "ｺﾞｦ", "ごー", "ゴー", "ｺﾞｰ"]) {
-    await play(text);
-    assert.ok((await page.locator("#feedback").textContent()).includes(READING_ENDING_RULE), text);
-    assert.equal(await page.locator("#chainCount").textContent(), "1 words");
-    assert.equal(await page.locator("#results").isVisible(), false, "Classic Kana lets the player retry");
-    assert.match(await page.locator("#scores").textContent(), /Player 1\s*0/);
-  }
-  assert.equal(lookups, beforeRejected, "Forbidden endings are explained before a dictionary request");
-  await page.click("#settingsPanel > summary");
-  await page.selectOption("#setting-entry", "both");
-  assert.ok((await page.locator("#ruleSummary").textContent()).includes(READING_ENDING_RULE), "Rule edits wait for the next game");
-  await page.click("#settingsPanel > summary");
-  await play("ごーる");
-  assert.equal(await page.locator("#chainCount").textContent(), "2 words", "An internal long vowel is allowed");
-  await page.click("#revealButton");
-  await page.waitForFunction(() => !document.querySelector("#playWord").disabled);
-  assert.equal(await page.inputValue("#wordInput"), "るり", "Reveal excludes a final long vowel even after next-game settings change");
-  await page.click("#playWord");
-  await page.waitForFunction(() => document.querySelector("#chainCount").textContent === "3 words");
-
-  await reset({ entry: "both" });
+  await reset({ entry: "kana", category: "animals", wordType: "nouns", proper: "none" });
+  const migrated = await page.evaluate(() => JSON.parse(localStorage.getItem("nihon:shiritori-settings-v1")));
+  for (const key of ["entry", "category", "wordType", "proper"]) assert.equal(Object.hasOwn(migrated, key), false);
   assert.ok(!(await page.locator("#entryNote").textContent()).includes(READING_ENDING_RULE));
   await play("ごーる"); await play("るびー");
-  assert.equal(await page.locator("#chainCount").textContent(), "3 words", "Both still allows a final long vowel");
+  assert.equal(await page.locator("#chainCount").textContent(), "3 words", "Removed word rules cannot restrict ordinary play");
   assert.equal(await page.locator("#startOptions li:first-child span").textContent(), "びー");
-  await reset({ entry: "kana", opponent: "computer" });
-  await play("ごーる");
-  await page.waitForFunction(() => document.querySelector("#chainCount").textContent === "3 words" && !document.querySelector("#wordInput").disabled);
-  assert.equal(await page.locator(".chain-word").last().textContent(), "るり", "Computer moves obey the Kana ending rule");
-  await reset({ entry: "kana", mode: "sudden" });
-  await play("コーヒー");
-  assert.ok((await page.locator("#results").textContent()).includes(READING_ENDING_RULE));
+  await reset({ mode: "sudden" });
+  await play("パン");
+  assert.match(await page.locator("#results").textContent(), /ん \/ ン/);
   assert.match(await page.locator("#results").textContent(), /Player 1 loses/);
   assert.equal(await page.locator("#results .game-export-open").count(), 1);
   assert.equal(await page.locator("#chain").locator("..").locator(".game-export-open").count(), 0);
@@ -199,7 +175,7 @@ try {
   assert.equal((await cardPreview()).viewBox, "0 0 1123 794");
   await exportDialog.locator('button[aria-label="Close"]').click();
 
-  for (const settings of [{ entry: "kanji" }, { mode: "kanji" }]) {
+  for (const settings of [{ mode: "kanji", entry: "kana" }, { mode: "kanji" }]) {
     await reset(settings);
     assert.ok((await page.locator("#ruleSummary").textContent()).includes(READING_ENDING_RULE));
     assert.ok((await page.locator("#entryNote").textContent()).includes(READING_ENDING_RULE));
@@ -248,11 +224,12 @@ try {
   await page.locator('#results [data-option="answers"]').check();
   assert.match(decodeURIComponent(await page.locator("#results .game-export-preview").getAttribute("src")), /ラッパ/);
   await page.locator('#results .game-export-dialog button[aria-label="Close"]').click();
+  await page.locator("#results .discovery-list button").last().click();
   await page.click("#saveWord");
   await page.click("#reviewButton");
   assert.match(await page.locator("#reviewBody").textContent(), /trumpet/);
   await page.keyboard.press("Escape");
-  await page.click("#settingsPanel > summary");
+  await page.click("[data-play-again]");
   const downloadPromise = page.waitForEvent("download");
   await page.click("#exportReview");
   const download = await downloadPromise;
@@ -276,7 +253,7 @@ try {
   await play("りんご");
   assert.match(await page.locator("#feedback").textContent(), /word already used/);
   assert.equal(await page.locator("#chainCount").textContent(), "5 words");
-  await reset({ entry: "kanji" });
+  await reset({ mode: "kanji" });
   await page.fill("#wordInput", "こうてい");
   await page.click("#playWord");
   await page.waitForSelector("[data-choice]");
@@ -312,12 +289,19 @@ try {
   await play("ねこ");
   assert.match(await page.locator("#results").textContent(), /invalid connection/);
 
+  await reset({ hints: "unlimited" });
+  for (const prefix of ["First kana:", "A possible word has", "Hidden reading:", "First kana:"]) {
+    await page.click("#hintButton");
+    await page.waitForFunction((expected) => document.querySelector("#hintPanel").textContent.startsWith(expected) && !document.querySelector("#hintButton").disabled, prefix);
+    assert.doesNotMatch(await page.locator("#hintPanel").textContent(), /category/i);
+  }
   await reset({ hints: "limited", hintLimit: 1, reveal: false });
   await page.click("#hintButton");
   await page.waitForFunction(() => !document.querySelector("#hintPanel").hidden);
   assert.equal(await page.locator("#hintButton").isDisabled(), true);
   assert.equal(await page.locator("#revealButton").isDisabled(), true);
   await play("ごりら");
+  await page.waitForFunction(() => document.querySelector("#turnLabel").textContent.includes("Player 2") && !document.querySelector("#hintButton").disabled);
   assert.equal(await page.locator("#hintButton").isDisabled(), false, "Next player has a separate hint budget");
   await reset({ opponent: "computer" });
   await play("ごりら");
@@ -348,15 +332,22 @@ try {
   assert.equal(await page.locator("html").getAttribute("data-study-furigana"), "true");
   await page.waitForSelector("#hintPanel:visible");
   assert.match(await page.locator("#hintPanel").textContent(), /Beginner hint/);
-  await reset({ mode: "daily" });
-  assert.equal(await page.locator("#hintButton").isDisabled(), true);
-  assert.equal(await page.locator("#revealButton").isDisabled(), true);
-  assert.match(await page.locator("#turnLabel").textContent(), /0\/10/);
-  await page.click("#stopGame");
-  await reset({ mode: "daily" });
-  assert.match(await page.locator("#feedback").textContent(), /Daily challenge: play 10 valid words/);
+  await page.evaluate(() => localStorage.setItem("nihon:shiritori-progress-v1", JSON.stringify({ known: ["kept"], review: [], daily: { streak: 7 } })));
+  for (const mode of ["daily", "category"]) {
+    await reset({ mode, entry: "kanji", category: "animals", wordType: "nouns", proper: "none" });
+    await page.waitForFunction(() => !document.querySelector("#hintButton").disabled);
+    assert.equal(await page.locator("#hintButton").isDisabled(), false);
+    assert.equal(await page.locator("#revealButton").isDisabled(), false);
+    assert.equal(await page.locator("#passButton").isDisabled(), false);
+    assert.match(await page.locator("#modeBadge").textContent(), /Classic.*3 local players/);
+    assert.doesNotMatch(await page.locator("#turnLabel").textContent(), /\/10/);
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("nihon:shiritori-settings-v1")).mode), "classic");
+    const savedProgress = await page.evaluate(() => JSON.parse(localStorage.getItem("nihon:shiritori-progress-v1")));
+    assert.deepEqual(savedProgress, { known: ["kept"], review: [] });
+  }
 
-  await page.click("#settingsPanel > summary");
+  await page.click("#stopGame");
+  await page.click("[data-play-again]");
   assert.equal(await page.locator("#gameSettings").evaluate((node) => node.disabled), false);
   await page.selectOption("#setting-fontSize", "larger");
   await page.check("#setting-contrast");
@@ -373,7 +364,7 @@ try {
   assert.equal(await page.locator("html").getAttribute("data-color-theme"), "ocean", "Saving game settings preserves top-bar appearance");
   assert.equal(await page.locator("html").getAttribute("data-contrast"), "true");
   assert.deepEqual(errors, []);
-  console.log("Shiritori browser checks passed: live dictionary, conversion, local/computer turns, terminal rules, assistance, learning, progress, timers, daily settings and responsive layouts.");
+  console.log("Shiritori browser checks passed: live dictionary, conversion, local/computer turns, terminal rules, assistance, learning, progress, timers, legacy settings migration and responsive layouts.");
 } finally {
   await browser?.close();
   await vite?.close();

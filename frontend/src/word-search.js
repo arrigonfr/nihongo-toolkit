@@ -4,7 +4,6 @@ import { mountGameExport } from "./game-export.js";
 import { setSettingAvailability } from "./settings-panel.js";
 import { pillSelect } from "./choice-controls.js";
 import { confirmAction } from "./confirm-dialog.js";
-import { japaneseDescriptions } from "./japanese-descriptions.js";
 import { API_BASE, fetchItems } from "./api.js";
 import { beginLoading } from "./request-loading.js";
 import { mountChips } from "./chips.js";
@@ -13,28 +12,31 @@ import { JAPANESE_FONTS, applyJapaneseFont } from "./japanese-fonts.js";
 import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML, speakJapanese } from "./study-controls.js";
 import { mountSentenceExamples, escape } from "./examples.js";
 import {
-  CATEGORIES, MODES, LISTS, DEFAULTS, listStyles, validateSettings, effectiveSettings, generateWordSearch,
-  straightPath, matchSelection, readingOf, wordKey, categoryOf, localDay, reviewImport
+  MODES, LISTS, DEFAULTS, listStyles, validateSettings, effectiveSettings, generateWordSearch,
+  straightPath, matchSelection, readingOf, wordKey, localDay, reviewImport, resolveReviewWords, JAPANESE_CLUE_UNAVAILABLE
 } from "./word-search-engine.js";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "nihon:word-search-v1";
 const directionDefaultsVersion = 1;
-const emptyProgress = () => ({ known: [], review: [], recent: [], completed: 0, daily: null });
-let settings = { ...DEFAULTS }, progress = emptyProgress(), restoreError = "", migratedDirections = false, customSize = false;
+const emptyProgress = () => ({ known: [], review: [], recent: [], completed: 0 });
+let settings = { ...DEFAULTS }, progress = emptyProgress(), restoreError = "", customSize = false;
 try {
   const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
   if (saved) {
     settings = validateSettings({ ...DEFAULTS, ...saved.settings });
+    if (listStyles(settings.list).includes("japaneseClue")) {
+      settings.list = listStyles(settings.list).filter((style) => style !== "japaneseClue").join(",") || DEFAULTS.list;
+      restoreError = `${JAPANESE_CLUE_UNAVAILABLE} The unavailable style was removed from saved settings.`;
+    }
     for (const key of ["known", "review"]) reviewImport({ version: 1, tool: "nihon-word-search", words: saved.progress[key] });
     if (!Array.isArray(saved.progress.recent) || !saved.progress.recent.every((value) => typeof value === "string")
       || !Number.isInteger(saved.progress.completed)) throw new Error("Invalid saved progress.");
-    const { days: _days, ...savedProgress } = saved.progress;
+    const { days: _days, daily: _daily, ...savedProgress } = saved.progress;
     progress = { ...emptyProgress(), ...savedProgress };
     customSize = saved.customSize === true;
     if (saved.directionDefaultsVersion !== directionDefaultsVersion) {
       settings.directions = DEFAULTS.directions;
-      migratedDirections = true;
     }
   }
 } catch (error) {
@@ -46,21 +48,6 @@ try {
 let game = null, busy = false, round = 1, timerHandle, anchor = null, preview = [], wrong = [];
 let pointer = null, detailKey = null, detailRequest = 0, highlight = [], feedbackTimer;
 const pools = new Map(), kanjiCache = new Map();
-const categoryClues = {
-  all: ["言", "ことば", "A Japanese vocabulary word"],
-  food: ["🍵", "食べ物や飲み物に関係することば", "Something related to food or drink"],
-  animals: ["🐾", "動物に関係することば", "Something related to animals"],
-  nature: ["🌿", "自然や天気に関係することば", "Something related to nature or weather"],
-  travel: ["🚆", "旅行や移動に関係することば", "Something related to travel or movement"],
-  school: ["📖", "学校や勉強に関係することば", "Something related to school or study"],
-  work: ["💼", "仕事に関係することば", "Something related to work"],
-  daily: ["🏠", "毎日の生活に関係することば", "Something related to daily life"],
-  emotions: ["♡", "気持ちに関係することば", "Something related to feelings"],
-  technology: ["💻", "技術に関係することば", "Something related to technology"],
-  verbs: ["↗", "動作などを表すことば", "A word describing an action or state"],
-  adjectives: ["✧", "様子や性質を表すことば", "A word describing a quality"],
-  katakana: ["ア", "カタカナで書くことば", "A word written in katakana"]
-};
 const directionNames = { "0,1": "right →", "0,-1": "left ←", "1,0": "down ↓", "-1,0": "up ↑",
   "1,1": "down-right ↘", "1,-1": "down-left ↙", "-1,1": "up-right ↗", "-1,-1": "up-left ↖" };
 const directionLabels = { forward: "Right → · Down ↓", vertical: "Right → · Down ↓ · Up ↑", all: "All eight directions", reverse: "Backward & diagonal" };
@@ -86,7 +73,7 @@ $("wordSearchRoot").innerHTML = `<div class="shell">
   </main><aside>
     <section class="card" aria-label="Puzzle statistics"><div class="card-heading"><h2>Stats</h2><div class="clock"><span class="small" id="timerLabel">Time</span><strong id="timer">—</strong></div></div><div class="progress-row"><span id="progressText">Create a puzzle to begin</span><span id="directionLabel">${directionLabels[settings.directions]}</span></div><progress id="progress" max="8" value="0" aria-label="Words found"></progress></section>
     <section class="card notebook"><div class="card-heading"><h2>Word notebook</h2><span aria-hidden="true">✎</span></div><div id="wordDetails"><div class="notebook-empty"><span lang="ja">一語一会</span><p>Every word is a new encounter.</p><p class="small">Find a word to explore its reading, meaning, and examples here.</p></div></div></section>
-    <p class="small source-note">JLPT levels are study-list estimates. Category clues use approximate dictionary filters.<br><a href="./data-sources.html" target="_blank" rel="noopener">Dictionary & sentence credits ↗</a></p>
+    <p class="small source-note">JLPT levels are study-list estimates.<br><a href="./data-sources.html" target="_blank" rel="noopener">Dictionary & sentence credits ↗</a></p>
   </aside></div>
   <footer><span>One word at a time.</span><span lang="ja">少しずつ、毎日。</span></footer>
   <dialog id="reviewDialog" aria-labelledby="reviewTitle"><div class="dialog-head"><h2 id="reviewTitle">Your review notebook</h2><button data-close type="button" aria-label="Close notebook">×</button></div><div class="dialog-body"><p class="small">Missed, revealed, and saved words live here. Mixed Review also includes words you previously found.</p><div class="actions"><button id="exportReview" type="button">Export JSON</button><button id="importReview" type="button">Import JSON</button><button id="resetProgress" type="button">Reset progress</button></div><input id="reviewFile" type="file" accept=".json,application/json" hidden><p id="reviewNotice" role="status"></p><div id="reviewList"></div></div></dialog>
@@ -137,13 +124,12 @@ $("settingsForm").innerHTML = `<fieldset><legend>Session</legend><div class="set
   </div></fieldset><fieldset><legend>Vocabulary</legend><div class="settings-grid vocabulary-grid">
   ${selectSetting("level", "JLPT study levels", levels, null)}
   ${selectSetting("script", "Japanese script", { kana: "Kana", kanji: "Kanji", both: "Both" }, "Choose Kana, Kanji (written forms with necessary okurigana), or both for the next puzzle.")}
-  ${plainSelect("category", "Vocabulary category", CATEGORIES)}
   </div></fieldset><fieldset><legend>Grid & word placement</legend><div class="settings-grid">
   <div class="setting">${plainName("sizePreset", "Grid size")}<select id="sizePreset" aria-labelledby="name-sizePreset"><option value="8">Small · 8 × 8</option><option value="10">Medium · 10 × 10</option><option value="12">Large · 12 × 12</option><option value="15">Extra large · 15 × 15</option><option value="20">Jumbo · 20 × 20</option><option value="custom">Custom</option></select></div>
   ${numberSetting("size", "Custom grid side (5–20)", 5, 20)}
   ${checkSetting("overlap", "Allow shared characters")}
   </div></fieldset><fieldset><legend>Clue list</legend><div class="settings-grid clue-grid">
-  ${selectSetting("list", "Clue-list display", LISTS, "Combine clue styles for the word list, or choose Hidden for no list. English words use dictionary meanings. Japanese category clues and icons are broader hints, not definitions.")}
+  ${selectSetting("list", "Clue-list display", LISTS, "Combine clue styles for the word list, or choose Hidden for no list. English clues use dictionary meanings. Japanese descriptions are unavailable: the dictionary has no Japanese definitions.")}
   ${plainCheck("meanings", "English beside Japanese clues")}
   </div></fieldset>
   <fieldset><legend>Hints & reveals</legend><div class="settings-grid">
@@ -166,13 +152,14 @@ mountChips($("setting-script"), {
 });
 mountChips($("setting-list"), {
   multiple: true, exclusive: "hidden", exclusiveLabel: "Hidden", fieldClass: "wide",
-  options: [...listRegular.map((value) => ({ value, label: LISTS[value] })), { value: "hidden", label: "Hidden" }],
+  options: [...listRegular.map((value) => ({ value, label: value === "japaneseClue" ? "Japanese clue — unavailable (no dataset)" : LISTS[value],
+    disabled: value === "japaneseClue", description: value === "japaneseClue" ? JAPANESE_CLUE_UNAVAILABLE : undefined })), { value: "hidden", label: "Hidden" }],
   decode: (value) => listStyles(value),
   encode: (values) => values.includes("hidden") ? "hidden" : listRegular.filter((value) => values.includes(value)).join(",")
 });
 const syncModePills = pillSelect($("setting-mode"), {
   classic: "Find words at your own pace.", timed: "Find all words before the countdown ends.",
-  quick: "An 8 × 8 puzzle with five words.", daily: "A date-seeded N5 kana puzzle with fixed rules.",
+  quick: "An 8 × 8 puzzle with five words.",
   marathon: "Solve progressively larger puzzles.", sudden: "Stay within the selected mistake limit.",
   clue: "Search for Japanese words using English definitions.", kanji: "Find written words containing kanji.",
   kana: "Find words written in kana.", reverse: "Words run backward and diagonally.",
@@ -194,26 +181,25 @@ function syncSettings() {
 }
 function syncAvailability() {
   const value = (key) => $("setting-" + key).value;
-  const mode = value("mode"), daily = mode === "daily";
-  const fixed = ["script", "level", "category", "size", "overlap", "timer", "list", "hints", "hintLimit", "reveals"];
-  const styles = listStyles(mode === "clue" ? "english" : mode === "memory" ? "hidden" : daily ? "japanese" : value("list"));
+  const mode = value("mode");
+  const styles = listStyles(mode === "clue" ? "english" : mode === "memory" ? "hidden" : value("list"));
   const reasons = {
     script: ["kana", "kanji"].includes(mode) ? "Set by the selected game mode." : "",
     size: mode === "quick" ? "Quick uses an 8 by 8 grid." : $("sizePreset").value !== "custom" ? "Choose a custom grid size." : "",
     list: ["clue", "memory"].includes(mode) ? "Set by the selected game mode." : "",
     meanings: !styles.includes("japanese") ? "Used with the Japanese clue style." : "",
     timer: mode === "timed" ? "Timed mode always uses a countdown." : "",
-    seconds: daily || !(mode === "timed" || $("setting-timer").checked) ? "Enable the countdown timer." : "",
+    seconds: !(mode === "timed" || $("setting-timer").checked) ? "Enable the countdown timer." : "",
     mistakes: mode !== "sudden" ? "Used in Sudden Death." : "",
     rounds: mode !== "marathon" ? "Used in Marathon." : "",
     hintLimit: value("hints") !== "limited" ? "Choose limited hints." : "",
-    revealLimit: daily || value("reveals") !== "limited" ? "Choose limited reveals." : ""
+    revealLimit: value("reveals") !== "limited" ? "Choose limited reveals." : ""
   };
   for (const input of document.querySelectorAll("[data-setting]")) {
     const key = input.dataset.setting;
-    setSettingAvailability(input, daily && fixed.includes(key) ? "Daily uses fixed rules; your preference is kept for other modes." : reasons[key]);
+    setSettingAvailability(input, reasons[key]);
   }
-  setSettingAvailability($("sizePreset"), daily || mode === "quick" ? "Grid size is set by this mode." : "");
+  setSettingAvailability($("sizePreset"), mode === "quick" ? "Grid size is set by this mode." : "");
 }
 function updateDisplay() {
   const display = game?.rules || settings;
@@ -288,13 +274,6 @@ document.querySelectorAll("[data-close]").forEach((button) => { button.onclick =
 function updateLifetime() {
   $("reviewCount").textContent = progress.review.length;
 }
-function snapshotDaily() {
-  if (game?.rules.mode === "daily") {
-    progress.daily = { day: game.day, puzzle: game.puzzle, found: game.found, paths: game.paths,
-      revealed: game.revealed, hints: game.hints, attempts: game.attempts, correct: game.correct,
-      elapsed: elapsed(), ended: game.ended, won: game.won, newWords: game.newWords };
-  }
-}
 const sessionView = createSessionView({
   settings: $("settingsPanel"), start: $("startButton"), results: $("results"), footer: true,
   play: [document.querySelector(".board-card"), document.querySelector(".layout aside"), $("wordList").closest("section"), $("modeBadge"), $("notice")]
@@ -317,34 +296,27 @@ async function startGame(nextRound = false) {
   try {
     const baseSettings = { ...(nextRound ? game.baseSettings : settings) };
     const rules = effectiveSettings(baseSettings, next);
-    const day = localDay();
-    let puzzle, saved = rules.mode === "daily" && progress.daily?.day === day ? progress.daily : null;
-    if (saved) {
-      puzzle = saved.puzzle;
-      if (!Array.isArray(puzzle?.grid) || !Array.isArray(puzzle?.entries) || puzzle.grid.length !== puzzle.size ** 2
-        || !puzzle.entries.every((entry) => [...entry.answer].length >= 2 && entry.cells.every((cell, i) => puzzle.grid[cell] === [...entry.answer][i]))) {
-        throw new Error("Today's saved puzzle is invalid. Export your notebook, then reset progress to recover.");
-      }
-    } else {
+    let puzzle;
+    {
       let pool;
+      if (!pools.has(rules.level)) pools.set(rules.level, await fetchItems("/api/word-search/vocabulary", { level: rules.level }));
       if (rules.mode === "review") {
-        pool = [...new Map([...progress.known, ...progress.review].map((item) => [wordKey(item), item])).values()];
-        if (!pool.length) throw new Error("Your review pool is empty. Find some words or import a review notebook first.");
+        const saved = [...progress.known, ...progress.review];
+        if (!saved.length) throw new Error("Your review pool is empty. Find some words or import a review notebook first.");
+        pool = resolveReviewWords(saved, pools.get(rules.level));
+        if (!pool.length) throw new Error("No saved review words could be verified in the selected dictionary dataset. Choose different levels or save new words.");
       } else {
-        if (!pools.has(rules.level)) pools.set(rules.level, await fetchItems("/api/word-search/vocabulary", { level: rules.level }));
         pool = pools.get(rules.level);
       }
       puzzle = generateWordSearch(pool, rules, {
-        seed: rules.mode === "daily" ? `word-search-v1:${day}` : `${Date.now()}:${Math.random()}`,
-        recent: rules.mode === "daily" ? [] : progress.recent
+        seed: `${Date.now()}:${Math.random()}`,
+        recent: progress.recent
       });
     }
     round = next;
-    game = { puzzle, rules, baseSettings, day, started: Date.now() - (saved?.elapsed || 0) * 1000,
-      found: saved?.found || [], paths: saved?.paths || [], revealed: saved?.revealed || [],
-      hints: saved?.hints || 0, attempts: saved?.attempts || 0, correct: saved?.correct || 0,
-      ended: saved?.ended || false, won: saved?.won || false, newWords: saved?.newWords || [],
-      stopped: saved?.ended ? saved.elapsed : null };
+    game = { puzzle, rules, baseSettings, started: Date.now(),
+      found: [], paths: [], revealed: [], hints: 0, attempts: 0, correct: 0,
+      ended: false, won: false, newWords: [], stopped: null };
     updateDisplay();
     progress.recent = [...progress.recent, ...puzzle.entries.map((entry) => entry.key)].slice(-160);
     clearInterval(timerHandle); clearTimeout(feedbackTimer);
@@ -355,10 +327,9 @@ async function startGame(nextRound = false) {
     $("exportPuzzle").hidden = false;
     $("settingsPanel").open = false;
     renderBoard(); renderList(); updateStats();
-    snapshotDaily(); persist(); updateLifetime();
-    if (game.ended) renderResults(game.won ? "Daily puzzle complete" : "Daily round ended");
-    else timerHandle = setInterval(tick, 250);
-    inform(saved ? "Today's puzzle restored. Daily progress cannot be rerolled." : "Your puzzle is ready. Find your first word.");
+    persist(); updateLifetime();
+    timerHandle = setInterval(tick, 250);
+    inform("Your puzzle is ready. Find your first word.");
   } catch (error) { sessionView.setup(); console.error("Word Search generation failed.", error); inform("", false); showStartError(error.message); }
   finally {
     await doneLoading();
@@ -428,19 +399,15 @@ function renderList() {
   $("wordCount").textContent = `${puzzle.entries.length} words`;
   const styles = listStyles(rules.list), has = (style) => styles.includes(style);
   $("listNote").textContent = has("hidden") ? "Memory mode: use hints to discover words. Only found words appear below."
-    : styles.every((style) => ["japaneseClue", "icon"].includes(style)) ? "Category clues are intentionally broad. Character counts narrow the search." : "Find each word. Select a found word to explore it.";
+    : "Find each word. Select a found word to explore it.";
   $("wordList").innerHTML = puzzle.entries.map((entry, index) => {
     const found = game.found.includes(entry.key), revealed = game.revealed.includes(entry.key);
     if (has("hidden") && !found) return "";
-    const category = rules.category === "all" ? categoryOf(entry) : rules.category;
-    const [icon, japaneseClue] = categoryClues[category];
     const parts = [];
     if (found || has("japanese")) parts.push(japaneseHTML(entry.answer, readingOf(entry)));
     if (!found) {
       if (has("english")) parts.push(escape(entry.meaning));
       if (has("clue")) parts.push(`${escape(entry.partOfSpeech || "Word")}: ${escape(entry.meaning)}`);
-      if (has("japaneseClue")) parts.push(`<span lang="ja">${japaneseDescriptions[entry.word] || japaneseClue} · ${[...entry.answer].length}文字</span>`);
-      if (has("icon")) parts.push(`<span class="clue-icon" aria-hidden="true">${icon}</span><span>${CATEGORIES[category]} · ${[...entry.answer].length} characters</span>`);
       if (has("first") && !has("japanese")) parts.push(`<span lang="ja">${escape([...readingOf(entry)][0])}…</span>`);
     }
     const label = parts.length > 1 ? parts.map((part) => `<span class="word-clue">${part}</span>`).join("") : parts[0] || "";
@@ -478,7 +445,7 @@ function markFound(entry, path, reveal = false) {
   renderList(); paintGrid(); updateStats(); inspectWord(entry);
   if (!reveal) speakJapanese(readingOf(entry));
   if (game.found.length === game.puzzle.entries.length) finish(true, "Every word, discovered.");
-  snapshotDaily(); persist(); updateLifetime();
+  persist(); updateLifetime();
 }
 function submitSelection(start, end) {
   if (!active()) return;
@@ -495,7 +462,7 @@ function submitSelection(start, end) {
     clearTimeout(feedbackTimer);
     feedbackTimer = setTimeout(() => { wrong = []; paintGrid(); }, 750);
     if (game.rules.mode === "sudden" && game.attempts - game.correct >= game.rules.mistakes) finish(false, "No lives remaining");
-    updateStats(); snapshotDaily(); persist();
+    updateStats(); persist();
   }
 }
 function focusCell(index) {
@@ -591,7 +558,7 @@ $("hintButton").onclick = () => {
     feedbackTimer = setTimeout(() => { highlight = []; paintGrid(); }, 2200);
   }
   paintGrid();
-  snapshotDaily(); persist(); updateStats();
+  persist(); updateStats();
 };
 $("revealButton").onclick = () => {
   if (!active() || !available("reveals")) return;
@@ -608,7 +575,7 @@ function finish(won, title, save = true) {
   if (won) {
     progress.completed++;
   }
-  snapshotDaily(); persist(); updateStats(); updateLifetime(); paintGrid();
+  persist(); updateStats(); updateLifetime(); paintGrid();
   renderResults(title);
 }
 function renderResults(title) {
@@ -726,8 +693,8 @@ $("resetProgress").onclick = async () => {
   $("wordCount").textContent = "0 words"; $("timer").textContent = "—";
   $("reviewNotice").textContent = "Progress reset.";
 };
-window.addEventListener("pagehide", () => { snapshotDaily(); persist(); clearInterval(timerHandle); });
-document.addEventListener("visibilitychange", () => { if (game && !game.ended) { tick(); snapshotDaily(); persist(); } });
+window.addEventListener("pagehide", () => { persist(); clearInterval(timerHandle); });
+document.addEventListener("visibilitychange", () => { if (game && !game.ended) { tick(); persist(); } });
 updateLifetime();
 if (restoreError) inform(restoreError, true);
-else if (migratedDirections) persist();
+else persist();

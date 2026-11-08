@@ -2,10 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { selectedLevels, matchesLevel } from "../src/jlpt-levels.js";
 import { conjugate } from "../src/conjugation.js";
-import { createPool, defaults, exampleFor, familyOf, supportsExample } from "../src/conjugation-practice-engine.js";
-import { practiceWords } from "../src/conjugation-practice-data.js";
-import { japaneseDescriptions } from "../src/japanese-descriptions.js";
-import { DEFAULTS, filterVocabulary, generateWordSearch } from "../src/word-search-engine.js";
+import { createPool, defaults, familyOf, loadPracticeEntries, PracticeSession } from "../src/conjugation-practice-engine.js";
+import { conjugationEntries } from "../../backend/src/conjugator.js";
+
+const [entry] = conjugationEntries({
+  id: 1, is_common: 1,
+  kanji_forms: JSON.stringify([{ text: "食べる" }]),
+  kana_forms: JSON.stringify([{ text: "たべる", appliesToKanji: ["*"] }]),
+  senses: JSON.stringify([{ partOfSpeech: ["v1"], appliesToKanji: ["*"], appliesToKana: ["*"],
+    gloss: [{ lang: "eng", text: "to eat" }] }])
+}, [{ word: "食べる", reading: "たべる", jlpt: 5 }]);
+loadPracticeEntries([entry]);
 
 test("JLPT selections support disjoint levels, legacy ranges, unrated and empty selections", () => {
   assert.deepEqual(selectedLevels("N5,N3"), [5, 3]);
@@ -17,8 +24,7 @@ test("JLPT selections support disjoint levels, legacy ranges, unrated and empty 
   for (const invalid of ["", "6", "5,x", null, "N0"]) assert.throws(() => selectedLevels(invalid));
 });
 
-test("desire and without-doing glosses read naturally; voice examples disambiguate identical forms", () => {
-  const entry = practiceWords.find((word) => word.word === "食べる");
+test("dictionary-backed desire and without-doing glosses read naturally; ambiguous voices retain distinct grammar", () => {
   const rows = conjugate(entry);
   assert.equal(rows.find((r) => r.id === "naide").gloss, "without eating");
   assert.equal(rows.find((r) => r.id === "desire-past-plain").gloss, "wanted to eat");
@@ -26,16 +32,10 @@ test("desire and without-doing glosses read naturally; voice examples disambigua
   const potential = rows.find((r) => r.id === "potential-plain");
   const passive = rows.find((r) => r.id === "passive-plain");
   assert.equal(potential.word, passive.word);
-  const examples = [potential, passive].map((row) => exampleFor({ entry, row, family: familyOf(row) }));
-  assert.notEqual(examples[0].japanese, examples[1].japanese);
-  assert.equal(examples[0].english, "I can eat rice.");
-  assert.equal(examples[1].english, "Rice is eaten.");
-  for (const row of rows.filter((r) => r.id.startsWith("passive-") || r.id.startsWith("potential-"))) {
-    const example = exampleFor({ entry, row, family: familyOf(row) });
-    assert.ok(example.japanese.includes(row.word));
-    if (row.polarity === "negative") assert.match(example.english, /not|cannot/);
-    if (row.tense === "past") assert.match(example.english, /was|could/);
-  }
+  assert.equal(familyOf(potential), "potential");
+  assert.equal(familyOf(passive), "passive");
+  const session = new PracticeSession({ ...defaults, mode: "comparison", levels: [4], forms: ["potential"] });
+  assert.deepEqual(new Set(session.identifications().map((q) => q.family)), new Set(["potential", "passive"]));
 });
 
 test("weak focus draws only missed or saved unfinished pairs without inventing scores", () => {
@@ -45,21 +45,3 @@ test("weak focus draws only missed or saved unfinished pairs without inventing s
   assert.deepEqual(createPool({ ...defaults, mode: "weak" }, progress).map((q) => q.key), [question.key]);
   assert.equal(progress[question.key].attempts, 0);
 });
-
-test("exact-form examples respect the teaching bank's supported contexts", () => {
-  for (const entry of practiceWords) {
-    for (const row of conjugate(entry)) {
-      const family = familyOf(row);
-      if (!supportsExample(entry, family)) continue;
-      const example = exampleFor({ entry, row, family });
-      assert.ok(example.japanese.includes(row.word));
-      assert.ok(example.english && !example.english.includes("undefined"), `${entry.word}: ${row.id}`);
-    }
-  }
-  const humble = practiceWords.find((entry) => entry.word === "申す");
-  assert.equal(supportsExample(humble, "passive"), false);
-  const entry = practiceWords.find((entry) => entry.word === "覚える");
-  const row = conjugate(entry).find((row) => row.id === "passive-plain");
-  assert.equal(exampleFor({ entry, row, family: "passive" }).english, "Words are memorized.");
-});
-

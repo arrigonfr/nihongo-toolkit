@@ -61,12 +61,14 @@ try {
     await enabled("setting-seconds");
     await disabled("setting-timer");
     await change("setting-seconds", 83);
-    await change("setting-mode", "daily");
-    await disabled("setting-hints", "setting-hintLimit", "setting-seconds", "setting-reveals");
+    await change("setting-hints", "disabled");
+    await change("setting-mode", "classic");
+    await disabled("setting-hintLimit");
     await checkNotes();
     await page.reload();
     await disabled("setting-hintLimit", "setting-seconds");
     await change("setting-mode", "classic");
+    await change("setting-hints", "limited");
     await enabled("setting-hintLimit");
     assert.equal(await page.inputValue("#setting-hintLimit"), "7");
     assert.equal(await page.inputValue("#setting-seconds"), "83");

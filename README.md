@@ -120,8 +120,8 @@ or kanji, never the whole previous word) and **Bonus kana** (+15 when the accept
 word contains the kana offered every third move). A single-unit connection earns no
 overlap bonus. Marathon adds 5 per accepted word; feedback itemizes the award.
 
-Firefox uses an installed Japanese voice when available; the local model fallback
-queues successive clips. Its first model download and uncached synthesis can
+Firefox consistently uses the local Japanese model, even if system voices appear
+after page load; successive clips play in order. Its first model download and uncached synthesis can
 still be slow on low-powered devices.
 
 Each tool's intro includes links to report suggestions or bugs and send pull
@@ -178,6 +178,10 @@ Pazuru, Eawase, Kotoba Sagashi, Katsuyo and Katsuyo Renshuu group settings by
 purpose. Currently relevant dependent controls sit inside softly tinted, rounded
 outlines with breathing room around the control, without shifting the layout.
 The highlight disappears when another choice makes them irrelevant.
+Games and practice tools no longer offer date-based challenges or vocabulary
+category filters. Saved values for removed options do not restrict new sessions.
+Practice mode captions in Goi, Kana, Yomi and Imi are plain labels; individual
+mode chips keep their explanations. Kanji Kuizu also explains each game-mode chip.
 Dependent controls are disabled when unused, with an explanation beside
 the control (for example, hint budgets require limited hints and challenge limits
 require the corresponding mode). Mode overrides do not replace saved preferences:
@@ -198,7 +202,8 @@ settings apply live. The shared top-bar Audio, Furigana, Romaji and appearance
 controls always apply live without restarting games.
 Restoration updates controls and their dependent display without starting a quiz.
 Answers, search drafts and ordinary active rounds are not restored as preferences;
-existing history, progress and Daily resume behavior are unchanged.
+Existing history and review progress are retained; removed modes and category
+preferences no longer affect new games.
 Invalid or unfinished values do not replace valid preferences. Storage failures
 are reported. Preferences survive reloads and new tabs on the same browser/origin,
 but do not sync between devices and may disappear if browser storage is cleared
@@ -224,15 +229,25 @@ Sentence panels share translations, available furigana, audio and source credits
 currently displayed sentences when alternatives exist. Missing examples, including
 those in the crossword inspector, automatically use the backend fallback. A failed
 online refresh preserves available examples and displays a retryable message.
-Goi cloze questions randomly select matching sentences and request the fallback
-when none are available locally; if unavailable, the existing meaning-clue mode is
-explicitly labeled rather than presented as a real example sentence.
+Goi cloze questions use matching corpus sentences, trying the Tatoeba adapter
+when no suitable local example exists. They do not use generated sentences or
+fabricated meaning-clue templates. A bounded search tries up to five words;
+if none has a matching sentence, the session reports the missing content and
+suggests Typing, Multiple choice, or retrying later.
 
-Non-daily Shiritori games now sample opening candidates across the common-word
+Question content is sourced from the imported JMdict/JLPT vocabulary and KANJIDIC
+datasets, with provider-specific adapters for online dictionary and sentence
+lookups. Handwritten vocabulary banks, country-name classifiers, Japanese clue
+banks, word-to-picture maps and curated kanji distractor lists are not question
+sources. Unavailable content is reported rather than replaced with invented
+words or sentences. Kana syllabary tables and grammatical transformation rules
+remain deterministic reference rules; static test fixtures, UI examples and
+printable reference sheets are not used to supply quiz questions.
+
+Shiritori games sample opening candidates across the common-word
 dictionary rather than the same first 60 entries. The last 12 successful starters
 are avoided in the current tab (unless a narrow filter exhausts the choices).
-Opening words still require a legal continuation; Daily Challenge remains
-date-seeded and deterministic.
+Opening words still require a legal continuation.
 
 ## Practice tools
 
@@ -256,8 +271,8 @@ Kana direction uses pills. Yomi converts typed romaji to the selected kana scrip
 or romaji offers matching Kanji candidates without meanings or pronunciations;
 selecting a candidate submits the actual answer.
 Non-JLPT means **unrated**, not necessarily “never tested”. Quiz batches require a
-unified ideograph with Japanese readings and a non-radical meaning, excluding
-component-only glyphs. Real kanji that also serve as radicals (such as 木 and 一)
+unified ideograph with Japanese readings and a non-radical meaning from KANJIDIC,
+without a hardcoded character blacklist. Real kanji that also serve as radicals (such as 木 and 一)
 remain eligible; radical-index glosses are not used as quiz answers. Changing
 level uses a separate batch queue and invalidates any pending previous question.
 
@@ -292,7 +307,7 @@ kanji/kana/romaji directions, identical Katakana → Katakana, Hiragana → Hira
 and Kanji → Kanji pairs, and mixed pairs. Syllabaries includes the two identical
 kana modes but hides kanji directions.
 Words use the existing JLPT N5–N1 vocabulary endpoint with single-level/range
-and category filters. Kana works without dictionary requests, including basic,
+filters. Kana works without dictionary requests, including basic,
 voiced, yōon, small kana, and optional long-vowel/special patterns.
 The voiced, yōon, and long-vowel/special-pattern tooltips include kana examples.
 
@@ -305,7 +320,7 @@ Katakana loanwords are not given invented kanji or forced hiragana forms.
 Explicit katakana conversion of kanji-word readings is a script exercise,
 not an assertion that katakana is the normal spelling.
 
-Classic, Timed, Move, Sudden Death, Daily, Mistake Review, Listening, Meaning,
+Classic, Timed, Move, Sudden Death, Mistake Review, Listening, Meaning,
 Reverse, and Marathon modes are included. Move limits count **card flips**;
 one move normally contains two flips. Timers include background tabs and open
 dialogs. Marathon adds two pairs per board up to 48. Reverse requires a
@@ -317,17 +332,16 @@ passes it after the cards turn back.
 cards move; mismatches shuffle after their preview ends. Existing shuffle
 preferences migrate to Never (off) or After mismatch (on).
 
-Daily uses eight date-seeded basic hiragana/katakana pairs, solo play, three
-hints, and no reveals, time/flip limits, shuffle, or correction previews. It
-persists card selection, matches, statistics, and elapsed time across reloads.
-Opening it again resumes rather than resets it. Streaks count completed local
-calendar days; ordinary restarts reset the same board's statistics.
+Restarts reset the same board's statistics. Legacy Daily settings migrate to
+Classic; obsolete category preferences and daily snapshots are discarded.
 
 Card displays include text, furigana, romaji, English supplements, English-only,
-audio-only, and exact-word emoji clues. English/audio/picture clues replace one
+and audio-only clues. English/audio clues replace one
 side and pair with the natural written form, overriding the script direction.
-Emoji mode uses a small curated word-to-picture mapping and may require fewer
-pairs or wider filters. Kana English clues describe sounds/usage, not invented
+Picture/emoji clues are disabled because the dictionary has no picture metadata;
+saved picture settings migrate to text with an explanation. Review questions reload
+dictionary metadata by word and reading rather than trusting imported clues.
+Kana English clues describe sounds/usage, not invented
 word meanings; small kana have no standalone pronunciation and are excluded
 from listening cards. Audio uses the shared Japanese voice and requires the
 shared Audio toggle. Every newly flipped audio card plays its clue, including
@@ -353,14 +367,16 @@ high contrast, reduced-motion support, tap targets, and arrow/Enter/Space
 keyboard controls are included. Large boards scroll within their panel rather
 than shrinking the characters.
 
-Settings, daily state/history, completed count, recent pairs, and up to 5,000
+Settings, completed count, recent pairs, and up to 5,000
 missed/assisted/unfinished/saved review items are stored locally under
-`nihon:memory-v1`. Mistake Review respects the current content, level, category,
+`nihon:memory-v1`. Mistake Review respects the current content, level,
 and kana filters. Export/import validates and merges Memory notebook JSON.
 Reset requires confirmation and affects only Memory progress, not other tools.
 Imported vocabulary is personal study data rather than dictionary verification.
 
 Run `npm run test:memory` for engine invariants and browser interaction coverage.
+Run `node scripts/puzzle-removals-browser-test.mjs` for Eawase, Kotoba Sagashi,
+and Pazuru legacy-setting migration and playable-round browser checks.
 
 ## Kotoba Sagashi · Japanese word search
 
@@ -374,7 +390,7 @@ with Escape. Select the same cell twice for a single-kanji word. Large grids
 scroll within their panel instead of shrinking Japanese text to unreadable sizes.
 
 Choose kana, kanji (retaining necessary okurigana), or mixed script; any combination
-of JLPT levels using checkboxes; category; 8/10/12/15/20-square grids or custom 5–20; and
+of JLPT levels using checkboxes; 8/10/12/15/20-square grids or custom 5–20; and
 5/8/10/15/20 targets. Each cell contains one character, including small kana and
 the katakana long-vowel mark. Directions are right/down, right/down/up, or all
 eight (the default); shared characters allow words to intersect at matching letters
@@ -388,24 +404,26 @@ just its original placement. Incidental non-target words do not count.
 
 The game reads the complete matching JLPT study pool through
 `GET /api/word-search/vocabulary?level=5-4`, without adding out-of-level dictionary
-words. Themes use approximate English-gloss/part-of-speech filters. Non-daily
-puzzles shuffle vocabulary and prioritize words outside the last 160 targets.
+words. Puzzles shuffle vocabulary and prioritize words outside the last 160 targets.
 Narrow filters may require repeats; they are never silently widened.
 
-Classic, Timed, Quick, Daily, Marathon, Sudden Death, Clue, Kana, Kanji, Reverse,
+Classic, Timed, Quick, Marathon, Sudden Death, Clue, Kana, Kanji, Reverse,
 No List, and Mixed Review modes are included. Settings describe their overrides.
-Daily fixes the N5 kana rules and seed for the local calendar date, saves the
-current puzzle and progress across reloads, and counts completed days only.
+Legacy Daily settings migrate to Classic; obsolete category preferences and
+daily snapshots are discarded.
 Marathon increases grid size, word count, and available directions between rounds;
 each round shows its own results. Countdown time includes background tabs and
 open dialogs. Ending or abandoning a round offers Cancel, Save & continue, and
 Discard & continue for unfinished words; already recorded history is retained.
 
 Clue styles include Japanese, furigana, English meanings, English gloss/POS clues,
-Japanese category clues, category icons, first kana, and
-hidden-list memory mode. Japanese clues use a limited bank of original,
-word-specific teaching clues, so narrow filters may have insufficient coverage.
-Japanese category and icon clues remain broad hints, not dictionary definitions.
+first kana, and hidden-list memory mode. Japanese descriptions are disabled because
+the dictionary has no Japanese definitions. Saved settings remove that unavailable
+style with an explanation, retaining other styles (or selecting Japanese words).
+Review questions reload dictionary metadata by word and reading; imported meanings
+and other question fields are never used as the lexical source.
+Category icons and category-based clue fallbacks are removed; saved icon-only
+lists migrate to Japanese words.
 Explicit furigana-list style always shows the reading;
 other Japanese text follows the shared Furigana toggle. Furigana, romaji, audio,
 and appearance use the shared top bar, without duplicate controls in puzzle
@@ -422,7 +440,7 @@ outline. Hints and reveals have separate unlimited/limited/disabled settings.
 Reveals are distinguished from manual finds and never earn accuracy credit.
 
 Settings, the last 5,000 found words, up to 5,000 review words, recent targets,
-completed count, and daily history are local to this browser under
+and completed count are local to this browser under
 `nihon:word-search-v1`. Mixed Review draws from found, missed, revealed, and
 manually saved words, respecting the current vocabulary filters. Notebook JSON
 exports can be validated and merged on import; reset requires confirmation.
@@ -489,10 +507,10 @@ Usage notes explain the exact ending change for the selected word and form,
 including relevant irregularities and the extra steps for inflected voice,
 progressive and desire forms, rather than repeating a class-wide rule.
 I-adjective conditionals use their own endings; polite `です` is not followed
-by `ら`. Exact-form examples use original teaching templates for supported study
-words and forms, including separate potential and passive contexts even when the
-conjugated spelling is identical. Unsupported combinations show an explicit
-unavailable message instead of an unrelated sentence. Base-word dictionary
+by `ら`. Exact-form example requests search the local corpus and Tatoeba for
+sentences containing the written form; a surface form can still have multiple
+grammatical interpretations. Missing examples and provider errors are reported,
+not replaced with generated teaching templates. Base-word dictionary
 examples retain their English translations and source credits.
 Desire glosses use natural English such as “wanted to eat”; ないで is “without
 eating”, while なくて remains a negative connection/reason rather than an interchangeable
@@ -513,11 +531,12 @@ Run `npm run test:conjugator` for the engine, dictionary and browser checks.
 ## Katsuyō conjugation practice
 
 Open **Katsuyō Renshuu · 活用練習** in the launcher.
-The trainer reuses the conjugator engine with an original, bounded study bank
-of 49 verbs, adjectives and auxiliary patterns. Practice generation, grading,
-rules and original teaching examples need no dictionary requests. Kanji details
-and example compounds use the existing dictionary API; speech uses your
-shared Japanese audio.
+The trainer loads vocabulary, readings, meanings and word classes from the
+JMdict database through `/api/conjugation-practice`, reusing the conjugator's
+spelling/sense restrictions and exact JLPT vocabulary links. Grammar rules
+generate forms locally after loading. Starting requires the database; an empty
+or unavailable source displays an error, never a fallback bank. Kanji details
+and example compounds use the dictionary API; speech uses shared Japanese audio.
 
 Choose N5–N1 individually, select several levels for a range, or select All.
 Question difficulty combines the estimated word level with the form's suggested
@@ -528,18 +547,18 @@ remain available under either tense/register filter. Unsupported combinations
 show an explicit message rather than silently ignoring the settings.
 
 Modes include Classic (5–100 questions in increments of five), Quick (five), Marathon (zero
-means unlimited mistakes), Timed Challenge, Sudden Death, Daily (five), Weak
-Form Focus, Mixed Review, Form Comparison, Sentence and Reverse. Irregular
-Verbs Focus covers する, 来る, 行く, ある, いい and difficult 帰る. Mixed Review
+means unlimited mistakes), Timed Challenge, Sudden Death, Weak
+Form Focus, Mixed Review, Form Comparison and Reverse. Irregular
+Verbs Focus uses dictionary irregular classes and exception tags. Mixed Review
 requires previously practiced questions; Weak Form Focus uses only missed or
 explicitly saved unfinished questions. Comparison accepts multiple valid analyses of homographs such as
 食べられる. Reverse can ask for the base word, form, polarity, tense or
-politeness. Sentence prompts have an original contextual example, translation
-and explicit grammatical constraints so the intended answer is not a guess.
+politeness. No hardcoded vocabulary substitutes are used. Auxiliary-pattern vocabulary is
+unavailable without dictionary classification.
 Prompts and grammatical traits always show Japanese and English;
 general interface and feedback text remain English.
 Politeness has its own prominent, labeled line, including unmarked connectives.
-“Requested form shown as” offers form names, usage descriptions, sentence blanks,
+“Requested form shown as” offers form names, usage descriptions,
 or **Mixed**, which randomly chooses a presentation for each new question and
 keeps it unchanged during hints and retries. The conjugation-form selector
 expands to show every option without a nested scrolling area.
@@ -645,8 +664,11 @@ voices when exposed by the device. With Audio On, Firefox loads Kokoro's synthet
 is enabled. The model comes from Hugging Face and the Japanese dictionary and runtime
 assets from jsDelivr; the initial download is over 110 MB, and synthesis runs locally.
 Loading and synthesis run in a Web Worker so they do not block game rendering or
-input. The worker reuses up to 32 synthesized clips per page, including its warm-up
-greeting; a first pronunciation still waits for model loading and inference.
+input. Preloading synthesizes a warm-up greeting so the Japanese dictionary, voice,
+and inference runtime initialize before the first click when possible. The worker
+reuses up to 32 synthesized clips per page, including that greeting; uncached words
+still require inference. Audio Off stops playback and skips cancelled words that
+have not begun synthesis, rather than leaving them ahead of new requests.
 The model uses browser storage and the dictionary uses the browser's HTTP cache across
 pages; browsers can clear or evict cached data, and storage restrictions can prevent
 caching. There is currently no backup host for the Kokoro assets.
@@ -678,7 +700,10 @@ The tokenizer is not infallible, especially with names, new slang, and ambiguous
 sentences. Yahoo's morphological API was considered but requires a Client ID;
 the bundled dictionary avoids credentials and provider quotas.
 
-Pazuru opens without generating a crossword. Choose settings, then click **New
+Pazuru opens without generating a crossword. Daily mode and vocabulary themes
+are removed, including theme-based clue hints. Saved Daily mode becomes Classic
+and saved theme filters are discarded; JLPT, script, size and other settings remain.
+Choose settings, then click **New
 puzzle** below the settings panel; this button remains visible when settings are
 collapsed. Pazuru's Check button sits beside the clue textbox or inside the cell popover,
 not in the status bar. Enter saves textbox answers. Textboxes start empty, without
@@ -770,19 +795,27 @@ be explored by hover, keyboard focus or tap; the notebook includes kanji detail
 buttons, a random translated example when available, pronunciation and Save to
 review. The title's **?** opens instructions; dialogs close with Escape or ×.
 
-Settings include Kana / Kanji / Both, every contiguous JLPT range, thematic
-categories, parts of speech, dictionary names, a maximum mora length and all chain rules.
+Settings include game mode, opponents, timers, assistance, scoring and display options.
+The Word Rules section (word entry, vocabulary category, allowed word types and
+proper nouns), Category Shiritori and Daily Challenge have been removed.
+Saved removed options are discarded, and saved Category/Daily modes become Classic
+without changing remaining preferences. Ordinary play accepts kana or kanji,
+all dictionary word types and dictionary names; Kanji and Katakana modes retain
+their mode-specific restrictions.
+Proper-noun metadata follows each provider's dictionary tags only. No country-name
+list, spelling exception list, or English-gloss guess overrides that metadata.
+Hints cycle through the first kana, mora count and a hidden reading; vocabulary
+category hints and their classification data are removed.
 They appear in an expandable **Game settings** panel directly below the intro,
 open initially. Saving settings or successfully starting a new game collapses
 the panel; select its heading to reopen it at any time.
-Beginner, Relaxed, Sudden Death and Daily highlights appear in separate labeled
-cards, stacking on small screens.
+Modes appear as labeled buttons that wrap on small screens.
 Each option has a focusable/tappable explanation. Rules are fixed during a
 round. Audio, furigana, romaji and appearance are controlled only from the shared
 top bar, without duplicate settings in the panel. Font size and high contrast
 remain in the panel; these display controls can change while playing. Roman-letter input
 uses WanaKana's IME conversion without interfering with Japanese composition.
-Kanji entry allows a typed reading to be converted by confirming a dictionary
+Kanji Shiritori allows a typed reading to be converted by confirming a dictionary
 spelling. Ambiguous entries require an explicit selection before Play.
 
 Rule defaults are **exact**, not the common relaxed classroom variants:
@@ -792,12 +825,12 @@ Rule defaults are **exact**, not the common relaxed classroom variants:
   never starts with the whole previous word. Extra overlap earns +5 per syllable.
   The last kanji or kanji compound of the spelling also works.
 - Small kana stay attached (`しょ` requires `しょ`; `しょう` is fine).
-- With **Kana** or **Kanji** word entry, and in **Kanji Shiritori**, the
+- In **Kanji Shiritori**, the
   pronunciation must not end in `ん` / `ン`, `を` / `ヲ`, or `ー`. Dictionary
   readings are checked even when the submitted spelling uses kanji, such as
   `校門` (`こうもん`). This applies to players, opening words, hints, reveals
   and computer moves. An internal long-vowel mark is allowed (`ケーキ`).
-  Outside Kanji Shiritori, **Both** retains final long vowels, so `コーヒー`
+  Outside Kanji Shiritori, words retain final long vowels, so `コーヒー`
   requires `ヒー`.
 - Conjugated verbs and adjectives (`のみました`) are accepted via their base entry.
 - Hiragana/katakana are equivalent, including half-width katakana.
@@ -813,28 +846,22 @@ Relaxed has unlimited hints and no timer; an invalid connection loses the round,
 while vocabulary-rule violations can be retried. Timed counts wall-clock
 time, including dialogs and dictionary requests, and ignores responses arriving
 after a timeout or new game. Beginner caps words at four morae, supplies automatic
-hints and enables furigana. Category, Kanji and Katakana modes apply their named
+hints and enables furigana. Kanji and Katakana modes apply their named
 filters. Marathon adds five points per valid word. No available legal
 dictionary continuation is reported explicitly: the computer loses on its
 turn, while an exhausted human chain ends neutrally. Filters are never silently
 widened.
 
-Daily uses a local-calendar-date-seeded computer match with fixed rules, no
-assistance, and a target of ten valid human words (or a computer unable to move).
-Only the first started attempt per day affects the locally stored streak;
-additional attempts are practice. Consecutive successful dates extend the streak.
-It is local progress, not a server-verified leaderboard, and the same installed
-dictionary version is needed to reproduce a daily match.
-
-N5–N1 earn 10/20/30/40/50 points; unrated entries earn 10 and are available only
-in All. Levels are matched to spelling/reading metadata, never guessed from
+N5–N1 earn 10/20/30/40/50 points; unrated entries earn 10. All JLPT levels and
+unrated entries are available. Levels are matched to spelling/reading metadata, never guessed from
 kanji difficulty. The independent Bonus kana setting offers +15 every third move
 for including the displayed kana in an accepted word. Bonus points awards +5 per
 extra overlapping syllable or kanji, excluding the whole previous word. A single
 final syllable/kanji earns no overlap bonus. Rejected words do
-not enter the chain or earn points. Statistics reset for each new game; discoveries, daily progress and the
+not enter the chain or earn points. Statistics reset for each new game; discoveries and the
 optional review list remain local. Settings can export/import validated JSON
-review lists or reset progress. Imported words do not enter the game dictionary.
+review lists or reset progress. Legacy daily progress is discarded without removing
+discoveries or review words. Imported words do not enter the game dictionary.
 
 `GET /api/shiritori/words` uses JMdict spellings, reading restrictions, senses
 and linked vocabulary levels. Pass `rules` as JSON, `start` and a JSON `used`
@@ -1251,9 +1278,8 @@ set-based compound examples, without eager stroke/component/sentence hydration.
 Goi and Pazuru use `/api/words/batch?projection=practice` (up to 200 items),
 retaining vocabulary examples and lexical notes while loading additional
 sentences and kanji notebook details on demand. Pazuru starts with one expanded
-pool request. Daily Kanji Kuizu keeps the same seeded list selection and order,
-then uses `/api/kanji/bulk?character=日&character=月` (1–100 unique characters)
-instead of individual detail requests. The default batch and detail responses
+pool request. Kanji Kuizu uses a practice batch for each session.
+The default batch and detail responses
 remain fully enriched for other callers.
 
 Typed conjugator candidates use the existing version-1 `word_forms` index.

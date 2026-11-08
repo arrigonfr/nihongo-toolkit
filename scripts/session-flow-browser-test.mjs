@@ -39,6 +39,10 @@ try {
     await page.goto(`${base}/${file}.html`);
     await page.locator("#audioQuickToggle").waitFor();
     await page.locator(start).waitFor();
+    assert.doesNotMatch(await page.locator(settings).textContent(), /\bdaily\b|Vocabulary category|Theme category|Word Rules|Category Shiritori/i, `${file} has no removed settings`);
+    const helpText = await page.locator("[data-setting-description], [data-study-help]").evaluateAll((nodes) =>
+      nodes.map((node) => [node.dataset.settingDescription, node.dataset.studyHelp].filter(Boolean).join(" ")).join(" "));
+    assert.doesNotMatch(helpText, /\bdaily\b|category filters|category clues/i, `${file} tooltips do not describe removed features`);
     assert.equal(await page.locator(settings).isVisible(), true, `${file} settings visible`);
     assert.equal(await page.locator(play).isVisible(), false, `${file} play hidden`);
     assert.equal(await page.locator(start).isVisible(), true, `${file} start visible`);
@@ -75,6 +79,10 @@ try {
       assert.equal(await page.locator("#skipButton, #showButton").count(), 0);
       assert.equal(await page.locator(".quiz-card > .start-line").evaluate((node) => getComputedStyle(node).justifyContent), "flex-end");
     }
+    if (["kana", "imi", "yomi", "goi"].includes(file)) {
+      assert.equal(await page.locator(".practice-mode-field .chips-title [data-study-help], .practice-mode-field .chips-title[data-study-help]").count(), 0, "Practice mode caption has no tooltip");
+      assert.equal(await page.locator(".practice-mode-chips [data-study-help]").count(), 4, "Each practice mode keeps its tooltip");
+    }
     if (["kotoba-sagashi", "shiritori"].includes(file)) assert.equal(await page.locator("#modeBadge").isVisible(), false);
     if (file === "shiritori") {
       await page.evaluate(() => localStorage.setItem("nihon:shiritori-settings-v1", JSON.stringify({ bonus: false })));
@@ -91,7 +99,7 @@ try {
     if (file === "kotoba-sagashi") {
       assert.equal(await page.locator("#notice").isVisible(), false);
       assert.equal(await page.locator("#startButton").textContent(), "Create my puzzle →");
-      for (const [left, right] of [["setting-level", "setting-script"], ["setting-script", "setting-category"], ["setting-list", "setting-meanings"]]) {
+      for (const [left, right] of [["setting-level", "setting-script"], ["setting-list", "setting-meanings"]]) {
         assert.ok(await page.evaluate(([left, right]) => {
           const field = (id) => document.getElementById(id).closest(".chips-field, .setting");
           return field(left).getBoundingClientRect().right <= field(right).getBoundingClientRect().left;
@@ -100,10 +108,9 @@ try {
     }
     if (file === "kanji-kuizu") {
       assert.equal(await page.locator("#seconds").isDisabled(), true);
-      await page.locator("#mode").evaluate((node) => { node.value = "daily"; node.dispatchEvent(new Event("change", { bubbles: true })); });
-      assert.equal(await page.locator("#count").isDisabled(), true);
-      assert.equal(await page.locator("#levelSelect").isDisabled(), true);
-      await page.locator("#mode").evaluate((node) => { node.value = "practice"; node.dispatchEvent(new Event("change", { bubbles: true })); });
+      assert.equal(await page.locator('#mode option[value="daily"]').count(), 0);
+      assert.equal(await page.locator("#count").isDisabled(), false);
+      assert.equal(await page.locator("#levelSelect").isDisabled(), false);
     }
     await page.click(start);
     await page.locator(play).waitFor();

@@ -7,6 +7,7 @@ import { selectCompounds } from "./compounds.js";
 import { isPracticeKanji, practiceMeanings } from "./practice-kanji.js";
 import { createWordFallback, shiritoriWords } from "./shiritori.js";
 import { findConjugationEntries } from "./conjugator.js";
+import { findPracticeEntries } from "./conjugation-practice.js";
 import { selectedLevels } from "../../frontend/src/jlpt-levels.js";
 import { vocabularyAnswers } from "./vocabulary-answers.js";
 
@@ -268,6 +269,11 @@ export function createHandler({
           .map(async (table) => [table, (await db.prepare(`SELECT count(*) AS n FROM ${table}`).get()).n])));
         const ready = Object.values(counts).every((n) => n > 0);
         return send(ready ? 200 : 503, { ready, counts });
+      }
+      if (path === "/api/conjugation-practice") {
+        const level = params.get("level") ?? "all";
+        if (!/^(all|none|unrated|[1-5](?:,(?:[1-5]|unrated))*)$/.test(level)) throw new HttpError(400, "Invalid practice level.");
+        return send(200, await findPracticeEntries(db, { level }));
       }
       if (path === "/api/conjugator") {
         const random = params.get("random") === "true";
@@ -540,6 +546,7 @@ export function createHandler({
           throw new HttpError(400, "Invalid sentence exclusions.");
         }
         let examples = await localExamples(db, { query, limit: 100, random: true });
+        if (params.get("corpus") === "1") examples = examples.filter((example) => !example.generated);
         let warning = "";
         if (!examples.length || random) {
           try { examples.push(...await sentenceFallback(query)); }

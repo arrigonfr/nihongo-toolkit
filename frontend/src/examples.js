@@ -25,8 +25,9 @@ export function sentencesHTML(examples, query = "") {
     <span class="sentence-status" role="status" aria-live="polite"></span></div></div>`;
 }
 
-async function loadSentenceResult(query, signal, { random = false, exclude = [] } = {}) {
+async function loadSentenceResult(query, signal, { random = false, exclude = [], corpusOnly = false } = {}) {
   const params = new URLSearchParams({ q: query });
+  if (corpusOnly) params.set("corpus", "1");
   if (random) {
     params.set("random", "1");
     params.set("exclude", JSON.stringify(exclude.slice(0, 10)));
@@ -48,8 +49,8 @@ async function loadSentenceResult(query, signal, { random = false, exclude = [] 
   return { examples, warning: payload.warning || "" };
 }
 
-export async function loadSentences(query, signal) {
-  return (await loadSentenceResult(query, signal)).examples;
+export async function loadSentences(query, signal, options) {
+  return (await loadSentenceResult(query, signal, options)).examples;
 }
 
 const requests = new Map();

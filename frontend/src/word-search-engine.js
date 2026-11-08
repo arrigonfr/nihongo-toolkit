@@ -1,13 +1,9 @@
-import { createSeededRandom, matchesTheme, THEMES } from "./crossword-engine.js";
+import { createSeededRandom } from "./crossword-engine.js";
 import { isFontSetting } from "./japanese-fonts.js";
 import { selectedLevels, matchesLevel } from "./jlpt-levels.js";
 
-export const CATEGORIES = {
-  ...Object.fromEntries(Object.entries(THEMES).filter(([key]) => key !== "expressions").map(([key, value]) => [key, value.label])),
-  animals: "Animals"
-};
 export const MODES = {
-  classic: "Classic", timed: "Timed", quick: "Quick Puzzle", daily: "Daily Challenge",
+  classic: "Classic", timed: "Timed", quick: "Quick Puzzle",
   marathon: "Marathon", sudden: "Sudden Death", clue: "Clue Mode", kanji: "Kanji Challenge",
   kana: "Kana Challenge", reverse: "Reverse Challenge", memory: "No List Challenge", review: "Mixed Review"
 };
@@ -18,22 +14,24 @@ export const DIRECTIONS = {
   reverse: [[0, -1], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]]
 };
 export const DEFAULTS = {
-  mode: "classic", script: "kana", level: "5", category: "all", size: 10, count: 8,
+  mode: "classic", script: "kana", level: "5", size: 10, count: 8,
   directions: "all", overlap: true, list: "japanese", meanings: true,
   hints: "limited", hintLimit: 5, reveals: "limited", revealLimit: 2,
   timer: false, seconds: 300, mistakes: 3, rounds: 3, fontSize: 26, font: "Noto Sans JP", contrast: false, animation: true
 };
 export const LISTS = {
   japanese: "Japanese word", english: "English word",
-  icon: "Category icon", clue: "English clue", japaneseClue: "Japanese clue",
+  clue: "English clue", japaneseClue: "Japanese clue",
   first: "First kana only", hidden: "Hidden"
 };
+export const JAPANESE_CLUE_UNAVAILABLE = "Japanese descriptions are unavailable: the dictionary has no Japanese definitions. Choose another clue style.";
 // A clue list is one or more comma-joined styles; "hidden" (no list) can only stand alone.
 export function listStyles(value) {
   if (typeof value !== "string" || !value) throw new Error("Invalid list setting.");
   if (value === "hidden") return ["hidden"];
   // "furigana" is the legacy name of the merged Japanese clue style.
-  const styles = [...new Set(value.split(",").map((style) => style === "furigana" ? "japanese" : style))];
+  const styles = [...new Set(value.split(",").filter((style) => style !== "icon").map((style) => style === "furigana" ? "japanese" : style))];
+  if (!styles.length) return ["japanese"];
   if (styles.some((style) => style === "hidden" || !(style in LISTS))) throw new Error("Invalid list setting.");
   return Object.keys(LISTS).filter((style) => styles.includes(style));
 }
@@ -42,12 +40,18 @@ const kanaOnly = (text) => /^[ぁ-ゖァ-ヺー]+$/u.test(text);
 const japaneseOnly = (text) => /^[\p{Script=Han}ぁ-ゖァ-ヺー々]+$/u.test(text);
 export const readingOf = (item) => item.furigana || item.reading || item.word;
 export const wordKey = (item) => `${item.word}|${readingOf(item)}`;
+export function resolveReviewWords(saved, dictionary) {
+  const keys = new Set(saved.map(wordKey));
+  return dictionary.filter((item) => keys.has(wordKey(item)));
+}
 
 export function validateSettings(settings) {
+  const { category: _category, ...current } = settings;
+  settings = { ...current, mode: current.mode === "daily" ? DEFAULTS.mode : current.mode };
   const font = settings.font ?? DEFAULTS.font;
   if (!isFontSetting(font)) throw new Error("Choose an available Japanese font.");
   const enums = { mode: Object.keys(MODES), script: ["kana", "kanji", "both"],
-    category: Object.keys(CATEGORIES), directions: ["forward", "vertical", "all"],
+    directions: ["forward", "vertical", "all"],
     hints: ["limited", "unlimited", "disabled"], reveals: ["limited", "unlimited", "disabled"] };
   for (const [key, values] of Object.entries(enums)) if (!values.includes(settings[key])) throw new Error(`Invalid ${key} setting.`);
   const list = listStyles(settings.list).join(",");
@@ -68,15 +72,12 @@ export function effectiveSettings(settings, round = 1) {
   const result = { ...validateSettings(settings) };
   result.count = Math.max(5, Math.min(20, Math.round(result.size * 0.8)));
   result.directions = "all";
-  if (result.mode === "daily") Object.assign(result, {
-    script: "kana", level: "5", category: "all", size: 10, count: 8, directions: "all",
-    overlap: true, timer: false, list: "japanese", hints: "limited", hintLimit: 3, reveals: "disabled"
-  });
   if (result.mode === "quick") Object.assign(result, { size: 8, count: 5 });
   if (result.mode === "timed") result.timer = true;
   if (result.mode === "kana" || result.mode === "kanji") result.script = result.mode;
   if (result.mode === "clue") result.list = "english";
   if (result.mode === "memory") result.list = "hidden";
+  if (listStyles(result.list).includes("japaneseClue")) throw new Error(JAPANESE_CLUE_UNAVAILABLE);
   if (result.mode === "reverse") result.directions = "reverse";
   if (result.mode === "marathon") Object.assign(result, {
     size: Math.min(20, result.size + round - 1),
@@ -86,17 +87,8 @@ export function effectiveSettings(settings, round = 1) {
   return result;
 }
 
-export function matchesCategory(item, category) {
-  if (category === "animals") return /\b(animal|dog|cat|bird|fish|horse|cow|pig|sheep|monkey|insect|lion|tiger|bear|rabbit|elephant|deer|fox|wolf|mouse|rat|butterfly|bee|snake|turtle)\b/i.test(item.meaning);
-  return matchesTheme(item, category);
-}
-export function categoryOf(item) {
-  return Object.keys(CATEGORIES).find((key) => !["all", "verbs", "adjectives", "katakana"].includes(key) && matchesCategory(item, key))
-    || (matchesCategory(item, "verbs") ? "verbs" : matchesCategory(item, "adjectives") ? "adjectives" : "all");
-}
 export function filterVocabulary(items, settings) {
   return items.filter((item) => matchesLevel(item.level, settings.level)
-    && matchesCategory(item, settings.category)
     && kanaOnly(readingOf(item)) && japaneseOnly(item.word)
     && (settings.script !== "kanji" || hasKanji(item.word)));
 }
@@ -117,6 +109,7 @@ export function straightPath(start, end, size) {
     (_, i) => (row + Math.sign(dr) * i) * size + col + Math.sign(dc) * i);
 }
 export function generateWordSearch(items, settings, { seed = `${Date.now()}-${Math.random()}`, recent = [] } = {}) {
+  if (listStyles(settings.list).includes("japaneseClue")) throw new Error(JAPANESE_CLUE_UNAVAILABLE);
   const random = createSeededRandom(seed);
   const directions = DIRECTIONS[settings.directions];
   if (!directions) throw new Error("Unknown word directions.");
@@ -133,7 +126,7 @@ export function generateWordSearch(items, settings, { seed = `${Date.now()}-${Ma
     return { ...item, answer, key: wordKey(item) };
   }).filter((item) => [...item.answer].length >= 2 && [...item.answer].length <= size);
   const unique = [...new Map(candidates.map((item) => [item.answer, item])).values()];
-  if (unique.length < settings.count) throw new Error(`Only ${unique.length} distinct words fit these filters. Choose fewer words, a larger grid, or a wider level/category.`);
+  if (unique.length < settings.count) throw new Error(`Only ${unique.length} distinct words fit these filters. Choose fewer words, a larger grid, or a wider JLPT range.`);
   const recentSet = new Set(recent);
   for (let attempt = 0; attempt < 32; attempt++) {
     const grid = Array(size * size).fill("");

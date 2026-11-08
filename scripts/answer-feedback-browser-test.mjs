@@ -24,6 +24,9 @@ try {
       if (url.pathname === "/api/words/batch") return route.fulfill({ json: { items: Array.from({ length: 30 }, (_, id) => ({
         id, word: "猫", reading: "ねこ", meaning: "cat", level: 5, examples: [{ ja: "猫がいます。", en: "There is a cat." }]
       })) } });
+      if (url.pathname === "/api/conjugation-practice") return route.fulfill({ json: { entries: [
+        { id: "test:verb", word: "食べる", reading: "たべる", type: "ichidan", tag: "v1", level: 5, meanings: ["eat"] }
+      ] } });
       if (url.pathname.startsWith("/api/")) return route.fulfill({ json: { items: [] } });
       return url.hostname === "127.0.0.1" ? route.continue() : route.abort();
     });
@@ -125,6 +128,7 @@ try {
     })));
     await page.reload();
     await page.click("#startButton");
+    await page.locator("#practice").waitFor();
     const before = await position();
     await page.fill("#answerInput", "ちがう");
     await page.press("#answerInput", "Enter");

@@ -25,7 +25,8 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   const characters = ["木", "本", "日", "白", "目", "自", "人", "入", "大", "犬", "力", "刀"];
   const pool = characters.map((kanji, index) => ({ kanji, jlpt: 5, meanings: [`meaning ${index}`], on_readings: [index < 6 ? "コウ" : "セイ", `カ${"アイウエオキクケコサシス"[index]}`], kun_readings: [`た${"あいうえおかきくけこさし"[index]}`], examples: [{ word: `${kanji}語`, reading: "ご", meanings: [`example ${index}`] }] }));
-  await page.route("**/api/kanji/batch?**", (route) => route.fulfill({ json: { items: pool } }));
+  let batchCalls = 0;
+  await page.route("**/api/kanji/batch?**", (route) => { batchCalls++; return route.fulfill({ json: { items: pool } }); });
   await page.route("**/api/kanji?**", (route) => route.fulfill({ json: { items: pool } }));
   let bulkCalls = 0;
   await page.route("**/api/kanji/bulk?**", (route) => {
@@ -36,6 +37,13 @@ try {
   await page.route(/\/api\/kanji\/[^/?]+$/, (route) => route.fulfill({ json: pool.find((item) => item.kanji === decodeURIComponent(new URL(route.request().url()).pathname.split("/").at(-1))) }));
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/kanji-kuizu.html`);
   assert.match(await page.locator(".brand-name").textContent(), /Kanji Kuizu/);
+  assert.equal(await page.locator('#mode option[value="daily"]').count(), 0);
+  await page.waitForFunction(() => document.querySelectorAll('#mode ~ .chips [data-study-help]').length === 5);
+  for (const chip of await page.locator('#mode ~ .chips [data-study-help]').all()) {
+    assert.ok((await chip.getAttribute("data-study-help")).length > 20);
+    await chip.hover();
+    assert.equal(await page.locator("#studySettingTooltip").textContent(), await chip.getAttribute("data-study-help"));
+  }
   await page.locator("#settings > summary").click();
   const collapsed = await page.evaluate(() => ({ bodyHeight: document.body.getBoundingClientRect().height, viewportHeight: window.innerHeight, panelHeight: document.querySelector("#settings").getBoundingClientRect().height, summaryHeight: document.querySelector("#settings > summary").getBoundingClientRect().height }));
   assert.ok(collapsed.bodyHeight >= collapsed.viewportHeight);
@@ -192,22 +200,21 @@ try {
   assert.deepEqual(await page.evaluate(() => window.spokenQuestions), [firstAudio, firstAudio, secondAudio], "The next question plays automatically");
   await stopSession();
   await page.locator("#readingPrompt").selectOption("text");
-  await page.locator("#mode").evaluate((select) => { select.value = "daily"; select.dispatchEvent(new Event("change", { bubbles: true })); });
-  const dailySets = [];
+  await page.evaluate(() => localStorage.setItem("nihon:imposters-settings-v1", JSON.stringify({ mode: "daily", count: "10" })));
+  await page.reload();
+  assert.equal(await page.locator("#mode").inputValue(), "practice", "Removed saved mode falls back to Practice");
+  const previousBatchCalls = batchCalls;
   for (let attempt = 0; attempt < 2; attempt++) {
     await page.locator("#start").click();
     await page.locator('#game:not([aria-busy="true"]) #choices button').first().waitFor();
-    const questions = [];
     for (let index = 0; index < 3; index++) {
-      questions.push([await page.locator("#prompt").textContent(), await page.locator("#choices button").allTextContents()]);
       await page.locator("#reveal").click();
       await page.locator("#next").click();
     }
-    dailySets.push(questions);
     await stopSession();
   }
-  assert.deepEqual(dailySets[0], dailySets[1]);
-  assert.equal(bulkCalls, 2, "one bulk detail request per daily startup");
+  assert.equal(batchCalls - previousBatchCalls, 2, "one practice batch request per startup");
+  assert.equal(bulkCalls, 0, "Removed mode does not request seeded bulk details");
   assert.deepEqual(errors, []);
   console.log("Kanji Imposters browser checks passed.");
 } finally {

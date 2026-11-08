@@ -78,7 +78,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
       acceptedMeanings: [...new Set([item.meaning, ...(item.meanings || []), ...(item.acceptedMeanings || [])])],
       writtenForms: (item.writtenForms || []).filter((word) => typeof word === "string" && /\p{Script=Han}/u.test(word)),
       level: Number.isInteger(levelNum) && levelNum >= 1 && levelNum <= 5 ? `N${levelNum}` :
-        (LEVELS.includes(item.level) ? item.level : "N3"),
+        (LEVELS.includes(item.level) ? item.level : "Unrated"),
       romaji: typeof item.romaji === "string" ? item.romaji.trim() : "",
       exampleSourceId: item.exampleSourceId,
       examples: (item.examples || []).map((example) => ({
@@ -164,8 +164,8 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
   }
   function getExample(item) {
     const candidates = [item.word, item.furigana].filter(Boolean).sort((a, b) => b.length - a.length);
-    const available = [...item.examples, ...(!item.examples.length && item.example ? [{ japanese: item.example, english: item.exampleMeaning }] : [])]
-      .filter((example) => candidates.some((term) => example.japanese?.includes(term)));
+    const available = item.examples.filter((example) => !example.generated && example.english
+      && candidates.some((term) => example.japanese?.includes(term)));
     const example = available.length ? randomItem(available) : null;
     if (example) {
       let clozeSentence = example.japanese;
@@ -178,24 +178,10 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
           break;
         }
       }
-      if (!targetFound) {
-        return {
-          sentence: example.japanese,
-          clozeSentence: `「${item.meaning}」という意味の言葉は「___」です。`,
-          translation: example.english,
-          generated: true
-        };
-      }
-      return { sentence: example.japanese, clozeSentence, translation: example.english,
-        generated: false, synthetic: example.generated ?? false, reviewed: example.reviewed ?? false };
+      if (!targetFound) return null;
+      return { sentence: example.japanese, clozeSentence, translation: example.english };
     }
-    const sentence = `「${item.meaning}」という意味の言葉は「${item.word}」です。`;
-    return {
-      sentence,
-      clozeSentence: `「${item.meaning}」という意味の言葉は「___」です。`,
-      translation: `The word meaning “${item.meaning}” is “${item.word}.”`,
-      generated: true
-    };
+    return null;
   }
   function renderQuestion(item) {
     const inputWasActive = state.inputActivated;
@@ -251,10 +237,9 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
       $("#answerInput").placeholder = "Type the English meaning";
     } else if (mode === "cloze" && dir === "je") {
       const example = getExample(item);
-      $("#prompt").textContent = `Type the English meaning of the highlighted word${example.synthetic ? ` · AI-generated, ${example.reviewed ? "reviewed" : "unverified"}` : ""}`;
-      $("#word").innerHTML = example.generated ? wordPrompt(item)
-        : `<span class="japanese">${escapeHTML(example.sentence).replace(/(.*)/, (all) => highlightTerm(all, item))}</span>`;
-      if (!example.generated && item.writtenForms.length) {
+      $("#prompt").textContent = "Type the English meaning of the highlighted word";
+      $("#word").innerHTML = `<span class="japanese">${highlightTerm(escapeHTML(example.sentence), item)}</span>`;
+      if (item.writtenForms.length) {
         $("#word").insertAdjacentHTML("beforeend", `<span class="word-spelling-note" lang="ja">Also written: ${item.writtenForms.map(escapeHTML).join(" / ")}</span>`);
       }
       $("#answerInput").hidden = false;
@@ -268,7 +253,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
     } else {
       const example = getExample(item);
       $("#word").textContent = "？";
-      $("#prompt").textContent = `${example.generated ? "Meaning clue" : "Complete the sentence"} · type the missing Japanese word${example.synthetic ? ` · AI-generated, ${example.reviewed ? "reviewed" : "unverified"}` : ""}`;
+      $("#prompt").textContent = "Complete the sentence · type the missing Japanese word";
       $("#prompt").insertAdjacentHTML("beforeend", `<strong class="japanese">${escapeHTML(example.clozeSentence)}</strong>`);
       $("#answerInput").hidden = false;
       $("#answerInput").placeholder = kanaPlaceholder("Type the missing word");
@@ -294,20 +279,19 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
     $("#skipButton").disabled = true;
     setStatus("Finding a word…");
     try {
-      const item = await acquireWord();
+      let item = await acquireWord();
       if (state.session.finished) return;
-      if (currentSettings().mode === "cloze" && getExample(item).generated) {
-        setStatus("Finding an example sentence…");
-        try {
-          const examples = await loadSentences(item.word);
+      if (currentSettings().mode === "cloze") {
+        for (let attempt = 0; attempt < 5 && !getExample(item); attempt++) {
+          setStatus("Finding a sourced example sentence…");
+          const examples = await loadSentences(item.word, undefined, { corpusOnly: true });
           if (state.session.finished) return;
           item.examples = [...item.examples, ...examples];
-          if (getExample(item).generated) setWarning("No matching example sentence is available. This question uses a meaning clue instead.");
-        } catch (error) {
+          if (getExample(item)) break;
+          if (attempt < 4) item = await acquireWord();
           if (state.session.finished) return;
-          console.warn("Cloze example lookup failed:", error);
-          setWarning(`${error.message} This question uses a meaning clue instead.`);
         }
+        if (!getExample(item)) throw new Error("No matching sourced sentences were found for cloze practice. Choose Typing or Multiple choice, or retry later.");
       }
       renderQuestion(item);
     } catch (error) {

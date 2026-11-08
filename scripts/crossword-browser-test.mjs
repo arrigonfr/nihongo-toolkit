@@ -45,7 +45,7 @@ try {
       Date.now = () => 1760000000000;
       if (!localStorage.getItem("nihon:crossword-settings-v1")) {
         localStorage.setItem("nihon:crossword-settings-v1", JSON.stringify({
-          answerMode: "kana", gameMode: "classic", level: "5", size: "small", timerEnabled: false
+          answerMode: "kana", gameMode: "daily", themeCategory: "food", level: "5", size: "small", timerEnabled: false
         }));
       }
       localStorage.setItem("nihon:study-controls-v1", JSON.stringify({ audio: false, furigana: false, romaji: false }));
@@ -103,6 +103,7 @@ try {
       await customize();
       await page.click("#newPuzzleBtn");
       await page.waitForFunction(() => !document.getElementById("feedbackBanner").textContent.startsWith("Generating"));
+      await page.waitForFunction(() => !document.getElementById("newPuzzleBtn").disabled);
     }
     async function revealAndCheck(mode) {
       assert.equal(await page.locator("#feedbackBanner").isVisible(), false, await page.textContent("#feedbackBanner"));
@@ -143,6 +144,10 @@ try {
     }
 
     await page.goto(`http://127.0.0.1:${vite.httpServer.address().port}/${encodeURIComponent("パズル")}.html`);
+    const migrated = await page.evaluate(() => JSON.parse(localStorage.getItem("nihon:crossword-settings-v1")));
+    assert.equal(migrated.gameMode, "classic");
+    assert.equal("themeCategory" in migrated, false);
+    assert.equal(await page.locator('#themeSelect, #gameModeSelect option[value="daily"]').count(), 0);
     assert.equal(await page.locator("#crosswordGrid .cw-cell").count(), 0, "Opening the tool does not generate a puzzle");
     await page.click("#newPuzzleBtn");
     await page.waitForFunction(() => document.querySelector("#crosswordGrid .cw-cell:not(.block)"));
@@ -465,7 +470,8 @@ try {
       assert.equal(await cellAt(ending).getAttribute("data-char"), "る", `${selection}: ${answer} fills only the unfinished word`);
       assert.equal(await page.textContent("#statWordsCorrect"), "2", "Both intersecting words finish without a false Sudden Death loss");
     }
-    await page.click("#settingsDrawer summary");
+    await customize();
+    if (!await page.locator("#settingsDrawer").evaluate((drawer) => drawer.open)) await page.click("#settingsDrawer summary");
     for (const style of ["popup", "cell"]) {
       await page.selectOption("#inputStyleSelect", style, { force: true });
       await newPuzzle();

@@ -7,9 +7,13 @@ import { once } from "node:events";
 import { openDatabase } from "../src/database.js";
 
 test("quiz eligibility rejects radical forms and component-only entries, not real kanji that are also radicals", () => {
-  for (const char of ["⼀", "⽊", "⺅", "氵", "忄", "亠", "丶", "abc", "あ", "日月"]) {
+  for (const char of ["⼀", "⽊", "⺅", "abc", "あ", "日月"]) {
     assert.equal(isPracticeKanji(char, ["モク"], ["き"], ["tree"]), false, char);
   }
+  for (const char of ["氵", "忄", "亠", "丶"]) {
+    assert.equal(isPracticeKanji(char, ["モク"], ["き"], ["left-side radical"]), false, char);
+  }
+  assert.equal(isPracticeKanji("丶", ["チュ"], [], ["dot"]), true, "Eligibility follows source meanings, not a character blacklist");
   assert.equal(isPracticeKanji("木", ["モク"], ["き"], ["tree"]), true);
   assert.equal(isPracticeKanji("一", ["イチ"], ["ひと.つ"], ["one", "one radical (no.1)"]), true);
   assert.equal(isPracticeKanji("禾", ["カ"], [], ["two-branch tree radical (no. 115)"]), false);

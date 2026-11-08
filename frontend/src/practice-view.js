@@ -37,7 +37,7 @@ export function renderPractice(kind) {
       </header>
       <main>
         <section class="intro">
-          <p class="eyebrow">A small daily practice</p><h1>${tool.heading}</h1>
+          <p class="eyebrow">Focused Japanese practice</p><h1>${tool.heading}</h1>
           <p>${kanji ? "Choose a JLPT level and build confidence one kanji at a time." : "Practice hiragana and katakana together with quick questions and focused sessions."}</p>
         </section>
         <div class="main-column">

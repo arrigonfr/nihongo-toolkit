@@ -1,14 +1,41 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { conjugate } from "../src/conjugation.js";
-import { practiceWords, wordCategories, formCatalog } from "../src/conjugation-practice-data.js";
+import { wordCategories, formCatalog } from "../src/conjugation-practice-data.js";
 import {
   cleanSettings, defaults, createPool, evaluateAnswer, normalizeAnswer, PracticeSession,
-  chooseQuestion, sampleChoices, exampleFor, ruleFor
+  chooseQuestion, sampleChoices, loadPracticeEntries, ruleFor
 } from "../src/conjugation-practice-engine.js";
 
+// Explicit test inputs, never imported by the application.
+const practiceWords = [
+  ["食べる", "たべる", "ichidan", "v1"], ["見る", "みる", "ichidan", "v1"],
+  ["起きる", "おきる", "ichidan", "v1"], ["寝る", "ねる", "ichidan", "v1"],
+  ["書く", "かく", "godan", "v5k"], ["読む", "よむ", "godan", "v5m"],
+  ["行く", "いく", "godan", "v5k-s"], ["する", "する", "suru", "vs-i"],
+  ["来る", "くる", "kuru", "vk"], ["ある", "ある", "godan", "v5r-i"],
+  ["いい", "いい", "i-adjective", "adj-ix"], ["高い", "たかい", "i-adjective", "adj-i"],
+  ["静か", "しずか", "na-adjective", "adj-na"], ["勉強する", "べんきょうする", "suru", "vs"],
+  ["食べておく", "たべておく", "godan", "v5k"]
+].map(([word, reading, type, tag], i) => ({ id: `test:${i}`, word, reading, type, tag, level: 5, meanings: ["test gloss"] }));
+loadPracticeEntries(practiceWords);
 const all = { ...defaults, levels: [5, 4, 3, 2, 1], forms: Object.keys(formCatalog) };
 const pool = createPool(all);
+test("empty or unsupported dictionary input never substitutes a fixed bank", () => {
+  try {
+    loadPracticeEntries([]);
+    assert.deepEqual(createPool(all), []);
+    assert.throws(() => sessionFor(), /No dictionary-backed/);
+    loadPracticeEntries([{ ...practiceWords[0], type: "noun" }]);
+    assert.deepEqual(createPool(all), []);
+    loadPracticeEntries([practiceWords[0], practiceWords[0]]);
+    assert.equal(new Set(createPool(all).map((q) => q.key)).size, createPool(all).length);
+    loadPracticeEntries([{ ...practiceWords[0], reading: "タベル" }]);
+    assert.ok(createPool(all).every((q) => q.entry.reading === "たべる"));
+    loadPracticeEntries([{ ...practiceWords[0], type: "godan", reading: "たべ" }]);
+    assert.deepEqual(createPool(all), []);
+  } finally { loadPracticeEntries(practiceWords); }
+});
 const question = (word, id) => {
   const found = pool.find((q) => q.entry.word === word && q.row.id === id);
   assert.ok(found, `${word}: ${id} exists`);
@@ -41,9 +68,8 @@ test("balanced sessions avoid the previous session when alternative questions ex
   }
 });
 
-test("bank covers every category, level and selected form with valid generated answers and examples", () => {
-  assert.ok(practiceWords.length >= 45);
-  assert.ok(pool.length > 1000);
+test("loaded dictionary entries cover grammatical forms with valid generated answers", () => {
+  assert.ok(pool.length > 500);
   assert.equal(new Set(pool.map((q) => q.key)).size, pool.length);
   assert.deepEqual(new Set(pool.map((q) => q.family)), new Set(Object.keys(formCatalog)));
   assert.deepEqual(new Set(pool.map((q) => q.entry.category)), new Set(Object.keys(wordCategories)));
@@ -53,10 +79,6 @@ test("bank covers every category, level and selected form with valid generated a
     assert.equal(evaluateAnswer(q, q.row.word), "correct", q.key);
     assert.equal(evaluateAnswer(q, `${q.row.word} / ${q.row.reading}`, "both"), "correct", q.key);
     assert.ok(ruleFor(q));
-    const example = exampleFor(q);
-    assert.ok(example.japanese.includes(q.row.word), q.key);
-    assert.ok(example.english.length > 5);
-    assert.doesNotMatch(example.japanese + example.english, /undefined|NaN/);
   }
 });
 
@@ -111,8 +133,6 @@ test("equivalent polite negatives match in every input script without accepting 
   for (const [word, id, variants] of [
     ["静か", "negative-polite", ["静かではありません", "静かじゃありません", "静かではないです", "静かじゃないです"]],
     ["静か", "pastNegative-polite", ["静かではありませんでした", "静かじゃありませんでした", "静かではなかったです", "静かじゃなかったです"]],
-    ["だ", "negative-polite", ["ではありません", "じゃありません", "ではないです", "じゃないです"]],
-    ["だ", "pastNegative-polite", ["ではありませんでした", "じゃありませんでした", "ではなかったです", "じゃなかったです"]],
     ["食べる", "desire-negative-polite", ["食べたくないです", "食べたくありません"]],
     ["食べる", "desire-pastNegative-polite", ["食べたくなかったです", "食べたくありませんでした"]],
     ["食べる", "basic-negative-polite", ["食べません", "食べないです"]],
@@ -143,7 +163,7 @@ test("equivalent polite negatives match in every input script without accepting 
   assert.equal(ruleFor(question("静か", "negative-polite")), question("静か", "negative-polite").row.note);
 });
 
-test("Mixed prompt presentation varies per question, not on retries, and respects Sentence mode", () => {
+test("Mixed prompts use only grammatical descriptions", () => {
   assert.equal(cleanSettings({ prompt: "mixed" }).prompt, "mixed");
   assert.equal(cleanSettings({ prompt: "invalid" }).prompt, defaults.prompt);
   const random = [0, 0, 0, 0.5, 0, 0.99];
@@ -158,9 +178,19 @@ test("Mixed prompt presentation varies per question, not on retries, and respect
   assert.equal(session.prompt, "description");
   answerCurrent(session, 250);
   session.next(300);
-  assert.equal(session.prompt, "sentence");
+  assert.equal(session.prompt, "description");
   assert.equal(session.settings.prompt, "mixed");
-  assert.equal(sessionFor({ mode: "sentence", prompt: "mixed" }).prompt, "sentence");
+});
+
+test("removed sentence settings migrate to playable defaults without changing other settings", () => {
+  const settings = cleanSettings({ mode: "sentence", prompt: "sentence", questions: 15, types: ["ichidan"], forms: ["te"] });
+  assert.equal(settings.mode, "classic");
+  assert.equal(settings.prompt, "name");
+  assert.equal(settings.questions, 15);
+  assert.deepEqual(settings.types, ["ichidan"]);
+  assert.deepEqual(settings.forms, ["te"]);
+  const session = new PracticeSession(settings, {}, 0, () => 0);
+  assert.equal(session.submit(session.current.row.reading, {}, 10), "correct");
 });
 
 test("level and multi-select filters combine vocabulary and grammatical difficulty", () => {
@@ -207,6 +237,7 @@ test("settings restoration validates enums, booleans, arrays and bounds", () => 
 });
 
 test("removed preferences migrate to fixed practice behavior", () => {
+  assert.equal(cleanSettings({ mode: "daily" }).mode, "classic");
   const cleaned = cleanSettings({ script: "both", kanji: false, input: "both", language: "en", repeat: false, priority: "new", examples: true, fontSize: 48 });
   assert.equal(cleaned.script, "furigana");
   assert.equal(Object.hasOwn(cleaned, "kanji"), false);
@@ -220,7 +251,7 @@ test("removed preferences migrate to fixed practice behavior", () => {
 });
 
 test("classic and quick finish at exact question count; duplicate submission cannot add scores", () => {
-  for (const [mode, limit] of [["classic", 3], ["quick", 5], ["daily", 5]]) {
+  for (const [mode, limit] of [["classic", 3], ["quick", 5]]) {
     const session = sessionFor({ mode, questions: 3 });
     for (let i = 0; i < limit; i++) {
       assert.equal(answerCurrent(session), "correct");

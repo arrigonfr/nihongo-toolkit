@@ -11,6 +11,7 @@
     "frontend"
   ],
   "scripts": {
+    "install-deps": "npm install --registry=https://registry.npmjs.org/",
     "dev": "node scripts/dev.mjs",
     "dev:backend": "npm run dev -w backend",
     "dev:frontend": "npm run dev -w frontend",

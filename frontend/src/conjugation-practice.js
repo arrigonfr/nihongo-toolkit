@@ -1,6 +1,6 @@
 import { bind } from "wanakana";
 import { API_BASE } from "./api.js";
-import { PracticeSession, cleanSettings, defaults, modes, createPool, exampleFor, ruleFor, normalizeAnswer, sampleChoices, answerHint } from "./conjugation-practice-engine.js";
+import { PracticeSession, cleanSettings, defaults, modes, createPool, loadPracticeEntries, ruleFor, normalizeAnswer, sampleChoices, answerHint } from "./conjugation-practice-engine.js";
 import { wordCategories, formCatalog } from "./conjugation-practice-data.js";
 import { mountStudyControls, study, japaneseHTML, audioHTML } from "./study-controls.js";
 import { escape } from "./examples.js";
@@ -72,16 +72,16 @@ $("quickSettings").insertBefore($("levelSettings"), $("setting-questions").close
 const syncModePills = pillSelect($("setting-mode"), {
   classic: "Conjugate words with your selected filters.", quick: "A short drill of five questions.",
   marathon: "Continue until you stop or reach the mistake limit.", timed: "Answer as many questions as you can before time runs out.",
-  sudden: "The first missed or assisted answer ends the challenge.", daily: "Complete five daily practice questions.",
+  sudden: "The first missed or assisted answer ends the challenge.",
   weak: "Practice previously missed or assisted word–form pairs.", mixed: "Review previously practiced word–form pairs.",
-  comparison: "Distinguish potential, passive and causative forms.", sentence: "Conjugate the word to complete a sentence.",
+  comparison: "Distinguish potential, passive and causative forms.",
   reverse: "Identify the base word or grammatical features of a conjugated form.", irregular: "Focus on irregular verbs."
 });
 $("questionSettings").innerHTML = [
   select("politeness", "Politeness", [["both", "All"], ["plain", "Plain"], ["polite", "Polite"]]),
   select("polarity", "Polarity", [["both", "All"], ["affirmative", "Affirmative"], ["negative", "Negative"]]),
   select("tense", "Tense", [["both", "All"], ["non-past", "Non-past"], ["past", "Past"]]),
-  select("prompt", "Requested form shown as", [["name", "Form name"], ["description", "Usage description"], ["sentence", "Example sentence with a blank"], ["mixed", "Mixed"]]),
+  select("prompt", "Requested form shown as", [["name", "Form name"], ["description", "Usage description"], ["mixed", "Mixed"]]),
   select("reverseTask", "Reverse mode: identify", [["base", "Base word"], ["form", "Form name"], ["polarity", "Polarity"], ["tense", "Tense"], ["politeness", "Politeness"]], "Choose what you will be quizzed on"),
   number("seconds", "Timed duration (s)", 10, 3600),
   plainNumber("mistakes", "Max. Marathon mistakes", 0, 100),
@@ -96,6 +96,7 @@ $("displaySettings").innerHTML = [
   select("font", "Japanese font", Object.entries(JAPANESE_FONTS)),
   plainSelect("fontSize", "Japanese font size", [24, 32, 40, 48, 56, 64].map((n) => [n, `${n}px`]))
 ].join("");
+$("questionSettings").insertAdjacentHTML("beforeend", '<p class="small muted">Auxiliary-pattern vocabulary is unavailable without dictionary classification.</p>');
 groupSettings($("questionSettings"), [
   ["Form filters", ["setting-politeness", "setting-polarity", "setting-tense"]],
   ["Questions & answers", ["setting-prompt", "setting-reverseTask"]],
@@ -156,7 +157,7 @@ function syncSettings() {
   applyJapaneseFont(session?.settings.font ?? settings.font, session?.started ?? "settings");
   const mode = settings.mode, recognition = ["comparison", "reverse"].includes(mode);
   const reasons = {
-    questions: ["quick", "daily", "timed", "marathon", "sudden"].includes(mode) ? "Session length is determined by this mode." : "",
+    questions: ["quick", "timed", "marathon", "sudden"].includes(mode) ? "Session length is determined by this mode." : "",
     seconds: mode !== "timed" ? "Used in Timed Challenge." : "",
     mistakes: mode !== "marathon" ? "Used in Marathon." : "",
     timer: mode === "timed" ? "Timed Challenge always shows the countdown." : "",
@@ -247,7 +248,6 @@ function renderQuestion() {
   const q = session.current, s = session.settings;
   const recognition = s.mode === "reverse" || s.mode === "comparison";
   const word = recognition ? q.row : q.entry;
-  const example = exampleFor(q);
   const field = s.mode === "comparison" ? "form" : session.task;
   let requested;
   if (recognition) {
@@ -259,10 +259,6 @@ function renderQuestion() {
     const traits = [q.row.polarity, q.row.tense].filter((v) => v !== "neutral")
       .map((value) => bilingual(traitsJa[value], value)).join(" · ");
     requested = `<strong>${session.prompt === "description" ? bilingual(descriptionsJa[q.family], formCatalog[q.family].use) : bilingual(formCatalog[q.family].ja, formCatalog[q.family].en)}</strong><div class="traits">${register}${traits}</div>`;
-    if (session.prompt === "sentence") {
-      requested = `<div class="sentence-prompt" lang="ja">${escape(example.before)} <strong>＿＿＿</strong> ${escape(example.after)}</div>
-        <p class="small">${escape(example.english)}</p>` + requested;
-    }
   }
   $("questionBody").innerHTML = `<div class="word-prompt"><span class="badge">N${q.level} · ${recognition ? "READ & RECOGNIZE" : "CONJUGATE"}</span>
     <div class="base-word">${japanese(word.word, word.reading)} ${audioHTML(word.reading)}</div>
@@ -364,7 +360,8 @@ function startError(message) {
   $("startError").textContent = message;
   if (message) $("startError").scrollIntoView({ block: "nearest" });
 }
-function start() {
+async function start() {
+  if ($("startButton").disabled) return;
   cancelAutoAdvance();
   composing = false;
   const invalid = [...document.querySelectorAll("[data-setting]")].find((input) => !input.disabled && !input.checkValidity());
@@ -375,12 +372,25 @@ function start() {
     startError(missing || "Check your numeric settings before starting.");
     return;
   }
-  try { session = new PracticeSession(settings, progress, Date.now(), Math.random, previousSessionWords); }
-  catch (error) { startError(error.message); return; }
+  $("startButton").disabled = true;
+  startError("Loading dictionary-backed vocabulary…");
+  try {
+    loadPracticeEntries([]);
+    const response = await fetch(`${API_BASE}/api/conjugation-practice?level=all`, { signal: AbortSignal.timeout(30000) });
+    if (!response.ok) throw new Error("The dictionary practice source is unavailable. Check the backend and retry; no fallback word bank is used.");
+    const data = await response.json();
+    loadPracticeEntries(data.entries);
+    session = new PracticeSession(settings, progress, Date.now(), Math.random, previousSessionWords);
+    renderProgress();
+  } catch (error) {
+    startError(`Could not start dictionary practice: ${error.message}`);
+    return;
+  } finally { $("startButton").disabled = false; }
   syncSettings();
   startError("");
   notice(session.limit < session.requestedLimit
-    ? `Only ${session.limit} distinct questions match these filters. This session will use ${session.limit}.` : "");
+    ? `JMdict vocabulary loaded. Only ${session.limit} distinct questions match these filters. This session will use ${session.limit}.`
+    : "Vocabulary source: JMdict with linked JLPT levels. Conjugated answers use grammatical rules.");
   $("setup").hidden = true; $("results").hidden = true; $("practice").hidden = false;
   document.body.dataset.practicing = "true";
   $("resetButton").disabled = true;

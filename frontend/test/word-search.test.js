@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   DEFAULTS, DIRECTIONS, effectiveSettings, validateSettings, filterVocabulary,
-  generateWordSearch, listStyles, straightPath, matchSelection, reviewImport
+  generateWordSearch, listStyles, straightPath, matchSelection, reviewImport, resolveReviewWords
 } from "../src/word-search-engine.js";
 
 const pairs = [
@@ -20,6 +20,17 @@ const pairs = [
   ["家族", "かぞく", "family"], ["会社", "かいしゃ", "company"]
 ];
 const pool = pairs.map(([word, reading, meaning], index) => ({ id: String(index), word, reading, meaning, level: 5, partOfSpeech: "noun" }));
+
+test("review questions resolve identities without trusting imported clues", () => {
+  const saved = [{ ...pool[0], meaning: "invented clue", example: "invented sentence" },
+    { word: "偽", reading: "にせ", meaning: "fake" }];
+  assert.deepEqual(resolveReviewWords(saved, pool), [pool[0]]);
+  assert.deepEqual(resolveReviewWords(saved, []), []);
+});
+test("Japanese description questions fail explicitly without a dataset", () => {
+  assert.throws(() => effectiveSettings({ ...DEFAULTS, list: "japaneseClue" }), /unavailable.*dictionary/);
+  assert.throws(() => effectiveSettings({ ...DEFAULTS, list: "english,japaneseClue" }), /unavailable.*dictionary/);
+});
 
 test("new puzzles default to all eight directions without overriding saved preferences", () => {
   assert.equal(DEFAULTS.directions, "all");
@@ -89,11 +100,11 @@ test("invalid paths, wrong direction, duplicate words, and single kanji", () => 
   assert.equal(matchSelection(puzzle, 5, 7).entry.key, "a", "Incidental valid occurrences remain selectable");
 });
 
-test("level and category filters never silently broaden; impossible puzzles fail explicitly", () => {
+test("level filters remain active and obsolete categories are ignored; impossible puzzles fail explicitly", () => {
   const vocabulary = [...pool, { ...pool[0], level: 1 }, { ...pool[1], level: 3 }];
   assert.deepEqual(filterVocabulary(vocabulary, { ...DEFAULTS, level: "3-1" }).map((item) => item.level), [1, 3]);
-  assert.ok(filterVocabulary(pool, { ...DEFAULTS, category: "animals" }).every((item) => /cat|dog|bird|fish/.test(item.meaning)));
-  assert.throws(() => generateWordSearch(pool, { ...DEFAULTS, category: "animals", count: 20 }), /Only/);
+  assert.deepEqual(filterVocabulary(pool, { ...DEFAULTS, category: "animals" }), filterVocabulary(pool, DEFAULTS));
+  assert.equal("category" in validateSettings({ ...DEFAULTS, category: "animals" }), false);
   assert.throws(() => generateWordSearch(pool.slice(0, 1), { ...DEFAULTS, count: 8 }), /Only 1/);
   assert.throws(() => generateWordSearch(pool, { ...DEFAULTS, size: 0 }), /grid/);
   const longWords = Array.from({ length: 20 }, (_, i) => ({ ...pool[0], word: `ああああ${String.fromCodePoint(0x304b + i)}`, reading: `ああああ${String.fromCodePoint(0x304b + i)}` }));
@@ -105,7 +116,7 @@ test("level and category filters never silently broaden; impossible puzzles fail
 test("mode overrides, validation, and import safety", () => {
   assert.equal(effectiveSettings({ ...DEFAULTS, mode: "quick", count: 20 }).count, 5);
   const daily = effectiveSettings({ ...DEFAULTS, mode: "daily", level: "1", timer: true, count: 20 });
-  assert.equal(daily.level, "5"); assert.equal(daily.timer, false); assert.equal(daily.reveals, "disabled");
+  assert.equal(daily.mode, "classic"); assert.equal(daily.level, "1"); assert.equal(daily.timer, true);
   assert.equal(effectiveSettings({ ...DEFAULTS, mode: "kanji" }).script, "kanji");
   assert.equal(effectiveSettings({ ...DEFAULTS, mode: "reverse" }).directions, "reverse");
   assert.equal(effectiveSettings({ ...DEFAULTS, mode: "memory" }).list, "hidden");
@@ -133,5 +144,6 @@ test("clue-list display accepts legacy singles and combinations, hidden is exclu
   assert.equal(DEFAULTS.level, "5");
   assert.throws(() => validateSettings({ ...DEFAULTS, list: "hidden,english" }));
   assert.equal(effectiveSettings({ ...DEFAULTS, mode: "clue", list: "japanese,icon" }).list, "english");
-  assert.equal(effectiveSettings({ ...DEFAULTS, mode: "daily", list: "icon,clue" }).list, "japanese");
+  assert.equal(effectiveSettings({ ...DEFAULTS, mode: "daily", list: "icon,clue" }).list, "clue");
+  assert.equal(validateSettings({ ...DEFAULTS, list: "icon" }).list, "japanese");
 });

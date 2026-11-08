@@ -30,7 +30,7 @@ try {
     ["katsuyo.html", ["setting-fontSize"]],
     ["katsuyo-renshuu.html", ["setting-mode"]],
     ["eawase.html", ["setting-players"]],
-    ["kotoba-sagashi.html", ["setting-category"]],
+    ["kotoba-sagashi.html", ["setting-fontSize"]],
     ["shiritori.html", ["setting-opponent"]],
     ["kotoba.html", ["colorThemeSelect"]],
     ["fumitoki.html", ["colorThemeSelect"]],

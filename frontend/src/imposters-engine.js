@@ -1,7 +1,5 @@
-import { lookalikeSheet, cellText } from "./cheatsheet-data.js";
 import { toHiragana } from "wanakana";
 
-const groups = lookalikeSheet().tables.flatMap((table) => table.rows.map((row) => cellText(row[0]).split(/\s*\/\s*/).filter((value) => /^\p{Unified_Ideograph}$/u.test(value))));
 const character = (item) => item.kanji || item.character;
 const normalize = (value) => toHiragana(String(value).replace(/[.\-]/g, "")).toLowerCase().trim();
 export const readings = (item) => [...new Set([...(item.on_readings || []), ...(item.kun_readings || [])].map(normalize).filter(Boolean))];
@@ -30,9 +28,7 @@ export function makeQuestion(target, pool, variant, random = Math.random) {
   const eligible = targetReadings.filter((reading) => uniquePool.filter((item) => readings(item).includes(reading)).length >= 2);
   for (const prompt of shuffle(eligible, random)) {
     const matches = shuffle(uniquePool.filter((item) => character(item) !== targetChar && readings(item).includes(prompt)), random);
-    const group = groups.filter((members) => members.includes(targetChar)).flat();
-    const distractors = shuffle(uniquePool.filter((item) => !readings(item).includes(prompt) && readings(item).length), random)
-      .sort((left, right) => Number(group.includes(character(right))) - Number(group.includes(character(left))));
+    const distractors = shuffle(uniquePool.filter((item) => !readings(item).includes(prompt) && readings(item).length), random);
     const correct = [target, ...matches.slice(0, 2)];
     const wrong = distractors.slice(0, 5 - correct.length);
     if (correct.length + wrong.length !== 5) continue;

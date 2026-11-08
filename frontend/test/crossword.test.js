@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   generateCrossword,
-  matchesTheme,
   resolveEntryAnswer,
   buildClue,
   formatFuriganaHTML,
@@ -111,11 +110,12 @@ test("kanji answers exclude kana-only words and preserve kanji spellings with ok
     "Single-character words cannot form crossword entries; do not substitute their kana readings");
 });
 
-test("matchesTheme classifies food, verbs, katakana, and expressions accurately", () => {
-  assert.equal(matchesTheme(samplePool[3], "verbs"), true);
-  assert.equal(matchesTheme(samplePool[4], "food"), true);
-  assert.equal(matchesTheme(samplePool[0], "food"), false);
-  assert.equal(matchesTheme({ word: "ホテル", furigana: "ホテル", meaning: "hotel" }, "katakana"), true);
+test("obsolete theme settings do not affect clues or puzzle generation", () => {
+  assert.deepEqual(buildClue(samplePool[4], { rng: () => 0, themeKey: "food" }), buildClue(samplePool[4], { rng: () => 0 }));
+  assert.deepEqual(generateCrossword(samplePool, { seed: "no-category", themeKey: "food" }), generateCrossword(samplePool, { seed: "no-category" }));
+  const item = { word: "猫", furigana: "ねこ", meaning: "cat", fields: ["zoology"] };
+  assert.equal(buildClue(item, { rng: () => 0 }).type, "meaning");
+  assert.equal(buildClue({ ...item, usageNotes: ["usually written in kana"] }, { rng: () => 0 }).type, "usage");
 });
 
 test("buildClue supports Kanji Focus, Reverse Mode, furigana formatting, and never leaks answers in furiganaHTML", () => {

@@ -25,7 +25,7 @@ const cases = [
   ["katsuyo.html", { "setting-politeness": "polite", "setting-polarity": "negative", "setting-tense": "past", "setting-fontSize": "30", "setting-level": "3", "setting-category": "adjective", "setting-compact": true, "setting-contrast": true }],
   ["katsuyo-renshuu.html", { "setting-mode": "reverse", "setting-questions": "20", "setting-seconds": 73, "setting-mistakes": 4, "setting-hints": "limited", "setting-hintLimit": 8, "setting-revealLimit": 6, "setting-meaning": false, "setting-type": false, "setting-timer": true, "setting-fontSize": "48", "setting-autoAdvance": true }],
   ["pazuru.html", { answerModeSelect: "kanji", levelSelect: "4", sizeSelect: "custom", customWordsInput: 6, fontScaleSelect: "large", checkAvailSelect: "limited", revealAvailSelect: "disabled", hintLimitInput: 7, timedMinutesInput: 9, layoutDirSelect: "rtl", inputStyleSelect: "clues", kanjiFocusToggle: true }],
-  ["shiritori.html", { "setting-mode": "timed", "setting-opponent": "local", "setting-players": 3, "setting-entry": "both", "setting-bonus": true, "setting-bonusKana": false, "setting-reveal": true, "setting-voicing": true, "setting-hints": "disabled", "setting-timer": "60", "setting-fontSize": "large", "setting-contrast": true }],
+  ["shiritori.html", { "setting-mode": "timed", "setting-opponent": "local", "setting-players": 3, "setting-bonus": true, "setting-bonusKana": false, "setting-reveal": true, "setting-hints": "disabled", "setting-timer": "60", "setting-fontSize": "large", "setting-contrast": true }],
   ["kotoba-sagashi.html", { "setting-mode": "timed", sizePreset: "custom", "setting-size": 10, "setting-overlap": false, "setting-meanings": false, "setting-seconds": 73, "setting-fontSize": 38, "setting-contrast": true, "setting-animation": false, hintType: "length" }],
   ["eawase.html", { "setting-examples": false, "setting-content": "kana", "setting-pairing": "same-katakana", "setting-grid": "custom", "setting-count": 7, "setting-mode": "moves", "setting-flips": 23, "setting-players": "2", "setting-shuffle": "all", "setting-disappear": true, "setting-learning": false, "setting-fontSize": 36, "setting-contrast": true, hintType: "reading" }]
 ];
@@ -209,7 +209,7 @@ try {
       .map((id) => document.getElementById(id).textContent).concat(document.getElementById("answerInput").value));
     const before = await snapshot();
     const prompt = await sessionPage.textContent("#promptText");
-    assert.equal(await sessionPage.locator("#settingsPanel").isVisible(), false);
+    assert.equal(await sessionPage.locator("#settingsPanel").isVisible(), false, `${file}: setup hides after a successful start`);
     await changePending(direction, next);
     await sessionPage.locator("#fontChoice").evaluate((node, value) => { node.value = value; node.dispatchEvent(new Event("change", { bubbles: true })); }, "Sawarabi Mincho");
     await changePending("sessionMode", "timed");
@@ -259,6 +259,7 @@ try {
 
   await sessionGo("katsuyo-renshuu.html");
   await sessionPage.click("#startButton");
+  await sessionPage.locator("#practice").waitFor();
   await sessionPage.fill("#answerInput", "たべ");
   const question = await sessionPage.textContent("#questionBody");
   await changePending("setting-fontSize", "48");
@@ -272,6 +273,7 @@ try {
   await sessionPage.locator("#results").waitFor();
   await sessionPage.click("#restartButton");
   await sessionPage.click("#startButton");
+  await sessionPage.locator("#practice").waitFor();
   assert.equal(await sessionPage.evaluate(() => document.documentElement.style.getPropertyValue("--jp-size")), "48px");
   assert.match(await sessionPage.locator(".base-word [lang=ja]").first().evaluate((node) => getComputedStyle(node).fontFamily), /Sawarabi Mincho/);
 

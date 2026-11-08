@@ -9,27 +9,31 @@ import { rememberControls } from "./settings-storage.js";
 import { JAPANESE_FONTS, applyJapaneseFont } from "./japanese-fonts.js";
 import { mountStudyControls, japaneseHTML, audioHTML, speakJapanese, study } from "./study-controls.js";
 import { escape, mountSentenceExamples } from "./examples.js";
+import { localDay } from "./word-search-engine.js";
 import {
-  WORD_PAIRS, KANA_PAIRS, MODES, BACKS, GROUPS, DISPLAYS, GRIDS, SHUFFLE_MODES, DEFAULTS, CATEGORIES,
+  WORD_PAIRS, KANA_PAIRS, MODES, BACKS, GROUPS, DISPLAYS, GRIDS, SHUFFLE_MODES, DEFAULTS,
   validateSettings, effectiveSettings, generateDeck, createRound, flipCard, settleMismatch,
   checkEnd, finishRound, elapsed, accuracy, assist, canAssist, itemKey, katakanaOf, romajiOf,
-  localDay, reviewImport, restoreDaily
+  reviewImport, resolveReviewItems, PICTURE_UNAVAILABLE
 } from "./memory-engine.js";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "nihon:memory-v1";
-const freshProgress = () => ({ review: [], recent: [], completed: 0, daily: null });
+const freshProgress = () => ({ review: [], recent: [], completed: 0 });
 let settings = { ...DEFAULTS, groups: [...DEFAULTS.groups] }, progress = freshProgress(), restoreError = "";
 try {
   const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
   if (saved) {
     settings = validateSettings({ ...DEFAULTS, ...saved.settings });
+    if (settings.display === "picture") {
+      settings.display = DEFAULTS.display;
+      restoreError = `${PICTURE_UNAVAILABLE} Saved picture mode was changed to Japanese text.`;
+    }
     const review = reviewImport({ tool: "nihon-memory", version: 1, items: saved.progress?.review });
     if (!Array.isArray(saved.progress.recent) || saved.progress.recent.length > 5000
       || !saved.progress.recent.every((v) => typeof v === "string" && v.length <= 2000)
       || !Number.isInteger(saved.progress.completed) || saved.progress.completed < 0) throw new Error("Invalid saved progress.");
-    restoreDaily(saved.progress.daily, localDay());
-    const { days: _days, ...savedProgress } = saved.progress;
+    const { days: _days, daily: _daily, ...savedProgress } = saved.progress;
     progress = { ...freshProgress(), ...savedProgress, review };
   }
 } catch (error) {
@@ -38,7 +42,7 @@ try {
   progress = freshProgress();
   restoreError = "Saved Memory data could not be restored. Check settings before starting; the original storage has not been overwritten.";
 }
-let game = null, busy = false, round = 1, baseSettings = settings, gameDay = "", finalized = false;
+let game = null, busy = false, round = 1, baseSettings = settings, finalized = false;
 let hint = null, focusedId = null, detailItem = null, interval;
 const pools = new Map();
 const options = (values) => Object.entries(values).map(([value, label]) => `<option value="${escape(value)}">${escape(label)}</option>`).join("");
@@ -75,14 +79,14 @@ $("memoryRoot").innerHTML = `<div class="shell">
       <div class="board-scroll"><div id="board" role="group" aria-label="Memory cards" aria-describedby="keyboardHelp"></div><div id="emptyBoard"><span aria-hidden="true">あ <span>↔</span> ア</span><h3>Two cards. One connection.</h3><p>Start with six pairs, or make the game your own.</p><p id="startError" class="start-error"></p></div></div>
       <button id="startButton" class="primary" type="button">Start matching →</button>
       <p id="feedback" role="status" aria-live="polite">Choose your content above. Settings let you pick scripts, levels, and challenges.</p>
-      <div class="board-actions"><select id="hintType" aria-label="Hint type"><option value="pair">Highlight a pair</option><option value="meaning">Meaning / category</option><option value="reading">Reading / romaji</option></select><button id="hintButton" type="button" disabled>✧ Hint</button><button id="revealButton" type="button" disabled>Reveal pair</button><button id="restartButton" type="button" disabled>Restart</button><button id="endButton" type="button" disabled>End round</button></div>
+      <div class="board-actions"><select id="hintType" aria-label="Hint type"><option value="pair">Highlight a pair</option><option value="meaning">Meaning</option><option value="reading">Reading / romaji</option></select><button id="hintButton" type="button" disabled>✧ Hint</button><button id="revealButton" type="button" disabled>Reveal pair</button><button id="restartButton" type="button" disabled>Restart</button><button id="endButton" type="button" disabled>End round</button></div>
       <p class="small" id="keyboardHelp">Arrow keys to move · Enter / Space to flip. Match to keep your turn; a mismatch passes it to the other player.</p>
     </section>
     <section id="results" class="panel results" tabindex="-1" hidden></section>
   </main><aside class="sidebar">
     <section class="panel notebook"><div class="panel-heading"><h2>A closer look</h2><span aria-hidden="true">✎</span></div><div id="details"><p class="empty-detail" lang="ja">少しずつ。</p><p class="small">Matched pairs open their reading, meaning, and examples here.</p></div></section>
     <section class="panel"><h2>Your connections</h2><div id="matches" class="matches"><p class="small">Your matched pairs will collect here.</p></div></section>
-    <p class="small credits">JLPT levels are study estimates; categories use approximate dictionary filters. Kana represent sounds, not English meanings.<br><a href="./data-sources.html" target="_blank" rel="noopener">Dictionary & sentence credits ↗</a></p>
+    <p class="small credits">JLPT levels are study estimates. Kana represent sounds, not English meanings.<br><a href="./data-sources.html" target="_blank" rel="noopener">Dictionary & sentence credits ↗</a></p>
   </aside></div>
   <footer><span>A little practice goes a long way.</span><span lang="ja">ひとつずつ、つながる。</span></footer>
   <dialog id="reviewDialog" aria-labelledby="reviewTitle"><div class="dialog-head"><h2 id="reviewTitle">Your review notebook</h2><button type="button" data-close aria-label="Close notebook">×</button></div><div class="dialog-body"><p class="small">Missed, assisted, unfinished, and saved items. Mistake Review uses this list, keeping your chosen filters. Imported vocabulary is personal study data, not dictionary verification.</p><div class="actions"><button id="exportReview" type="button">Export JSON</button><button id="importReview" type="button">Import JSON</button><button id="resetProgress" type="button">Reset progress</button></div><input id="reviewFile" type="file" accept=".json,application/json" hidden><p id="reviewNotice" role="status"></p><div id="reviewList"></div></div></dialog>
@@ -94,10 +98,9 @@ $("settingsForm").innerHTML = `
     ${select("pairing", "Matching mode", WORD_PAIRS, "How do you want to match your cards")}
     </div></fieldset><fieldset><legend>Game mode & card clues</legend><div class="settings-grid">
     ${select("mode", "Game mode", MODES, null)}
-    ${select("display", "Card content", DISPLAYS, "English, audio and picture clues replace one side and use the natural written form on the other. Pictures use a small exact-word set. Other displays follow the shared reading toggles.")}
+    ${select("display", "Card content", DISPLAYS, "English and audio clues replace one side and use the natural written form on the other. Picture clues are unavailable because the dictionary has no picture metadata. Other displays follow the shared reading toggles.")}
     </div></fieldset><fieldset><legend>Vocabulary & kana groups</legend><div class="settings-grid">
     <div data-words>${select("level", "JLPT study levels", levels, null)}</div>
-    <div data-words>${plainSelect("category", "Vocabulary category", CATEGORIES)}</div>
     </div><div id="kanaGroups" hidden><label class="setting" data-setting-description="Choose one or more kana groups to practise. All kana includes every group."><span>Kana groups</span><select id="setting-groups">${options({ ...GROUPS })}</select></label></div></fieldset>
     <fieldset><legend>Board & players</legend><div class="settings-grid">
     ${select("grid", "Grid size", GRIDS, null)}${number("count", "Custom number of pairs", 1, 48)}
@@ -121,7 +124,6 @@ $("settingsForm").innerHTML = `
     <li><strong>Timed</strong> always counts down.</li>
     <li><strong>Move Challenge</strong> limits card flips (two flips normally make one move).</li>
     <li><strong>Marathon</strong> adds two pairs per board, up to 48.</li>
-    <li><strong>Daily</strong> uses the same eight basic kana pairs for everyone that day: solo, three hints, and no reveals, shuffle, correction, or limits. It resumes instead of restarting.</li>
     </ul></fieldset>
     <fieldset><legend>Learning support</legend><div class="challenge-settings">
     <fieldset class="challenge-setting-group"><legend>Hints</legend>
@@ -141,7 +143,7 @@ $("settingsForm").innerHTML = `
 
 const MODE_HELP = {
   classic: "Find every pair at your own pace.", timed: "Match every pair before the countdown ends.", moves: "Finish within a limited number of card flips.",
-  sudden: "A set number of mismatches ends the round.", daily: "One shared kana puzzle each day with fixed rules.", review: "Replay items saved in your notebook.",
+  sudden: "A set number of mismatches ends the round.", review: "Replay items saved in your notebook.",
   listening: "Match audio clues to their written forms (needs Audio On).", meaning: "Match Japanese with English meanings or sound descriptions.",
   reverse: "Recall the Japanese from a prompt card first.", marathon: "Clear several boards in a row; each adds two pairs."
 };
@@ -151,7 +153,7 @@ const groupHelp = {
   voiced: "Add kana with dakuten, such as が / ガ (ga) and ば / バ (ba), and handakuten, such as ぱ / パ (pa).",
   yoon: "Combine an i-row kana with small ゃ, ゅ or ょ: きゃ / キャ (kya), しゅ / シュ (shu), and ちょ / チョ (cho).",
   small: "Small kana such as ぁ / ァ and っ / ッ.",
-  special: "Practice long vowels such as かあ / カー (kaa), doubled consonants such as きって / キッテ (kitte), and syllabic n in しんよう / シンヨウ (shin'you).",
+  special: "Practice long-vowel kana patterns such as かあ / カー (kaa).",
   all: "Include every kana group."
 };
 const chipApis = [];
@@ -159,7 +161,8 @@ const mount = (id, config) => chipApis.push(mountChips($(id), { fieldClass: "mem
 mount("setting-content", { options: chipOptions({ words: "Japanese words", kana: "Japanese syllabaries" }) });
 mount("setting-pairing", { options: chipOptions(WORD_PAIRS) });
 mount("setting-mode", { options: chipOptions(MODES, MODE_HELP) });
-mount("setting-display", { options: chipOptions(DISPLAYS) });
+mount("setting-display", { options: chipOptions(DISPLAYS).map((option) => option.value === "picture"
+  ? { ...option, label: "Picture / emoji clue — unavailable (no dataset)", disabled: true, description: PICTURE_UNAVAILABLE } : option) });
 mount("setting-grid", { options: chipOptions(GRIDS) });
 mount("setting-back", { variant: "card", groupClass: "back-chips", options: Object.entries(BACKS).map(([value, back]) => ({ value, label: back.label, preview: `<span class="back-preview" data-back="${value}"><span>${back.symbol}</span></span>` })) });
 mount("setting-groups", { multiple: true, exclusive: "all", exclusiveLabel: GROUPS.all, options: Object.entries(GROUPS).map(([value, label]) => ({ value, label, description: groupHelp[value] })), descriptions: undefined });
@@ -171,7 +174,6 @@ function showStartError(text) {
 }
 function notify(text, error = false) { $("notice").textContent = text; $("notice").dataset.error = String(error); }
 function persist() {
-  if (game?.rules.mode === "daily") progress.daily = { day: gameDay, game };
   try { localStorage.setItem(storageKey, JSON.stringify({ settings, progress })); return true; }
   catch (error) { console.error("Could not save Memory data.", error); notify("Settings and progress could not be saved. Export your notebook before leaving.", true); return false; }
 }
@@ -192,8 +194,9 @@ function syncContent(content, pairing = $("setting-pairing").value) {
   document.querySelectorAll("[data-words]").forEach((node) => { node.hidden = content !== "words"; });
   $("kanaGroups").hidden = content !== "kana";
   const picture = $("setting-display").querySelector('[value="picture"]');
-  picture.disabled = content === "kana";
-  if (content === "kana" && $("setting-display").value === "picture") $("setting-display").value = "text";
+  picture.disabled = true;
+  picture.textContent = "Picture / emoji clue — unavailable (no dataset)";
+  picture.title = PICTURE_UNAVAILABLE;
 }
 function syncSettings() {
   syncContent(settings.content, settings.pairing);
@@ -210,31 +213,29 @@ function syncSettings() {
 function syncAvailability() {
   const value = (key) => $("setting-" + key).value;
   const checked = (key) => $("setting-" + key).checked;
-  const mode = value("mode"), daily = mode === "daily";
+  const mode = value("mode");
   const display = mode === "listening" ? "audio" : mode === "meaning" ? "english" : value("display");
-  const fixed = ["content", "pairing", "display", "grid", "count", "players", "timer", "timeLimit", "moveLimit", "hints", "hintLimit", "reveals", "shuffle", "correction"];
   const reasons = {
-    level: value("content") !== "words" || daily ? "Used with word content." : "",
-    category: value("content") !== "words" || daily ? "Used with word content." : "",
+    level: value("content") !== "words" ? "Used with word content." : "",
     pairing: mode === "reverse" || ["audio", "english", "picture"].includes(display) ? "The selected mode or card clues determine the pairing." : "",
     display: ["listening", "meaning"].includes(mode) ? "Set by the selected game mode." : "",
     count: value("grid") !== "custom" ? "Choose a custom grid to set the pair count." : "",
     timer: mode === "timed" ? "Timed mode always counts down." : "",
     timeLimit: mode === "timed" || value("timer") === "down" ? "Countdown always enforces the time limit." : "",
-    seconds: daily || !(mode === "timed" || checked("timeLimit") || value("timer") === "down") ? "Enable a time limit or countdown." : "",
+    seconds: !(mode === "timed" || checked("timeLimit") || value("timer") === "down") ? "Enable a time limit or countdown." : "",
     moveLimit: mode === "moves" ? "Move Challenge always limits flips." : "",
-    flips: daily || !(mode === "moves" || checked("moveLimit")) ? "Enable a flip limit." : "",
+    flips: !(mode === "moves" || checked("moveLimit")) ? "Enable a flip limit." : "",
     mistakes: mode !== "sudden" ? "Used in Sudden Death." : "",
     rounds: mode !== "marathon" ? "Used in Marathon." : "",
-    examples: daily || value("content") !== "words" ? "Sentence examples are available for words, not individual kana." : "",
+    examples: value("content") !== "words" ? "Sentence examples are available for words, not individual kana." : "",
     hintLimit: value("hints") !== "limited" ? "Choose limited hints." : "",
-    revealLimit: daily || value("reveals") !== "limited" ? "Choose limited reveals." : ""
+    revealLimit: value("reveals") !== "limited" ? "Choose limited reveals." : ""
   };
   for (const input of document.querySelectorAll("[data-setting]")) {
     const key = input.dataset.setting;
-    setSettingAvailability(input, daily && fixed.includes(key) ? "Daily uses fixed rules; your preference is kept for other modes." : reasons[key]);
+    setSettingAvailability(input, reasons[key]);
   }
-  setSettingAvailability($("setting-groups"), daily ? "Daily uses fixed kana groups." : value("content") !== "kana" ? "Used with syllabary content." : "");
+  setSettingAvailability($("setting-groups"), value("content") !== "kana" ? "Used with syllabary content." : "");
 }
 function displaySettings() {
   const display = game?.rules || settings;
@@ -303,11 +304,6 @@ const sessionView = createSessionView({
 $("settingsPanel").after($("startError"));
 async function startGame(nextRound = false) {
   if (busy) return;
-  if (game?.rules.mode === "daily" && settings.mode === "daily" && gameDay === localDay()) {
-    if (game.ended) renderResults(); else sessionView.start();
-    notify("Today's puzzle is already open. Daily progress is kept until the next day.");
-    return;
-  }
   const choice = game && !game.ended ? await confirmAction("Leave this round?", { review: true }) : "save";
   if (!choice) return;
   busy = true;
@@ -321,28 +317,27 @@ async function startGame(nextRound = false) {
     const next = nextRound ? round + 1 : 1;
     const base = nextRound ? baseSettings : { ...settings, groups: [...settings.groups] };
     const rules = effectiveSettings(base, next);
-    const day = localDay();
     if (rules.display === "audio" && (!study.audio || !window.speechSynthesis)) throw new Error("Listening requires Audio On and a browser with Japanese speech playback.");
-    const saved = rules.mode === "daily" ? restoreDaily(progress.daily, day) : null;
     let deck;
-    if (!saved) {
+    {
       let pool = [];
       if (rules.mode === "review") {
-        pool = progress.review;
-        if (!pool.length) throw new Error("Your review notebook is empty. Play a round or import a Memory review list first.");
+        if (!progress.review.length) throw new Error("Your review notebook is empty. Play a round or import a Memory review list first.");
+        if (rules.content === "words" && !pools.has(rules.level)) pools.set(rules.level, await fetchItems("/api/word-search/vocabulary", { level: rules.level }));
+        pool = resolveReviewItems(progress.review, rules.content === "words" ? pools.get(rules.level) : []);
+        if (!pool.length) throw new Error("No saved review items could be verified in the selected dictionary dataset. Choose different levels or save new items.");
       } else if (rules.content === "words") {
         if (!pools.has(rules.level)) pools.set(rules.level, await fetchItems("/api/word-search/vocabulary", { level: rules.level }));
         pool = pools.get(rules.level);
       }
-      deck = generateDeck(pool, rules, { seed: rules.mode === "daily" ? `memory-v1:${day}` : `${Date.now()}:${Math.random()}`,
-        recent: rules.mode === "daily" ? [] : progress.recent });
+      deck = generateDeck(pool, rules, { seed: `${Date.now()}:${Math.random()}`, recent: progress.recent });
     }
     if (game && !game.ended) { finishRound(game, "Round ended"); finalize(choice === "save"); }
-    game = saved || createRound(deck, rules);
+    game = createRound(deck, rules);
     displaySettings();
     if (game.rules.display === "furigana") controls.setPreferences({ furigana: true });
     if (game.rules.display === "romaji") controls.setPreferences({ romaji: true });
-    baseSettings = base; round = next; gameDay = day; finalized = Boolean(saved?.ended);
+    baseSettings = base; round = next; finalized = false;
     hint = null; detailItem = null; focusedId = null;
     progress.recent = [...progress.recent, ...game.deck.pairs.map((pair) => pair.key)].slice(-160);
     $("details").innerHTML = `<p class="empty-detail" lang="ja">つながる。</p><p class="small">Match a pair to explore it here.</p>`;
@@ -357,7 +352,7 @@ async function startGame(nextRound = false) {
     renderBoard(); renderMatches(); updateStats(); updateLifetime(); persist();
     $("settingsPanel").open = false;
     if (game.ended) renderResults();
-    notify(saved ? "Today's puzzle restored." : `${game.deck.pairs.length} pairs, ready when you are.`);
+    notify(`${game.deck.pairs.length} pairs, ready when you are.`);
   } catch (error) {
     sessionView.setup();
     console.error("Could not start Memory round.", error); notify("", false); showStartError(error.message);
@@ -369,7 +364,7 @@ async function startGame(nextRound = false) {
   }
 }
 async function restart() {
-  if (!game || busy || game.rules.mode === "daily") return;
+  if (!game || busy) return;
   const choice = await confirmAction("Restart these same pairs and reset this round's statistics?", { review: true });
   if (!choice) return;
   const old = game;
@@ -502,7 +497,7 @@ function updateStats() {
     rules.mode === "sudden" ? `${Math.max(0, rules.mistakes - game.mismatches)} mismatches left` : ""].filter(Boolean).join(" · ") || "No rush. Every connection counts.";
   $("hintButton").disabled = busy || !canAssist(game, "hints") || hint?.until > Date.now();
   $("revealButton").disabled = busy || !canAssist(game, "reveals") || hint?.until > Date.now();
-  $("restartButton").disabled = busy || rules.mode === "daily";
+  $("restartButton").disabled = busy;
   $("endButton").disabled = busy || game.ended;
 }
 function tick() {
@@ -605,7 +600,7 @@ $("reviewFile").onchange = async (event) => {
   event.target.value = "";
 };
 $("resetProgress").onclick = async () => {
-  if (busy || !await confirmAction("Delete Memory progress, daily history, and the review notebook? The current round will also end.", { confirmLabel: "Delete progress" })) return;
+  if (busy || !await confirmAction("Delete Memory progress and the review notebook? The current round will also end.", { confirmLabel: "Delete progress" })) return;
   clearInterval(interval); game = null; hint = null; detailItem = null; finalized = false;
   progress = freshProgress(); persist(); renderReview(); updateLifetime();
   $("board").innerHTML = ""; $("emptyBoard").hidden = false; $("results").hidden = true;
@@ -619,8 +614,9 @@ $("resetProgress").onclick = async () => {
 document.addEventListener("visibilitychange", () => { if (game && !game.ended) { tick(); persist(); } });
 window.addEventListener("pagehide", () => {
   if (!game) return;
-  if (!game.ended && game.rules.mode !== "daily") game.deck.pairs.filter((pair) => !game.matched.includes(pair.key)).forEach((pair) => saveReview(pair.item));
+  if (!game.ended) game.deck.pairs.filter((pair) => !game.matched.includes(pair.key)).forEach((pair) => saveReview(pair.item));
   persist();
 });
 updateStats();
 if (restoreError) notify(restoreError, true);
+else persist();

@@ -11,9 +11,7 @@ import { romanizeKana } from "./romanize.js";
 import { convertTypedRomaji, hasLatin, matchExpectedAnswer, romajiToKana, toHiragana, toKatakana } from "./kana-input.js";
 import { mountSentenceExamples } from "./examples.js";
 import {
-  THEMES,
   PUZZLE_SIZES,
-  matchesTheme,
   hasKanji,
   generateCrossword
 } from "./crossword-engine.js";
@@ -40,7 +38,6 @@ import {
   const GAME_MODES = {
     classic: { label: "Classic Mode", desc: "Standard crossword with clues and a timer." },
     relaxed: { label: "Relaxed Mode", desc: "No timer, unlimited hints, and no pressure." },
-    daily: { label: "Daily Challenge", desc: "One new deterministic puzzle per day." },
     timed: { label: "Timed Challenge", desc: "Complete the puzzle before the countdown runs out." },
     suddenDeath: { label: "Sudden Death", desc: "Any incorrect character or submitted answer ends the round immediately." },
     kanjiChallenge: { label: "Kanji Challenge", desc: "Use words containing kanji, including their kana endings, rather than kana-only answers." },
@@ -68,7 +65,6 @@ import {
     size: "medium", // "small" | "medium" | "large" | "custom"
     customGridSize: 11,
     customWords: 10,
-    themeCategory: "all",
     fontScale: "medium", // "small" | "medium" | "large" | "xlarge"
     furigana: true,
     romanization: false,
@@ -147,6 +143,12 @@ import {
   };
   delete state.stats.dailyStreak;
   delete state.stats.lastDailyDate;
+  delete state.settings.themeCategory;
+  if (state.settings.gameMode === "daily") state.settings.gameMode = "classic";
+  if (!storageWarning) {
+    saveJSON(STORAGE_KEYS.settings, state.settings);
+    saveJSON(STORAGE_KEYS.stats, state.stats);
+  }
 
   const root = document.getElementById("crosswordRoot");
   const pendingSettings = { ...state.settings };
@@ -238,12 +240,6 @@ import {
                   <input class="cw-input" id="customWordsInput" type="number" min="4" max="18" value="10">
                 </label>
 
-                <label class="cw-field">
-                  <span>Theme category</span>
-                  <select class="cw-select" id="themeSelect">
-                    ${Object.entries(THEMES).map(([key, val]) => `<option value="${key}">${escapeHTML(val.label)} · ${escapeHTML(val.ja)}</option>`).join("")}
-                  </select>
-                </label>
               </div>
             </div>
 
@@ -427,7 +423,6 @@ import {
     document.getElementById("sizeSelect").value = s.size;
     document.getElementById("customWordsField").hidden = s.size !== "custom";
     document.getElementById("customWordsInput").value = String(s.customWords || 10);
-    document.getElementById("themeSelect").value = s.themeCategory;
     document.getElementById("fontScaleSelect").value = s.fontScale;
     document.getElementById("checkAvailSelect").value = s.checkAvailability;
     document.getElementById("revealAvailSelect").value = s.revealAvailability;
@@ -632,11 +627,6 @@ import {
       if (s.level === "none") throw new Error("Choose at least one JLPT level to start a puzzle.");
       const rawPool = await loadVocabularyPool(s.level);
 
-      let filtered = rawPool.filter((item) => matchesTheme(item, s.themeCategory));
-      if (filtered.length < 8) {
-        // Fallback to full level pool if theme subset is too small for the selected level
-        filtered = rawPool;
-      }
 
       const sizeSpec = PUZZLE_SIZES[s.size] || PUZZLE_SIZES.medium;
       const targetWords = s.size === "custom"
@@ -646,31 +636,24 @@ import {
         ? Math.max(8, Math.min(16, targetWords + 2))
         : sizeSpec.gridSize;
 
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const seed = s.gameMode === "daily"
-        ? `daily-${todayStr}-${s.level}-${effectiveAnswerMode(s)}`
-        : `${Date.now()}-${Math.random()}`;
+      const seed = `${Date.now()}-${Math.random()}`;
+      const recentIds = Array.isArray(state.stats.recentWordIds) ? state.stats.recentWordIds : [];
 
-      const recentIds = s.gameMode === "daily"
-        ? []
-        : (Array.isArray(state.stats.recentWordIds) ? state.stats.recentWordIds : []);
-
-      const puzzle = generateCrossword(filtered, {
+      const puzzle = generateCrossword(rawPool, {
         gridSize,
         targetWords,
         answerMode: effectiveAnswerMode(s),
         kanjiFocus: s.kanjiFocus,
-        themeKey: s.themeCategory,
         recentIds,
         seed
       });
 
       if (puzzle.entries.length < 2) {
         const words = effectiveAnswerMode(s) === "kanji" ? "kanji words" : "words";
-        throw new Error(`Could not find enough connected ${words} for this puzzle. Try a wider JLPT range or a different theme.`);
+        throw new Error(`Could not find enough connected ${words} for this puzzle. Try a wider JLPT range.`);
       }
 
-      if (s.gameMode !== "daily" && puzzle.entries.length > 0) {
+      if (puzzle.entries.length > 0) {
         const newUsed = puzzle.entries.flatMap((e) => [e.item.id, e.item.word, e.answer].filter(Boolean));
         state.stats.recentWordIds = [...new Set([...newUsed, ...(state.stats.recentWordIds || [])])].slice(0, 300);
       }
@@ -1882,9 +1865,6 @@ import {
     });
     document.getElementById("customWordsInput").addEventListener("change", (e) => {
       updateSetting("customWords", Number(e.target.value) || 10);
-    });
-    document.getElementById("themeSelect").addEventListener("change", (e) => {
-      updateSetting("themeCategory", e.target.value);
     });
     document.getElementById("newPuzzleBtn").addEventListener("click", () => {
       buildNewPuzzle();

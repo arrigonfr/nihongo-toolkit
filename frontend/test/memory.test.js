@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import {
   DEFAULTS, BACKS, WORD_PAIRS, KANA_PAIRS, KANA, GRIDS, MODES, SHUFFLE_MODES, effectiveSettings, validateSettings,
   generateDeck, createRound, flipCard, settleMismatch, checkEnd, elapsed, accuracy, assist,
-  canAssist, finishRound, reviewImport, restoreDaily, toHiragana, toKatakana, katakanaOf,
-  romajiOf
+  canAssist, finishRound, reviewImport, toHiragana, toKatakana, katakanaOf,
+  romajiOf, resolveReviewItems
 } from "../src/memory-engine.js";
 
 const words = [
@@ -79,9 +79,10 @@ test("same-script modes create two identical cards per unique pair and can be co
     assert.throws(() => generateDeck(homophones, rules({ content: "words", pairing, level: "2", count: 2 })), /Only 1/);
   }
 });
-test("JLPT ranges, categories and review pools never silently expand", () => {
+test("JLPT ranges and review pools are preserved while obsolete categories are ignored", () => {
   const deck = generateDeck(words, rules({ content: "words", pairing: "kh", level: "5-4", count: 2, category: "animals" }));
-  assert.ok(deck.pairs.every(({ item }) => ["猫", "犬", "鳥"].includes(item.word)));
+  assert.ok(deck.pairs.every(({ item }) => [5, 4].includes(item.level)));
+  assert.deepEqual(deck, generateDeck(words, rules({ content: "words", pairing: "kh", level: "5-4", count: 2 }), { seed: deck.seed }));
   assert.throws(() => generateDeck(words, rules({ content: "words", pairing: "kh", level: "1", count: 2 })), /Only 1/);
   assert.throws(() => generateDeck([], rules({ mode: "review" })), /Only 0/);
   const review = generateDeck([KANA[0]], rules({ mode: "review", count: 1 }));
@@ -103,17 +104,27 @@ test("kana groups include small kana, yoon, and correctly marked special pattern
   assert.equal(katakanaOf(long), "カー");
   assert.equal(romajiOf(KANA.find((item) => item.word === "っ")), "small tsu");
   assert.equal(romajiOf(KANA.find((item) => item.word === "ゎ")), "small wa");
-  assert.equal(romajiOf(KANA.find((item) => item.word === "しんよう")), "shin'you");
+  assert.ok(KANA.filter((item) => item.group === "special").every((item) => [...item.word].length === 2));
   assert.equal(toHiragana("キャット"), "きゃっと");
   assert.equal(toKatakana("きゃっと"), "キャット");
   assert.throws(() => generateDeck([], rules({ groups: ["small"], display: "audio", count: 1 })), /Only 0/);
 });
-test("English, audio and picture clues use natural written partners", () => {
-  for (const display of ["english", "audio", "picture"]) {
+test("review questions reload dictionary metadata and reject unknown identities", () => {
+  const saved = [{ kind: "word", word: "猫", reading: "ねこ", meaning: "invented clue", level: 1 },
+    { kind: "word", word: "偽", reading: "にせ", meaning: "fake", level: 5 },
+    { ...KANA[0], meaning: "invented sound" }];
+  const restored = resolveReviewItems(saved, words);
+  assert.equal(restored.length, 2);
+  assert.equal(restored.find((item) => item.kind === "word").meaning, "cat");
+  assert.deepEqual(restored.find((item) => item.kind === "kana"), KANA[0]);
+});
+test("English and audio clues use natural written partners; pictures require a dataset", () => {
+  for (const display of ["english", "audio"]) {
     const deck = generateDeck(words, rules({ content: "words", display, count: 3 }));
     assert.ok(deck.pairs.every(({ faces }) => faces[0].type === display));
     assert.ok(deck.pairs.every(({ item, faces }) => faces[1].text === item.word));
   }
+  assert.throws(() => generateDeck(words, rules({ content: "words", display: "picture" })), /unavailable.*dictionary/);
   const kana = generateDeck([], rules({ display: "english" }));
   assert.ok(kana.pairs.every(({ faces }) => faces[0].text.startsWith("Sound:")));
   const listening = generateDeck([], rules({ mode: "listening" }));
@@ -129,7 +140,7 @@ test("settings validate all limits and modes, and preset dimensions have exact c
     assert.throws(() => validateSettings({ ...DEFAULTS, [key]: value }));
   }
   assert.throws(() => validateSettings({ ...DEFAULTS, content: "kana", pairing: "kh" }), /Kanji/);
-  assert.throws(() => rules({ display: "picture" }), /Picture/);
+  assert.throws(() => generateDeck([], rules({ display: "picture" })), /Picture/);
   for (const grid of Object.keys(GRIDS).filter((g) => g !== "custom")) {
     const r = rules({ grid });
     assert.equal(generateDeck([], r).cards.length, grid.split("x").map(Number).reduce((a, b) => a * b));
@@ -149,7 +160,7 @@ test("deck generation is deterministic and prioritizes fresh items", () => {
   const next = generateDeck([], r, { seed: "two", recent: old });
   assert.ok(next.pairs.every((pair) => !old.includes(pair.key)));
 });
-test("shuffle choices validate, migrate legacy preferences, and respect Daily rules", () => {
+test("shuffle choices validate and migrate legacy preferences", () => {
   assert.equal(DEFAULTS.shuffle, "never");
   for (const shuffle of Object.keys(SHUFFLE_MODES)) assert.equal(rules({ shuffle }).shuffle, shuffle);
   for (const [legacy, expected] of [[false, "never"], [true, "mismatch"]]) {
@@ -161,8 +172,9 @@ test("shuffle choices validate, migrate legacy preferences, and respect Daily ru
     assert.throws(() => rules({ shuffle }), /shuffle/);
   }
   const settings = { ...DEFAULTS, mode: "daily", shuffle: "all" };
-  assert.equal(effectiveSettings(settings).shuffle, "never");
-  assert.equal(settings.shuffle, "all", "Daily does not overwrite the chosen preference");
+  assert.equal(effectiveSettings(settings).shuffle, "all");
+  assert.equal(effectiveSettings(settings).mode, "classic");
+  assert.equal(settings.shuffle, "all", "Migration does not overwrite the chosen preference");
 });
 test("turns ignore duplicates and third flips; mismatch settles then passes the turn", () => {
   const game = round({ players: 2 });
@@ -260,33 +272,14 @@ test("reverse starts with a recall clue and requires the Japanese partner", () =
   assert.equal(flipCard(game, cards[0].id, 2000).type, "first");
   assert.equal(flipCard(game, cards[1].id, 2000).type, "match");
 });
-test("daily snapshot survives partial/mismatched/finished rounds and rejects tampering", () => {
-  const day = "2026-10-24", r = rules({ mode: "daily" });
-  const deck = generateDeck([], r, { seed: `memory-v1:${day}` });
-  const game = createRound(deck, r, 1000);
-  const restore = () => restoreDaily(JSON.parse(JSON.stringify({ day, game })), day);
-  assert.deepEqual(restore(), game);
-  flipCard(game, cardsFor(game)[0].id, 2000);
-  assert.deepEqual(restore().open, game.open);
-  flipCard(game, cardsFor(game, 1)[0].id, 2000);
-  assert.equal(restore().resolvingAt, 3000);
-  settleMismatch(game, 3000);
-  for (let i = 0; i < 8; i++) match(game, i, 4000);
-  assert.equal(restore().won, true);
-  game.deck.cards[0].text = "tampered";
-  assert.throws(restore, /board/);
-  assert.equal(restoreDaily({ day, game }, "2026-10-25"), null);
-});
-test("legacy boolean shuffle settings do not invalidate a saved daily board", () => {
-  const day = "2026-10-24", r = rules({ mode: "daily" });
-  const game = createRound(generateDeck([], r, { seed: `memory-v1:${day}` }), r, 1000);
-  flipCard(game, cardsFor(game)[0].id, 2000);
-  game.rules.shuffle = false;
-  const restored = restoreDaily(JSON.parse(JSON.stringify({ day, game })), day);
-  assert.equal(restored.rules.shuffle, "never");
-  assert.deepEqual(restored.deck, game.deck);
-  assert.deepEqual(restored.open, game.open);
-  assert.equal(restored.flips, game.flips);
+test("obsolete daily modes and categories migrate without changing other preferences", () => {
+  const settings = { ...DEFAULTS, mode: "daily", category: "animals", shuffle: false, level: "3" };
+  const migrated = validateSettings(settings);
+  assert.equal(migrated.mode, "classic");
+  assert.equal(migrated.shuffle, "never");
+  assert.equal(migrated.level, "3");
+  assert.equal("category" in migrated, false);
+  assert.equal(settings.category, "animals");
 });
 test("review import validates before merging and canonicalizes kana", () => {
   const payload = { tool: "nihon-memory", version: 1, items: [KANA[0], { ...words[0], kind: "word" }] };

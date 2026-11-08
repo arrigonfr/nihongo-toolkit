@@ -183,10 +183,12 @@ try {
   assert.equal(await page.locator("#setting-players").isDisabled(), true);
   await change("setting-opponent", "local");
   assert.equal(await page.locator("#setting-players").isEnabled(), true);
-  await page.locator('[data-mode="daily"]').click();
-  assert.equal(await page.locator("#setting-level + .study-levels input").first().isDisabled(), true);
+  assert.equal(await page.locator('[data-mode="daily"], [data-mode="category"]').count(), 0);
+  assert.equal(await page.locator("#setting-level, #setting-entry, #setting-category, #setting-wordType, #setting-proper").count(), 0);
+  await page.locator('[data-mode="kanji"]').click();
+  assert.equal(await page.locator("#setting-voicing").isDisabled(), true);
   await page.locator('[data-mode="classic"]').click();
-  assert.equal(await page.locator("#setting-level + .study-levels input").first().isEnabled(), true);
+  assert.equal(await page.locator("#setting-voicing").isEnabled(), true);
 
   await go("意味");
   const group = page.locator("#levelSelect + .study-levels");

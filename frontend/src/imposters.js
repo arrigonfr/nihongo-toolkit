@@ -6,13 +6,12 @@ import { rememberControls } from "./settings-storage.js";
 import { API_BASE } from "./api.js";
 import { mountChips } from "./chips.js";
 import { mountStudyControls, study, japaneseHTML, readingsHTML, audioHTML, speakJapanese } from "./study-controls.js";
-import { createSeededRandom } from "./crossword-engine.js";
 import { makeQuestion, meanings, readings, shuffle } from "./imposters-engine.js";
 
 const root = document.getElementById("impostersRoot");
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 const options = (values) => values.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
-const modes = [["practice", "Practice"], ["timed", "Timed Challenge"], ["high", "High Score"], ["sudden", "Sudden Death"], ["daily", "Daily Challenge"], ["review", "Mistake Review"]];
+const modes = [["practice", "Practice"], ["timed", "Timed Challenge"], ["high", "High Score"], ["sudden", "Sudden Death"], ["review", "Mistake Review"]];
 const variants = [["kanji-reading", "Kanji → Readings"], ["reading-kanji", "Reading → Kanji"]];
 root.innerHTML = `<div class="shell imposters-shell"><header><div class="brand"><span class="brand-mark" lang="ja">似</span><span class="brand-name">Kanji Kuizu<span class="brand-note">at NihongoToolkit</span></span></div><button id="themeButton" type="button" aria-label="Toggle theme"></button></header>
 <section class="intro"><span class="eyebrow">Kanji Imposters</span><h1>Kanji Kuizu <span lang="ja">漢字クイズ</span></h1></section>
@@ -44,7 +43,13 @@ $("details").addEventListener("change", () => {
   const details = $("feedback").querySelector(".imposters-feedback-details");
   if (details) details.hidden = !$("details").checked;
 });
-mountChips($("mode"), { presentation: "radio", label: "Game mode" });
+mountChips($("mode"), { presentation: "radio", label: "Game mode", descriptions: {
+  practice: "Choose all correct answers and review your mistakes without a timer.",
+  timed: "Answer each question before its countdown expires.",
+  high: "Answer against the clock and build a combo to earn points.",
+  sudden: "The first incorrect or revealed answer ends the session.",
+  review: "Practice kanji from your saved mistake review list."
+} });
 mountChips($("variants"), { multiple: true, options: variants.map(([value, label]) => ({ value, label })), allValue: "all", emptyValue: "none" });
 $("variants").value = "all";
 $("variants").dispatchEvent(new Event("change", { bubbles: true }));
@@ -55,12 +60,10 @@ function save(key, value) { try { localStorage.setItem(key, JSON.stringify(value
 let review = load(reviewKey, {}), session = null, timerHandle = null;
 const sessionView = createSessionView({ settings: $("settings"), start: $("start"), results: $("results"), play: [$("game")], setup: [$("reviewList")], footer: true });
 function updateAvailability() {
-  const daily = $("mode").value === "daily";
-  for (const id of ["count", "levelSelect", "variants"]) setSettingAvailability($(id), daily ? "Fixed by the daily challenge." : "");
-  setSettingAvailability($("customCount"), daily || $("count").value !== "custom" ? "Choose a custom question count." : "");
-  $("customWrap").hidden = daily || $("count").value !== "custom";
+  setSettingAvailability($("customCount"), $("count").value !== "custom" ? "Choose a custom question count." : "");
+  $("customWrap").hidden = $("count").value !== "custom";
   setSettingAvailability($("seconds"), ["timed", "high"].includes($("mode").value) ? "" : "Used in Timed Challenge and High Score.");
-  const reading = daily || $("variants").value === "all" || $("variants").value.includes("reading-kanji");
+  const reading = $("variants").value === "all" || $("variants").value.includes("reading-kanji");
   setSettingAvailability($("readingPrompt"), reading ? "" : "Used for Reading to Kanji questions.");
   $("volumeNotice").hidden = !reading || $("readingPrompt").value !== "audio";
   for (const kind of ["hint", "reveal"]) setSettingAvailability($(`${kind}Limit`), $(`${kind}Mode`).value === "limited" ? "" : "Used with limited assistance.");
@@ -71,7 +74,6 @@ rememberControls("nihon:imposters-settings-v1", [
   "fontSize", "hintMode", "hintLimit", "revealMode", "revealLimit", "details"
 ], (message) => { $("error").textContent = message; });
 updateAvailability();
-const dateKey = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; };
 function status() { $("reviewList").textContent = `Review list (${Object.keys(review).length})`; }
 status();
 $("count").addEventListener("change", () => { $("customWrap").hidden = $("count").value !== "custom"; });
@@ -90,39 +92,32 @@ function showReview(items, heading) {
 $("reviewList").addEventListener("click", () => { if (!session) showReview(Object.values(review), "Mistake review list"); });
 $("results").addEventListener("click", (event) => { const key = event.target.dataset.remove; if (!key) return; delete review[key]; save(reviewKey, review); status(); event.target.closest("li").remove(); });
 async function getJSON(path) { const response = await fetch(`${API_BASE}${path}`, { signal: AbortSignal.timeout(20000) }); if (!response.ok) throw new Error("Could not load kanji. Please try again."); return response.json(); }
-async function loadPool(mode, level, random, needed) {
-  if (mode !== "daily") return (await getJSON(`/api/kanji/batch?mode=both&limit=100&projection=practice&level=${encodeURIComponent(level)}`)).items;
-  const list = (await getJSON(`/api/kanji?limit=3000&level=${encodeURIComponent(level)}`)).items;
-  const selected = shuffle(list, random).slice(0, Math.min(list.length, Math.max(50, needed + 20)));
-  if (!selected.length) return [];
-  const params = new URLSearchParams();
-  selected.forEach((item) => params.append("character", item.kanji));
-  return (await getJSON(`/api/kanji/bulk?${params}`)).items;
+async function loadPool(level) {
+  return (await getJSON(`/api/kanji/batch?mode=both&limit=100&projection=practice&level=${encodeURIComponent(level)}`)).items;
 }
 $("start").addEventListener("click", async () => {
   $("error").textContent = "";
   const mode = $("mode").value, level = $("levelSelect").value;
-  const count = mode === "daily" ? 10 : $("count").value === "custom" ? Number($("customCount").value) : Number($("count").value);
-  const selectedVariants = mode === "daily" || $("variants").value === "all" ? variants.map(([value]) => value) : $("variants").value.split(",").filter((value) => value !== "none");
-  if (mode !== "daily" && level === "none" || !selectedVariants.length || !Number.isInteger(count) || count < 1 || count > 200 || !$("settingsForm").checkValidity()) { $("error").textContent = "Choose levels and question variants, and enter valid session settings."; return; }
+  const count = $("count").value === "custom" ? Number($("customCount").value) : Number($("count").value);
+  const selectedVariants = $("variants").value === "all" ? variants.map(([value]) => value) : $("variants").value.split(",").filter((value) => value !== "none");
+  if (level === "none" || !selectedVariants.length || !Number.isInteger(count) || count < 1 || count > 200 || !$("settingsForm").checkValidity()) { $("error").textContent = "Choose levels and question variants, and enter valid session settings."; return; }
   if (mode === "review" && !Object.keys(review).length) { $("error").textContent = "Your review list is empty."; return; }
-  if ($("readingPrompt").value === "audio" && !study.audio && (selectedVariants.includes("reading-kanji") || mode === "daily")) { $("error").textContent = "Enable Audio in the study controls or choose Show kana."; return; }
+  if ($("readingPrompt").value === "audio" && !study.audio && selectedVariants.includes("reading-kanji")) { $("error").textContent = "Enable Audio in the study controls or choose Show kana."; return; }
   sessionView.start();
   const doneLoading = beginLoading($("start"), $("game"));
   $("start").disabled = true;
   $("error").textContent = "Loading kanji…";
   try {
-    const seed = dateKey(), random = mode === "daily" ? createSeededRandom(`imposters:${seed}`) : Math.random;
-    const effectiveLevel = mode === "daily" ? "all" : level;
-    const pool = await loadPool(mode, effectiveLevel, random, mode === "daily" ? 10 : count);
+    const random = Math.random;
+    const pool = await loadPool(level);
     if (mode === "review") {
       const missing = Object.keys(review).filter((kanji) => !pool.some((item) => item.kanji === kanji));
       for (let index = 0; index < missing.length; index += 8) pool.push(...await Promise.all(missing.slice(index, index + 8).map((kanji) => getJSON(`/api/kanji/${encodeURIComponent(kanji)}`))));
     }
     const eligible = pool.filter((item) => item.kanji && meanings(item).length && readings(item).length && (mode !== "review" || review[item.kanji]));
     if (!eligible.length || pool.length < 5) throw new Error("Not enough suitable kanji for these settings.");
-    const actualVariants = mode === "daily" ? variants.map(([value]) => value) : selectedVariants;
-    const targetCount = mode === "daily" ? 10 : count;
+    const actualVariants = selectedVariants;
+    const targetCount = count;
     const ordered = shuffle(eligible, random), questions = [];
     for (let index = 0; questions.length < targetCount && index < Math.max(targetCount * 10, ordered.length * actualVariants.length * 2); index++) {
       const target = ordered[index % ordered.length];
