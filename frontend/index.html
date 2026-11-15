@@ -11,10 +11,79 @@
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "Nihongo Toolkit",
-      "alternateName": ["日本語道具箱", "Japanese Toolkit"],
-      "url": "https://nihongo-toolkit.pages.dev/"
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://nihongo-toolkit.pages.dev/#website",
+          "name": "Nihongo Toolkit",
+          "alternateName": ["日本語道具箱", "NihongoKit", "Japanese Toolkit", "nihongo-toolkit.pages.dev"],
+          "description": "Free Japanese learning tools for kana, kanji, vocabulary, conjugation practice, dictionary lookup, word games, and printable study sheets.",
+          "url": "https://nihongo-toolkit.pages.dev/",
+          "inLanguage": "en",
+          "publisher": {
+            "@type": "Organization",
+            "@id": "https://nihongo-toolkit.pages.dev/#organization",
+            "url": "https://nihongo-toolkit.pages.dev/",
+            "name": "Nihongo Toolkit",
+            "logo": {
+              "@type": "ImageObject",
+              "@id": "https://nihongo-toolkit.pages.dev/#logo",
+              "url": "https://nihongo-toolkit.pages.dev/logo.svg",
+              "contentUrl": "https://nihongo-toolkit.pages.dev/logo.svg",
+              "encodingFormat": "image/svg+xml",
+              "caption": "Nihongo Toolkit",
+              "width": 512,
+              "height": 512
+            }
+          }
+        },
+        {
+          "@type": "WebPage",
+          "@id": "https://nihongo-toolkit.pages.dev/#webpage",
+          "url": "https://nihongo-toolkit.pages.dev/",
+          "name": "Japanese Learning Tools | Nihongo Toolkit",
+          "description": "Explore free Japanese learning tools for hiragana, katakana, kanji, vocabulary, reading, grammar, and word games.",
+          "isPartOf": {
+            "@id": "https://nihongo-toolkit.pages.dev/#website"
+          },
+          "inLanguage": "en"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://nihongo-toolkit.pages.dev/#app",
+          "name": "Nihongo Toolkit",
+          "alternateName": ["日本語道具箱", "NihongoKit", "Japanese Toolkit", "nihongo-toolkit.pages.dev"],
+          "description": "Practice kana, kanji readings and meanings, Japanese vocabulary, and conjugations in your browser. Explore dictionary entries and sentences, play word games, and print study references.",
+          "url": "https://nihongo-toolkit.pages.dev/",
+          "applicationCategory": "EducationalApplication",
+          "educationalUse": [
+            "Self-Study",
+            "Language Learning",
+            "JLPT Preparation"
+          ],
+          "isAccessibleForFree": true,
+          "operatingSystem": "Web",
+          "browserRequirements": "Requires a modern web browser",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "featureList": [
+            "Hiragana and katakana reading and typing practice",
+            "Kanji reading, meaning, and recognition quizzes",
+            "Vocabulary practice with JLPT level filters",
+            "Japanese verb and adjective conjugation practice and lookup",
+            "Japanese dictionary and sentence breakdown tools",
+            "Kanji components and compounds explorer",
+            "Japanese pronunciation playback",
+            "Vocabulary matching, word search, crossword, and shiritori games",
+            "Printable Japanese reference sheets and worksheets",
+            "Light and dark modes with selectable color palettes"
+          ],
+          "screenshot": "https://nihongo-toolkit.pages.dev/og-image.png"
+        }
+      ]
     }
   </script>
   <style>
@@ -134,7 +203,8 @@
       border: 0;
       background: #fff;
     }
-    .dashboard { max-width: 1080px; margin: 0 auto; padding: 60px 24px 24px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .dashboard { max-width: 1080px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .site-header { max-width: 1032px; margin-inline: auto !important; width: calc(100% - 48px); }
     .dashboard > h1, .dashboard > p, .dashboard .menu-group h2 { grid-column: 1 / -1; }
     .dashboard h1 { margin: 0 0 8px; font-size: 30px; }
     .dashboard > p { color: var(--muted); margin: 0 0 6px; }
@@ -148,7 +218,8 @@
     .dashboard .study-support button { display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 8px; padding: 9px 12px; background: #ffd140; color: #000; font-weight: 700; cursor: pointer; }
     .dashboard .study-support img { width: 20px; height: 20px; object-fit: contain; }
     @media (max-width: 650px) {
-      .dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 58px 12px 12px; gap: 5px; }
+      .dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 12px 12px; gap: 5px; }
+      .site-header { width: calc(100% - 24px); }
       .dashboard h1 { font-size: 22px; }
       .dashboard > p { display: none; }
       .dashboard-link .helper-description { font-size: 11px; }
@@ -159,6 +230,10 @@
   </style>
 </head>
 <body>
+  <header class="site-header study-header" data-site-header>
+    <a class="brand" href="./"><span class="brand-name">Nihongo Toolkit</span></a>
+    <button id="themeButton" type="button" aria-label="Toggle color mode" title="Toggle color mode"></button>
+  </header>
   <nav class="navigation" aria-label="Helper navigation">
     <button class="menu-button" id="menuButton" type="button" aria-label="Open helper menu" aria-expanded="false" aria-controls="helperMenu">
       <span class="menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>

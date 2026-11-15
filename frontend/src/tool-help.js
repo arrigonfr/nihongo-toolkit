@@ -26,7 +26,7 @@ const descriptions = {
   kanaDirection: "Choose which script appears in the question and which you type. Random mixes directions; either script accepts hiragana or katakana.",
   meaningDirection: "Practice kanji to English, English to kanji, or alternate between both directions.",
   readingDirection: "Choose on'yomi, kun'yomi or both. Either kana script is accepted; romaji converts automatically.",
-  modeSelect: "Choose multiple-choice, typing or cloze (fill-in-the-blank) vocabulary practice.",
+  modeSelect: "Choose multiple-choice or typing vocabulary practice.",
   sessionMode: "Free practice continues until you stop; question count and timed practice end at the selected limit.",
   sessionType: "Free practice continues until you stop; questions and timed practice end at the selected limit.",
   sessionTarget: "Set the number of questions or the duration in minutes, depending on your practice length.",

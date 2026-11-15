@@ -116,7 +116,8 @@ test("kana sheet has complete charts for both scripts", () => {
   assert.deepEqual(rowText(basic.rows[9]), ["わ", "ゐ", "", "ゑ", "を"]);
   assert.deepEqual(rowText(find(sheet, "katakana-basic").rows[9]), ["ワ", "ヰ", "", "ヱ", "ヲ"]);
   assert.equal(basic.rows[9][1].sub, "wi*");
-  assert.match(sheet.footer, /Historical kana.*not used in standard modern Japanese/);
+  assert.equal(sheet.footer, "");
+  for (const note of sheet.notes) assert.match(note.lines.at(-1), /Historical kana.*not used in standard modern Japanese/);
   assert.equal(basic.rows[2][1].sub, "shi");
   assert.equal(basic.rows[3][2].sub, "tsu");
   const count = (table) => table.rows.flat().filter(Boolean).length;
@@ -138,7 +139,8 @@ test("kana grids contain every kana exactly once", () => {
 });
 
 test("kana explains irregular romanization and particle examples keep separate lines", () => {
-  assert.match(buildSheet("kana").footer, /し shi · ち chi · つ tsu · ふ fu have irregular pronunciations/);
+  assert.match(buildSheet("kana").notes[0].lines.join("\n"), /Irregular pronunciations: し shi · ち chi · つ tsu · ふ fu/);
+  assert.match(buildSheet("kana").notes[1].lines.join("\n"), /Irregular pronunciations: シ shi · チ chi · ツ tsu · フ fu/);
   const sheet = buildSheet("particles");
   const object = find(sheet, "particles-roles").rows.find((row) => cellText(row[0]) === "を (o)");
   assert.match(cellText(object[2]), /book\.\n道/);

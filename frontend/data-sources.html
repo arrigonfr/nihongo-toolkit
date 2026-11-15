@@ -6,16 +6,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>日本語道具箱 · Japanese Toolkit · Nihongo Toolkit</title>
   <style>
-    body { max-width: 780px; margin: 3rem auto; padding: 0 1.2rem; font: 17px/1.7 system-ui, sans-serif; color: #25382d; background: #f5f4ef; }
-    a { color: #356653; } li { margin-block: 1rem; }
+    body { max-width: 780px; margin: 0 auto; padding: 0 12px; font: 17px/1.7 system-ui, sans-serif; color: var(--ink); background: var(--page); }
+    a { color: var(--accent); } li { margin-block: 1rem; }
     .support-slot { float: right; }
     .support-slot button { display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 8px; padding: 9px 12px; background: #ffd140; color: #000; font-weight: 700; cursor: pointer; }
     .support-slot img { width: 20px; height: 20px; }
   </style>
 </head>
 <body>
+  <header class="study-header" data-site-header>
+    <a class="brand" href="./"><span class="brand-name">Nihongo Toolkit</span></a>
+    <button id="themeButton" type="button" aria-label="Toggle color mode" title="Toggle color mode"></button>
+  </header>
   <div class="support-slot"></div>
-  <a href="./" target="_top">Back to Nihon</a>
   <h1>Data and licenses</h1>
   <p>NihonTools uses open Japanese dictionary, vocabulary, example sentence, and stroke-order
     resources. Sentence links retain contributor attribution.</p>

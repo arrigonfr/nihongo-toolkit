@@ -1,3 +1,7 @@
+.cw-cell-split { position: absolute; inset: 0; background: linear-gradient(45deg, transparent 49%, var(--line) 49%, var(--line) 51%, transparent 51%); }
+.cw-cell-split > span { position: absolute; font-size: .6em; line-height: 1; }
+.cw-cell-split > span:first-child { top: 8%; right: 8%; }
+.cw-cell-split > span:last-child { bottom: 8%; left: 8%; }
 .cw-review-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; padding: 0; margin: 16px 0 0; list-style: none; }
 .cw-review-word { padding: 16px; border: 1px solid var(--line); border-left: 4px solid #a47713; border-radius: 8px; background: color-mix(in srgb, #d9a628 12%, var(--card)); }
 .cw-review-word.answered { border-left-color: #318454; background: color-mix(in srgb, #318454 12%, var(--card)); }

@@ -1,4 +1,5 @@
 import "./appearance.css";
+import { pageFile } from "./routes.js";
 
 const key = "nihon:appearance-v1";
 export const colorThemes = { matcha: "Matcha", sakura: "Sakura", ocean: "Ocean", wisteria: "Wisteria", amber: "Amber", sumi: "Sumi" };
@@ -27,6 +28,7 @@ function render() {
   }
   const selector = document.getElementById("colorThemeSelect");
   if (selector) selector.value = preference.palette;
+  for (const button of document.querySelectorAll("[data-palette]")) button.setAttribute("aria-pressed", String(button.dataset.palette === preference.palette));
   const appearance = document.getElementById("setting-appearance");
   if (appearance) appearance.value = preference.mode;
   const meta = document.querySelector('meta[name="theme-color"]');
@@ -66,9 +68,9 @@ export function initializeAppearance() {
 
 export function mountAppearance(header, toggle) {
   initializeAppearance();
-  const dashboardBack = document.querySelector(".dashboard-back");
-  if (dashboardBack) header.prepend(dashboardBack);
-  const file = decodeURIComponent(location.pathname.split("/").pop());
+  const navigation = document.querySelector(".navigation");
+  if (navigation) header.prepend(navigation);
+  const file = pageFile(location.pathname);
   const menuItem = [...document.querySelectorAll(".helper-link[data-file]")].find((item) => item.dataset.file === file);
   const description = menuItem?.querySelector(".helper-description")?.textContent.trim().replace(/^\(|\)$/g, "");
   if (description && !header.querySelector(".study-header-description")) {
@@ -79,16 +81,26 @@ export function mountAppearance(header, toggle) {
   }
   const controls = document.createElement("div");
   controls.className = "study-appearance";
-  const label = document.createElement("label");
+  const label = document.createElement("details");
   label.className = "study-palette";
-  label.innerHTML = `<span class="study-palette-dot" aria-hidden="true"></span><span class="sr-only">Color theme</span>
-    <select id="colorThemeSelect" aria-label="Color theme">${Object.entries(colorThemes)
-      .map(([value, name]) => `<option value="${value}">${name}</option>`).join("")}</select>`;
+  label.innerHTML = `<summary aria-label="Color theme" title="Color theme"><span class="study-palette-dot" aria-hidden="true"></span></summary>
+    <select id="colorThemeSelect" aria-label="Color theme" hidden>${Object.entries(colorThemes)
+      .map(([value, name]) => `<option value="${value}">${name}</option>`).join("")}</select>
+    <div class="study-palette-options" role="group" aria-label="Color theme">${Object.entries(colorThemes).map(([value, name]) => `<button type="button" data-palette="${value}" aria-label="${name}" title="${name}" aria-pressed="false"><span class="study-palette-dot" aria-hidden="true"></span></button>`).join("")}</div>`;
   label.querySelector("select").addEventListener("change", (event) => setAppearance({ palette: event.target.value }));
+  label.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-palette]");
+    if (!button) return;
+    setAppearance({ palette: button.dataset.palette });
+    label.open = false;
+    label.querySelector("summary").focus();
+  });
+  document.addEventListener("click", (event) => { if (!label.contains(event.target)) label.open = false; });
+  label.addEventListener("keydown", (event) => { if (event.key === "Escape") { label.open = false; label.querySelector("summary").focus(); } });
   controls.append(label);
   if (toggle) {
     toggle.classList.add("study-theme");
-    toggle.innerHTML = '<span class="theme-switch-label" aria-hidden="true"></span><span class="theme-switch-knob" aria-hidden="true"></span>';
+    toggle.innerHTML = '<span class="theme-switch-knob" aria-hidden="true"></span>';
     toggle.addEventListener("click", () => setAppearance({ mode: document.documentElement.dataset.theme === "dark" ? "light" : "dark" }));
     controls.append(toggle);
   }

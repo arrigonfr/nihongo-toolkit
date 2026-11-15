@@ -1,8 +1,11 @@
-import { initializeAppearance } from "./appearance.js";
+import { initializeAppearance, mountAppearance } from "./appearance.js";
+import "./study-controls.css";
 import { createSupportButton } from "./support.js";
-import { legacyRoutes } from "./routes.js";
+import { legacyRoutes, pageFile } from "./routes.js";
 
 initializeAppearance();
+const siteHeader = document.querySelector("[data-site-header]");
+if (siteHeader) mountAppearance(siteHeader, siteHeader.querySelector("#themeButton"));
 for (const link of document.querySelectorAll(".helper-link, .dashboard-link")) {
   const name = link.querySelector(".helper-name");
   const icon = link.querySelector(".helper-icon");
@@ -27,7 +30,7 @@ function setMenuOpen(open) {
 
 function currentHelper() {
   try {
-    return decodeURIComponent(helperFrame.contentWindow.location.pathname.split("/").pop());
+    return pageFile(helperFrame.contentWindow.location.pathname);
   } catch {
     return null;
   }
@@ -115,4 +118,4 @@ try {
 }
 loadHelper(helperFrame
   ? helpers.has(requestedHelper) ? requestedHelper : helpers.has(storedHelper) ? storedHelper : helperLinks[0].dataset.file
-  : decodeURIComponent(location.pathname.split("/").pop()));
+  : pageFile(location.pathname));

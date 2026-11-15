@@ -26,19 +26,20 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   const go = (file) => page.goto(`${origin}/${encodeURIComponent(file)}`);
   await go("kana.html");
-  await page.locator("#colorThemeSelect").waitFor();
+  await page.locator(".study-palette > summary").waitFor();
   assert.equal(await page.locator("#colorThemeSelect").inputValue(), "sumi");
   assert.equal(await page.locator('#colorThemeSelect option[value="sumi"]').textContent(), "Sumi");
   assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
-  await page.selectOption("#colorThemeSelect", "ocean");
+  await page.click(".study-palette > summary");
+  await page.click('[data-palette="ocean"]');
   await page.click("#themeButton");
   await page.reload();
-  await page.locator("#colorThemeSelect").waitFor();
+  await page.locator(".study-palette > summary").waitFor();
   assert.equal(await page.locator("#colorThemeSelect").inputValue(), "ocean");
   assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
   await page.evaluate(() => localStorage.removeItem("nihon:appearance-v1"));
   await page.reload();
-  await page.locator("#colorThemeSelect").waitFor();
+  await page.locator(".study-palette > summary").waitFor();
   assert.equal(await page.locator("#colorThemeSelect").inputValue(), "sumi");
   assert.equal(await page.locator("html").getAttribute("data-theme"), "dark");
   const tools = ["kana.html", "imi.html", "yomi.html", "goi.html", "kotoba.html", "fumitoki.html", "kanji-chizucho.html", "pazuru.html", "shiritori.html", "katsuyo.html", "katsuyo-renshuu.html", "kotoba-sagashi.html", "eawase.html"];
@@ -47,7 +48,7 @@ try {
     let reference;
     for (const file of tools) {
       await go(file);
-      await page.locator("#colorThemeSelect").waitFor();
+      await page.locator(".study-palette > summary").waitFor();
       const support = page.locator(".study-support");
       assert.equal(await support.locator("form > img, form > span, .study-support-brand").count(), 0);
       assert.equal(await page.locator(".study-toolbar .study-support").count(), 1);
@@ -243,17 +244,10 @@ try {
   await page.click("#cwSentenceExamples .sentence-next");
   await page.waitForFunction(() => document.querySelector("#cwSentenceExamples .sentence-next").textContent === "Another example");
   await go("goi.html");
-  await page.selectOption("#modeSelect", "cloze-ej", { force: true });
-  const beforeCloze = sentenceCalls;
+  await page.selectOption("#modeSelect", "typing-ej", { force: true });
   await page.click("#startButton");
-  await page.waitForFunction(() => document.querySelector("#prompt").textContent.startsWith("Complete the sentence"));
-  assert.ok(sentenceCalls > beforeCloze, "Cloze questions without local examples fetch real sentences");
-  assert.match(await page.locator("#prompt .japanese").textContent(), /___/);
-  await page.click("#stopSessionButton");
-  failSentences = true;
-  await page.click("#startButton");
-  await page.waitForFunction(() => document.querySelector("#prompt").textContent.startsWith("Meaning clue"));
-  assert.match(await page.locator("#warning").textContent(), /temporarily unavailable.*meaning clue/);
+  await page.waitForFunction(() => document.querySelector("#prompt").textContent.startsWith("Type the Japanese vocabulary word"));
+  assert.equal(await page.locator("#modeSelect option").count(), 4);
   assert.deepEqual(errors, []);
   console.log("Shared UI checks passed: all headers, centered buttons, help, mobile layout, six palettes, cross-tab/frame persistence, crossword fallback and retry.");
 } finally {

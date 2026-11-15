@@ -38,6 +38,23 @@ root.innerHTML = `<div class="shell imposters-shell"><header><div class="brand">
 <section id="game" class="card imposters-game" hidden><div class="imposters-status"><span id="progress"></span><span id="score"></span><span id="timer"></span></div><div class="imposters-prompt"><span id="promptLabel" class="eyebrow"></span><h2 id="prompt"></h2><p id="secondary"></p><div id="promptAudio"></div></div><div id="choices" class="imposters-choices" role="group" aria-label="Select all correct answers"></div><div class="imposters-actions"><button id="check" class="primary" type="button" disabled>Check answers</button><button id="hint" type="button">Hint</button><button id="reveal" type="button">Reveal answer</button><button id="stop" type="button">Stop session</button><button id="next" type="button" hidden>Next question</button></div><div id="feedback" class="imposters-feedback" role="status" aria-live="polite"></div></section>
 <section id="results" class="card imposters-results" hidden></section></div>`;
 const $ = (id) => document.getElementById(id);
+const actionKeys = { check: "C", hint: "H", reveal: "R", stop: "X", next: "N" };
+function renderShortcuts() {
+  for (const [id, key] of Object.entries(actionKeys)) {
+    const button = $(id);
+    button.querySelector(".imposters-shortcut")?.remove();
+    button.setAttribute("aria-keyshortcuts", key);
+    button.insertAdjacentHTML("beforeend", ` <kbd class="imposters-shortcut" aria-hidden="true">${key}</kbd>`);
+  }
+}
+document.addEventListener("keydown", (event) => {
+  if (!session || !matchMedia("(min-width: 761px) and (hover: hover)").matches || event.repeat || event.isComposing || event.ctrlKey || event.altKey || event.metaKey
+    || event.target.closest("input, textarea, select, [contenteditable=true]") || document.querySelector("dialog[open]")) return;
+  const key = event.key.toUpperCase();
+  const action = Object.keys(actionKeys).find((id) => actionKeys[id] === key);
+  const button = /^[1-9]$/.test(key) ? $("choices").querySelector(`[data-choice="${Number(key) - 1}"]`) : action ? $(action) : null;
+  if (button && !button.disabled && !button.closest("[hidden]")) { event.preventDefault(); button.click(); }
+});
 $("game").insertAdjacentHTML("afterbegin", '<label class="check-label"><input id="details" type="checkbox" checked> Show readings and example after each answer</label>');
 $("details").addEventListener("change", () => {
   const details = $("feedback").querySelector(".imposters-feedback-details");
@@ -158,7 +175,7 @@ function renderQuestion() {
     const selected = session.selected.has(index);
     const result = session.answered ? choice.correct ? selected ? "correct" : "missed" : selected ? "wrong" : "" : "";
     const label = { correct: "Correct selection", wrong: "Incorrect selection", missed: "Correct, not selected" }[result];
-    return `<button type="button" data-choice="${index}" ${question.variant === "reading-kanji" ? 'data-kanji' : ''} aria-pressed="${selected}" class="${session.removed.has(index) ? "removed" : result}" ${session.answered || session.removed.has(index) ? "disabled" : ""}><span class="choice-value" lang="ja">${escape(choice.value)}</span>${label ? `<span class="choice-result" lang="en">${label}</span>` : ""}</button>`;
+    return `<button type="button" data-choice="${index}" aria-keyshortcuts="${index + 1}" ${question.variant === "reading-kanji" ? 'data-kanji' : ''} aria-pressed="${selected}" class="${session.removed.has(index) ? "removed" : result}" ${session.answered || session.removed.has(index) ? "disabled" : ""}><span class="choice-value" lang="ja">${escape(choice.value)}</span><kbd class="imposters-shortcut" aria-hidden="true">${index + 1}</kbd>${label ? `<span class="choice-result" lang="en">${label}</span>` : ""}</button>`;
   }).join("");
   $("check").hidden = session.answered;
   $("check").disabled = !session.selected.size;
@@ -166,6 +183,7 @@ function renderQuestion() {
   $("reveal").disabled = session.answered || !allowance("reveal");
   $("next").hidden = !session.answered;
   if (!session.answered) $("feedback").innerHTML = "";
+  renderShortcuts();
 }
 function playPrompt() { if (session?.question.variant === "reading-kanji" && $("readingPrompt").value === "audio" && study.audio) speakJapanese(session.question.prompt); }
 $("choices").addEventListener("click", (event) => { const choice = event.target.closest("[data-choice]"); if (!choice || !session || session.answered) return; const index = Number(choice.dataset.choice); if (session.selected.has(index)) session.selected.delete(index); else session.selected.add(index); choice.setAttribute("aria-pressed", String(session.selected.has(index))); $("check").disabled = !session.selected.size; });
@@ -190,6 +208,7 @@ function answer(result, revealed = false) {
   }).join("");
   $("feedback").innerHTML = `<strong>${correct ? "Correct" : revealed ? "Answer revealed" : result === null ? "Time is up" : "Not quite"}</strong><div class="imposters-feedback-details"${$("details").checked ? "" : " hidden"}>${details}</div>`;
   if (session.mode === "sudden" && !correct) $("next").textContent = "See results"; else $("next").textContent = session.index + 1 === session.questions.length ? "See results" : "Next question";
+  renderShortcuts();
 }
 $("hint").addEventListener("click", () => { if (!session || session.answered || !allowance("hint")) return; const wrong = session.question.choices.map((choice, index) => !choice.correct && !session.removed.has(index) ? index : -1).filter((index) => index >= 0); if (!wrong.length) return; const removed = wrong[Math.floor(Math.random() * wrong.length)]; session.removed.add(removed); session.selected.delete(removed); session.hints++; renderQuestion(); });
 $("reveal").addEventListener("click", () => { if (!session || session.answered || !allowance("reveal")) return; session.reveals++; answer(null, true); });

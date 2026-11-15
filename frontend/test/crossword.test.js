@@ -58,6 +58,18 @@ const samplePool = [
   }
 ];
 
+test("mixed kana scripts connect by reading and retain both crossing glyphs", () => {
+  const puzzle = generateCrossword([
+    { word: "かさ", reading: "かさ", meaning: "umbrella" },
+    { word: "サル", reading: "サル", meaning: "monkey" }
+  ], { seed: "mixed-kana", targetWords: 2 });
+  assert.equal(puzzle.entries.length, 2);
+  const crossing = puzzle.grid.flat().find((cell) => cell?.acrossId && cell?.downId);
+  assert.equal(crossing.solution, "さ");
+  assert.deepEqual(new Set(Object.values(crossing.displayChars)), new Set(["さ", "サ"]));
+  assert.deepEqual(new Set(puzzle.entries.map((entry) => entry.answer)), new Set(["かさ", "サル"]));
+});
+
 const loanwords = [
   ["テーブル", "table"], ["テープ", "tape"], ["スープ", "soup"],
   ["スプーン", "spoon"], ["ベッド", "bed"], ["ペット", "pet"],

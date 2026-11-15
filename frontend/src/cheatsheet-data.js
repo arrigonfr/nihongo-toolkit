@@ -73,15 +73,23 @@ export function kanaScript(script) {
 export const kanaNotes = {
   hiragana: [
     "っ (small tsu) doubles the next consonant: きって kitte",
-    "Long vowels: おう / おお → ō, えい → ē, ああ → ā",
-    "Particles: は = wa, へ = e, を = o",
-    "ぢ づ are rare; use じ ず"
+    "Long vowels: おう / おお → ō",
+    "Long vowels: えい → ē; ああ → ā",
+    "Particle は is pronounced wa",
+    "Particle へ is pronounced e",
+    "Particle を is pronounced o",
+    "ぢ づ are rare; use じ ず",
+    "Irregular pronunciations: し shi · ち chi · つ tsu · ふ fu",
+    "Historical kana: ゐ wi and ゑ we are not used in standard modern Japanese."
   ],
   katakana: [
     "ー lengthens a vowel: コーヒー kōhī",
     "ッ (small tsu) doubles a consonant: ベッド beddo",
     "Foreign sounds: ファ fa · フィ fi · フェ fe · フォ fo",
-    "ティ ti · ディ di · ウィ wi · シェ she · チェ che · ジェ je · ヴ vu"
+    "Foreign sounds: ティ ti · ディ di · ウィ wi",
+    "Foreign sounds: シェ she · チェ che · ジェ je · ヴ vu",
+    "Irregular pronunciations: シ shi · チ chi · ツ tsu · フ fu",
+    "Historical kana: ヰ wi and ヱ we are not used in standard modern Japanese."
   ]
 };
 
@@ -94,7 +102,7 @@ export function kanaSheet() {
       { title: "Hiragana", lines: kanaNotes.hiragana },
       { title: "Katakana", lines: kanaNotes.katakana }
     ],
-    footer: "* Historical kana: ゐ/ヰ and ゑ/ヱ are not used in standard modern Japanese. し shi · ち chi · つ tsu · ふ fu have irregular pronunciations."
+    footer: ""
   };
 }
 

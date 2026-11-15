@@ -1,5 +1,5 @@
 .answer-feedback-slot {
-  block-size: 4.5rem;
+  block-size: 2.25rem;
   overflow: auto;
   margin: 0 0 8px;
   text-align: left;
@@ -11,6 +11,7 @@
   overflow-wrap: anywhere;
 }
 .answer-feedback-slot .correct-caption { color: light-dark(#17683b, #8bdfaa); font-weight: 700; }
+.answer-feedback-slot .accepted-alternatives { color: light-dark(#397b58, #b0d7be); font-weight: 500; }
 .answer-feedback-slot .incorrect-caption { color: light-dark(#a52d25, #ffaaa3); }
 #answerInput[data-grade="correct"] { outline: 2px solid #248254; outline-offset: 1px; }
 #answerInput[data-grade="incorrect"], #answerInput[data-grade="near"] { outline: 2px solid #c34a39; outline-offset: 1px; }

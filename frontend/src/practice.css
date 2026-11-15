@@ -84,6 +84,7 @@ select, .answer-input { width: 100%; min-width: 0; min-height: 36px; padding: 7p
 .question-label { color: var(--muted); font-size: 12px; }
 .tag { padding: 5px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-strong); font-size: 10px; font-weight: 750; text-transform: capitalize; }
 .prompt { min-height: 145px; margin-bottom: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+.prompt.request-loading-panel > :not(.request-loading-status) { visibility: hidden; }
 .glyph { font-family: var(--jp-font, "Noto Sans JP"), "Yu Gothic", Meiryo, sans-serif; font-size: clamp(86px, 17vw, 138px); line-height: 1.2; transition: font-size .15s; }
 .glyph.romaji { font: 600 clamp(53px, 11vw, 86px)/1.15 var(--latin-font, Inter, sans-serif); letter-spacing: -.04em; }
 body[data-practice-tool="kana"] .glyph { height: clamp(104px, 20.4vw, 166px); display: flex; align-items: center; justify-content: center; white-space: nowrap; }

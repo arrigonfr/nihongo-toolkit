@@ -18,29 +18,27 @@ import { readingType, selectedReadings, matchesReading } from "./reading-answers
   const $ = (selector) => document.querySelector(selector);
   const tool = document.body.dataset.practiceTool;
   renderPractice(tool);
-  const KANA_DIRECTIONS = ["hiragana-romaji", "katakana-romaji", "romaji-hiragana", "romaji-katakana", "romaji-any"];
-  const RANDOM_DIRECTIONS = KANA_DIRECTIONS.slice(0, 4);
+  const KANA_DIRECTIONS = ["hiragana-romaji", "katakana-romaji", "romaji-hiragana", "romaji-katakana"];
   // Saved values from the old single-choice select map onto the multi-select; "random" is the exclusive Randomize chip.
   function kanaDirections(value) {
     if (value === "to-romaji") return ["hiragana-romaji", "katakana-romaji"];
     if (value === "to-kana") return ["romaji-hiragana", "romaji-katakana"];
-    if (value === "random") return RANDOM_DIRECTIONS;
+    if (value === "romaji-any") return ["romaji-hiragana", "romaji-katakana"];
     const list = String(value ?? "").split(",").filter((item) => KANA_DIRECTIONS.includes(item));
-    return list.length ? list : ["hiragana-romaji", "katakana-romaji"];
+    return list.length ? list.filter((item) => item.startsWith("romaji-") === list.at(-1).startsWith("romaji-")) : ["hiragana-romaji", "katakana-romaji"];
   }
   if (tool === "kana") {
     mountChips($("#kanaDirection"), {
-      multiple: true, exclusive: "random", exclusiveLabel: "Randomize", fieldClass: "direction-field", groupClass: "direction-chips",
+      multiple: true, fieldClass: "direction-field", groupClass: "direction-chips",
       options: [
         { value: "hiragana-romaji", label: "Hiragana → romaji" }, { value: "katakana-romaji", label: "Katakana → romaji" },
-        { value: "romaji-hiragana", label: "Romaji → hiragana" }, { value: "romaji-katakana", label: "Romaji → katakana" },
-        { value: "romaji-any", label: "Romaji → either script" }, { value: "random", label: "Randomize" }
+        { value: "romaji-hiragana", label: "Romaji → hiragana" }, { value: "romaji-katakana", label: "Romaji → katakana" }
       ],
-      titleDescription: "Pick one or more directions; each question uses one of them at random. Randomize selects all of the four main directions.",
-      decode: (value) => value === "random" ? ["random"] : kanaDirections(value),
+      titleDescription: "Choose kana-to-romaji directions or romaji-to-kana directions.",
+      decode: kanaDirections,
       encode: (values) => {
-        if (values.includes("random")) return "random";
-        const list = KANA_DIRECTIONS.filter((item) => values.includes(item));
+        const family = values.at(-1)?.startsWith("romaji-");
+        const list = KANA_DIRECTIONS.filter((item) => values.includes(item) && item.startsWith("romaji-") === family);
         return list.length ? list.join(",") : null;
       }
     });
@@ -137,7 +135,7 @@ import { readingType, selectedReadings, matchesReading } from "./reading-answers
   candidates.className = "study-pills";
   candidates.setAttribute("role", "group");
   candidates.setAttribute("aria-label", "Choose the kanji you meant");
-  $("#answerForm").append(candidates);
+  if (tool === "meaning") $("#answerForm").append(candidates);
   $("#answerInput").addEventListener("compositionstart", () => { composing = true; });
   function clearReadingKanji() {
     if (tool === "reading" && !composing && /\p{Script=Han}/u.test($("#answerInput").value)) {
@@ -486,7 +484,10 @@ import { readingType, selectedReadings, matchesReading } from "./reading-answers
     $("#checkButton").textContent = "Check";
     $("#nextButton").hidden = true;
     $("#nextButton").disabled = !sessionActive;
-    if (sessionActive) $("#answerInput").focus({ preventScroll: true });
+    if (sessionActive) {
+      $("#answerInput").focus({ preventScroll: true });
+      if (questionNumber === 1 && matchMedia("(max-width: 760px)").matches) $("#answerInput").scrollIntoView({ block: "nearest" });
+    }
     useFont();
   }
   async function nextQuestion() {
@@ -501,9 +502,8 @@ import { readingType, selectedReadings, matchesReading } from "./reading-answers
     try {
     current = null;
     $("#questionCount").textContent = "Loading kanji…";
-    $("#glyph").textContent = "漢";
+    $("#glyph").textContent = "";
     $("#promptText").textContent = "Fetching kanji details";
-    $("#answerInput").disabled = true;
     $("#checkButton").disabled = true;
     let data;
     try {
@@ -668,6 +668,13 @@ import { readingType, selectedReadings, matchesReading } from "./reading-answers
     const feedback = $("#feedback");
     feedback.className = `feedback${revealOnly ? "" : correct ? " correct" : " incorrect"}`;
     $("#correctCaption").hidden = !correct;
+    $("#correctCaption").textContent = "Correct!";
+    if (correct && current.kind === "kanji" && current.direction !== "meaning-reverse") {
+      const alternatives = [...new Set(acceptedAnswers(current))].filter((answer) => !isCorrect(input, { ...current, answers: [answer], data: current.questionType === "reading" ? { on_readings: [answer], kun_readings: [answer] } : current.data }));
+      const picks = [];
+      while (alternatives.length && picks.length < 2) picks.push(alternatives.splice(Math.floor(Math.random() * alternatives.length), 1)[0]);
+      if (picks.length) $("#correctCaption").insertAdjacentHTML("beforeend", ` <span class="accepted-alternatives">Also: ${picks.map(escapeHTML).join(" · ")}</span>`);
+    }
     $("#incorrectCaption").textContent = correct ? "" : `Answer: ${displayAnswers(current)} · Enter to continue`;
     $("#answerInput").dataset.grade = revealOnly ? "" : correct ? "correct" : "incorrect";
     $("#answerInput").setAttribute("aria-invalid", String(!revealOnly && !correct));
@@ -748,6 +755,7 @@ import { readingType, selectedReadings, matchesReading } from "./reading-answers
   for (const id of ["sessionMode", "sessionTarget", "levelSelect"]) $(`#${id}`)?.addEventListener("change", () => showStartError(""));
   $("#sessionTarget").addEventListener("input", () => showStartError(""));
   $("#settingsPanel .settings-body").prepend($(".session-controls"));
+  $("#settingsPanel .settings-body").prepend($(".study-settings-note"));
   $("#settingsPanel").after($("#startError"));
   const sessionView = createSessionView({
     settings: $("#settingsPanel"), start: $("#startSessionButton"), results: $("#sessionResults"),
@@ -769,6 +777,16 @@ import { readingType, selectedReadings, matchesReading } from "./reading-answers
     "fontChoice", "sessionMode", "sessionTarget", "showStatsToggle", "reviewKanjiToggle"
   ], showWarning);
   sessionMode = $("#sessionMode").value;
+  const directionControl = $(tool === "kana" ? "#kanaDirection" : "#meaningDirection");
+  if (directionControl) {
+    const keyboardNote = document.createElement("p");
+    keyboardNote.className = "study-settings-note";
+    keyboardNote.textContent = "Enable a Japanese keyboard to answer in Japanese. This quiz does not convert romaji automatically.";
+    directionControl.closest(".chips-field").append(keyboardNote);
+    const updateKeyboardNote = () => { keyboardNote.hidden = tool === "kana" ? !kanaDirections(directionControl.value).some((value) => value.startsWith("romaji-")) : directionControl.value !== "meaning-reverse"; };
+    directionControl.addEventListener("change", updateKeyboardNote);
+    updateKeyboardNote();
+  }
   $("#sessionStatsContent").hidden = !$("#showStatsToggle").checked;
   updateStats();
   updateSessionControls();

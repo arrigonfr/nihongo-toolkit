@@ -1,4 +1,6 @@
 @import "./shiritori.css";
+.imposters-shortcut { font: 11px/1.4 monospace; opacity: .65; margin-inline-start: 6px; }
+@media (max-width: 760px), (hover: none) { .imposters-shortcut { display: none; } }
 body { min-height: 100vh; min-height: 100dvh; }
 .imposters-shell { max-width: 1000px; }
 .imposters-settings { margin-bottom: 16px; }

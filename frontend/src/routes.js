@@ -1,3 +1,12 @@
+export function publicPath(file) {
+  return file === "index.html" ? "" : file.replace(/\.html$/, "");
+}
+
+export function pageFile(pathname) {
+  const name = decodeURIComponent(pathname.split("/").pop());
+  return name ? name.includes(".") ? name : `${name}.html` : "index.html";
+}
+
 export const legacyRoutes = {
   "kanji-imposters.html": "kanji-kuizu.html",
   "仮名.html": "kana.html", "読み.html": "yomi.html", "意味.html": "imi.html", "語彙.html": "goi.html",

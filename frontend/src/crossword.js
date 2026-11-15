@@ -724,6 +724,7 @@ import {
 
     if (isCompleteAndCorrect && !entry.completed) {
       entry.completed = true;
+      if (state.settings.inputStyle === "popup" && state.activeEntryId === entry.id) state.popoverOpen = false;
       for (const { row, col } of entry.cells) {
         const cell = state.puzzle.grid[row][col];
         if (cell.status !== "revealed") {
@@ -799,6 +800,10 @@ import {
         const isCurrent = state.activeCell.row === r && state.activeCell.col === c;
         const inWord = activeCoords.has(`${r},${c}`);
         const isIntersection = Boolean(cell.acrossId && cell.downId);
+        const displayChars = [...new Set(Object.values(cell.displayChars || {}))];
+        const solved = cell.value && cell.value === cell.solution;
+        const split = solved && displayChars.length === 2;
+        const display = solved ? displayChars[0] || cell.value : cell.value;
         const statusClass = cell.status !== "empty" ? ` status-${cell.status}` : "";
         const romajiHint = state.settings.romanization && cell.value && !/^[A-Za-z]$/.test(cell.value)
           ? romanizeKana(cell.value)
@@ -843,7 +848,7 @@ import {
             aria-label="Row ${r + 1}, Column ${c + 1}${cell.number ? `, Clue ${cell.number}` : ""}${cell.value ? `, ${cell.value}` : ", empty"}"
           >
             ${cell.number ? `<span class="cw-cell-num">${cell.number}</span>` : ""}
-            <span class="cw-cell-char" lang="ja">${escapeHTML(cell.value)}</span>
+            <span class="cw-cell-char${split ? " cw-cell-split" : ""}" lang="ja">${split ? displayChars.map((character) => `<span>${escapeHTML(character)}</span>`).join("") : escapeHTML(display)}</span>
             ${cellInputHTML}
             ${romajiHint ? `<span class="cw-cell-romaji">${escapeHTML(romajiHint)}</span>` : ""}
           </div>

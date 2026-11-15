@@ -156,6 +156,8 @@ function drawKana(prims, table, x, y, w, rowH, baseHue, span, labelWidth = 20) {
 }
 
 function drawNote(prims, note, x, y, w, h, hue, size = 8.5) {
+  const contentHeight = (fontSize) => note.lines.reduce((height, line) => height + wrapText(line, fontSize, w - 26).length * (fontSize + 3.5) + 2.5, 0);
+  while (size > 6 && contentHeight(size) > h - 40) size -= .25;
   rect(prims, x, y, w, h, hsl(hue, 70, 96), 9, hsl(hue, 45, 80));
   rect(prims, x, y + 8, 3.5, 16, hsl(hue, 60, 45), 2);
   text(prims, x + 12, y + 20, note.title, 10.5, { anchor: "start", weight: 800, fill: hsl(hue, 55, 28) });

@@ -142,7 +142,7 @@
     .breakdown { display: grid; grid-template-columns: 1fr auto auto; gap: 6px 10px; align-items: center; font-size: 11px; }
     .breakdown .head { color: var(--muted); font-size: 9px; }
     .breakdown .value { text-align: right; font-variant-numeric: tabular-nums; }
-    .stats-breakdowns .breakdown { height: 7rem; overflow: auto; align-content: start; }
+    .stats-breakdowns .breakdown { max-height: 4rem; overflow: auto; align-content: start; }
     .status { height: 3rem; overflow: auto; margin-top: 10px; color: var(--muted); font-size: 11px; text-align: center; }
     .status.error { color: var(--danger); }
     footer { padding: 17px 0 0; color: var(--muted); text-align: center; font-size: 10px; line-height: 1.6; }
@@ -289,7 +289,7 @@
     .question-top .stop-session { margin-left: auto; min-height: 34px; padding: 5px 14px; font-size: 13px; color: #b3261e; border-color: color-mix(in srgb, #b3261e 45%, transparent); }
     .start-error { margin: -4px 0 10px; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, #d93025 12%, transparent); border: 1px solid color-mix(in srgb, #d93025 40%, transparent); color: #b3261e; font-size: 13px; font-weight: 600; }
     .start-error[hidden] { display: none; }
-    .level-note { margin: -10px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .level-note { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
     .settings.session-controls .practice-mode-chips { min-height: 38px; }
     /* Goi quiz modes: two rows of three on desktop */
     .chips-field:has(#modeSelect) .chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -310,6 +310,11 @@
     body :is(.session-stats, .results-panel, #questionContent) { padding: 20px; }
     body .settings-panel .study-settings-note { padding-inline: 20px; }
     [hidden] { display: none !important; }
+    .goi-settings .mode-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    body .stats-breakdowns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+    body .stats-section { padding: 6px; min-height: 0; }
+    body .stats-title { margin: 0 0 4px; font-size: 11px; }
+    body .breakdown { gap: 3px 6px; font-size: 11px; }
   </style>
 </head>
 <body>
@@ -335,13 +340,14 @@
               <div class="goi-row">
                 <label class="goi-field"><span class="field-label">Quiz mode</span>
                   <select class="select" id="modeSelect">
-                    <option value="multiple-ej">Multiple choice (E→J)</option><option value="typing-ej">Typing (E→J)</option><option value="cloze-ej">Cloze (E→J)</option><option value="multiple-je" selected>Multiple choice (J→E)</option><option value="typing-je">Typing (J→E)</option><option value="cloze-je">Cloze (J→E)</option>
+                    <option value="multiple-je" selected>Multiple choice (J→E)</option><option value="multiple-ej">Multiple choice (E→J)</option><option value="typing-je">Typing (J→E)</option><option value="typing-ej">Typing (E→J)</option>
                   </select>
                 </label>
                 <label class="goi-field"><span class="field-label">Kana direction</span>
                   <select class="select" id="kanaDirection">
                     <option value="to-romaji">Kanji / Kana → Romaji</option><option value="to-kana">Romaji → Kanji / Kana</option><option value="random">Randomize</option>
                   </select>
+                  <small id="keyboardNote" hidden>Enable a Japanese keyboard. This quiz does not convert romaji automatically.</small>
                 </label>
               </div>
               <label><span class="field-label">JLPT level</span>

@@ -246,6 +246,11 @@ function isChoice() { return session.settings.mode === "comparison" || session.s
 function renderQuestion() {
   if (!session || session.ended) return;
   const q = session.current, s = session.settings;
+  if (session.meaningHint?.question !== q) {
+    const remaining = [...new Set(q.entry.meanings)], chosen = [];
+    while (remaining.length && chosen.length < 3) chosen.push(remaining.splice(Math.floor(Math.random() * remaining.length), 1)[0]);
+    session.meaningHint = { question: q, text: chosen.join("; ") };
+  }
   const recognition = s.mode === "reverse" || s.mode === "comparison";
   const word = recognition ? q.row : q.entry;
   const field = s.mode === "comparison" ? "form" : session.task;
@@ -262,7 +267,7 @@ function renderQuestion() {
   }
   $("questionBody").innerHTML = `<div class="word-prompt"><span class="badge">N${q.level} · ${recognition ? "READ & RECOGNIZE" : "CONJUGATE"}</span>
     <div class="base-word">${japanese(word.word, word.reading)} ${audioHTML(word.reading)}</div>
-    ${!recognition && s.meaning ? `<p class="muted">${escape(q.entry.meanings.join("; "))}</p>` : ""}
+    ${!recognition && s.meaning ? `<p class="muted meaning-hint">${escape(session.meaningHint.text)}</p>` : ""}
     ${!recognition && s.type ? `<p class="muted small">${escape(wordCategories[q.entry.category])}</p>` : ""}
     </div><div class="requested-form" data-prompt="${recognition ? "recognition" : session.prompt}">${requested}</div>`;
   enableKanji($("questionBody"));
@@ -354,12 +359,13 @@ function tick() {
 }
 function focusAnswer() {
   (isChoice() ? $("answerOptions").querySelector("button") : $("answerInput")).focus({ preventScroll: true });
-  $("practice").scrollIntoView({ block: "start" });
+  $("answerForm").scrollIntoView({ block: "nearest", behavior: "instant" });
 }
 function startError(message) {
   $("startError").textContent = message;
   if (message) $("startError").scrollIntoView({ block: "nearest" });
 }
+let loadedVocabularyLevels = "";
 async function start() {
   if ($("startButton").disabled) return;
   cancelAutoAdvance();
@@ -375,14 +381,18 @@ async function start() {
   $("startButton").disabled = true;
   startError("Loading dictionary-backed vocabulary…");
   try {
-    loadPracticeEntries([]);
-    const response = await fetch(`${API_BASE}/api/conjugation-practice?level=all`, { signal: AbortSignal.timeout(30000) });
-    if (!response.ok) throw new Error("The dictionary practice source is unavailable. Check the backend and retry; no fallback word bank is used.");
-    const data = await response.json();
-    loadPracticeEntries(data.entries);
+    const levels = [5, 4, 3, 2, 1].filter((level) => level >= Math.min(...settings.levels)).join(",");
+    if (loadedVocabularyLevels !== levels) {
+      const response = await fetch(`${API_BASE}/api/conjugation-practice?level=${encodeURIComponent(levels)}`, { signal: AbortSignal.timeout(30000) });
+      if (!response.ok) throw new Error("The dictionary practice source is unavailable. Check the backend and retry; no fallback word bank is used.");
+      const data = await response.json();
+      loadPracticeEntries(data.entries);
+    }
     session = new PracticeSession(settings, progress, Date.now(), Math.random, previousSessionWords);
+    loadedVocabularyLevels = levels;
     renderProgress();
   } catch (error) {
+    loadedVocabularyLevels = "";
     startError(`Could not start dictionary practice: ${error.message}`);
     return;
   } finally { $("startButton").disabled = false; }
@@ -390,7 +400,7 @@ async function start() {
   startError("");
   notice(session.limit < session.requestedLimit
     ? `JMdict vocabulary loaded. Only ${session.limit} distinct questions match these filters. This session will use ${session.limit}.`
-    : "Vocabulary source: JMdict with linked JLPT levels. Conjugated answers use grammatical rules.");
+    : "");
   $("setup").hidden = true; $("results").hidden = true; $("practice").hidden = false;
   document.body.dataset.practicing = "true";
   $("resetButton").disabled = true;

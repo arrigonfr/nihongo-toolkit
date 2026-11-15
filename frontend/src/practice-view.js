@@ -16,13 +16,11 @@ export function renderPractice(kind) {
         <option value="hiragana-romaji,katakana-romaji" selected>Kana → romaji</option>
         <option value="to-romaji">Kana (any) → romaji</option>
         <option value="to-kana">Romaji → kana (script shown)</option>
-        <option value="random">Randomize</option>
       </select></label>`
     : kind === "meaning"
       ? `<label>Meaning direction<select id="meaningDirection">
           <option value="meaning-forward">Kanji → English meaning</option>
           <option value="meaning-reverse">English meaning → Kanji</option>
-          <option value="meaning-random">Both</option>
         </select></label>`
       : `<label>Answer options<select id="readingDirection">
           <option value="reading-katakana">On'yomi</option>

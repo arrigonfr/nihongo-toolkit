@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv } from "vite";
 import { readFileSync, readdirSync, writeFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { legacyRoutes } from "./src/routes.js";
+import { legacyRoutes, publicPath } from "./src/routes.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const toolFiles = readdirSync(root).filter((file) => file.endsWith(".html") && !["index.html", "data-sources.html", "文字.html"].includes(file));
@@ -91,16 +91,32 @@ function toolNavigation(site) {
       handler(html, context) {
         const file = context.filename.split("/").pop();
         if (file === "文字.html") return addTagManager(html);
-        const canonical = site ? new URL(file === "index.html" ? "" : file, site).href : null;
+        const canonical = site ? new URL(publicPath(file), site).href : null;
+        if (file === "index.html" && site) {
+          html = html.replace(/(<script type="application\/ld\+json">)([\s\S]*?)(<\/script>)/, (_, open, content, close) => {
+            const data = JSON.parse(content);
+            const website = data["@graph"].find((node) => node["@type"] === "WebSite");
+            const source = new URL(website.url);
+            for (const node of data["@graph"]) {
+              if (node.alternateName) node.alternateName = [...node.alternateName.filter((name) => name !== source.hostname), new URL(site).hostname];
+            }
+            const normalized = JSON.stringify(data, (key, value) => {
+              if (typeof value !== "string" || !(value === source.origin || value.startsWith(`${source.origin}/`))) return value;
+              const url = new URL(value);
+              return new URL(`${url.pathname}${url.search}${url.hash}`, site).href;
+            });
+            return `${open}${normalized.replaceAll("<", "\\u003c")}${close}`;
+          });
+        }
         const tags = [{ tag: "link", attrs: { rel: "apple-touch-icon", sizes: "180x180", href: "./apple-touch-icon.png?v=2" }, injectTo: "head" }];
         tags.push({ tag: "script", attrs: { type: "module", src: "./src/page-views.js" }, injectTo: "body" });
         if (canonical) tags.push({ tag: "link", attrs: { rel: "canonical", href: canonical }, injectTo: "head" });
-        if (file === "index.html" || toolFiles.includes(file)) {
+        if (file === "index.html" || file === "data-sources.html" || toolFiles.includes(file)) {
           const launcher = readFileSync(new URL("./index.html", import.meta.url), "utf8");
           const originalMenu = launcher.match(/<nav class="navigation"[\s\S]*?<\/nav>/)[0];
           let menu = originalMenu.replace(/<button class="helper-link" type="button" data-file="([^"]+)">([\s\S]*?)<\/button>/g,
             (_, filename, content) => `<a class="helper-link" data-file="${filename}" href="./${filename}" target="_top">${content}</a>`);
-          if (file !== "index.html") menu = menu.replace('<nav class="navigation" aria-label="Helper navigation">', '<nav class="navigation" aria-label="Helper navigation"><a class="dashboard-back" href="./" aria-label="Back to dashboard" title="Back to dashboard">←</a>');
+          menu = menu.replace('<div class="menu" id="helperMenu" hidden>', '<div class="menu" id="helperMenu" hidden><a class="helper-link home-link" href="./" target="_top"><span class="helper-name">Home</span></a>');
           if (file === "index.html") {
             html = html.replace(originalMenu, menu);
             const groups = menu.match(/<section class="menu-group"[\s\S]*<\/section>/)[0].replaceAll('class="helper-link"', 'class="dashboard-link"');
@@ -112,8 +128,7 @@ function toolNavigation(site) {
             tags.push(
               { tag: "style", injectTo: "head", children: `${menuCSS}
                 .navigation { --surface: var(--card, #fff); --selected: var(--accent-soft, #eaf1ec); --selected-ink: var(--accent-strong, #254d3e); }
-                .dashboard-back { position: absolute; top: 12px; left: 0; display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 24px; text-decoration: none; }
-                body header.study-header { position: relative; padding-left: 50px; }
+                body header.study-header { position: relative; }
                 .navigation, .navigation * { box-sizing: border-box; }
                 .navigation a { text-decoration: none; }
                 .navigation :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
@@ -129,6 +144,8 @@ function toolNavigation(site) {
           tags.push({ tag: "noscript", injectTo: "body", children: "<style>.navigation .menu[hidden] { display: block; } .navigation .menu-button { display: none; }</style>" });
         }
         html = html.replace(/href="\.\/#helper=([^"]+)"/g, 'href="./$1"');
+        html = html.replace(/href="\.\/([^"?#]+\.html)([?#][^"]*)?"/g, (match, target, suffix = "") =>
+          seoPages[target] ? `href="./${publicPath(target)}${suffix}"` : match);
         const seo = seoPages[file];
         if (seo) {
           html = html.replace(/<title>[^<]*<\/title>/i, `<title>${seo.title}</title>`);
@@ -137,14 +154,27 @@ function toolNavigation(site) {
             { tag: "meta", attrs: { property: "og:title", content: seo.title }, injectTo: "head" },
             { tag: "meta", attrs: { property: "og:description", content: seo.description }, injectTo: "head" },
             { tag: "meta", attrs: { property: "og:type", content: "website" }, injectTo: "head" },
-            { tag: "meta", attrs: { name: "twitter:card", content: "summary" }, injectTo: "head" },
+            { tag: "meta", attrs: { name: "twitter:card", content: site ? "summary_large_image" : "summary" }, injectTo: "head" },
             { tag: "meta", attrs: { name: "twitter:title", content: seo.title }, injectTo: "head" },
             { tag: "meta", attrs: { name: "twitter:description", content: seo.description }, injectTo: "head" }
           );
           if (file !== "index.html") {
             tags.push({ tag: "meta", attrs: { property: "og:site_name", content: "Nihongo Toolkit" }, injectTo: "head" });
           }
-          if (canonical) tags.push({ tag: "meta", attrs: { property: "og:url", content: canonical }, injectTo: "head" });
+          if (canonical) {
+            const image = new URL("og-image.png", site).href;
+            const imageAlt = "Nihongo Toolkit homepage with Japanese practice tools, dictionary tools, and word games";
+            tags.push(
+              { tag: "meta", attrs: { property: "og:url", content: canonical }, injectTo: "head" },
+              { tag: "meta", attrs: { property: "og:image", content: image }, injectTo: "head" },
+              { tag: "meta", attrs: { property: "og:image:type", content: "image/png" }, injectTo: "head" },
+              { tag: "meta", attrs: { property: "og:image:width", content: "1200" }, injectTo: "head" },
+              { tag: "meta", attrs: { property: "og:image:height", content: "630" }, injectTo: "head" },
+              { tag: "meta", attrs: { property: "og:image:alt", content: imageAlt }, injectTo: "head" },
+              { tag: "meta", attrs: { name: "twitter:image", content: image }, injectTo: "head" },
+              { tag: "meta", attrs: { name: "twitter:image:alt", content: imageAlt }, injectTo: "head" }
+            );
+          }
         }
         return { html: addTagManager(html), tags };
       }
@@ -178,20 +208,20 @@ export default defineConfig(({ mode }) => {
           const pages = ["", ...toolFiles, "data-sources.html"];
           response.setHeader("Content-Type", "application/xml; charset=utf-8");
           response.end(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages.map((file) =>
-            `  <url><loc>${new URL(file, site).href}</loc></url>`).join("\n")}\n</urlset>\n`);
+            `  <url><loc>${new URL(publicPath(file), site).href}</loc></url>`).join("\n")}\n</urlset>\n`);
         } else next();
       });
     },
     writeBundle(options) {
       const directory = options.dir || `${root}/dist`;
       for (const [oldName, newName] of Object.entries(legacyRoutes)) {
-        writeFileSync(`${directory}/${oldName}`, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0;url=./${newName}"><link rel="canonical" href="./${newName}"><title>Redirecting</title></head><body><a href="./${newName}">Continue</a></body></html>`);
+        writeFileSync(`${directory}/${oldName}`, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0;url=./${publicPath(newName)}"><link rel="canonical" href="./${publicPath(newName)}"><title>Redirecting</title></head><body><a href="./${publicPath(newName)}">Continue</a></body></html>`);
       }
       writeFileSync(`${directory}/robots.txt`, `User-agent: *\nAllow: /\n${site ? `\nSitemap: ${site}sitemap.xml\n` : ""}`);
       if (!site) { rmSync(`${directory}/sitemap.xml`, { force: true }); return; }
       const pages = ["", ...toolFiles, "data-sources.html"];
       writeFileSync(`${directory}/sitemap.xml`, `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages.map((file) =>
-        `  <url><loc>${new URL(file, site).href}</loc></url>`).join("\n")}\n</urlset>\n`);
+        `  <url><loc>${new URL(publicPath(file), site).href}</loc></url>`).join("\n")}\n</urlset>\n`);
     }
   }],
   server: { port: 5173, strictPort: true },

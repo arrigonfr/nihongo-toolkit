@@ -93,7 +93,7 @@ try {
   const correct = await page.locator("#choices button").evaluateAll((buttons, { pool, prompt, isKanji }) => {
     const normalize = (text) => text.replace(/[ァ-ヶ]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
     const readings = (item) => [...item.on_readings, ...item.kun_readings].map(normalize);
-    return buttons.map((button, index) => ({ index, value: button.textContent })).filter(({ value }) => isKanji ? readings(pool.find((item) => item.kanji === prompt)).includes(value) : readings(pool.find((item) => item.kanji === value)).includes(prompt)).map(({ index }) => index);
+    return buttons.map((button, index) => ({ index, value: button.querySelector(".choice-value").textContent })).filter(({ value }) => isKanji ? readings(pool.find((item) => item.kanji === prompt)).includes(value) : readings(pool.find((item) => item.kanji === value)).includes(prompt)).map(({ index }) => index);
   }, { pool, prompt, isKanji });
   assert.ok(correct.length >= 2 && correct.length < 5);
   await page.locator(`#choices button[data-choice="${correct[0]}"]`).click();
@@ -120,7 +120,7 @@ try {
     const valid = await page.locator("#choices button").evaluateAll((buttons, { pool, currentPrompt, variant }) => {
       const normalize = (text) => text.replace(/[ァ-ヶ]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
       const readings = (item) => [...item.on_readings, ...item.kun_readings].map(normalize);
-      return buttons.map((button, index) => ({ index, value: button.textContent })).filter(({ value }) => variant === "kanji-reading" ? readings(pool.find((item) => item.kanji === currentPrompt)).includes(value) : readings(pool.find((item) => item.kanji === value)).includes(currentPrompt)).map(({ index }) => index);
+      return buttons.map((button, index) => ({ index, value: button.querySelector(".choice-value").textContent })).filter(({ value }) => variant === "kanji-reading" ? readings(pool.find((item) => item.kanji === currentPrompt)).includes(value) : readings(pool.find((item) => item.kanji === value)).includes(currentPrompt)).map(({ index }) => index);
     }, { pool, currentPrompt, variant });
     assert.ok(valid.length >= 2 && valid.length < 5);
     for (const index of valid.slice(0, -1)) await page.locator(`#choices button[data-choice="${index}"]`).click();
@@ -144,7 +144,7 @@ try {
     const valid2 = await page.locator("#choices button").evaluateAll((buttons, { pool, currentPrompt2, variant }) => {
       const normalize = (text) => text.replace(/[ァ-ヶ]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
       const readings = (item) => [...item.on_readings, ...item.kun_readings].map(normalize);
-      return buttons.map((button, index) => ({ index, value: button.textContent })).filter(({ value }) => variant === "kanji-reading" ? readings(pool.find((item) => item.kanji === currentPrompt2)).includes(value) : readings(pool.find((item) => item.kanji === value)).includes(currentPrompt2)).map(({ index }) => index);
+      return buttons.map((button, index) => ({ index, value: button.querySelector(".choice-value").textContent })).filter(({ value }) => variant === "kanji-reading" ? readings(pool.find((item) => item.kanji === currentPrompt2)).includes(value) : readings(pool.find((item) => item.kanji === value)).includes(currentPrompt2)).map(({ index }) => index);
     }, { pool, currentPrompt2, variant });
     for (const index of valid2) await page.locator(`#choices button[data-choice="${index}"]`).click();
     const wrong = [0, 1, 2, 3, 4].find((index) => !valid2.includes(index));

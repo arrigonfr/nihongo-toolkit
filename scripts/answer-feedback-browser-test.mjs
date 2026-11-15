@@ -49,7 +49,7 @@ try {
     for (const tool of ["kana", "imi", "yomi"]) {
       await page.goto(`${base}/${tool}.html`);
       await page.click("#startSessionButton");
-      await page.waitForFunction(() => !document.getElementById("answerInput").disabled);
+      await page.waitForFunction(() => document.getElementById("questionCount").textContent.startsWith("Question "));
       if (tool !== "kana") await page.uncheck("#reviewKanjiToggle");
       const before = await position();
       await page.fill("#answerInput", "wrong");
@@ -83,11 +83,11 @@ try {
       await page.goto(`${base}/yomi.html`);
       await change("readingDirection", direction);
       await page.click("#startSessionButton");
-      await page.waitForFunction(() => !document.getElementById("answerInput").disabled);
+      await page.waitForFunction(() => document.getElementById("questionCount").textContent.startsWith("Question "));
       assert.equal(await page.locator(".reading-badge").count(), badge ? 1 : 2);
       if (badge) assert.equal(await page.locator(`.reading-badge-${badge}`).count(), 1);
     }
-    for (const mode of ["typing-je", "cloze-je", "typing-ej", "cloze-ej"]) {
+    for (const mode of ["typing-je", "typing-ej"]) {
       await page.goto(`${base}/goi.html`);
       await change("modeSelect", mode);
       await page.click("#startButton");

@@ -229,11 +229,12 @@ Sentence panels share translations, available furigana, audio and source credits
 currently displayed sentences when alternatives exist. Missing examples, including
 those in the crossword inspector, automatically use the backend fallback. A failed
 online refresh preserves available examples and displays a retryable message.
-Goi cloze questions use matching corpus sentences, trying the Tatoeba adapter
-when no suitable local example exists. They do not use generated sentences or
-fabricated meaning-clue templates. A bounded search tries up to five words;
-if none has a matching sentence, the session reports the missing content and
-suggests Typing, Multiple choice, or retrying later.
+
+Run `node scripts/requested-improvements-browser-test.mjs` for the focused mobile
+and desktop regression coverage added for these UI changes.
+
+Goi offers typing and multiple-choice questions in both directions. Example
+sentences remain available in the optional answer review panel.
 
 Question content is sourced from the imported JMdict/JLPT vocabulary and KANJIDIC
 datasets, with provider-specific adapters for online dictionary and sentence
@@ -588,7 +589,7 @@ Toggling it off cancels the pending advance; graded text is read-only, and Enter
 still advances. No after-answer example sentences or feedback panel are shown.
 Compact wrong/empty-answer notices appear above the answer input in a reserved,
 scrollable feedback area, so long hints and correct captions do not move the input.
-Kana, Yomi, Imi and Goi typing/cloze use the same stable feedback placement;
+Kana, Yomi, Imi and Goi typing use the same stable feedback placement;
 inputs are neutral until checked and reset on each new question. Yomi displays
 only the selected reading-type badges. Imi/Yomi's review toggle and Goi's
 example/definition toggle hide the entire details panel when off, even after an
@@ -730,11 +731,11 @@ Recent searches stay within their panel, with ellipsis and the full query on hov
 Goi's direction labels are **Kanji / Kana → Romaji** and **Romaji → Kanji / Kana**.
 Typing prompts show the Japanese spelling or romaji for the selected direction,
 including randomized questions. Kana-only headwords can display their compatible
-kanji spellings above them (reverse ruby), or alongside a cloze sentence. These
+kanji spellings above them (reverse ruby). These
 hints come from the same JMdict entry and respect reading/sense restrictions;
 unlinked entries are not guessed from unrelated homophones.
 
-Typing and cloze J→E answers accept the study-list meanings plus applicable
+Typing J→E answers accept the study-list meanings plus applicable
 English JMdict glosses. Parenthetical alternatives such as `(swimming) pool`
 accept both `swimming pool` and `pool`; arbitrary substrings are not accepted.
 Japanese cross-references are not treated as English synonyms. Display glosses

@@ -1,5 +1,6 @@
 import { romanizeKana } from "./romanize.js";
 import { alignFuriganaRuby, formatFurigana } from "./furigana.js";
+import { toHiragana } from "wanakana";
 
 export const PUZZLE_SIZES = {
   small: { label: "Small (8×8 · ~6 words)", gridSize: 8, targetWords: 6 },
@@ -260,7 +261,8 @@ export function generateCrossword(pool, {
     prepared.push({
       item,
       answer: resolved.answer,
-      chars: resolved.chars,
+      chars: resolved.chars.map((character) => toHiragana(character, { passRomaji: true })),
+      displayChars: resolved.chars,
       script: resolved.script,
       isPriority: prioritySet.has(item.id) || prioritySet.has(item.word),
       isRecent: recentSet.has(item.id) || recentSet.has(item.word) || recentSet.has(resolved.answer)
@@ -441,6 +443,7 @@ export function generateCrossword(pool, {
             row: r,
             col: c,
             solution: cell.char,
+            displayChars: {},
             value: "",
             number: null,
             acrossId: null,
@@ -482,6 +485,7 @@ export function generateCrossword(pool, {
         const r = p.row + (p.dir === "down" ? i : 0);
         const c = p.col + (p.dir === "across" ? i : 0);
         cells.push({ row: r, col: c });
+        grid[r][c].displayChars[p.dir] = p.displayChars[i];
         if (p.dir === "across") grid[r][c].acrossId = id;
         else grid[r][c].downId = id;
       }
@@ -500,6 +504,7 @@ export function generateCrossword(pool, {
         length: p.chars.length,
         answer: p.answer,
         chars: p.chars,
+        displayChars: p.displayChars,
         script: p.script,
         cells,
         clue,

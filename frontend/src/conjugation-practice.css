@@ -1,6 +1,8 @@
 @import "./conjugator.css";
 @import "./answer-feedback.css";
 
+.word-prompt .meaning-hint { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+
 :root { --jp-size: 40px; }
 .practice-shell { max-width: 1180px; margin: auto; padding: 0 28px; }
 .intro { padding: 38px 0 30px; }

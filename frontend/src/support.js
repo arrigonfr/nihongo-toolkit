@@ -1,4 +1,4 @@
-const messages = ["Buy me a coffee", "Buy me a beer", "Buy me a slice of pizza", "Keep me caffeinated", "Fuel my creative engine", "Drop a tip", "Tip jar", "Show some love", "Send a thank you", "Back this creator", "Feed the tip jar", "Become a patron"];
+const messages = ["Coffee?", "Pizza?", "Sushi?", "Beer?", "Tip?", "Thanks"];
 
 export function createSupportButton() {
   const support = document.createElement("aside");

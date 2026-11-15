@@ -17,7 +17,7 @@ const cases = [
   ["kana.html", { kanaDirection: "romaji-katakana", fontChoice: "Sawarabi Mincho", sessionMode: "questions", sessionTarget: 37, showStatsToggle: false }],
   ["imi.html", { levelSelect: "3", meaningDirection: "meaning-reverse", fontChoice: "Zen Kurenaido", sessionMode: "timed", sessionTarget: 7, showStatsToggle: false, reviewKanjiToggle: true }],
   ["yomi.html", { levelSelect: "unrated", readingDirection: "reading-katakana", fontChoice: "M PLUS Rounded 1c", sessionMode: "questions", sessionTarget: 18, showStatsToggle: true, reviewKanjiToggle: true }],
-  ["goi.html", { levelSelect: "N2", modeSelect: "cloze-ej", kanaDirection: "to-kana", fontChoice: "Noto Sans JP", sessionType: "time", questionLimit: 27, timeLimit: 6, showStatsToggle: false, showExampleToggle: false }],
+  ["goi.html", { levelSelect: "N2", modeSelect: "typing-ej", kanaDirection: "to-kana", fontChoice: "Noto Sans JP", sessionType: "time", questionLimit: 27, timeLimit: 6, showStatsToggle: false, showExampleToggle: false }],
   ["kanji-kuizu.html", { mode: "timed", count: "custom", customCount: 17, seconds: "30", levelSelect: "3,2", variants: "reading-kanji", readingPrompt: "audio", fontSize: "80", hintMode: "limited", hintLimit: 7, revealMode: "disabled", revealLimit: 4, details: false }],
   ["kotoba.html", { kanjiMode: true }],
   ["fumitoki.html", { translationToggle: true }],

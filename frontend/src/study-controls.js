@@ -92,7 +92,7 @@ export function mountStudyControls({ furigana = true, romaji = true, onChange = 
   const theme = document.querySelector("#themeButton, #themeCycleBtn");
   header.classList.add("study-header");
   header.classList.add("study-embedded");
-  for (const note of header.querySelectorAll(".brand-note, .cw-brand-note, .brand-sub")) note.textContent = "at NihongoKit";
+  for (const note of header.querySelectorAll(".brand-note, .cw-brand-note, .brand-sub")) note.textContent = "Nihongo Toolkit";
   for (const panel of document.querySelectorAll("details#settingsPanel, details#settingsDrawer, details:has(> #settings)")) panel.open = true;
   const toolbar = header.querySelector(".study-toolbar");
   for (const [name, visible] of Object.entries({ audio: true, furigana, romaji })) {
@@ -117,7 +117,8 @@ export function mountStudyControls({ furigana = true, romaji = true, onChange = 
     for (const name of Object.keys(study)) {
       document.documentElement.dataset[`study${name[0].toUpperCase()}${name.slice(1)}`] = String(study[name]);
       const button = toolbar.querySelector(`#${name}QuickToggle`);
-      button.textContent = `${{ audio: study.audio ? "🔊 Audio" : "🔇 Audio", furigana: "あ Furigana", romaji: "Aa Romaji" }[name]} ${study[name] ? "On" : "Off"}`;
+      button.textContent = { audio: study.audio ? "🔊 Audio" : "🔇 Audio", furigana: "あ Furigana", romaji: "Aa Romaji" }[name];
+      button.title = `${study[name] ? "Disable" : "Enable"} ${name}`;
       button.setAttribute("aria-pressed", String(study[name]));
     }
     if (!study.audio) {

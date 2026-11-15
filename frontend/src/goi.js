@@ -33,12 +33,12 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
   };
   const LEVELS = ["N5", "N4", "N3", "N2", "N1"];
   const MODES = {
-    "multiple-ej": "Multiple choice (E→J)", "typing-ej": "Typing (E→J)", "cloze-ej": "Cloze (E→J)",
-    "multiple-je": "Multiple choice (J→E)", "typing-je": "Typing (J→E)", "cloze-je": "Cloze (J→E)"
+    "multiple-ej": "Multiple choice (E→J)", "typing-ej": "Typing (E→J)",
+    "multiple-je": "Multiple choice (J→E)", "typing-je": "Typing (J→E)"
   };
   const parseMode = (value) => {
     const [mode, dir] = String(value).split("-");
-    return { mode: ["multiple", "typing", "cloze"].includes(mode) ? mode : "multiple", dir: dir === "je" ? "je" : "ej" };
+    return { mode: ["multiple", "typing"].includes(mode) ? mode : "multiple", dir: dir === "je" ? "je" : "ej" };
   };
   const answerKey = (item) => currentSettings().dir === "ej" ? item.word : item.meaning;
   const FONTS = ["Noto Sans JP", "Sawarabi Mincho", "M PLUS Rounded 1c", "Zen Kurenaido"];
@@ -162,27 +162,6 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
   function kanaPlaceholder(label) {
     return state.questionDirection === "to-romaji" ? `${label} (romaji)` : `${label} (kana or kanji)`;
   }
-  function getExample(item) {
-    const candidates = [item.word, item.furigana].filter(Boolean).sort((a, b) => b.length - a.length);
-    const available = item.examples.filter((example) => !example.generated && example.english
-      && candidates.some((term) => example.japanese?.includes(term)));
-    const example = available.length ? randomItem(available) : null;
-    if (example) {
-      let clozeSentence = example.japanese;
-      let targetFound = false;
-      for (const term of candidates) {
-        const index = clozeSentence.indexOf(term);
-        if (index >= 0) {
-          clozeSentence = `${clozeSentence.slice(0, index)}___${clozeSentence.slice(index + term.length)}`;
-          targetFound = true;
-          break;
-        }
-      }
-      if (!targetFound) return null;
-      return { sentence: example.japanese, clozeSentence, translation: example.english };
-    }
-    return null;
-  }
   function renderQuestion(item) {
     const inputWasActive = state.inputActivated;
     state.session.presented += 1;
@@ -235,32 +214,17 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
       $("#word").innerHTML = wordPrompt(item);
       $("#answerInput").hidden = false;
       $("#answerInput").placeholder = "Type the English meaning";
-    } else if (mode === "cloze" && dir === "je") {
-      const example = getExample(item);
-      $("#prompt").textContent = "Type the English meaning of the highlighted word";
-      $("#word").innerHTML = `<span class="japanese">${highlightTerm(escapeHTML(example.sentence), item)}</span>`;
-      if (item.writtenForms.length) {
-        $("#word").insertAdjacentHTML("beforeend", `<span class="word-spelling-note" lang="ja">Also written: ${item.writtenForms.map(escapeHTML).join(" / ")}</span>`);
-      }
-      $("#answerInput").hidden = false;
-      $("#answerInput").placeholder = "Type the English meaning";
     } else if (mode === "typing") {
       $("#prompt").innerHTML = `Type the Japanese vocabulary word for:<strong>${escapeHTML(item.meaning)}</strong>`;
       $("#word").innerHTML = state.questionDirection === "to-romaji" ? wordPrompt(item)
         : `<span class="english-prompt">${escapeHTML(item.romaji || romanizeKana(item.furigana || item.word))}</span>`;
       $("#answerInput").hidden = false;
       $("#answerInput").placeholder = kanaPlaceholder("Type the Japanese word");
-    } else {
-      const example = getExample(item);
-      $("#word").textContent = "？";
-      $("#prompt").textContent = "Complete the sentence · type the missing Japanese word";
-      $("#prompt").insertAdjacentHTML("beforeend", `<strong class="japanese">${escapeHTML(example.clozeSentence)}</strong>`);
-      $("#answerInput").hidden = false;
-      $("#answerInput").placeholder = kanaPlaceholder("Type the missing word");
     }
     markQuestionNumber();
     setStatus("");
-    if (!$("#answerInput").hidden && inputWasActive) $("#answerInput").focus({ preventScroll: true });
+    if (!$("#answerInput").hidden && (inputWasActive || state.session.presented === 1)) $("#answerInput").focus({ preventScroll: true });
+    if (state.session.presented === 1 && matchMedia("(max-width: 760px)").matches) (mode === "multiple" ? $("#options") : $("#answerInput")).scrollIntoView({ block: "nearest" });
   }
   async function nextQuestion() {
     if (state.loading || state.session.finished) return;
@@ -281,18 +245,6 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
     try {
       let item = await acquireWord();
       if (state.session.finished) return;
-      if (currentSettings().mode === "cloze") {
-        for (let attempt = 0; attempt < 5 && !getExample(item); attempt++) {
-          setStatus("Finding a sourced example sentence…");
-          const examples = await loadSentences(item.word, undefined, { corpusOnly: true });
-          if (state.session.finished) return;
-          item.examples = [...item.examples, ...examples];
-          if (getExample(item)) break;
-          if (attempt < 4) item = await acquireWord();
-          if (state.session.finished) return;
-        }
-        if (!getExample(item)) throw new Error("No matching sourced sentences were found for cloze practice. Choose Typing or Multiple choice, or retry later.");
-      }
       renderQuestion(item);
     } catch (error) {
       if (state.session.finished) return;
@@ -598,7 +550,8 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
   function updateKanaDirection() {
     const { mode, dir } = parseMode($("#modeSelect").value);
     const applies = mode !== "multiple" && dir === "ej";
-    setSettingAvailability($("#kanaDirection"), applies ? "" : "Kana direction applies to typing and cloze questions that ask for Japanese (E→J).");
+    setSettingAvailability($("#kanaDirection"), applies ? "" : "Kana direction applies to typing questions that ask for Japanese (E→J).");
+    $("#keyboardNote").hidden = !applies || $("#kanaDirection").value === "to-romaji";
   }
   function updateSessionControls() {
     const running = Boolean(state.session.startedAt) && !state.session.finished;
@@ -657,11 +610,11 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
   mountLevelControls();
   mountChips($("#modeSelect"), {
     presentation: "button", fieldClass: "goi-field", groupClass: "mode-chips",
-    titleDescription: "E→J: you see English and answer in Japanese. J→E: you see Japanese and answer in English. Multiple choice picks from four options, Typing types the answer, Cloze uses an example sentence."
+    titleDescription: "E→J: answer in Japanese. J→E: answer in English. Choose multiple choice or typing."
   });
   mountChips($("#kanaDirection"), {
     presentation: "button", fieldClass: "goi-field", groupClass: "mode-chips",
-    titleDescription: "How kana answers are expected in typing and cloze questions. Any accepted form (kanji, kana or romaji) still counts."
+    titleDescription: "Choose whether Japanese typing answers use romaji or Japanese script."
   });
   mountPracticeMode($("#sessionType"), { values: { timed: "time" } });
   const quizSettings = rememberControls("nihon:goi-settings-v1",
@@ -694,6 +647,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
   $("#kanaDirection").chipsApi.sync();
   $("#kanaDirection").addEventListener("change", (event) => {
     state.kanaDirection = event.target.value;
+      updateKanaDirection();
     try { localStorage.setItem(STORAGE.kanaDirection, state.kanaDirection); }
     catch (error) { console.warn("Could not save kana direction preference.", error); setStatus("Could not save kana direction preference.", true); }
   });
@@ -702,6 +656,7 @@ import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
   $("#modeSelect").addEventListener("change", () => { updateShortcutHint(); updateKanaDirection(); });
   $(".goi-settings").prepend($(".session-controls"));
   $("#sessionType").closest(".practice-mode-field").after($("#levelSelect").closest(".chips-field"));
+    $("#levelSelect").closest(".chips-field").append($(".level-note"));
   $("#settingsPanel").after($("#startError"));
   const sessionView = createSessionView({
     settings: $("#settingsPanel"), start: $("#startButton"), results: $("#resultsPanel"), footer: true,
