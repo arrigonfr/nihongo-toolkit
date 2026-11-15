@@ -56,7 +56,8 @@ try {
     const menu = await page.locator("#menuButton").boundingBox();
     assert.ok(Math.abs(menu.y + menu.height / 2 - theme.y - theme.height / 2) < 2);
     await page.click("#menuButton");
-    assert.equal(await page.locator("#helperMenu > a").first().textContent(), "Home");
+    assert.equal(await page.locator("#helperMenu > a .helper-name").first().textContent(), "Home");
+    assert.equal(await page.locator(".home-link .helper-icon").textContent(), "家");
     await page.keyboard.press("Escape");
     await page.screenshot({ path: `/tmp/nihon-header-${width}.png` });
     await page.click("#startSessionButton");
@@ -137,6 +138,7 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${file}: overflow`);
       await page.click("#menuButton");
       assert.equal(await page.locator(".home-link").isVisible(), true);
+      assert.equal(await page.locator(".home-link .helper-icon").isVisible(), true);
       if (file !== "index.html" && file !== "data-sources.html") {
         assert.equal(await page.locator(`.helper-link[data-file="${file}"]`).getAttribute("aria-current"), "page");
       }

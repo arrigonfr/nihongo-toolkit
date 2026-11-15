@@ -116,7 +116,7 @@ function toolNavigation(site) {
           const originalMenu = launcher.match(/<nav class="navigation"[\s\S]*?<\/nav>/)[0];
           let menu = originalMenu.replace(/<button class="helper-link" type="button" data-file="([^"]+)">([\s\S]*?)<\/button>/g,
             (_, filename, content) => `<a class="helper-link" data-file="${filename}" href="./${filename}" target="_top">${content}</a>`);
-          menu = menu.replace('<div class="menu" id="helperMenu" hidden>', '<div class="menu" id="helperMenu" hidden><a class="helper-link home-link" href="./" target="_top"><span class="helper-name">Home</span></a>');
+          menu = menu.replace('<div class="menu" id="helperMenu" hidden>', '<div class="menu" id="helperMenu" hidden><a class="helper-link home-link" href="./" target="_top"><span class="helper-icon" aria-hidden="true">家</span><span class="helper-name">Home</span></a>');
           if (file === "index.html") {
             html = html.replace(originalMenu, menu);
             const groups = menu.match(/<section class="menu-group"[\s\S]*<\/section>/)[0].replaceAll('class="helper-link"', 'class="dashboard-link"');
