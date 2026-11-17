@@ -20,24 +20,47 @@ try {
   const headerGeometry = await page.locator("header").evaluate((header) => {
     const brand = header.querySelector(".brand").getBoundingClientRect();
     const appearance = header.querySelector(".study-appearance").getBoundingClientRect();
-    const back = header.querySelector(".dashboard-back").getBoundingClientRect();
-    return { aligned: Math.abs(brand.top - appearance.top) < 10 && Math.abs(back.top - appearance.top) < 10 && back.right <= brand.left && brand.right <= appearance.left, back: back.toJSON(), brand: brand.toJSON(), appearance: appearance.toJSON() };
+    return { aligned: Math.abs(brand.top - appearance.top) < 10 && brand.right <= appearance.left, brand: brand.toJSON(), appearance: appearance.toJSON() };
   });
   assert.equal(headerGeometry.aligned, true, JSON.stringify(headerGeometry));
   await page.setViewportSize({ width: 1280, height: 720 });
   const geometry = await page.evaluate(async () => {
-    const { worksheetLayout, worksheetSVG } = await import("/src/worksheet.js");
+    const { worksheetLayout, worksheetSVG, worksheetCharacters } = await import("/src/worksheet.js");
     const layouts = ["a4", "letter", "legal"].flatMap((paper) => ["portrait", "landscape"].flatMap((orientation) => [34, 42, 50].map((size) => {
       const layout = worksheetLayout({ paper, orientation, size });
-      return layout.gridWidth >= 360 * layout.scale && Math.abs(layout.columns * layout.gridWidth + (layout.columns - 1) * 8 - (layout.width - 60)) < .001;
+      return layout.gridWidth >= 360 * layout.scale && Math.abs(layout.columns * layout.gridWidth + (layout.columns - 1) * 8 - (layout.width - 60)) < .001
+        && 75 + layout.rows * (layout.gridHeight + 8) - 8 < layout.height - 30;
     })));
     const svg = new DOMParser().parseFromString(worksheetSVG(["あ", "い", "う"], { font: "" }), "image/svg+xml");
     const positions = [...svg.documentElement.children].filter((node) => node.tagName === "g").map((node) => node.getAttribute("transform"));
-    return { layouts, positions };
+    const rated = worksheetCharacters("kanji", [5, 4, 3, 2, 1]);
+    const unrated = worksheetCharacters("kanji", "unrated");
+    const unique = [];
+    for (let mask = 1; mask < 64; mask++) {
+      const selected = [5, 4, 3, 2, 1, "unrated"].filter((_, index) => mask & (1 << index));
+      const characters = worksheetCharacters("both", [...selected, ...selected]);
+      unique.push(characters.length === new Set(characters).size);
+    }
+    const layout = worksheetLayout({ paper: "a4", size: 42 });
+    return { layouts, positions, unique, unratedCount: unrated.length,
+      overlap: unrated.some((character) => rated.includes(character)),
+      allCount: worksheetCharacters("kanji", "all").length,
+      combinedCount: rated.length + unrated.length,
+      extraRow: layout.rows > Math.floor((layout.height - 145) / (layout.gridHeight + 8)),
+      heading: svg.querySelector("text > tspan")?.textContent,
+      credits: svg.documentElement.lastElementChild.textContent };
   });
   assert.ok(geometry.layouts.every(Boolean));
-  assert.match(geometry.positions[0], /^translate\(30 100\)/);
-  assert.match(geometry.positions[1], /^translate\([\d.]+ 100\)/);
+  assert.match(geometry.positions[0], /^translate\(30 75\)/);
+  assert.match(geometry.positions[1], /^translate\([\d.]+ 75\)/);
+  assert.ok(geometry.unique.every(Boolean));
+  assert.ok(geometry.unratedCount > 0);
+  assert.equal(geometry.overlap, false);
+  assert.equal(geometry.allCount, geometry.combinedCount);
+  assert.equal(geometry.extraRow, true);
+  assert.equal(geometry.heading, "Stroke order · trace · write");
+  assert.match(geometry.credits, /KanjiVG · Ulrich Apel/);
+  assert.equal(await page.locator('[data-field="level"][value="unrated"]').count(), 1);
   assert.equal(await page.locator('.worksheet-choices:first-child #sheetGrayscale').count(), 1);
   assert.equal(await page.locator('.download-panel[data-worksheet] [data-format="png"]').evaluate((button) => getComputedStyle(button).gridColumn), "auto");
   const kanaChoice = page.locator('[data-field="mode"][value="kana"]');

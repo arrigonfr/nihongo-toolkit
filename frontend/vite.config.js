@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import { readFileSync, readdirSync, writeFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { legacyRoutes, publicPath } from "./src/routes.js";
+import { disabledPages, pageAvailability } from "./page-availability.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const toolFiles = readdirSync(root).filter((file) => file.endsWith(".html") && !["index.html", "data-sources.html", "文字.html"].includes(file));
@@ -76,7 +77,7 @@ const seoPages = {
   }
 };
 
-function toolNavigation(site) {
+function toolNavigation(site, disabled = new Set()) {
   function addTagManager(html) {
     html = html.replace(/<head\b[^>]*>/i, (head) => `${head}
 <script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('set', 'cookie_domain', 'none'); gtag('js', new Date()); gtag('config', 'G-LL2V1JZBER', { cookie_domain: 'none' });</script>
@@ -146,7 +147,7 @@ function toolNavigation(site) {
         html = html.replace(/href="\.\/#helper=([^"]+)"/g, 'href="./$1"');
         html = html.replace(/href="\.\/([^"?#]+\.html)([?#][^"]*)?"/g, (match, target, suffix = "") =>
           seoPages[target] ? `href="./${publicPath(target)}${suffix}"` : match);
-        const seo = seoPages[file];
+        const seo = disabled.has(file) ? null : seoPages[file];
         if (seo) {
           html = html.replace(/<title>[^<]*<\/title>/i, `<title>${seo.title}</title>`);
           tags.push(
@@ -181,8 +182,12 @@ function toolNavigation(site) {
     }
   };
 }
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command, isPreview }) => {
   const env = { ...loadEnv(mode, root, ""), ...process.env };
+  const disabled = disabledPages(env.DISABLED_PAGES, readdirSync(root).filter((file) => file.endsWith(".html")));
+  if (disabled.size && command === "serve" && !isPreview) {
+    throw new Error("DISABLED_PAGES requires a production build. Do not expose the Vite development server; it serves source files.");
+  }
   const site = env.VITE_SITE_URL ? new URL("/", env.VITE_SITE_URL).href : undefined;
   if (site && !site.startsWith("https://")) {
     throw new Error("VITE_SITE_URL must be the public HTTPS site URL.");
@@ -190,7 +195,7 @@ export default defineConfig(({ mode }) => {
   return {
   define: { "process.env.TRACK_VISITS": JSON.stringify(env.TRACK_VISITS || "") },
   worker: { format: "es" },
-  plugins: [toolNavigation(site), {
+  plugins: [pageAvailability(disabled), toolNavigation(site, disabled), {
     name: "deployment-seo",
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
@@ -226,6 +231,8 @@ export default defineConfig(({ mode }) => {
   }],
   server: { port: 5173, strictPort: true },
   build: {
+    emptyOutDir: true,
+    sourcemap: false,
     rollupOptions: {
       input: readdirSync(root).filter((file) => file.endsWith(".html"))
         .map((file) => fileURLToPath(new URL(file, import.meta.url)))

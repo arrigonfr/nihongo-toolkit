@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ef">
+  <title>Japanese Cheatsheet Previews | Nihongo Toolkit</title>
+  <meta name="description" content="Explore Japanese reference sheets and handwriting practice, with full sheets coming soon to Ko-fi.">
+  <meta property="og:title" content="Japanese Cheatsheet Previews | Nihongo Toolkit">
+  <meta property="og:description" content="Find your next study companion: Japanese reference sheets and handwriting practice.">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="shell resources-shell">
+    <header class="study-header">
+      <a class="brand" href="./index.html"><span class="brand-mark" aria-hidden="true">資</span><span class="brand-name">Shiryō<span class="brand-note">at NihongoToolkit</span></span></a>
+      <button id="themeButton" type="button" aria-label="Change theme"></button>
+    </header>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">Resources · 資料</p>
+        <h1>Printable cheatsheets</h1>
+        <p>Find your next study companion: explore our Japanese reference sheets and handwriting practice. Full sheets will be available to purchase on my Ko-fi page soon.</p>
+      </section>
+      <div id="sheetPicker" class="sheet-picker" role="group" aria-label="Cheatsheet"></div>
+      <section class="sheet-stage preview-stage" aria-labelledby="sheetTitle">
+        <h2 id="sheetTitle">Hiragana &amp; Katakana</h2>
+        <div id="sheetPreview" class="sheet-paper preview-paper">
+          <img id="sheetPreviewImage" src="./previews/shiryo/kana.png" width="794" height="450" alt="Hiragana &amp; Katakana: cropped, watermarked sample">
+        </div>
+        <p id="previewStatus" role="status"></p>
+      </section>
+      <p class="preview-credits">Stroke diagrams adapted from <a href="https://kanjivg.tagaini.net/">KanjiVG</a> by Ulrich Apel and contributors, <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</a>. Radical data adapted from Kanji alive, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. <a href="./data-sources.html">Data sources and licenses</a>.</p>
+    </main>
+  </div>
+  <noscript>Enable JavaScript to browse the other sheet previews.</noscript>
+  <script type="module" src="./src/shiryo-preview.js"></script>
+</body>
+</html>

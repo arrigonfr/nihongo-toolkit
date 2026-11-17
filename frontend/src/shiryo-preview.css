@@ -1,0 +1,7 @@
+.preview-stage { max-width: 836px; margin: 0 auto; }
+.preview-stage h2 { margin: 0 0 16px; font-size: 18px; }
+.preview-paper { aspect-ratio: 794 / 450; }
+.preview-paper img { display: block; width: 100%; height: auto; }
+.preview-credits { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.preview-credits a { color: var(--accent-strong); }
+#previewStatus:empty { display: none; }

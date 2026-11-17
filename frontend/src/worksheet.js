@@ -6,6 +6,9 @@ import { strToU8, zipSync } from "fflate";
 
 const kana = [..."あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ"];
 const escape = (value) => String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
+const ratedKanji = new Set(Object.values(levels).flatMap((characters) => [...characters]));
+const unratedKanji = Object.keys(strokes).filter((character) => /^\p{Script=Han}$/u.test(character) && !ratedKanji.has(character));
+const kanjiLevels = [5, 4, 3, 2, 1, "unrated"];
 
 export function worksheetLayout({ size = 42, paper = "a4", orientation = "portrait" } = {}) {
   const dimensions = paper === "legal" ? [816, 1344] : paper === "letter" ? [816, 1056] : [794, 1123];
@@ -13,15 +16,15 @@ export function worksheetLayout({ size = 42, paper = "a4", orientation = "portra
   const scale = size / 68, minimumWidth = 360 * scale, gridHeight = 120 * scale;
   const columns = Math.max(1, Math.floor((width - 60 + 8) / (minimumWidth + 8)));
   const gridWidth = (width - 60 - (columns - 1) * 8) / columns;
-  const rows = Math.max(1, Math.floor((height - 145) / (gridHeight + 8)));
+  const rows = Math.max(1, Math.floor((height - 120) / (gridHeight + 8)));
   return { width, height, scale, gridWidth, gridHeight, columns, rows, perPage: columns * rows };
 }
 
 export function worksheetCharacters(mode, level) {
-  const selectedLevels = Array.isArray(level) ? level : level === "all" ? [5, 4, 3, 2, 1] : [level];
-  const kanji = selectedLevels.flatMap((item) => [...(levels[item] || "")]);
+  const selectedLevels = Array.isArray(level) ? level : level === "all" ? kanjiLevels : [level];
+  const kanji = selectedLevels.flatMap((item) => item === "unrated" ? unratedKanji : [...(levels[item] || "")]);
   const selectedModes = Array.isArray(mode) ? mode : mode === "both" ? ["kana", "kanji"] : [mode];
-  return [...(selectedModes.includes("kana") ? kana : []), ...(selectedModes.includes("kanji") ? kanji : [])];
+  return [...new Set([...(selectedModes.includes("kana") ? kana : []), ...(selectedModes.includes("kanji") ? kanji : [])])];
 }
 
 export function worksheetSVG(characters, { page = 0, size = 42, paper = "a4", orientation = "portrait", opacity = 1, numberSize = 12, grayscale = false, font = fontUrl } = {}) {
@@ -30,7 +33,7 @@ export function worksheetSVG(characters, { page = 0, size = 42, paper = "a4", or
   const visible = characters.slice(page * perPage, (page + 1) * perPage);
   const rows = visible.map((character, index) => {
     const column = index % columns, row = Math.floor(index / columns);
-    const x = 30 + column * (gridWidth + 8), y = 100 + row * (gridHeight + 8);
+    const x = 30 + column * (gridWidth + 8), y = 75 + row * (gridHeight + 8);
     const colors = ["#337ea6", "#c55863", "#3f997d", "#9862a6", "#c17e35", "#5276bb"];
     const glyph = escape(character);
     const data = strokes[character];
@@ -38,7 +41,7 @@ export function worksheetSVG(characters, { page = 0, size = 42, paper = "a4", or
     const rightEdge = gridWidth / scale;
     return `<g transform="translate(${x} ${y}) scale(${scale})"><rect width="${rightEdge}" height="120" fill="#fff" stroke="#b9bdbb"/><path d="M96 0v120 M142 0v120 M188 0v120 M234 0v120 M280 0v120 M96 60h184 M280 40h${rightEdge - 280} M280 80h${rightEdge - 280}" stroke="#d5d8d6" fill="none"/>${model}${[119, 165].flatMap((dx) => [48, 108].map((dy) => `<text x="${dx}" y="${dy}" font-family="sans-serif" font-size="38" text-anchor="middle" fill="#333" opacity=".2">${glyph}</text>`)).join("")}${[30, 70, 110].map((dy) => `<text x="284" y="${dy}" font-family="sans-serif" font-size="27" text-anchor="start" fill="#333" opacity=".15">${glyph}</text>`).join("")}</g>`;
   }).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Handwriting worksheet"><style>${font ? `@font-face{font-family:StrokeOrder;src:url('${font}')}` : ""} text:not([font-family]){font-family:sans-serif}</style><rect width="${width}" height="${height}" fill="white"/><text x="30" y="45" font-size="22" font-weight="700" fill="#252b28">Handwriting Practice</text><text x="30" y="68" font-size="11" fill="#676d69">Stroke order · trace · write</text><text x="${width - 30}" y="45" text-anchor="end" font-size="12" fill="#676d69">${page + 1} / ${Math.max(1, Math.ceil(characters.length / perPage))}</text>${rows}<text x="30" y="${height - 18}" font-size="8" fill="#777">KanjiVG · Ulrich Apel and contributors · CC BY-SA 3.0 · kanjivg.tagaini.net · JLPT levels are estimates</text></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Handwriting worksheet"><style>${font ? `@font-face{font-family:StrokeOrder;src:url('${font}')}` : ""} text:not([font-family]){font-family:sans-serif}</style><rect width="${width}" height="${height}" fill="white"/><text x="30" y="45" font-size="22" font-weight="700" fill="#252b28">Handwriting Practice<tspan dx="16" font-size="11" font-weight="400" fill="#676d69">Stroke order · trace · write</tspan></text><text x="${width - 30}" y="45" text-anchor="end" font-size="12" fill="#676d69">${page + 1} / ${Math.max(1, Math.ceil(characters.length / perPage))}</text>${rows}<text x="30" y="${height - 18}" font-size="8" fill="#777">KanjiVG · Ulrich Apel and contributors · CC BY-SA 3.0 · kanjivg.tagaini.net · JLPT levels are estimates</text></svg>`;
 }
 
 export function mountWorksheet({ picker, preview, panel, grayscale }) {
@@ -52,6 +55,7 @@ export function mountWorksheet({ picker, preview, panel, grayscale }) {
   button.style.setProperty("--tab-hue", "195");
   button.innerHTML = '<span class="sheet-tab-icon" aria-hidden="true">書</span><span>Worksheet</span>';
   picker.append(button);
+  section.querySelector("[data-levels] .chips").insertAdjacentHTML("beforeend", '<label class="chip-option"><input type="checkbox" data-field="level" value="unrated"><span>Unrated</span></label>');
   const modes = [...section.querySelectorAll('[data-field="mode"]')], levels = [...section.querySelectorAll('[data-field="level"]')];
   const size = section.querySelector('[data-field="size"]'), paper = section.querySelector('[data-field="paper"]'), orientation = section.querySelector('[data-field="orientation"]'), notice = section.querySelector(".worksheet-notice");
   const opacity = section.querySelector('[data-field="opacity"]'), numbers = section.querySelector('[data-field="numbers"]');

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "kana",
+    "title": "Hiragana & Katakana",
+    "label": "Kana",
+    "icon": "あ",
+    "hue": "340"
+  },
+  {
+    "id": "verb",
+    "title": "Verb Conjugation",
+    "label": "Verbs",
+    "icon": "動",
+    "hue": "150"
+  },
+  {
+    "id": "adjective",
+    "title": "Adjective Conjugation",
+    "label": "Adjectives",
+    "icon": "形",
+    "hue": "205"
+  },
+  {
+    "id": "particles",
+    "title": "Japanese Particles",
+    "label": "Particles",
+    "icon": "助",
+    "hue": "175"
+  },
+  {
+    "id": "counters",
+    "title": "Japanese Counters",
+    "label": "Counters",
+    "icon": "数",
+    "hue": "32"
+  },
+  {
+    "id": "radicals",
+    "title": "Kanji Radicals",
+    "label": "Radicals",
+    "icon": "部",
+    "hue": "195"
+  },
+  {
+    "id": "ambiguities",
+    "title": "Word Contrasts",
+    "label": "Word contrasts",
+    "icon": "違",
+    "hue": "350"
+  },
+  {
+    "id": "lookalikes",
+    "title": "Kanji Lookalikes",
+    "label": "Kanji Lookalikes",
+    "icon": "似",
+    "hue": "35"
+  },
+  {
+    "id": "grammar-contrasts",
+    "title": "Grammar Contrasts",
+    "label": "Grammar contrasts",
+    "icon": "文",
+    "hue": "160"
+  },
+  {
+    "id": "worksheet",
+    "title": "Handwriting Practice",
+    "label": "Worksheet",
+    "icon": "書",
+    "hue": "195"
+  }
+]

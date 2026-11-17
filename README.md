@@ -478,6 +478,56 @@ number size. Printing and PDF include all pages; PNG, SVG and HTML downloads are
 ZIP archives of all pages. Regenerate the lists with
 `node scripts/build-worksheet-kanji.mjs` after updating the local SQLite database, and the
 stroke data with `node scripts/build-worksheet-strokes.mjs`.
+The heading fits on one line, leaving more practice space while retaining the
+footer credits. Each character gets one practice entry across the entire worksheet
+(the tracing copies within that entry are intentional). **Unrated** includes Han
+characters with bundled stroke diagrams but no assignment in the bundled JLPT
+lists; it is not an official JLPT category.
+
+### Preview-only builds
+
+Set the build-only `DISABLED_PAGES` variable to comma-separated page names, with
+or without `.html`, for example:
+
+```sh
+DISABLED_PAGES=shiryo npm run build
+# Multiple pages:
+DISABLED_PAGES=shiryo,kana npm run build
+```
+
+An empty/unset value preserves all functionality. Unknown names fail the build.
+Disabled pages are replaced before Vite collects their imports. Shiryō becomes a
+picker of cropped, permanently watermarked PNG samples (one per sheet, including
+the worksheet), with the usual header, appearance controls, support button and
+analytics. Ko-fi purchase links are not live yet; other disabled pages show an unavailable message. There is no
+checkout or paid access flow yet. The Shiryō build fails if its generator or
+worksheet modules are accidentally included through another entry point.
+
+Publish **only the freshly built `frontend/dist`**, never the source tree or a
+Vite development server. Builds clear stale output and do not emit source maps.
+`DISABLED_PAGES` deliberately rejects development-server mode; use a production
+build and `npm exec -w frontend vite -- preview` to inspect restricted output.
+Clean URLs and `.html` URLs both serve the replacement, not the full tool.
+Shared tools/data used by enabled pages remain public. This is build exclusion,
+not DRM: previews can be copied, and previous public downloads, cached releases,
+old deployments or public repository sources cannot be revoked by this flag.
+Retire old deployments and purge hosting/CDN caches when restricting access.
+Share-alike source licenses still apply to commercial distribution.
+
+The committed samples live outside the public directory and are bundled only
+when referenced. Regenerate them after changing sheet designs using
+`DISABLED_PAGES= node scripts/build-shiryo-previews.mjs` (requires Playwright
+Chromium). Cropping and watermarks are baked into the PNG pixels; no complete
+sheet or removable overlay is sent to preview visitors.
+The restricted Shiryō page is maintained independently in
+`frontend/templates/shiryo-preview.html`, with its image-only picker in
+`frontend/src/shiryo-preview.js`. The template owns its preview-specific copy and
+metadata. A small build plugin substitutes it at the existing Shiryō URL before
+imports are collected; it is not a second public HTML entry point. Shared Vite
+navigation and analytics injection still runs on the replacement.
+Validate both editions with `node scripts/page-availability-browser-test.mjs`;
+worksheet layout, unique character selection and exports are checked by
+`node scripts/worksheet-browser-test.mjs`.
 
 ## Katsuyō Japanese conjugator
 
