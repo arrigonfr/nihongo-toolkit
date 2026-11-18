@@ -632,6 +632,12 @@ If registration returns HTTP 403, confirm the application ID and bot token
 belong to the same application, the guild ID is the intended server ID, and
 the app is installed in that server with the `applications.commands` scope.
 Receiving webhook notifications does not prove that the app is installed.
+If `/reply` returns "You cannot reply to contacts from this account or channel",
+its private response lists the missing or mismatched Worker runtime settings.
+Check those settings on the Worker serving the Interactions Endpoint URL, not
+only in GitHub Actions. The configured support role must belong to the human
+invoking the command; server ownership does not bypass this check. Run the
+command directly in the configured channel, not in a thread or DM.
 
 **Alternative: register from GitHub Actions (including from a phone).**
 Use this when local Discord API access is unavailable and your organization's

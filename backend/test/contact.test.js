@@ -149,6 +149,20 @@ test("contact D1 lifecycle, signed Discord authorization and safe Gmail delivery
       assert.equal((await db.prepare("SELECT COUNT(*) AS count FROM contact_replies").first()).count, 0);
       assert.equal((await db.prepare("SELECT status FROM contact_messages").first()).status, "open");
     });
+    await t.test("authorization diagnostics identify missing or mismatched settings without exposing IDs", async () => {
+      for (const setting of ["CONTACT_DISCORD_APPLICATION_ID", "CONTACT_DISCORD_GUILD_ID", "CONTACT_DISCORD_CHANNEL_ID", "CONTACT_DISCORD_ROLE_ID"]) {
+        for (const value of ["", "private-configured-id"]) {
+          const result = await (await discordContactReply(
+            await signed(interaction(contact.id)), { ...env, [setting]: value }, ctx
+          )).json();
+          assert.equal(result.data.flags, 64);
+          assert.ok(result.data.content.includes(setting));
+          assert.ok(!result.data.content.includes("private-configured-id"));
+          assert.match(result.data.content, value ? /does not|do not/ : /missing from the Worker runtime/);
+        }
+      }
+      assert.equal((await db.prepare("SELECT COUNT(*) AS count FROM contact_replies").first()).count, 0);
+    });
     await t.test("authorized /reply changes status and emails only the stored contact, replay sends no extra mail", async () => {
       failEmail = true;
       const request = interaction(contact.id);

@@ -115,10 +115,21 @@ export async function discordContactReply(request, env, ctx) {
     if (interaction?.type === 1) return Response.json({ type: 1 }, { headers });
     if (env.CONTACT_ENABLED !== "true" || !env.PAGE_VIEWS_DB || !gmailConfigured(env)) return say("Contact replies are not configured.");
     if (interaction?.type !== 2 || interaction.data?.name !== "reply" || interaction.data?.type !== 1) return say("Unsupported contact command.");
-    if (!env.CONTACT_DISCORD_ROLE_ID || !env.CONTACT_DISCORD_GUILD_ID || !env.CONTACT_DISCORD_CHANNEL_ID || !env.CONTACT_DISCORD_APPLICATION_ID
-        || interaction.application_id !== env.CONTACT_DISCORD_APPLICATION_ID || interaction.guild_id !== env.CONTACT_DISCORD_GUILD_ID
-        || interaction.channel_id !== env.CONTACT_DISCORD_CHANNEL_ID || !interaction.member?.roles?.includes(env.CONTACT_DISCORD_ROLE_ID)) {
-      return say("You cannot reply to contacts from this account or channel.");
+    const authorizationErrors = [];
+    for (const [setting, actual] of [
+      ["CONTACT_DISCORD_APPLICATION_ID", interaction.application_id],
+      ["CONTACT_DISCORD_GUILD_ID", interaction.guild_id],
+      ["CONTACT_DISCORD_CHANNEL_ID", interaction.channel_id]
+    ]) {
+      if (!env[setting]) authorizationErrors.push(`${setting} is missing from the Worker runtime.`);
+      else if (actual !== env[setting]) authorizationErrors.push(`${setting} does not match this command's application, server or channel.`);
+    }
+    if (!env.CONTACT_DISCORD_ROLE_ID) authorizationErrors.push("CONTACT_DISCORD_ROLE_ID is missing from the Worker runtime.");
+    else if (!Array.isArray(interaction.member?.roles) || !interaction.member.roles.includes(env.CONTACT_DISCORD_ROLE_ID)) {
+      authorizationErrors.push("Your account does not have the role configured in CONTACT_DISCORD_ROLE_ID.");
+    }
+    if (authorizationErrors.length) {
+      return say(`You cannot reply to contacts from this account or channel.\n${authorizationErrors.join("\n")}`);
     }
     const options = interaction.data.options;
     if (!Array.isArray(options) || options.length !== 2 || options.some((item) => item.type !== 3)) return say("Provide a ticket and message.");
