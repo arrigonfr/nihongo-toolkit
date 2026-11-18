@@ -4,6 +4,7 @@
   "main": "backend/src/worker.js",
   "compatibility_date": "2026-08-06",
   "compatibility_flags": ["nodejs_compat"],
+  "triggers": { "crons": ["*/5 * * * *"] },
   "d1_databases": [{
     "binding": "PAGE_VIEWS_DB",
     "database_name": "nihongo_toolkit_view",
@@ -20,6 +21,7 @@
   },
   "previews": {
       "vars": {
+        "CONTACT_ENABLED": "false",
         "TRACK_VISITS": "false",
         "ALLOWED_ORIGINS": "https://develop.nihongo-toolkit.pages.dev",
         "SENTENCE_API_FALLBACK": "true",
@@ -29,6 +31,7 @@
       }
   },
   "vars": {
+    "CONTACT_ENABLED": "true",
     "TRACK_VISITS": "true",
     "ALLOWED_ORIGINS": "https://nihongo-toolkit.pages.dev",
     "SENTENCE_API_FALLBACK": "true",

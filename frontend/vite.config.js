@@ -7,6 +7,10 @@ import { disabledPages, pageAvailability } from "./page-availability.js";
 const root = fileURLToPath(new URL(".", import.meta.url));
 const toolFiles = readdirSync(root).filter((file) => file.endsWith(".html") && !["index.html", "data-sources.html", "文字.html"].includes(file));
 const seoPages = {
+  "contact.html": {
+    title: "Contact | Nihongo Toolkit",
+    description: "Send feedback, feature requests, data corrections and bug reports to Nihongo Toolkit."
+  },
   "index.html": {
     title: "Japanese Learning Tools | Nihongo Toolkit",
     description: "Explore free Japanese learning tools for hiragana, katakana, kanji, vocabulary, reading, grammar, and word games."

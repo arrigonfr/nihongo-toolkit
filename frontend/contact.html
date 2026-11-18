@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ef">
+  <title>Contact | Nihongo Toolkit</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="shell">
+    <header class="study-header">
+      <a class="brand" href="./index.html"><span class="brand-mark" aria-hidden="true">✉</span><span class="brand-name">Contact<span class="brand-note">at NihongoToolkit</span></span></a>
+      <button id="themeButton" type="button" aria-label="Change theme"></button>
+    </header>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">Get in touch</p>
+        <h1>Help us make learning better</h1>
+        <p>Share feedback, suggest a feature or tell us about something that needs fixing.</p>
+      </section>
+      <form id="contactForm" class="contact-form" aria-describedby="contactPrivacy">
+        <fieldset id="contactFields">
+          <legend>Your message</legend>
+          <label>Full name <input name="name" autocomplete="name" maxlength="120" required></label>
+          <label>Email <input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+          <label>Subject <select name="subject" required><option value="">Choose a subject</option></select></label>
+          <label>Message <textarea name="message" rows="8" maxlength="3000" required aria-describedby="messageHint"></textarea></label>
+          <p id="messageHint">Up to 3,000 characters. Please do not include passwords, payment details or other sensitive information.</p>
+        </fieldset>
+        <p id="contactPrivacy">Your name, email and message will be stored and shared with our private Discord support channel. We use Gmail to email replies to the address you provide. This form does not subscribe you to marketing emails.</p>
+        <div id="contactVerification"></div>
+        <button id="contactSend" type="submit" disabled>Send message</button>
+        <p id="contactStatus" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+  </div>
+  <noscript>Enable JavaScript to use the contact form.</noscript>
+  <script type="module" src="./src/contact.js"></script>
+</body>
+</html>

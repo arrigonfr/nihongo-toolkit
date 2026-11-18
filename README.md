@@ -40,6 +40,15 @@ Jump to [local development](#local-development), [data sources](#importing-data)
 
 ## Support
 
+The **Contact** page accepts feedback, feature requests, data inconsistencies,
+bug reports and other messages. Its Cloudflare-only API stores submissions in
+the existing `PAGE_VIEWS_DB`, not the dictionary database. A private Discord
+channel receives notifications; authorized `/reply` commands record a response
+and queue an email from a dedicated Gmail support account. No custom domain is
+required. Ordinary Discord messages are ignored.
+The feature is disabled until configured. See [Contact setup](CONTACT.md) for
+Discord, D1, Turnstile, Gmail OAuth, local testing and delivery troubleshooting.
+
 [![Buy me a coffee with PayPal](https://img.shields.io/badge/PayPal-Buy%20me%20a%20coffee-FFD140?logo=paypal&logoColor=003087)](https://www.paypal.com/ncp/payment/BGUN4RBRVZKKJ)
 
 The button uses the same PayPal payment destination as the tools:
@@ -136,6 +145,9 @@ their corresponding tools. Click or tap outside the menu, or press Escape, to cl
 
 Set `VITE_SITE_URL` to the public HTTPS origin at build time to generate canonical
 URLs, robots.txt and a sitemap containing the homepage, tools and data-source credits.
+The manually triggered Google Indexing workflow also submits this sitemap to the
+matching Search Console URL-prefix property; its service account must have access
+to that property.
 The homepage's Open Graph and `WebSite` structured-data metadata identify the site's
 name in search results; keep them aligned with its page title.
 When adding a tool, update the dashboard menu; Vite discovers its HTML page for the
@@ -481,8 +493,9 @@ stroke data with `node scripts/build-worksheet-strokes.mjs`.
 The heading fits on one line, leaving more practice space while retaining the
 footer credits. Each character gets one practice entry across the entire worksheet
 (the tracing copies within that entry are intentional). **Unrated** includes Han
-characters with bundled stroke diagrams but no assignment in the bundled JLPT
-lists; it is not an official JLPT category.
+ideographs with bundled stroke diagrams but no assignment in the bundled JLPT
+lists. Dedicated Unicode radical symbols and iteration marks are excluded;
+kanji that also serve as radicals are retained. It is not an official JLPT category.
 
 ### Preview-only builds
 

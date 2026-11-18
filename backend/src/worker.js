@@ -6,11 +6,18 @@ import { createSentenceTranslator } from "./analyze.js";
 import { createWordFallback } from "./shiritori.js";
 import { openTursoDatabase } from "./turso.js";
 import { pageViews } from "./page-views.js";
+import { contactForm, discordContactReply } from "./contact.js";
+import { scheduleContactDelivery } from "./contact-delivery.js";
 
 const handlers = new WeakMap();
 export default {
+  scheduled(_event, env, ctx) {
+    scheduleContactDelivery(env, ctx);
+  },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === "/api/contact") return contactForm(request, env, ctx);
+    if (url.pathname === "/api/discord/contact") return discordContactReply(request, env, ctx);
     if (url.pathname === "/api/page-views") return pageViews(request, env, ctx);
     if (!url.pathname.startsWith("/api/")) return new Response("Not found", { status: 404 });
     const headers = new Headers();

@@ -7,7 +7,7 @@ import { strToU8, zipSync } from "fflate";
 const kana = [..."あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ"];
 const escape = (value) => String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
 const ratedKanji = new Set(Object.values(levels).flatMap((characters) => [...characters]));
-const unratedKanji = Object.keys(strokes).filter((character) => /^\p{Script=Han}$/u.test(character) && !ratedKanji.has(character));
+const unratedKanji = Object.keys(strokes).filter((character) => /^\p{Script=Han}$/u.test(character) && /^\p{Ideographic}$/u.test(character) && !ratedKanji.has(character));
 const kanjiLevels = [5, 4, 3, 2, 1, "unrated"];
 
 export function worksheetLayout({ size = 42, paper = "a4", orientation = "portrait" } = {}) {

@@ -26,7 +26,7 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     const navigation = plugins.find((plugin) => plugin.name === "tool-navigation");
     plugins.find((plugin) => plugin.name === "deployment-seo").writeBundle({ dir: directory });
     const sitemap = readFileSync(join(directory, "sitemap.xml"), "utf8");
-    assert.equal((sitemap.match(/<loc>/g) || []).length, 17);
+    assert.equal((sitemap.match(/<loc>/g) || []).length, 18);
     assert.ok(!sitemap.includes(".html"));
     assert.equal(readFileSync(join(directory, "robots.txt"), "utf8"), `User-agent: *\nAllow: /\n\nSitemap: ${site}sitemap.xml\n`);
     const root = new URL("../", import.meta.url);

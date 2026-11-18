@@ -43,6 +43,9 @@ try {
     }
     const layout = worksheetLayout({ paper: "a4", size: 42 });
     return { layouts, positions, unique, unratedCount: unrated.length,
+      radicalSymbols: [..."⺉⺌⺍⺕⺗⺡⺢⺤⺦⺨⺭⻃⻌⻏⻖々"].filter((character) => unrated.includes(character)),
+      retainedKanji: ["丐", "㐬", "神"].every((character) => unrated.includes(character)),
+      retainedRatedRadical: rated.includes("木"),
       overlap: unrated.some((character) => rated.includes(character)),
       allCount: worksheetCharacters("kanji", "all").length,
       combinedCount: rated.length + unrated.length,
@@ -55,6 +58,9 @@ try {
   assert.match(geometry.positions[1], /^translate\([\d.]+ 75\)/);
   assert.ok(geometry.unique.every(Boolean));
   assert.ok(geometry.unratedCount > 0);
+  assert.deepEqual(geometry.radicalSymbols, []);
+  assert.equal(geometry.retainedKanji, true);
+  assert.equal(geometry.retainedRatedRadical, true);
   assert.equal(geometry.overlap, false);
   assert.equal(geometry.allCount, geometry.combinedCount);
   assert.equal(geometry.extraRow, true);
