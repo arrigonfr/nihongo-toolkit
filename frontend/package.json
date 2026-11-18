@@ -8,7 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "fast-xml-parser": "^5.11.2",
+    "fast-xml-parser": "^5.12.1",
     "fflate": "^0.8.3",
     "kokoro-js-jp": "0.2.0",
     "pdf-lib": "^1.17.1",

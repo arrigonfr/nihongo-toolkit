@@ -1161,6 +1161,42 @@ Preserve the local journal and back it up: a full `db:import` discards it.
 
 ## Deploy
 
+### Cloudflare dependency installation
+
+The root `package.json` overrides Sharp to `0.35.5` and Miniflare's Undici
+to `7.30.1` to avoid vulnerable transitive versions in the speech and local
+Worker tooling dependencies. Keep these overrides until upstream dependency
+ranges include the patched versions. After dependency updates, run `npm audit`,
+`npm run test:contact`, and `npm run build` to check security and compatibility.
+
+Use Node.js 24 for both Pages and Workers builds. The root `.node-version`
+selects major version 24; if the Cloudflare dashboard sets `NODE_VERSION`,
+set it to `24` as well so it does not override the repository with Node 22.
+
+The browser speech dependency `kokoro-js-jp` pulls in
+`@huggingface/transformers` and `onnxruntime-node`. On Linux, ONNX Runtime's
+install script otherwise attempts to download native CUDA binaries, even
+though our browser speech runs with ONNX Web and Cloudflare does not use CUDA.
+The root `.npmrc` sets `onnxruntime-node-install-cuda=skip` so this optional
+GPU download does not break Cloudflare's automatic `npm ci`.
+CPU binaries and browser WebAssembly support are unaffected; other package
+installation scripts still run.
+
+For an immediate dashboard-only fix, set
+`ONNXRUNTIME_NODE_INSTALL_CUDA=skip` in **both** the Pages and Worker build
+environments (production and preview as applicable), then retry the builds.
+This must be a **build environment** variable, not a Worker runtime variable
+or a prefix on `npm run build`: Cloudflare installs dependencies before that
+command runs. The environment variable also works with npm versions that no
+longer forward custom `.npmrc` settings to lifecycle scripts.
+
+When deploying the frontend separately to Pages, the root `wrangler.jsonc`
+is the **Worker** configuration. A Pages warning about its missing
+`pages_build_output_dir` is not the ONNX installation failure. Keep Pages'
+dashboard build command/output settings (`npm run build`, `frontend/dist`);
+do not turn the Worker configuration into a Pages configuration to suppress
+that warning.
+
 ### JSON versus a database on Workers Free
 
 Assessment (2026-11-07): keep Turso for dictionary search and relational data;
