@@ -1,0 +1,29 @@
+name: Register Discord reply command
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Register reply command
+        env:
+          CONTACT_DISCORD_APPLICATION_ID: ${{ secrets.CONTACT_DISCORD_APPLICATION_ID }}
+          CONTACT_DISCORD_GUILD_ID: ${{ secrets.CONTACT_DISCORD_GUILD_ID }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: node scripts/register-contact-command.mjs

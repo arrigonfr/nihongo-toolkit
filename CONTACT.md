@@ -633,6 +633,34 @@ belong to the same application, the guild ID is the intended server ID, and
 the app is installed in that server with the `applications.commands` scope.
 Receiving webhook notifications does not prove that the app is installed.
 
+**Alternative: register from GitHub Actions (including from a phone).**
+Use this when local Discord API access is unavailable and your organization's
+policy permits registration from a GitHub-hosted runner.
+
+- Commit and push `.github/workflows/register-discord-command.yml` and the
+  registration script to the repository's default branch. The workflow must
+  exist on that branch for GitHub to offer the manual trigger.
+- In the repository's GitHub web interface, open **Settings → Secrets and
+  variables → Actions → New repository secret**. Add three secrets named
+  `CONTACT_DISCORD_APPLICATION_ID`, `CONTACT_DISCORD_GUILD_ID`, and
+  `DISCORD_BOT_TOKEN`, using the values described above. These GitHub secrets
+  are separate from Cloudflare runtime secrets. Never commit `.dev.vars`.
+- Open **Actions → Register Discord reply command → Run workflow**.
+  Select the default branch and confirm **Run workflow**. On a phone, use
+  GitHub in the browser; request the desktop site if these controls are hidden.
+- Open the run and its **Register reply command** step. Success prints
+  `Registered /reply for the configured Discord server.` If it fails, inspect
+  the error before changing credentials.
+- Return to Discord and select `/reply` from the command picker, then fill in
+  its `ticket` and `message` fields. Pasting the example as ordinary chat does
+  not invoke the command.
+
+The workflow runs only on manual request, uses Node.js built-ins without
+installing dependencies, and does not deploy the site or Worker. After success,
+you can delete the GitHub `DISCORD_BOT_TOKEN` secret if no further registration
+is needed; add it again before rerunning. The Worker's interaction endpoint
+and runtime configuration are still required.
+
 4. Set `CONTACT_ENABLED=true` in the Worker's vars and deploy again. Publish
    the frontend built with the Turnstile site key and correct API URL.
 5. Submit a test contact using an email address you control. Confirm the
