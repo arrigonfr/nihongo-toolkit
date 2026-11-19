@@ -23,12 +23,43 @@ export async function gmailAccessToken(env) {
   return payload.access_token;
 }
 
+function emailText(value) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[character]).replace(/\r\n|\r|\n/g, "<br>");
+}
+
+function encodedBody(text) {
+  return Buffer.from(text.replace(/\r\n|\r|\n/g, "\r\n")).toString("base64").match(/.{1,76}/g).join("\r\n");
+}
+
 export function gmailMessage(env, contact, reply, job) {
   if (!mailbox.test(contact.email) || (env.CONTACT_EMAIL_REPLY_TO && !mailbox.test(env.CONTACT_EMAIL_REPLY_TO))
       || !/^[a-zA-Z0-9-]+$/.test(job.id)) throw new Error("Invalid email delivery address or reference");
   const text = `Hello ${contact.name},\n\n${reply.message}\n\nNihongo Toolkit\nReference: ${contact.id}\n\nYour original message:\n${contact.message}`;
-  const subject = Buffer.from(`Re: ${contact.subject} - Nihongo Toolkit`).toString("base64");
-  const body = Buffer.from(text.replace(/\r?\n/g, "\r\n")).toString("base64").match(/.{1,76}/g).join("\r\n");
+  const subject = Buffer.from(`Nihongo Toolkit: ${contact.subject}`).toString("base64");
+  const boundary = `nihongo-${job.id}`;
+  const html = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Your Nihongo Toolkit reply</title></head>
+<body style="margin:0;padding:0;background-color:#f4f3ef;color:#242c35;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f4f3ef;"><tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background-color:#ffffff;border:1px solid #deded8;border-radius:12px;">
+<tr><td style="padding:28px 28px 22px;border-bottom:4px solid #32766b;">
+<p style="margin:0;font-size:22px;font-weight:bold;">Nihongo Toolkit</p>
+<p style="margin:8px 0 0;color:#52616b;font-size:14px;">A reply to your website message</p></td></tr>
+<tr><td style="padding:28px;font-size:16px;line-height:1.7;overflow-wrap:anywhere;word-break:break-word;">
+<h1 style="margin:0 0 20px;font-size:22px;line-height:1.4;">Hello ${emailText(contact.name)},</h1>
+<p style="margin:0 0 24px;">${emailText(reply.message)}</p>
+<p style="margin:0;color:#52616b;">Thank you for getting in touch.<br>Nihongo Toolkit</p>
+</td></tr>
+<tr><td style="padding:24px 28px;background-color:#f7f8f6;border-top:1px solid #deded8;font-size:14px;line-height:1.7;overflow-wrap:anywhere;word-break:break-word;">
+<h2 style="margin:0 0 12px;font-size:16px;">Your original message</h2>
+<p style="margin:0 0 12px;font-weight:bold;">${emailText(contact.subject)}</p>
+<p style="margin:0;color:#52616b;">${emailText(contact.message)}</p></td></tr>
+<tr><td style="padding:20px 28px;color:#52616b;font-size:12px;line-height:1.6;overflow-wrap:anywhere;">
+You received this email because you contacted Nihongo Toolkit.<br>Reference: ${emailText(contact.id)}
+</td></tr></table>
+</td></tr></table></body></html>`;
   const mime = [
     `From: Nihongo Toolkit <${env.CONTACT_EMAIL_FROM}>`, `To: <${contact.email}>`,
     `Subject: =?UTF-8?B?${subject}?=`,
@@ -36,8 +67,11 @@ export function gmailMessage(env, contact, reply, job) {
     // Useful for manual reconciliation in Sent; Gmail does not deduplicate this header.
     `Message-ID: <${job.id}@gmail.com>`,
     ...(env.CONTACT_EMAIL_REPLY_TO ? [`Reply-To: <${env.CONTACT_EMAIL_REPLY_TO}>`] : []),
-    "MIME-Version: 1.0", "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64",
-    "", body
+    "MIME-Version: 1.0", `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    "", `--${boundary}`, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64",
+    "", encodedBody(text),
+    `--${boundary}`, "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64",
+    "", encodedBody(html), `--${boundary}--`, ""
   ].join("\r\n");
   return Buffer.from(mime).toString("base64url");
 }

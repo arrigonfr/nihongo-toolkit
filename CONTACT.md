@@ -677,6 +677,42 @@ and runtime configuration are still required.
 No cloud resources, migrations, command registrations or deployments are
 automatically performed by the implementation or its tests.
 
+## Reply email appearance and deliverability
+
+Replies include a branded HTML layout and an equivalent plain-text fallback.
+Visitor and staff content is escaped before insertion into HTML; Discord
+formatting is treated as text, not executable markup. The subject identifies
+Nihongo Toolkit and the contact category without pretending to be an existing
+email thread. No remote images, tracking pixels or promotional links are added.
+
+A successful Gmail API send means Gmail accepted the email, not that it reached
+the recipient's inbox. A template cannot guarantee inbox placement.
+
+- Set `CONTACT_EMAIL_FROM` to the dedicated Gmail account that authorized the
+  refresh token. Keep a stable sender identity. Leave `CONTACT_EMAIL_REPLY_TO`
+  unset unless another monitored reply address is actually needed.
+- For this `@gmail.com` sender, Google manages the sending domain's
+  authentication; do not add Gmail SPF/DKIM records to your Pages or Workers
+  subdomain. In a received Gmail message, use **More → Show original** to inspect
+  SPF, DKIM and DMARC results and the sender identity. Other providers offer
+  similar message-header views. Authentication passing is necessary evidence
+  to check, not a guarantee against spam filtering.
+- Read any explanation displayed above the message in Spam. For your own
+  requested test reply, use **Not spam** and optionally add the sender to your
+  contacts. This helps that recipient's filtering; it does not fix delivery
+  globally.
+- Send only genuine replies to requested contacts. Avoid repetitive bursts of
+  test messages, artificial "warm-up" traffic, misleading subjects and link-heavy
+  content. A new support account has limited reputation; allow legitimate use
+  to establish it rather than buying or manufacturing engagement.
+- A submitted email address is not proof of ownership. Keep Turnstile and
+  rate limiting enabled, and do not send unsolicited follow-ups.
+
+See [Google's email sender guidelines](https://support.google.com/mail/answer/81126).
+If delivery remains poor, inspect the actual received headers and spam reason
+before changing providers. A custom domain with an authenticated mail provider
+is a future option, not a requirement for this Gmail setup or an inbox guarantee.
+
 ## Local development and automated checks
 
 The contact API is **Worker/D1-only**. `npm run dev:backend` uses the dictionary

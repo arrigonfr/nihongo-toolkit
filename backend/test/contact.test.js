@@ -15,6 +15,13 @@ const post = (body, headers = {}) => new Request("https://worker.test/api/contac
   method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: typeof body === "string" ? body : JSON.stringify(body)
 });
 
+function emailPart(mime, type) {
+  const boundary = mime.match(/boundary="([^"]+)"/)[1];
+  const part = mime.split(`--${boundary}`).find((part) => part.startsWith(`\r\nContent-Type: ${type};`));
+  assert.ok(part, `Missing ${type} MIME part`);
+  return Buffer.from(part.split("\r\n\r\n")[1].trim(), "base64").toString();
+}
+
 test("contact validation rejects invalid fields and keeps all five supported subjects", () => {
   for (const subject of ["Feedback", "Feature Request", "Data Inconsistency", "General Bug Report", "Other"]) assert.equal(validateContact({ ...submission(), subject }), null);
   for (const overrides of [{ name: " " }, { name: "a".repeat(121) }, { email: "bad" }, { email: "a@example.test\nBcc:bad" }, { subject: "Unknown" }, { message: " " }, { message: "a".repeat(3001) }, { id: "not-a-uuid" }]) {
@@ -34,9 +41,28 @@ test("Gmail MIME preserves Unicode and rejects header injection", () => {
   const mime = Buffer.from(raw, "base64url").toString();
   assert.match(mime, /From: Nihongo Toolkit <support@gmail.com>\r\n/);
   assert.match(mime, /Message-ID: <email-500@gmail.com>/);
-  assert.match(Buffer.from(mime.split("\r\n\r\n")[1], "base64").toString(), /ありがとう！/);
+  assert.match(emailPart(mime, "text/plain"), /ありがとう！/);
+  assert.match(emailPart(mime, "text/html"), /ありがとう！/);
   assert.throws(() => gmailMessage(env, { ...contact, email: "a@example.test\r\nBcc: other@example.test" }, { message: "test" }, job), /Invalid email/);
   assert.throws(() => gmailMessage({ ...env, CONTACT_EMAIL_REPLY_TO: "bad\r\nheader" }, contact, { message: "test" }, job), /Invalid email/);
+});
+
+test("HTML replies escape visitor and staff content and retain readable plain text", () => {
+  const contact = { ...submission(), name: '<img src=x> & "Visitor"', subject: "Feedback & ideas", message: "<script>alert(1)</script>\nSecond line" };
+  const reply = { message: 'Thanks <a href="https://example.test">friend</a>!\r\nNext line' };
+  const mime = Buffer.from(gmailMessage({ CONTACT_EMAIL_FROM: "support@gmail.com" }, contact, reply,
+    { id: "email-501", created_at: 0 }), "base64url").toString();
+  const html = emailPart(mime, "text/html");
+  assert.ok(html.includes("&lt;img src=x&gt; &amp; &quot;Visitor&quot;"));
+  assert.ok(html.includes("&lt;script&gt;alert(1)&lt;/script&gt;<br>Second line"));
+  assert.ok(html.includes('&lt;a href=&quot;https://example.test&quot;&gt;friend&lt;/a&gt;!<br>Next line'));
+  assert.ok(html.includes("Feedback &amp; ideas"));
+  assert.doesNotMatch(html, /<script|<img|<a href/);
+  const plain = emailPart(mime, "text/plain");
+  assert.ok(plain.includes(contact.name));
+  assert.ok(plain.includes(reply.message));
+  assert.ok(mime.endsWith("--nihongo-email-501--\r\n"));
+  assert.equal(Buffer.from(mime.match(/Subject: =\?UTF-8\?B\?([^?]+)/)[1], "base64").toString(), "Nihongo Toolkit: Feedback & ideas");
 });
 
 test("contact D1 lifecycle, signed Discord authorization and safe Gmail delivery", { timeout: 60000 }, async (t) => {
@@ -182,7 +208,7 @@ test("contact D1 lifecycle, signed Discord authorization and safe Gmail delivery
       assert.equal(emails[0].body.raw, emails[1].body.raw);
       const mime = Buffer.from(emails[1].body.raw, "base64url").toString();
       assert.ok(mime.includes(`To: <${contact.email}>\r\n`));
-      assert.match(Buffer.from(mime.split("\r\n\r\n")[1], "base64").toString(), /Thanks for the feedback!/);
+      assert.match(emailPart(mime, "text/plain"), /Thanks for the feedback!/);
       assert.equal((await db.prepare("SELECT COUNT(*) AS count FROM contact_replies").first()).count, 1);
       assert.equal((await db.prepare("SELECT status FROM contact_outbox WHERE kind = 'email'").first()).status, "sent");
     });
