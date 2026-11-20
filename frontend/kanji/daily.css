@@ -1,0 +1,43 @@
+.daily-kanji {
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: .75rem;
+  background: var(--card);
+  overflow-wrap: anywhere;
+}
+.daily-kanji :is(h2, p) { margin: 0; }
+.daily-kanji time, .daily-credits { color: var(--muted); font-size: .8rem; }
+.daily-kanji-details:not([hidden]) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: .75rem;
+  margin-block: .5rem;
+}
+.daily-glyph { color: var(--accent); font-size: clamp(2.5rem, 18vw, 4rem); line-height: 1.1; }
+.daily-readings { font-weight: 700; }
+.daily-embed-controls { margin-block: 1rem; }
+.daily-embed-controls textarea {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  margin-block: .5rem;
+  padding: .5rem;
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+  background: var(--card);
+  color: var(--ink);
+}
+.daily-embed {
+  color-scheme: light dark;
+  --card: light-dark(#fff, #111318);
+  --ink: light-dark(#171d2d, #edf0f7);
+  --muted: light-dark(#4a5873, #b0b8c9);
+  --line: light-dark(#b8c2d6, #424a5d);
+  --accent: light-dark(#3c5590, #b4c7ff);
+  margin: 0;
+  color: var(--ink);
+  font: .9rem/1.45 system-ui, sans-serif;
+}
+.daily-embed h2 { font-size: 1.1rem; }
+.daily-embed a { color: var(--accent); }

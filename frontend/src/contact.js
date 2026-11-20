@@ -6,7 +6,7 @@ import "./navigation.js";
 import { mountAppearance } from "./appearance.js";
 import { mountSupport } from "./study-controls.js";
 import { API_BASE } from "./api.js";
-import { CONTACT_SUBJECTS, validateContact } from "./contact-fields.js";
+import { CONTACT_SUBJECTS, kanjiReportDraft, validateContact } from "./contact-fields.js";
 
 mountAppearance(document.querySelector("header"), document.getElementById("themeButton"));
 mountSupport();
@@ -17,6 +17,11 @@ const status = document.getElementById("contactStatus");
 const success = document.getElementById("contactSuccess");
 const copyButton = document.getElementById("contactSupportCopy");
 for (const subject of CONTACT_SUBJECTS) form.elements.subject.add(new Option(subject, subject));
+const draft = kanjiReportDraft(new URLSearchParams(location.search).get("kanji"));
+if (draft) {
+  form.elements.subject.value = draft.subject;
+  form.elements.message.value = draft.message;
+}
 
 const supportEmail = (import.meta.env.VITE_CONTACT_SUPPORT_EMAIL || "").trim();
 if (/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(supportEmail)) {

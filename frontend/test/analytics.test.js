@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { pageFile, publicPath } from "../src/routes.js";
 import { runInNewContext } from "node:vm";
 import config from "../vite.config.js";
+import { selectDailyKanji } from "../kanji/pages.js";
 
 test("public URLs and tool identifiers round-trip across clean and HTML routes", () => {
   assert.equal(pageFile("/favicon.svg"), "favicon.svg");
@@ -14,6 +15,18 @@ test("public URLs and tool identifiers round-trip across clean and HTML routes",
     assert.equal(pageFile(`/${publicPath(file)}`), file);
     assert.equal(pageFile(`/${file}`), file);
   }
+});
+
+test("daily kanji rotation skips incomplete records and blank values", () => {
+  const noReading = { character: "水", frequency: 1, on: [null, " "], kun: [], meanings: ["water"] };
+  const noMeaning = { character: "火", frequency: 2, on: ["カ"], kun: [], meanings: [" ", null] };
+  const valid = { character: "月", frequency: 3, on: ["", " ゲツ "], kun: [" "], meanings: ["", " moon ", "month"] };
+  const validKun = { character: "木", frequency: 4, on: [], kun: ["き"], meanings: ["tree"] };
+  assert.throws(() => selectDailyKanji([noReading, noMeaning, valid]), /both a Japanese reading and an English meaning/);
+  assert.deepEqual(selectDailyKanji([noReading, noMeaning, valid, validKun]), [
+    { character: "月", path: "/kanji/%E6%9C%88", readings: ["ゲツ"], meanings: ["moon", "month"] },
+    { character: "木", path: "/kanji/%E6%9C%A8", readings: ["き"], meanings: ["tree"] }
+  ]);
 });
 
 test("deployment metadata and sitemap use final clean URLs and explicit site identity", () => {
@@ -29,6 +42,10 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     mkdirSync(join(directory, "kanji"));
     writeFileSync(join(directory, "kanji", "catalogue-shell.html"), navigation.transformIndexHtml.handler(
       readFileSync(shell, "utf8"), { filename: shell.pathname }).html);
+    mkdirSync(join(directory, "embed"));
+    const embed = new URL("../embed/kanji-of-the-day.html", import.meta.url);
+    writeFileSync(join(directory, "embed", "kanji-of-the-day.html"), navigation.transformIndexHtml.handler(
+      readFileSync(embed, "utf8"), { filename: embed.pathname }));
     catalogue.writeBundle.handler({ dir: directory });
     plugins.find((plugin) => plugin.name === "deployment-seo").writeBundle({ dir: directory });
     const sitemap = readFileSync(join(directory, "sitemap.xml"), "utf8");
@@ -37,11 +54,34 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     const kanjiUrls = locations.filter((url) => new URL(url).pathname.startsWith("/kanji/"));
     assert.equal(kanjiUrls.length, source.filter(({ kind }) => kind !== "radical-only").length + 1);
     assert.equal(new Set(kanjiUrls).size, kanjiUrls.length);
-    assert.equal(locations.length - kanjiUrls.length, 18);
+    assert.equal(locations.length - kanjiUrls.length, 19);
+    assert.ok(locations.includes(new URL("/kanji-of-the-day", site).href));
+    assert.ok(!locations.includes(new URL("/embed/kanji-of-the-day", site).href));
+    const daily = readFileSync(join(directory, "kanji-of-the-day.html"), "utf8");
+    const widget = readFileSync(join(directory, "embed", "kanji-of-the-day.html"), "utf8");
+    const dailyData = (html) => JSON.parse(html.match(/<script type="application\/json">(.*?)<\/script>/)[1]);
+    assert.deepEqual(dailyData(daily), dailyData(widget));
+    const catalogueUrls = new Set(kanjiUrls);
+    for (const { path, readings, meanings } of dailyData(widget)) {
+      assert.ok(catalogueUrls.has(new URL(path, site).href));
+      for (const values of [readings, meanings]) {
+        assert.ok(values.length > 0 && values.every((value) => typeof value === "string" && value.trim()), path);
+      }
+    }
+    assert.match(daily, /id="copy-daily-embed"/);
+    assert.match(daily, /data-path="https:\/\/nihongo-toolkit\.pages\.dev\/embed\/kanji-of-the-day"/);
+    assert.match(widget, /<meta name="robots" content="noindex">/);
+    assert.doesNotMatch(widget, /googletagmanager|page-views|helperMenu|study-support/);
     const files = readdirSync(join(directory, "kanji")).filter((file) => file.endsWith(".html"));
     assert.deepEqual(new Set(kanjiUrls), new Set(files.map((file) => new URL(
       file === "index.html" ? "/kanji/" : `/kanji/${encodeURIComponent(file.slice(0, -5))}`, site).href)));
     const index = readFileSync(join(directory, "kanji", "index.html"), "utf8");
+    assert.match(index, /<section class="study-intro"[^>]*>\s*<div class="study-intro-content">[\s\S]*?<h1 id="catalogue-title">/);
+    assert.match(index, /<select id="catalogue-group"><option value="jlpt" selected>/);
+    assert.deepEqual([...index.matchAll(/<details><summary>(.*?) \(\d+\)<\/summary>/g)].map(([, group]) => group),
+      ["N5", "N4", "N3", "N2", "N1", "No JLPT estimate"]);
+    assert.ok(kanjiUrls.includes(new URL("/kanji/", site).href));
+    assert.ok(kanjiUrls.includes(new URL("/kanji/食", site).href));
     assert.match(index, /href="\/kanji\/%E9%A3%9F" lang="ja"[^>]*>食/);
     assert.doesNotMatch(index, /href="\/kanji\/%E6%B0%B5"/);
     assert.ok(!kanjiUrls.includes(new URL("/kanji/氵", site).href));
@@ -53,6 +93,11 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     assert.match(page, /ショク/);
     assert.match(page, /Numbered stroke order/);
     assert.match(page, /Kanji and radical/);
+    assert.match(page, /href="\/kanji-chizucho\?kanji=%E9%A3%9F"/);
+    assert.doesNotMatch(page, /Suggest a missing Japanese reading/);
+    const incompletePage = readFileSync(join(directory, "kanji", "䐗.html"), "utf8");
+    assert.match(incompletePage, /href="\/contact\?kanji=%E4%90%97"/);
+    assert.match(incompletePage, /Dictionary indexing radical<\/dt><dd><span lang="ja">肉<\/span> \(130\)/);
     assert.match(readFileSync(join(directory, "kanji", "u-f91d.html"), "utf8"), /lang="ja">欄<\/span>/);
     assert.match(readFileSync(join(directory, "kanji", "欄.html"), "utf8"), /lang="ja">欄<\/span>/);
     assert.match(readFileSync(join(directory, "404.html"), "utf8"), /Page not found/);

@@ -96,6 +96,7 @@ function toolNavigation(site, disabled = new Set()) {
       order: "pre",
       handler(html, context) {
         const file = context.filename.split("/").pop();
+        if (file === "kanji-of-the-day.html") return html;
         const reference = file === "catalogue-shell.html";
         if (file === "文字.html") return addTagManager(html);
         const canonical = site && !reference ? new URL(publicPath(file), site).href : null;
@@ -200,6 +201,7 @@ export default defineConfig(({ mode, command, isPreview }) => {
     throw new Error("VITE_SITE_URL must be the public HTTPS site URL.");
   }
   const catalogue = kanjiCatalogue(site, disabled);
+  const robots = `User-agent: *\nAllow: /\n${site ? `\nSitemap: ${site}sitemap.xml\n` : ""}`;
   const sitemap = () => {
     const paths = ["", ...toolFiles, "data-sources.html"].map(publicPath).concat(catalogue.paths);
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${paths.map((path) =>
@@ -219,12 +221,14 @@ export default defineConfig(({ mode, command, isPreview }) => {
           response.statusCode = 302;
           response.setHeader("Location", `/${legacy}${request.url.includes("?") ? `?${request.url.split("?").slice(1).join("?")}` : ""}`);
           response.end();
-        } else if (site && path === "/robots.txt") {
+        } else if (path === "/robots.txt") {
           response.setHeader("Content-Type", "text/plain; charset=utf-8");
-          response.end(`User-agent: *\nAllow: /\n\nSitemap: ${site}sitemap.xml\n`);
-        } else if (site && path === "/sitemap.xml") {
-          response.setHeader("Content-Type", "application/xml; charset=utf-8");
-          response.end(sitemap());
+          response.end(robots);
+        } else if (path === "/sitemap.xml") {
+          response.writeHead(site ? 200 : 404, {
+            "Content-Type": site ? "application/xml; charset=utf-8" : "text/plain; charset=utf-8"
+          });
+          response.end(site ? sitemap() : "Set VITE_SITE_URL to generate a sitemap.\n");
         } else next();
       });
     },
@@ -233,7 +237,7 @@ export default defineConfig(({ mode, command, isPreview }) => {
       for (const [oldName, newName] of Object.entries(legacyRoutes)) {
         writeFileSync(`${directory}/${oldName}`, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0;url=./${publicPath(newName)}"><link rel="canonical" href="./${publicPath(newName)}"><title>Redirecting</title></head><body><a href="./${publicPath(newName)}">Continue</a></body></html>`);
       }
-      writeFileSync(`${directory}/robots.txt`, `User-agent: *\nAllow: /\n${site ? `\nSitemap: ${site}sitemap.xml\n` : ""}`);
+      writeFileSync(`${directory}/robots.txt`, robots);
       if (!site) { rmSync(`${directory}/sitemap.xml`, { force: true }); return; }
       writeFileSync(`${directory}/sitemap.xml`, sitemap());
     }
@@ -245,7 +249,8 @@ export default defineConfig(({ mode, command, isPreview }) => {
     rollupOptions: {
       input: readdirSync(root).filter((file) => file.endsWith(".html"))
         .map((file) => fileURLToPath(new URL(file, import.meta.url)))
-        .concat(fileURLToPath(new URL("./kanji/catalogue-shell.html", import.meta.url)))
+        .concat(["./kanji/catalogue-shell.html", "./embed/kanji-of-the-day.html"]
+          .map((file) => fileURLToPath(new URL(file, import.meta.url))))
     }
   }
   };

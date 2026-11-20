@@ -1334,11 +1334,30 @@ After importing a new dictionary, refresh it with `npm run build:kanji-data`
 snapshot in the same change. The export only reads the database. The site sitemap
 includes the catalogue when `VITE_SITE_URL` is set. Characters with ambiguous
 Unicode filenames use their codepoint in the URL (for example, `/kanji/u-f91d`).
-The catalogue can be searched by character, reading, or meaning and grouped by
-stroke count, JLPT study estimate, or dictionary radical. The snapshot records
+The catalogue defaults to grouping by JLPT study estimate (N5 to N1), with
+stroke count and dictionary radical as alternatives. It can be searched by
+character, reading, or meaning. The snapshot records
 standalone kanji, kanji also used as radicals, and component-only forms
 separately. Component-only forms (such as 氵) remain available as dictionary
 data but do not get catalogue pages or sitemap entries.
+The **Explore in Kanji Atlas** link on a kanji page opens the atlas and looks up
+that character automatically.
+If an entry lacks an English meaning or any Japanese reading, visitors can open
+a prefilled **Data Inconsistency** report. Suggestions should include a source
+or example of Japanese usage and are reviewed before any dictionary update.
+The displayed radical is the dictionary's indexing form; it may differ in
+shape from the component inside the character.
+
+The shareable `/kanji-of-the-day` page is under **Reference** and includes a
+**Copy embed code** button. Its public iframe at `/embed/kanji-of-the-day` works
+on the `pages.dev` domain as well as a custom domain. Both rotate through common
+kanji from the bundled snapshot at midnight UTC. The rotation only includes
+entries with a non-blank Japanese on/kun reading and English meaning. The
+iframe has no analytics,
+cookies, sign-in or dictionary API calls, and is omitted from the sitemap.
+Set `VITE_SITE_URL` to the canonical deployment origin so copied snippets use
+the public domain. If that domain changes, keep the old embed URL working for
+sites that already use it.
 
 The production Worker serves **only `/api/*`**, backed by Turso. Host the frontend
 separately, for example on Cloudflare Pages: build it with `npm run build`, set
@@ -1546,7 +1565,7 @@ preference. Fumitoki and Kotoba retain dictionary results while sentence fallbac
 | `/api/kanji?level=5&q=day&limit=100&offset=0` | `{ items, total, nextOffset }` summaries |
 | `/api/kanji/日` | Lean kanji record with all Japanese readings, example words and local sentences |
 | `/api/kanji/日/words?limit=20` | `{ items: [...] }` via the relation table |
-| `/api/kanji/日/strokes` | Local SVG, or 404 when not present |
+| `/api/kanji/日/strokes` | Local KanjiVG SVG, or 404 when not present. The Atlas shows a loading caption without obscuring playback. |
 | `/api/words?keyword=日本` | `{ data: [...] }` dictionary results; Japanese, kana, English, or exact study-list romaji |
 | `/api/sentences?q=日本` | `{ data: [...] }` randomized local examples, or optional Tatoeba fallback |
 | `/api/sentences?q=日本&random=1` | One random example from local and online pools; optional JSON `exclude` list skips displayed Japanese sentences; `warning` reports degraded online availability |

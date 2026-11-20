@@ -27,7 +27,14 @@ try {
     requests.push(body);
     await route.fulfill({ status: fail ? 503 : 202, contentType: "application/json", body: JSON.stringify(fail ? { error: "Unavailable" } : { id: body.id, status: "received" }) });
   });
-  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/contact`);
+  const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
+  await page.goto(`${origin}/kanji/䐗`);
+  await page.getByRole("link", { name: "Suggest a missing Japanese reading or English meaning" }).click();
+  await page.locator('#contactSend:not([disabled])').waitFor();
+  assert.equal(await page.locator('[name="subject"]').inputValue(), "Data Inconsistency");
+  assert.match(await page.locator('[name="message"]').inputValue(), /Kanji: 䐗 \(U\+4417\)[\s\S]*Source or example of Japanese usage:/);
+  assert.equal(requests.length, 0, "Opening the draft never submits it");
+  await page.goto(`${origin}/contact`);
   await page.locator('#contactSend:not([disabled])').waitFor();
   assert.equal(await page.locator("header .navigation, header .study-appearance, header .study-support").count(), 3);
   assert.equal(await page.locator('select[name="subject"] option').count(), 6);

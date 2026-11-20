@@ -10,6 +10,9 @@ footer { border-block-start: 1px solid var(--line); margin-block-start: 2rem; }
 a { color: var(--accent, #b4c7ff); text-underline-offset: .15em; }
 a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 h1 { line-height: 1.2; margin-block: 1.5rem .5rem; }
+.study-intro { margin-block: 1.5rem 1rem; }
+.study-intro .eyebrow { margin: 0; font-size: .75rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.study-intro h1 { margin-block-start: .25rem; }
 .glyph { font-size: 2em; vertical-align: middle; }
 .meaning { font-size: 1.25rem; }
 dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: .75rem; }
@@ -22,7 +25,8 @@ dd { margin: 0; overflow-wrap: anywhere; }
 #catalogue-list details { border-block-end: 1px solid var(--line); }
 #catalogue-list summary { padding: .65rem .25rem; cursor: pointer; }
 .characters { display: grid; grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr)); gap: .25rem; list-style: none; padding: 0; }
-.characters a { display: grid; place-items: center; min-height: 2.75rem; font-size: 1.25rem; }
+.characters a { display: grid; place-items: center; min-height: 2.75rem; border-radius: .5rem; font-size: 1.25rem; text-decoration: none; }
+.characters a:is(:hover, :focus-visible) { background: var(--accent-soft, #222c45); }
 .catalogue-toolbar { display: flex; margin-top: .75rem; }
 .catalogue-toolbar:empty { display: none; }
 .catalogue-controls:not([hidden]) { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem 1.25rem; }

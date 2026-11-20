@@ -45,7 +45,7 @@ try {
   const go = async (name) => {
     requests.length = 0;
     await page.goto(`${base}/${name}`);
-    await page.locator("#colorThemeSelect").waitFor();
+    await page.locator(".study-palette summary").waitFor();
   };
   const nextRequest = async () => {
     const deadline = Date.now() + 5000;
@@ -144,6 +144,31 @@ try {
     assert.equal(await page.locator(selector).isEnabled(), true, `${name}: failure allows retry`);
     console.log(`PASS loading/error/cooldown: ${name}`);
   }
+
+  await go("kanji-chizucho?kanji=食");
+  await (await nextRequest()).fulfill({ json: { kanji: "食", meanings: ["eat"] } });
+  await (await nextRequest()).fulfill({ json: { items: [] } });
+  const examplesRequest = await nextRequest();
+  assert.equal(new URL(examplesRequest.request().url()).pathname, "/api/sentences");
+  await examplesRequest.fulfill({ json: { data: [] } });
+  const strokeButton = page.locator("#strokeOrderButton");
+  const strokePath = page.locator(".hero-strokes path");
+  await strokeButton.click();
+  const strokeRequest = await nextRequest();
+  assert.match(new URL(strokeRequest.request().url()).pathname, /\/strokes$/);
+  assert.equal(await strokeButton.isDisabled(), true);
+  assert.equal(await strokeButton.getAttribute("aria-busy"), "true");
+  assert.match(await strokeButton.textContent(), /Loading stroke order/);
+  assert.equal(await strokeButton.locator(".hero-kanji-character").isVisible(), true);
+  assert.equal(await page.locator(".request-loading-button, .request-loading-panel").count(), 0);
+  await strokeRequest.fulfill({ contentType: "image/svg+xml", body:
+    '<svg xmlns="http://www.w3.org/2000/svg"><path id="test-s1" d="M10 10L50 50"/><path id="test-s2" d="M20 20L40 40"/></svg>' });
+  await strokePath.first().waitFor();
+  assert.equal(await strokeButton.getAttribute("aria-busy"), null);
+  assert.equal(await strokePath.nth(1).isVisible(), false, "later strokes stay hidden until their turn");
+  assert.equal(await page.locator(".request-loading-button, .request-loading-panel").count(), 0);
+  await page.waitForFunction(() => !document.getElementById("strokeOrderButton").disabled);
+  assert.equal(await strokePath.nth(1).isVisible(), true);
 
   await go("yomi.html");
   await page.click("#startSessionButton");

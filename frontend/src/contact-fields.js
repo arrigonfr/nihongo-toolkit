@@ -1,5 +1,18 @@
 export const CONTACT_SUBJECTS = ["Feedback", "Feature Request", "Data Inconsistency", "General Bug Report", "Other"];
 
+export function kanjiReportPath(character) {
+  return `/contact?kanji=${encodeURIComponent(character)}`;
+}
+
+export function kanjiReportDraft(character) {
+  if (!/^\p{Unified_Ideograph}$/u.test(character ?? "") && !/^[\uF900-\uFAFF]$/u.test(character ?? "")) return null;
+  const codepoint = character.codePointAt(0).toString(16).toUpperCase().padStart(4, "0");
+  return {
+    subject: "Data Inconsistency",
+    message: `Kanji: ${character} (U+${codepoint})\n\nSuggested Japanese reading or meaning:\n\nSource or example of Japanese usage:\n`
+  };
+}
+
 export function validateContact(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return "Expected a contact message.";
   if (typeof value.id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.id)) return "Invalid submission reference.";

@@ -1,3 +1,6 @@
+import { catalogueGroupLabel, compareCatalogueGroups } from "./catalogue-groups.js";
+import "./daily.js";
+
 const listing = document.getElementById("catalogue-list");
 if (listing) {
   const search = document.getElementById("catalogue-search");
@@ -11,11 +14,6 @@ if (listing) {
     text: normalize(`${link.textContent} ${link.dataset.search}`),
     groups: link.dataset
   }));
-  const labels = {
-    strokes: (count) => `${count} ${count === 1 ? "stroke" : "strokes"}`,
-    jlpt: (level) => level === Infinity ? "No JLPT estimate" : `N${level}`,
-    radical: (id) => id === Infinity ? "No dictionary radical" : `${id}. ${radicals[id - 1]}`
-  };
   function display() {
     const groups = new Map();
     const field = grouping.value;
@@ -28,11 +26,11 @@ if (listing) {
       groups.get(key).push(entry.link);
       count++;
     }
-    listing.replaceChildren(...[...groups].sort(([a], [b]) => a - b).map(([key, entries]) => {
+    listing.replaceChildren(...[...groups].sort(([a], [b]) => compareCatalogueGroups(field, a, b)).map(([key, entries]) => {
       const details = document.createElement("details");
       details.open = terms.length > 0;
       const summary = document.createElement("summary");
-      summary.textContent = `${labels[field](key)} (${entries.length})`;
+      summary.textContent = `${catalogueGroupLabel(field, key, radicals)} (${entries.length})`;
       const list = document.createElement("ul");
       list.className = "characters";
       list.append(...entries);

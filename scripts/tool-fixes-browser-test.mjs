@@ -223,7 +223,7 @@ try {
     assert.ok(locations.includes("/kanji/"));
     assert.ok(locations.includes("/kanji/食"));
     assert.deepEqual(locations.filter((path) => !path.startsWith("/kanji/")).sort(),
-      ["/", "/data-sources", ...files.map((file) => `/${file.slice(0, -5)}`)].sort());
+      ["/", "/data-sources", "/kanji-of-the-day", ...files.map((file) => `/${file.slice(0, -5)}`)].sort());
     assert.match(await (await navigationPage.request.get(`${origin}/robots.txt`)).text(), /Sitemap: https:\/\/nihongo-toolkit.pages.dev\/sitemap.xml/);
     await navigationPage.goto(`${origin}/index.html`);
     await navigationPage.waitForURL(`${origin}/`);

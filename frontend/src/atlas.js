@@ -1,6 +1,7 @@
 import { API_BASE } from "./api.js";
 import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML } from "./study-controls.js";
 import { wordsHTML, mountSentenceExamples } from "./examples.js";
+import { kanjiReportPath } from "./contact-fields.js";
 (() => {
   "use strict";
   const API = API_BASE;
@@ -137,7 +138,7 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
     }).join("");
     const names = record?.radical_names?.length
       ? `<span class="radical-note">Radical readings: ${record.radical_names.map(escapeHtml).join(" · ")}</span>` : "";
-    return `<div class="chip-list">${chips}</div>${names}<span class="radical-note">Official indexing radical (from the classic 214-radical system, plus Nelson’s look-up radical when different).</span>`;
+    return `<div class="chip-list">${chips}</div>${names}<span class="radical-note">These are dictionary indexing forms, not a tracing of the character. For example, 肉 (#130) can appear as a 月-like component. Nelson’s lookup radical is shown when available.</span>`;
   }
 
   function componentsContent(record) {
@@ -206,6 +207,8 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
     const jlpt = record.jlpt ? `JLPT N${record.jlpt}` : "No JLPT level";
     const frequency = record.freq_mainichi_shinbun ? `#${record.freq_mainichi_shinbun}` : "Not ranked";
     const radicalValue = radicalContent(record);
+    const incomplete = !record.meanings?.length ||
+      !(record.on_readings?.length || record.kun_readings?.length || record.nanori?.length);
     const detail = document.createElement("div");
     detail.className = "detail-inner";
     detail.innerHTML = `
@@ -217,6 +220,7 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
         <div class="hero-info">
           <div class="hero-title"><h2>${escapeHtml(character)}</h2><span class="tag">${escapeHtml(jlpt)}</span></div>
           <p class="meanings">${escapeHtml(meanings(record) || "No English meanings listed.")}</p>
+          ${incomplete ? `<p><a href="${kanjiReportPath(character)}">Suggest a missing Japanese reading or English meaning</a></p>` : ""}
           <button class="button copy-button" id="copyKanji" type="button" data-kanji="${escapeHtml(character)}">Copy kanji</button>
         </div>
       </div>
@@ -303,11 +307,14 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
     const originalGlyph = button.querySelector(".hero-kanji-character");
     button.querySelector(".hero-strokes")?.remove();
     originalGlyph.hidden = false;
-    const doneLoading = beginLoading(button, button.parentElement);
     button.disabled = true;
+    button.setAttribute("aria-busy", "true");
     caption.textContent = "Loading stroke order…";
     try {
       const strokeData = await getStrokeData(character);
+      if (!button.isConnected) return;
+      button.removeAttribute("aria-busy");
+      const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("class", "hero-strokes");
       svg.setAttribute("viewBox", strokeData.viewBox);
@@ -321,12 +328,13 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
         path.setAttribute("stroke-width", "3");
         path.setAttribute("stroke-linecap", "round");
         path.setAttribute("stroke-linejoin", "round");
+        if (!reducedMotion) path.style.visibility = "hidden";
         svg.append(path);
       });
       originalGlyph.hidden = true;
       button.insertBefore(svg, caption);
 
-      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      if (reducedMotion) {
         caption.textContent = `${strokeData.paths.length} strokes · reduced motion`;
         return;
       }
@@ -337,6 +345,7 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
         const length = path.getTotalLength();
         path.style.strokeDasharray = String(length);
         path.style.strokeDashoffset = String(length);
+        path.style.visibility = "";
         caption.textContent = `Stroke ${index + 1} of ${paths.length}`;
         const animation = path.animate(
           [{ strokeDashoffset: length }, { strokeDashoffset: 0 }],
@@ -354,8 +363,8 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
         setNotice(`We couldn’t load the stroke order diagram for ${character} right now. Please try again in a moment.`, true);
       }
     } finally {
-      await doneLoading();
-      if (button.isConnected) button.disabled = false;
+      button.removeAttribute("aria-busy");
+      button.disabled = false;
     }
   }
 
@@ -565,6 +574,15 @@ import { wordsHTML, mountSentenceExamples } from "./examples.js";
     }
   });
   renderHistory();
+  const linkedKanji = new URLSearchParams(location.search).get("kanji");
+  if (linkedKanji !== null) {
+    if (isSingleKanji(linkedKanji)) {
+      elements.query.value = linkedKanji;
+      void runSearch(linkedKanji);
+    } else {
+      setNotice("This link does not specify a single kanji. Enter a kanji to search.", true);
+    }
+  }
 })();
 mountStudyControls();
 import { beginLoading } from "./request-loading.js";

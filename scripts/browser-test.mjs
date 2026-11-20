@@ -346,10 +346,12 @@ try {
   await go("index.html");
   assert.equal(await page.title(), "日本語道具箱 · Japanese Toolkit · Nihongo Toolkit");
 
-  await go("kanji-chizucho.html");
-  await page.fill("#query", "日");
-  await page.click("#searchButton");
+  await page.goto("http://127.0.0.1:5179/kanji/日");
+  await page.getByRole("link", { name: "Explore in Kanji Atlas" }).click();
   await page.waitForSelector("#strokeOrderButton");
+  assert.equal(new URL(page.url()).searchParams.get("kanji"), "日");
+  assert.equal(await page.inputValue("#query"), "日");
+  assert.equal(await page.locator(".hero-kanji-character").textContent(), "日");
   await page.click("#strokeOrderButton");
   await page.waitForSelector(".hero-strokes path");
   assert.ok(await page.locator(".compound").count() > 0);
