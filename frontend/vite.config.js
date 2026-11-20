@@ -3,6 +3,7 @@ import { readFileSync, readdirSync, writeFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { legacyRoutes, publicPath } from "./src/routes.js";
 import { disabledPages, pageAvailability } from "./page-availability.js";
+import { kanjiCatalogue } from "./kanji/pages.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const toolFiles = readdirSync(root).filter((file) => file.endsWith(".html") && !["index.html", "data-sources.html", "文字.html"].includes(file));
@@ -95,8 +96,9 @@ function toolNavigation(site, disabled = new Set()) {
       order: "pre",
       handler(html, context) {
         const file = context.filename.split("/").pop();
+        const reference = file === "catalogue-shell.html";
         if (file === "文字.html") return addTagManager(html);
-        const canonical = site ? new URL(publicPath(file), site).href : null;
+        const canonical = site && !reference ? new URL(publicPath(file), site).href : null;
         if (file === "index.html" && site) {
           html = html.replace(/(<script type="application\/ld\+json">)([\s\S]*?)(<\/script>)/, (_, open, content, close) => {
             const data = JSON.parse(content);
@@ -113,10 +115,10 @@ function toolNavigation(site, disabled = new Set()) {
             return `${open}${normalized.replaceAll("<", "\\u003c")}${close}`;
           });
         }
-        const tags = [{ tag: "link", attrs: { rel: "apple-touch-icon", sizes: "180x180", href: "./apple-touch-icon.png?v=2" }, injectTo: "head" }];
-        tags.push({ tag: "script", attrs: { type: "module", src: "./src/page-views.js" }, injectTo: "body" });
+        const tags = [{ tag: "link", attrs: { rel: "apple-touch-icon", sizes: "180x180", href: reference ? "/apple-touch-icon.png?v=2" : "./apple-touch-icon.png?v=2" }, injectTo: "head" }];
+        if (!reference) tags.push({ tag: "script", attrs: { type: "module", src: "./src/page-views.js" }, injectTo: "body" });
         if (canonical) tags.push({ tag: "link", attrs: { rel: "canonical", href: canonical }, injectTo: "head" });
-        if (file === "index.html" || file === "data-sources.html" || toolFiles.includes(file)) {
+        if (reference || file === "index.html" || file === "data-sources.html" || toolFiles.includes(file)) {
           const launcher = readFileSync(new URL("./index.html", import.meta.url), "utf8");
           const originalMenu = launcher.match(/<nav class="navigation"[\s\S]*?<\/nav>/)[0];
           let menu = originalMenu.replace(/<button class="helper-link" type="button" data-file="([^"]+)">([\s\S]*?)<\/button>/g,
@@ -142,7 +144,7 @@ function toolNavigation(site, disabled = new Set()) {
               { tag: "script", injectTo: "head-prepend", children: 'if (window.self !== window.top) document.documentElement.dataset.embedded = "";' },
               { tag: "style", injectTo: "head-prepend", children: 'html.loading-styles body { visibility: hidden; }' },
               { tag: "script", injectTo: "head-prepend", children: 'document.documentElement.classList.add("loading-styles"); document.addEventListener("DOMContentLoaded", () => document.documentElement.classList.remove("loading-styles"), { once: true });' },
-              { tag: "script", attrs: { type: "module", src: "./src/index.js" }, injectTo: "body" }
+              { tag: "script", attrs: { type: "module", src: reference ? "/src/index.js" : "./src/index.js" }, injectTo: "body" }
             );
             html = html.replace(/<body\b[^>]*>/, (body) => `${body}\n${menu}`);
           }
@@ -151,6 +153,7 @@ function toolNavigation(site, disabled = new Set()) {
         html = html.replace(/href="\.\/#helper=([^"]+)"/g, 'href="./$1"');
         html = html.replace(/href="\.\/([^"?#]+\.html)([?#][^"]*)?"/g, (match, target, suffix = "") =>
           seoPages[target] ? `href="./${publicPath(target)}${suffix}"` : match);
+        if (reference) html = html.replaceAll('href="./', 'href="/');
         const seo = disabled.has(file) ? null : seoPages[file];
         if (seo) {
           html = html.replace(/<title>[^<]*<\/title>/i, `<title>${seo.title}</title>`);
@@ -196,10 +199,16 @@ export default defineConfig(({ mode, command, isPreview }) => {
   if (site && !site.startsWith("https://")) {
     throw new Error("VITE_SITE_URL must be the public HTTPS site URL.");
   }
+  const catalogue = kanjiCatalogue(site, disabled);
+  const sitemap = () => {
+    const paths = ["", ...toolFiles, "data-sources.html"].map(publicPath).concat(catalogue.paths);
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${paths.map((path) =>
+      `  <url><loc>${new URL(path, site).href}</loc></url>`).join("\n")}\n</urlset>\n`;
+  };
   return {
   define: { "process.env.TRACK_VISITS": JSON.stringify(env.TRACK_VISITS || "") },
   worker: { format: "es" },
-  plugins: [pageAvailability(disabled), toolNavigation(site, disabled), {
+  plugins: [pageAvailability(disabled), toolNavigation(site, disabled), catalogue.plugin, {
     name: "deployment-seo",
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
@@ -214,10 +223,8 @@ export default defineConfig(({ mode, command, isPreview }) => {
           response.setHeader("Content-Type", "text/plain; charset=utf-8");
           response.end(`User-agent: *\nAllow: /\n\nSitemap: ${site}sitemap.xml\n`);
         } else if (site && path === "/sitemap.xml") {
-          const pages = ["", ...toolFiles, "data-sources.html"];
           response.setHeader("Content-Type", "application/xml; charset=utf-8");
-          response.end(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages.map((file) =>
-            `  <url><loc>${new URL(publicPath(file), site).href}</loc></url>`).join("\n")}\n</urlset>\n`);
+          response.end(sitemap());
         } else next();
       });
     },
@@ -228,9 +235,7 @@ export default defineConfig(({ mode, command, isPreview }) => {
       }
       writeFileSync(`${directory}/robots.txt`, `User-agent: *\nAllow: /\n${site ? `\nSitemap: ${site}sitemap.xml\n` : ""}`);
       if (!site) { rmSync(`${directory}/sitemap.xml`, { force: true }); return; }
-      const pages = ["", ...toolFiles, "data-sources.html"];
-      writeFileSync(`${directory}/sitemap.xml`, `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${pages.map((file) =>
-        `  <url><loc>${new URL(publicPath(file), site).href}</loc></url>`).join("\n")}\n</urlset>\n`);
+      writeFileSync(`${directory}/sitemap.xml`, sitemap());
     }
   }],
   server: { port: 5173, strictPort: true },
@@ -240,6 +245,7 @@ export default defineConfig(({ mode, command, isPreview }) => {
     rollupOptions: {
       input: readdirSync(root).filter((file) => file.endsWith(".html"))
         .map((file) => fileURLToPath(new URL(file, import.meta.url)))
+        .concat(fileURLToPath(new URL("./kanji/catalogue-shell.html", import.meta.url)))
     }
   }
   };

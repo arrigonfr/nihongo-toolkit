@@ -1325,6 +1325,21 @@ checks. Neither requires cloud credentials or contacts hosted Turso.
 
 ### Dictionary/API deployment
 
+The static kanji catalogue is separate from the interactive atlas. The frontend
+build publishes `/kanji/` and one complete HTML page per standalone kanji under
+`frontend/dist/kanji/`. These pages do not call the API. The build uses the
+tracked [catalogue snapshot](frontend/kanji/catalogue.jsonl), not a live database.
+After importing a new dictionary, refresh it with `npm run build:kanji-data`
+(or `npm run build:kanji-data -- path/to/database.sqlite`) and include the updated
+snapshot in the same change. The export only reads the database. The site sitemap
+includes the catalogue when `VITE_SITE_URL` is set. Characters with ambiguous
+Unicode filenames use their codepoint in the URL (for example, `/kanji/u-f91d`).
+The catalogue can be searched by character, reading, or meaning and grouped by
+stroke count, JLPT study estimate, or dictionary radical. The snapshot records
+standalone kanji, kanji also used as radicals, and component-only forms
+separately. Component-only forms (such as 氵) remain available as dictionary
+data but do not get catalogue pages or sitemap entries.
+
 The production Worker serves **only `/api/*`**, backed by Turso. Host the frontend
 separately, for example on Cloudflare Pages: build it with `npm run build`, set
 `VITE_API_BASE_URL` to the Worker's HTTPS origin, and publish `frontend/dist`.

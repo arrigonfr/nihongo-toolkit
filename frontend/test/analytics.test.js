@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pageFile, publicPath } from "../src/routes.js";
@@ -24,9 +24,38 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     process.env.VITE_SITE_URL = site;
     const { plugins } = config({ mode: "test" });
     const navigation = plugins.find((plugin) => plugin.name === "tool-navigation");
+    const catalogue = plugins.find((plugin) => plugin.name === "kanji-catalogue");
+    const shell = new URL("../kanji/catalogue-shell.html", import.meta.url);
+    mkdirSync(join(directory, "kanji"));
+    writeFileSync(join(directory, "kanji", "catalogue-shell.html"), navigation.transformIndexHtml.handler(
+      readFileSync(shell, "utf8"), { filename: shell.pathname }).html);
+    catalogue.writeBundle.handler({ dir: directory });
     plugins.find((plugin) => plugin.name === "deployment-seo").writeBundle({ dir: directory });
     const sitemap = readFileSync(join(directory, "sitemap.xml"), "utf8");
-    assert.equal((sitemap.match(/<loc>/g) || []).length, 18);
+    const locations = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map(([, url]) => url);
+    const source = readFileSync(new URL("../kanji/catalogue.jsonl", import.meta.url), "utf8").trimEnd().split("\n").slice(1).map(JSON.parse);
+    const kanjiUrls = locations.filter((url) => new URL(url).pathname.startsWith("/kanji/"));
+    assert.equal(kanjiUrls.length, source.filter(({ kind }) => kind !== "radical-only").length + 1);
+    assert.equal(new Set(kanjiUrls).size, kanjiUrls.length);
+    assert.equal(locations.length - kanjiUrls.length, 18);
+    const files = readdirSync(join(directory, "kanji")).filter((file) => file.endsWith(".html"));
+    assert.deepEqual(new Set(kanjiUrls), new Set(files.map((file) => new URL(
+      file === "index.html" ? "/kanji/" : `/kanji/${encodeURIComponent(file.slice(0, -5))}`, site).href)));
+    const index = readFileSync(join(directory, "kanji", "index.html"), "utf8");
+    assert.match(index, /href="\/kanji\/%E9%A3%9F" lang="ja"[^>]*>食/);
+    assert.doesNotMatch(index, /href="\/kanji\/%E6%B0%B5"/);
+    assert.ok(!kanjiUrls.includes(new URL("/kanji/氵", site).href));
+    assert.ok(!files.includes("氵.html"));
+    const page = readFileSync(join(directory, "kanji", "食.html"), "utf8");
+    assert.match(page, /rel="canonical" href="https:\/\/nihongo-toolkit\.pages\.dev\/kanji\/%E9%A3%9F"/);
+    assert.match(page, /<h1><span class="glyph" lang="ja">食<\/span>/);
+    assert.match(page, /eat; food/);
+    assert.match(page, /ショク/);
+    assert.match(page, /Numbered stroke order/);
+    assert.match(page, /Kanji and radical/);
+    assert.match(readFileSync(join(directory, "kanji", "u-f91d.html"), "utf8"), /lang="ja">欄<\/span>/);
+    assert.match(readFileSync(join(directory, "kanji", "欄.html"), "utf8"), /lang="ja">欄<\/span>/);
+    assert.match(readFileSync(join(directory, "404.html"), "utf8"), /Page not found/);
     assert.ok(!sitemap.includes(".html"));
     assert.equal(readFileSync(join(directory, "robots.txt"), "utf8"), `User-agent: *\nAllow: /\n\nSitemap: ${site}sitemap.xml\n`);
     const root = new URL("../", import.meta.url);

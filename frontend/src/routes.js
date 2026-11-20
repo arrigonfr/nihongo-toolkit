@@ -7,6 +7,10 @@ export function pageFile(pathname) {
   return name ? name.includes(".") ? name : `${name}.html` : "index.html";
 }
 
+export function navigationPage(pathname) {
+  return pathname === "/kanji" || pathname.startsWith("/kanji/") ? "kanji/" : pageFile(pathname);
+}
+
 export const legacyRoutes = {
   "kanji-imposters.html": "kanji-kuizu.html",
   "仮名.html": "kana.html", "読み.html": "yomi.html", "意味.html": "imi.html", "語彙.html": "goi.html",

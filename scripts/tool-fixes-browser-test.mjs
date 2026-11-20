@@ -205,7 +205,7 @@ try {
         assert.equal(await navigationPage.locator("#menuButton").isVisible(), true);
         await navigationPage.click("#menuButton");
         assert.equal(await navigationPage.locator("#helperMenu").isVisible(), true);
-        assert.equal(await navigationPage.locator("#helperMenu a[href]").count(), 15);
+        assert.equal(await navigationPage.locator('#helperMenu [aria-label="Reference"] a[href="/kanji/"]').count(), 1);
         assert.equal(await navigationPage.locator('.helper-link[aria-current="page"]').getAttribute("data-file"), file);
         assert.equal(await navigationPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         await checkMenuDismissal(navigationPage);
@@ -220,11 +220,14 @@ try {
     assert.equal(decodeURIComponent(new URL(navigationPage.url()).pathname), `/${files.at(-1)}`);
     const sitemap = await (await navigationPage.request.get(`${origin}/sitemap.xml`)).text();
     const locations = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => decodeURIComponent(new URL(match[1]).pathname));
-    assert.deepEqual(locations.sort(), ["/", "/data-sources.html", ...files.map((file) => `/${file}`)].sort());
+    assert.ok(locations.includes("/kanji/"));
+    assert.ok(locations.includes("/kanji/食"));
+    assert.deepEqual(locations.filter((path) => !path.startsWith("/kanji/")).sort(),
+      ["/", "/data-sources", ...files.map((file) => `/${file.slice(0, -5)}`)].sort());
     assert.match(await (await navigationPage.request.get(`${origin}/robots.txt`)).text(), /Sitemap: https:\/\/nihongo-toolkit.pages.dev\/sitemap.xml/);
     await navigationPage.goto(`${origin}/index.html`);
     await navigationPage.waitForURL(`${origin}/`);
-    assert.equal(await navigationPage.locator(".dashboard-link").count(), 15);
+    assert.equal(await navigationPage.locator('.dashboard-link[href="/kanji/"]').count(), 1);
     for (const file of files) {
       await navigationPage.click("#menuButton");
       await navigationPage.locator(`#helperMenu .helper-link[data-file="${file}"]`).click();

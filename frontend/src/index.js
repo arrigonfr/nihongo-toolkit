@@ -1,7 +1,7 @@
 import { initializeAppearance, mountAppearance } from "./appearance.js";
 import "./study-controls.css";
 import { createSupportButton } from "./support.js";
-import { legacyRoutes, pageFile } from "./routes.js";
+import { legacyRoutes, navigationPage, pageFile } from "./routes.js";
 
 initializeAppearance();
 const siteHeader = document.querySelector("[data-site-header]");
@@ -14,7 +14,7 @@ for (const link of document.querySelectorAll(".helper-link, .dashboard-link")) {
   link.prepend(icon);
   name.textContent = title;
 }
-document.querySelector(".dashboard")?.prepend(createSupportButton());
+document.querySelector("[data-site-support], .dashboard")?.prepend(createSupportButton());
 const menuButton = document.getElementById("menuButton");
 const helperMenu = document.getElementById("helperMenu");
 const helperFrame = document.getElementById("helperFrame");
@@ -118,4 +118,4 @@ try {
 }
 loadHelper(helperFrame
   ? helpers.has(requestedHelper) ? requestedHelper : helpers.has(storedHelper) ? storedHelper : helperLinks[0].dataset.file
-  : pageFile(location.pathname));
+  : navigationPage(location.pathname));

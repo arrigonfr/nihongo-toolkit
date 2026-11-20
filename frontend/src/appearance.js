@@ -1,5 +1,5 @@
 import "./appearance.css";
-import { pageFile } from "./routes.js";
+import { navigationPage } from "./routes.js";
 
 const key = "nihon:appearance-v1";
 export const colorThemes = { matcha: "Matcha", sakura: "Sakura", ocean: "Ocean", wisteria: "Wisteria", amber: "Amber", sumi: "Sumi" };
@@ -70,7 +70,7 @@ export function mountAppearance(header, toggle) {
   initializeAppearance();
   const navigation = document.querySelector(".navigation");
   if (navigation) header.prepend(navigation);
-  const file = pageFile(location.pathname);
+  const file = navigationPage(location.pathname);
   const menuItem = [...document.querySelectorAll(".helper-link[data-file]")].find((item) => item.dataset.file === file);
   const description = menuItem?.querySelector(".helper-description")?.textContent.trim().replace(/^\(|\)$/g, "");
   if (description && !header.querySelector(".study-header-description")) {

@@ -25,7 +25,7 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
-  assert.equal(await page.locator(".dashboard-link").count(), 15);
+  assert.equal(await page.locator('.dashboard-link[href="/kanji/"]').count(), 1);
   assert.equal(await page.locator("#helperFrame").count(), 0);
   assert.equal(await page.locator('.dashboard .study-support img[alt="PayPal"]').count(), 1);
   await page.setViewportSize({ width: 375, height: 812 });

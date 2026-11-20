@@ -247,6 +247,20 @@ const COMPONENT_OVERLAY = {
   "飠": { character: "飠", original: "食", name: "しょくへん", meaning: "eat / food" }
 };
 
+// Component forms in the Japanese reference catalogue; dictionary glosses and
+// readings sometimes describe the parent kanji rather than independent usage.
+const COMPONENT_ONLY = new Set([..."㓁㣺丨丶丿乚亅亠亻冂冖冫凵刂勹匚匸厶囗夂夊宀屮巛幺廴彑忄扌攵氵氺灬爫牜犭疒癶礻罒罓耂艹虍衤覀辶镸阝飠"]);
+const KANGXI_BASE_FORMS = new Set(Array.from({ length: 214 }, (_, index) =>
+  String.fromCodePoint(0x2f00 + index).normalize("NFKC")));
+
+export function kanjiKind(character) {
+  const code = character.codePointAt(0);
+  if ((code >= 0x2e80 && code <= 0x2eff) || (code >= 0x2f00 && code <= 0x2fdf)
+      || (code >= 0x31c0 && code <= 0x31ef) || COMPONENT_ONLY.has(character.normalize("NFC"))) return "radical-only";
+  const base = character.normalize("NFC");
+  return RADICAL_BY_CHAR.has(base) || KANGXI_BASE_FORMS.has(base) ? "kanji-and-radical" : "kanji";
+}
+
 export function enrichRadicals(radicals) {
   if (!Array.isArray(radicals)) return [];
   return radicals.map((item) => {
