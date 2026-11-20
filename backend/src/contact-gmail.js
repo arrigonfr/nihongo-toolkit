@@ -63,9 +63,7 @@ You received this email because you contacted Nihongo Toolkit.<br>Reference: ${e
   const mime = [
     `From: Nihongo Toolkit <${env.CONTACT_EMAIL_FROM}>`, `To: <${contact.email}>`,
     `Subject: =?UTF-8?B?${subject}?=`,
-    `Date: ${new Date(job.created_at).toUTCString()}`,
-    // Useful for manual reconciliation in Sent; Gmail does not deduplicate this header.
-    `Message-ID: <${job.id}@gmail.com>`,
+    `Date: ${new Date().toUTCString()}`,
     ...(env.CONTACT_EMAIL_REPLY_TO ? [`Reply-To: <${env.CONTACT_EMAIL_REPLY_TO}>`] : []),
     "MIME-Version: 1.0", `Content-Type: multipart/alternative; boundary="${boundary}"`,
     "", `--${boundary}`, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64",

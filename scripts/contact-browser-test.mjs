@@ -5,7 +5,10 @@ import { chromium } from "playwright";
 
 const root = fileURLToPath(new URL("../frontend", import.meta.url));
 const server = await createServer({
-  root, define: { "import.meta.env.VITE_TURNSTILE_SITE_KEY": JSON.stringify("browser-test") },
+  root, define: {
+    "import.meta.env.VITE_TURNSTILE_SITE_KEY": JSON.stringify("browser-test"),
+    "import.meta.env.VITE_CONTACT_SUPPORT_EMAIL": JSON.stringify("support@example.test")
+  },
   server: { host: "127.0.0.1", port: 0, strictPort: false, hmr: false, watch: null }
 });
 let browser;
@@ -39,12 +42,18 @@ try {
   assert.equal(await page.locator('[name="message"]').inputValue(), "Something needs fixing.");
   fail = false;
   await page.locator("#contactSend").click();
-  await page.waitForFunction(() => document.querySelector("#contactStatus").textContent.includes("Thank you"));
+  await page.waitForFunction(() => document.querySelector("#contactSuccess").open);
+  assert.match(await page.locator("#contactReference").textContent(), /^[0-9a-f-]{36}$/);
+  assert.equal(await page.locator("#contactSupportEmail").textContent(), "support@example.test");
+  assert.equal(await page.locator("#contactSpamTip").isHidden(), true);
   assert.equal(requests.length, 2);
   assert.equal(requests[0].id, requests[1].id);
   assert.equal(await page.locator('[name="message"]').inputValue(), "");
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.keyboard.press("Escape");
+  assert.equal(await page.evaluate(() => document.querySelector("#contactSuccess").open), false);
+  assert.match(await page.locator("#contactStatus").textContent(), /Message received/);
   console.log("Contact form browser checks passed.");
 } finally {
   await browser?.close();

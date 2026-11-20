@@ -14,7 +14,31 @@ const form = document.getElementById("contactForm");
 const fields = document.getElementById("contactFields");
 const button = document.getElementById("contactSend");
 const status = document.getElementById("contactStatus");
+const success = document.getElementById("contactSuccess");
+const copyButton = document.getElementById("contactSupportCopy");
 for (const subject of CONTACT_SUBJECTS) form.elements.subject.add(new Option(subject, subject));
+
+const supportEmail = (import.meta.env.VITE_CONTACT_SUPPORT_EMAIL || "").trim();
+if (/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(supportEmail)) {
+  const link = document.getElementById("contactSupportEmail");
+  link.href = `mailto:${supportEmail}`;
+  link.textContent = supportEmail;
+  document.getElementById("contactSupportTip").hidden = false;
+  document.getElementById("contactSpamTip").hidden = true;
+  copyButton.hidden = !navigator.clipboard;
+  copyButton.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(supportEmail);
+      copyButton.textContent = "Copied!";
+    } catch {
+      copyButton.textContent = "Copy failed";
+    }
+  });
+}
+success.addEventListener("click", (event) => {
+  if (event.target === success) success.close();
+});
+success.addEventListener("close", () => button.focus());
 
 let token = "", widget, submitting = false, previousFields, submissionId;
 const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
@@ -71,9 +95,12 @@ form.addEventListener("submit", async (event) => {
     }
     const result = await response.json();
     if (result.id !== submissionId || result.status !== "received") throw new Error("We could not confirm receipt. Please try again.");
-    status.textContent = `Thank you! Your message has been received. If we reply, it will arrive by email. Reference: ${result.id}`;
+    status.textContent = `Message received. Reference: ${result.id}`;
     form.reset();
     previousFields = undefined;
+    document.getElementById("contactReference").textContent = result.id;
+    copyButton.textContent = "Copy email address";
+    success.showModal();
   } catch (error) {
     console.error("Contact submission could not be confirmed.");
     status.textContent = error.name === "TimeoutError" || error.name === "TypeError"

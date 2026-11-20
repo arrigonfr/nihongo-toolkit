@@ -36,6 +36,20 @@
         <button id="contactSend" type="submit" disabled>Send message</button>
         <p id="contactStatus" role="status" aria-live="polite"></p>
       </form>
+      <dialog id="contactSuccess" class="contact-dialog" aria-labelledby="contactSuccessTitle" aria-describedby="contactSuccessText">
+        <h2 id="contactSuccessTitle">Message received</h2>
+        <p id="contactSuccessText">Thank you! If we reply, it will arrive by email at the address you entered.</p>
+        <div class="contact-dialog-note">
+          <p><strong>Please check your spam folder.</strong> Our replies often land there, so keep an eye on it for the next few days.</p>
+          <p id="contactSupportTip" hidden>To help replies reach your inbox, add <a id="contactSupportEmail"></a> to your contacts. If a reply still lands in spam, mark it as <q>Not spam</q>.</p>
+          <p id="contactSpamTip">If a reply lands in spam, mark it as <q>Not spam</q> so future replies reach your inbox.</p>
+        </div>
+        <p class="contact-dialog-reference">Reference: <span id="contactReference"></span></p>
+        <form method="dialog" class="contact-dialog-actions">
+          <button id="contactSupportCopy" type="button" hidden>Copy email address</button>
+          <button value="close" autofocus>Got it</button>
+        </form>
+      </dialog>
     </main>
   </div>
   <noscript>Enable JavaScript to use the contact form.</noscript>
