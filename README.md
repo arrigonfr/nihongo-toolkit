@@ -35,10 +35,30 @@ local Japanese voice loads in the background when a page opens with Audio On.
 Settings and supported
 progress are stored in your browser, not in an account or across devices.
 Use the flag picker in the header to choose English, Spanish or Brazilian
-Portuguese. The first visit follows the browser language; your choice is saved
-and shared across tools and tabs. This changes interface text, not Japanese
-study material, English dictionary definitions, example translations or quiz
-answers; no dictionary database changes are required.
+Portuguese. The picker is hidden, and the site stays in English, until study
+content is fully translated; build with `VITE_LANGUAGE_SELECTION=true` to enable
+it (saved choices are kept meanwhile). When enabled, the first visit follows the
+browser language; your choice is saved and shared across tools and tabs. It is
+the single language setting: it changes interface text and, as translations are
+served, study content such as definitions and examples.
+
+So far, Kotoba shows kanji meanings, word and compound definitions and example
+sentence translations in the selected language where available. Each item is labeled
+"Machine translation", "English fallback" or "Partly in English" as needed, and
+switching language re-renders them without a new lookup. Other tools' word lists and
+quiz answers are still English.
+In the current import, Spanish covers 2,303 of 2,501 frequency-ranked kanji;
+Portuguese covers 1,921. These counts describe the imported snapshot, not a
+guarantee for future releases.
+
+For the pinned JMdict release (`3.6.2+20261019180022`), 15,857 of 22,647
+entries with a common spelling or reading have Spanish glosses, in 17,148
+source senses; none have Portuguese glosses. The Spanish and English glosses
+occur in separate sense records in that release, so their sense alignment must
+not be assumed. The [EDRDG licence](https://www.edrdg.org/edrdg/licence.html)
+notes separate copyrights for non-English JMdict equivalents; verify applicable
+rights before importing them. Translated sentence sources also require
+per-sentence and per-translation licence and attribution checks.
 
 Jump to [local development](#local-development), [data sources](#importing-data),
 [Cloudflare deployment](#deploy), or [checks](#checks) for technical details.
@@ -1108,6 +1128,55 @@ enrichment and sync progress; do not rebuild it after enrichment without a
 backup and an explicit full-snapshot replacement plan. Enrichment snapshots,
 download caches and generated database files remain gitignored.
 
+### Spanish and Portuguese study-content translations
+
+`content_translations` stores Spanish (`es`) and Portuguese (`pt`) versions of
+kanji meanings, JMdict word senses (`${jmdict_id}:${sense index}`) and example
+sentences. English source tables are not changed. Each row records whether it is
+`human` or `machine`, its source, license, attribution and a hash of the English
+source text, so edited source text makes the translation stale instead of silently
+wrong. Machine output never replaces a current human translation.
+
+```sh
+npm run db:translations -- coverage
+npm run db:translations -- import-human
+npm run db:translations -- export --lang es --kind sense --out translations/es --chunk-size 500
+npm run db:translations -- apply --source "provider/model" translations/es/*.results.jsonl
+npm run db:translations -- translate --lang pt --kind sense --limit 1000 --concurrency 4
+```
+
+`import-human` copies KANJIDIC2 meanings and direct Japanese→Spanish/Portuguese
+Tatoeba translations (lowest translation ID, translator credited); downloads are
+cached in `backend/.cache`. `export` writes pending items in study priority order
+(JLPT, then common words) as JSONL with the English source and context. A provider
+returns the same rows with a `value` array: one string per sentence, or glosses for
+kanji and senses. `apply` validates every row before writing anything and skips rows
+whose English source changed after export. JMdict's Spanish glosses are not imported
+because they are not aligned with English senses and carry separate rights.
+
+The API attaches current translations to kanji details, word senses and examples
+(`translations_by_language`); stale kanji and sense rows are skipped. Example
+translations translate the Japanese and are served even when the English wording
+differs. Without the `content_translations` table (production today) everything
+stays English. Sentence items include Tatoeba examples that exist only in word
+records (`tatoeba:<id>`), not just the `sentences` table.
+
+`translate` is the free local path: it sends one item per request to Ollama
+(default `translategemma:4b`; `ollama pull translategemma:4b` first), commits each
+result, and can be stopped and rerun at any time. Gloss lists are translated together
+for context and fall back to one gloss per request when the list comes back misaligned.
+Ollama handles one request at a time unless the server runs with
+`OLLAMA_NUM_PARALLEL=4`; on an Apple M5 that raised throughput from about 1.05 to
+1.6 items/s, and 8 slots were no faster. Low Power Mode makes it much slower.
+
+Both `translate` and `apply` deduplicate glosses and leave suspect output pending
+instead of storing it: tokenizer artifacts, unbalanced brackets, stray separators,
+repetition loops, glosses reduced to a parenthetical, untranslated English, and
+sentences with implausible length or a dropped sentence. Offline Spanish sentence
+translation with Argos Translate (`backend/scripts/translate-argos.py`) is fast
+(about 70 sentences/s on CPU) but is not used for glosses, which lose meaning
+without context, or for Portuguese, whose model writes European Portuguese.
+
 ### Filling missing JLPT levels
 
 ```sh
@@ -1569,7 +1638,7 @@ preference. Fumitoki and Kotoba retain dictionary results while sentence fallbac
 | `/api/kanji/candidates?reading=...` | `{ items: [{ kanji }] }`; exact reading candidates, without answer-revealing meanings/readings |
 | `/api/words/batch?level=N5&limit=40` | `{ items: [...] }` with readings, meanings, examples, and source IDs |
 | `/api/kanji?level=5&q=day&limit=100&offset=0` | `{ items, total, nextOffset }` summaries |
-| `/api/kanji/日` | Lean kanji record with all Japanese readings, example words and local sentences |
+| `/api/kanji/日` | Lean kanji record with Japanese readings, English `meanings`, available `es`/`pt` arrays in `meanings_by_language`, example words and local sentences |
 | `/api/kanji/日/words?limit=20` | `{ items: [...] }` via the relation table |
 | `/api/kanji/日/strokes` | Local KanjiVG SVG, or 404 when not present. The Atlas shows a loading caption without obscuring playback. |
 | `/api/words?keyword=日本` | `{ data: [...] }` dictionary results; Japanese, kana, English, or exact study-list romaji |

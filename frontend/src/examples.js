@@ -1,6 +1,7 @@
 import { API_BASE } from "./api.js";
 import "./feedback.css";
 import { japaneseHTML, sentenceHTML, audioHTML } from "./study-controls.js";
+import { sentenceTranslationHTML } from "./content-language.js";
 
 export const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -11,12 +12,11 @@ export function sentencesHTML(examples, query = "") {
   const content = `<div class="sentence-list">${ordered.slice(0, 3).map((item) => `
     <div class="sentence-item" data-sentence-text="${escape(item.japanese)}">
       <div lang="ja" class="sentence-japanese">${sentenceHTML(item.japanese, item.furigana)}</div>
-      <div>${escape(item.english)}</div>
+      ${sentenceTranslationHTML(item)}
       ${item.generated ? `<div class="sentence-credit">AI-generated · ${item.reviewed ? "Reviewed" : "Unverified"}</div>` : ""}
       ${item.id && (!item.source || item.source === "Tatoeba") && !item.generated ? `<a class="sentence-credit" href="https://tatoeba.org/sentences/show/${encodeURIComponent(item.id)}"
         target="_blank" rel="noopener noreferrer">Tatoeba · ${escape(item.owner || "contributors")} · ${escape(item.license || "CC BY 2.0 FR")}</a>` : ""}
-      ${item.translationId ? `<a class="sentence-credit" href="https://tatoeba.org/sentences/show/${encodeURIComponent(item.translationId)}"
-        target="_blank" rel="noopener noreferrer">Translation · ${escape(item.translationOwner || "contributors")}</a>` : ""}
+      ${sentenceTranslationHTML(item, "credit")}
     </div>`).join("")}</div>`;
   if (!query) return content;
   return `<div class="sentence-panel" data-sentence-query="${escape(query)}">
@@ -43,7 +43,8 @@ async function loadSentenceResult(query, signal, { random = false, exclude = [],
     return {
       id: item.id, japanese: item.text, furigana: item.furigana, english: translation?.text ?? "",
       owner: item.owner, translationOwner: translation?.owner, translationId: translation?.id, license: item.license,
-      source: item.source, generated: item.generated, reviewed: item.reviewed, attribution: item.attribution
+      source: item.source, generated: item.generated, reviewed: item.reviewed, attribution: item.attribution,
+      translations_by_language: item.translations_by_language
     };
   });
   return { examples, warning: payload.warning || "" };

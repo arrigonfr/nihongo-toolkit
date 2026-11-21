@@ -22,6 +22,7 @@ const kanji = ["日", "本", "水", "火", "山", "川", "木", "月"].map((char
 }));
 
 let vite, browser;
+process.env.VITE_LANGUAGE_SELECTION = "true";
 try {
   vite = await createVite({
     root: fileURLToPath(new URL("../frontend", import.meta.url)),
@@ -129,28 +130,141 @@ try {
   assert.equal(await page.locator("#sessionResults .missed-terms li").count(), 1, "Switching language preserves review data");
 
   await page.evaluate(() => localStorage.setItem("kotoba-history-v1", JSON.stringify([{ query: "Practice", kanji: false }])));
-  await page.route(/\/api\/words\?/, (route) => route.fulfill({
-    json: { data: [{
+  let wordRequests = 0;
+  await page.route(/\/api\/words\?/, (route) => {
+    wordRequests++;
+    return route.fulfill({ json: { data: [{
       japanese: [{ word: "練習", reading: "れんしゅう" }],
-      senses: [{ english_definitions: ["Practice", "Search"] }],
-      examples: [{ japanese: "練習する。", english: "Practice" }]
-    }] }
-  }));
+      senses: [
+        { english_definitions: ["Practice"], translations: { es: { definitions: ["Práctica"], machine: true } } },
+        { english_definitions: ["Search"] }
+      ],
+      examples: [{ id: 7, japanese: "練習する。", english: "Practice", translationId: 8, translationOwner: "en-owner",
+        translations_by_language: { es: { text: "Practicar.", machine: false, translationId: 9, translationOwner: "es-owner" } } }]
+    }] } });
+  });
   await page.goto(`${base}/kotoba.html`);
   assert.equal(await page.locator("#historyList .history-query").textContent(), "Practice", "Saved searches are not translated");
   await page.locator("#query").fill("練習");
   await page.locator("#searchButton").click();
   await page.locator(".result-card").waitFor();
   await page.getByText("Frases de ejemplo", { exact: true }).waitFor();
-  assert.deepEqual(await page.locator(".meanings li").allTextContents(), ["Practice", "Search"], "English dictionary definitions stay unchanged");
-  assert.equal(await page.locator(".sentence-item > div:not([lang])").textContent(), "Practice", "English sentence translations stay unchanged");
+  const definitions = page.locator(".result-card .localized-definitions");
+  const sentenceTranslation = page.locator(".sentence-translation [data-i18n-study]");
+  assert.deepEqual(await definitions.locator("li").allTextContents(), ["Práctica", "Search"], "Definitions follow the interface language");
+  assert.deepEqual(await definitions.locator("li").evaluateAll((items) => items.map((item) => item.lang)), ["es", "en"]);
+  assert.equal(await definitions.locator(".translation-note").textContent(), "Traducción automática · Parcialmente en inglés (sin traducción)");
+  assert.equal(await sentenceTranslation.textContent(), "Practicar.", "Example translations follow the interface language");
+  assert.equal(await page.locator(".sentence-translation .translation-note").count(), 0, "Human translations are not labeled as machine output");
+  assert.match(await page.locator(".sentence-translation-credit a.sentence-credit").getAttribute("href"), /\/9$/, "The shown translation is credited");
   await chooseLanguage("Português");
   await page.getByText("Frases de exemplo", { exact: true }).waitFor();
-  assert.deepEqual(await page.locator(".meanings li").allTextContents(), ["Practice", "Search"]);
+  assert.deepEqual(await definitions.locator("li").allTextContents(), ["Practice", "Search"], "Untranslated definitions fall back to English");
+  assert.equal(await definitions.locator(".translation-note").textContent(), "Em inglês (sem tradução)");
+  assert.equal(await sentenceTranslation.textContent(), "Practice");
+  assert.equal(await sentenceTranslation.getAttribute("lang"), "en");
+  assert.equal(await page.locator(".sentence-translation .translation-note").textContent(), "Em inglês (sem tradução)");
   assert.equal(await page.locator("#historyList .history-query").first().textContent(), "練習");
   assert.equal(await page.locator("#historyList .history-query").nth(1).textContent(), "Practice");
-  assert.equal(await page.locator(".sentence-item > div:not([lang])").textContent(), "Practice");
+  await chooseLanguage("English");
+  assert.deepEqual(await definitions.locator("li").allTextContents(), ["Practice", "Search"]);
+  assert.equal(await definitions.locator(".translation-note").count(), 0, "English needs no translation labels");
+  assert.match(await page.locator(".sentence-translation-credit a.sentence-credit").getAttribute("href"), /\/8$/);
+  assert.equal(wordRequests, 1, "Switching languages re-renders definitions without a new lookup");
+  await chooseLanguage("Português");
   await page.unroute(/\/api\/words\?/);
+
+  const kanjiDetailRoute = /\/api\/kanji\/[^/?]+(?:\?.*)?$/;
+  let kanjiDetailRequests = 0;
+  await page.route(kanjiDetailRoute, (route) => {
+    kanjiDetailRequests++;
+    return route.fulfill({ json: { ...kanji[0], meanings_by_language: { es: ["día"] } } });
+  });
+  const compoundsRoute = /\/api\/kanji\/[^/?]+\/words(?:\?.*)?$/;
+  await page.route(compoundsRoute, (route) => route.fulfill({ json: { items: [] } }));
+  const meanings = page.locator("#kanjiMeanings [data-i18n-study]");
+  assert.equal(await page.locator("#kanjiMeaningLanguage").count(), 0, "Kanji meanings have no separate language selector");
+  await page.locator("#kanjiMode").check();
+  await page.locator("#query").fill("日");
+  await page.locator("#searchButton").click();
+  await page.getByText("Em inglês (sem tradução)", { exact: true }).waitFor();
+  assert.equal(await meanings.getAttribute("lang"), "en", "Missing Portuguese meanings fall back to English");
+  assert.equal(await meanings.textContent(), "Practice");
+  await chooseLanguage("Español");
+  await meanings.filter({ hasText: "día" }).waitFor();
+  assert.equal(await meanings.getAttribute("lang"), "es", "Kanji meanings follow the interface language");
+  assert.equal(await page.locator("#kanjiMeanings").getByText("En inglés (sin traducción)").count(), 0);
+  await chooseLanguage("English");
+  await meanings.filter({ hasText: "Practice" }).waitFor();
+  assert.equal(kanjiDetailRequests, 1, "Switching languages does not repeat a dictionary lookup");
+  await chooseLanguage("Español");
+  await page.reload();
+  await page.locator("#query").fill("日");
+  await page.locator("#searchButton").click();
+  await meanings.filter({ hasText: "día" }).waitFor();
+  await page.unroute(kanjiDetailRoute);
+
+  await page.evaluate(async ({ legacyKanji }) => {
+    const { API_BASE } = await import("/src/api.js");
+    const key = `kotoba-sqlite-cache-v10:${API_BASE}`;
+    const cache = JSON.parse(localStorage.getItem(key) || "{}");
+    for (const [character, value] of Object.entries(legacyKanji)) {
+      cache[`kanji:${character}`] = { savedAt: Date.now(), value };
+      cache[`compounds:${character}`] = { savedAt: Date.now(), value: [] };
+    }
+    localStorage.setItem(key, JSON.stringify(cache));
+  }, { legacyKanji: { "本": kanji[1], "水": kanji[2] } });
+  await page.reload();
+  await page.route(kanjiDetailRoute, (route) => route.fulfill({ status: 404 }));
+  await page.locator("#query").fill("水");
+  await page.locator("#searchButton").click();
+  await page.locator(".error-state").waitFor();
+  assert.equal(await page.locator(".kanji-card").count(), 0, "A not-found response does not use stale data");
+  await page.unroute(kanjiDetailRoute);
+
+  await page.route(kanjiDetailRoute, (route) => route.fulfill({ status: 503 }));
+  await page.locator("#query").fill("本");
+  await page.locator("#searchButton").click();
+  await meanings.filter({ hasText: "Practice" }).waitFor();
+  assert.equal(await meanings.getAttribute("lang"), "en");
+  await page.getByText("En inglés (sin traducción)", { exact: true }).waitFor();
+  await page.getByText("Datos de kanji guardados; vuelve a conectarte para cargar los significados traducidos.", { exact: true }).waitFor();
+  await page.unroute(kanjiDetailRoute);
+
+  await page.route(kanjiDetailRoute, (route) => route.fulfill({
+    json: { ...kanji[1], meanings_by_language: { es: ["libro"] } }
+  }));
+  await page.waitForFunction(() => !document.querySelector("#searchButton").disabled);
+  await page.locator("#searchButton").click();
+  await meanings.filter({ hasText: "libro" }).waitFor();
+  assert.equal(await meanings.getAttribute("lang"), "es", "A later online search refreshes legacy data");
+  await page.unroute(kanjiDetailRoute);
+
+  await page.evaluate(() => {
+    window.testOriginalFetch = window.fetch;
+    window.fetch = (url, options) => {
+      if (new URL(url, location.href).pathname === `/api/kanji/${encodeURIComponent("水")}`) {
+        window.testKanjiFetchStarted = true;
+        return new Promise((resolve, reject) => {
+          options.signal.addEventListener("abort", () => {
+            window.testKanjiFetchAborted = true;
+            reject(new DOMException("Aborted", "AbortError"));
+          }, { once: true });
+        });
+      }
+      return window.testOriginalFetch(url, options);
+    };
+  });
+  await page.waitForFunction(() => !document.querySelector("#searchButton").disabled);
+  await page.locator("#query").fill("水");
+  await page.locator("#searchButton").click();
+  await page.waitForFunction(() => window.testKanjiFetchStarted);
+  await page.locator("#clearButton").click();
+  await page.waitForFunction(() => window.testKanjiFetchAborted);
+  assert.equal(await page.locator(".kanji-card, .error-state").count(), 0, "An aborted lookup does not display cached data or an error");
+  await page.evaluate(() => { window.fetch = window.testOriginalFetch; });
+  await page.unroute(compoundsRoute);
+  await chooseLanguage("Português");
 
   for (const [file, selector, expected] of [
     ["katsuyo-renshuu.html", "#setup h2", "Sua prática, no seu ritmo"],

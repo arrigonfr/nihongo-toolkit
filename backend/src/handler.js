@@ -10,6 +10,7 @@ import { findConjugationEntries } from "./conjugator.js";
 import { findPracticeEntries } from "./conjugation-practice.js";
 import { selectedLevels } from "../../frontend/src/jlpt-levels.js";
 import { vocabularyAnswers } from "./vocabulary-answers.js";
+import { contentTranslations, translateExamples, translateSenses } from "./content-translations.js";
 
 const parse = JSON.parse;
 const unique = (items) => [...new Set(items)];
@@ -232,10 +233,13 @@ export function createHandler({
       const toWords = async (rows) => {
         const ids = rows.map((row) => row.id);
         const [levels, examples] = await Promise.all([rowsByWordIds(db, ids), localExamplesMany(db, ids)]);
-        return rows.map((row) => ({
+        const records = rows.map((row) => ({
           ...dictionaryRecord(row, tags, (levels.get(row.id) ?? []).map((item) => item.jlpt)),
           examples: examples.get(row.id) ?? []
         }));
+        await translateSenses(db, rows.map((row, index) => ({ row, record: records[index] })));
+        await translateExamples(db, records.flatMap((record) => record.examples));
+        return records;
       };
       const lookupKanji = async (character) => {
         const found = await db.prepare("SELECT meanings, radical_names FROM kanjis WHERE character = ?").get(character);
@@ -483,7 +487,20 @@ export function createHandler({
           sendBody(req, res, stroke.svg, "image/svg+xml; charset=utf-8", compression);
           return;
         }
-        return send(200, await toKanji(row));
+        const meanings = parse(row.meanings_by_language ?? "{}");
+        const meaningsByLanguage = Object.fromEntries(["es", "pt"]
+          .filter((language) => meanings[language]?.length)
+          .map((language) => [language, meanings[language]]));
+        const translated = (await contentTranslations(db, "kanji", [{ id: row.character, english: parse(row.meanings) }]))
+          .get(row.character) ?? {};
+        const machineTranslated = [];
+        for (const [language, { text, machine }] of Object.entries(translated)) {
+          if (meaningsByLanguage[language]) continue;
+          meaningsByLanguage[language] = text;
+          if (machine) machineTranslated.push(language);
+        }
+        return send(200, { ...await toKanji(row), meanings_by_language: meaningsByLanguage,
+          machine_translated_languages: machineTranslated });
       }
       if (path === "/api/words") {
         const query = searchTerm(params);
@@ -563,10 +580,12 @@ export function createHandler({
           return true;
         });
         const fresh = examples.filter((example) => !excluded.includes(example.japanese));
-        const data = shuffleExamples(fresh.length ? fresh : examples).slice(0, random ? 1 : 3).map((example) => ({
+        const picked = await translateExamples(db, shuffleExamples(fresh.length ? fresh : examples).slice(0, random ? 1 : 3));
+        const data = picked.map((example) => ({
           id: example.id, text: example.japanese, furigana: example.furigana, license: example.license, owner: example.owner,
           source: example.source, generated: example.generated ?? false, reviewed: example.reviewed ?? false, attribution: example.attribution,
-          translations: [{ id: example.translationId, lang: "eng", text: example.english, owner: example.translationOwner }]
+          translations: [{ id: example.translationId, lang: "eng", text: example.english, owner: example.translationOwner }],
+          ...(example.translations_by_language ? { translations_by_language: example.translations_by_language } : {})
         }));
         return send(200, { data, ...(warning ? { warning } : {}) });
       }

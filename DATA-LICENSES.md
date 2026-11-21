@@ -74,6 +74,23 @@ model's applicable terms before redistribution. The default local model,
 `llama3.2:latest`, is subject to [Meta's Llama 3.2 terms](https://www.llama.com/llama3_2/license/).
 Structural validation cannot establish correct meaning, natural usage or translation.
 
+## Spanish and Portuguese study-content translations
+
+`content_translations` keeps Spanish and Portuguese study content separate from
+the English source data. Human rows come from KANJIDIC2 meanings (EDRDG,
+CC BY-SA 4.0) and direct Japanese→Spanish/Portuguese
+[Tatoeba](https://tatoeba.org) translations (CC BY 2.0 FR), keeping the
+Japanese sentence owner, translation sentence ID and translator. Machine rows are
+marked `machine` with the provider/model and must be labeled as machine
+translations wherever they are shown. Machine-translated dictionary meanings are derivative works of
+EDRDG data under CC BY-SA 4.0; machine-translated sentences keep the source
+sentence's license and attribution (`sourceAttribution`). They are not reviewed by
+native speakers unless replaced by a human row. Local engines used so far are
+[TranslateGemma](https://ollama.com/library/translategemma), subject to the
+[Gemma Terms of Use](https://ai.google.dev/gemma/terms), and
+[Argos Translate](https://github.com/argosopentech/argos-translate) English→Spanish
+packages; review each engine's current terms before redistribution.
+
 ## Kanji Stroke Orders font license
 
 Copyright (C) 2004-2020 Ulrich Apel, the AAAA project and the Wadoku project

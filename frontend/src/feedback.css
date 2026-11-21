@@ -15,6 +15,8 @@
 .sentence-item { padding: .7rem 0; line-height: 1.7; }
 .sentence-japanese { font-size: 1.1rem; margin-bottom: .2rem; }
 .sentence-credit { display: block; font-size: .72rem; color: inherit; opacity: .75; }
+.translation-note { display: inline-block; font-size: .72rem; opacity: .75; }
+.sentence-translation-credit { display: contents; }
 .example-word-list span { overflow-wrap: anywhere; }
 .sentence-panel { color: var(--ink); font: 400 14px/1.7 system-ui, sans-serif; }
 .sentence-japanese { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

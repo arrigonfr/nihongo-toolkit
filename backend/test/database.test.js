@@ -2,10 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
+import { readFileSync } from "node:fs";
 import { createDatabase } from "../src/database.js";
 import { insertKanjis, insertWords, insertVocabulary } from "../scripts/import-data.js";
 import { createHandler, dictionaryRecord } from "../src/app.js";
 import { exactWordCandidates } from "../src/async-database.js";
+import { ensureTranslationSchema, translationItem, translationWriter } from "../scripts/translation-lib.js";
 
 function fixture() {
   const db = createDatabase(":memory:");
@@ -15,7 +17,7 @@ function fixture() {
     misc: { grade: 1, strokeCounts: [4], jlptLevel: 4, frequency: 1, radicalNames: [], variants: [] },
     readingMeaning: { nanori: ["あ"], groups: [{
       readings: [{ type: "ja_on", value: "ニチ" }, { type: "ja_kun", value: "ひ" }],
-      meanings: [{ lang: "en", value: "day" }, { lang: "es", value: "día" }]
+      meanings: [{ lang: "en", value: "day" }, { lang: "es", value: "día" }, { lang: "pt", value: "dia" }]
     }] }
   }] }, new Map([["日", { level: 5 }]]));
   insertWords(db, { tags: { n: "noun" }, words: [{
@@ -52,6 +54,41 @@ test("vocabulary practice projection includes restricted dictionary answer meani
     assert.deepEqual(items[0].acceptedMeanings, ["swimming pool", "(swimming) pool"]);
     assert.deepEqual(items[0].writtenForms, []);
     assert.equal(items[0].meaning, "swimming pool", "Display gloss remains unchanged");
+  } finally { await new Promise((resolve) => server.close(resolve)); db.close(); }
+});
+
+test("API serves current Spanish and Portuguese content translations with machine labels and credits", async () => {
+  const db = fixture();
+  db.exec(readFileSync(new URL("../src/vocabulary-seed.sql", import.meta.url), "utf8"));
+  ensureTranslationSchema(db);
+  db.prepare("UPDATE kanjis SET meanings_by_language = ?").run('{"es":["día"]}');
+  const write = translationWriter(db);
+  const sense = translationItem(db, "sense", "1:0");
+  const sentence = translationItem(db, "sentence", "tatoeba:123");
+  assert.deepEqual(sentence.english, ["It is Japan."], "Vocabulary-only Tatoeba examples are translatable items");
+  write({ item: sense, lang: "es", value: ["Japón"], method: "machine", source: "model" });
+  write({ item: { ...sense, source_hash: "stale" }, lang: "pt", value: ["errado"], method: "machine", source: "model" });
+  write({ item: sentence, lang: "es", value: ["Es Japón."], method: "human", source: "Tatoeba", license: "CC BY 2.0 FR",
+    attribution: { translationId: 77, translationOwner: "ana" } });
+  write({ item: sentence, lang: "pt", value: ["É o Japão."], method: "machine", source: "model" });
+  write({ item: translationItem(db, "kanji", "日"), lang: "pt", value: ["dia"], method: "machine", source: "model" });
+  const server = createServer(createHandler({ database: db, sentenceFallback: async () => [] }));
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const get = async (path) => (await fetch(`http://127.0.0.1:${server.address().port}${path}`)).json();
+  try {
+    const [word] = (await get("/api/words?keyword=nihon")).data;
+    assert.deepEqual(word.senses[0].english_definitions, ["Japan"]);
+    assert.deepEqual(word.senses[0].translations, { es: { definitions: ["Japón"], machine: true } }, "Stale translations are not served");
+    const translated = {
+      es: { text: "Es Japón.", machine: false, translationId: 77, translationOwner: "ana" },
+      pt: { text: "É o Japão.", machine: true }
+    };
+    assert.deepEqual(word.examples[0].translations_by_language, translated);
+    assert.deepEqual((await get("/api/sentences?q=nihon")).data[0].translations_by_language, translated);
+    const kanji = await get(`/api/kanji/${encodeURIComponent("日")}`);
+    assert.deepEqual(kanji.meanings_by_language, { es: ["día"], pt: ["dia"] });
+    assert.deepEqual(kanji.machine_translated_languages, ["pt"]);
   } finally { await new Promise((resolve) => server.close(resolve)); db.close(); }
 });
 
@@ -193,6 +230,8 @@ test("API serves SQLite batches, search, relations and strokes with validation a
     const { items } = await response.json();
     assert.equal(items.length, 1);
     assert.equal(items[0].kanji, "日");
+    assert.deepEqual(items[0].meanings, ["day"]);
+    assert.equal("meanings_by_language" in items[0], false);
     const candidates = await (await get("/api/kanji/candidates?reading=にち")).json();
     assert.deepEqual(candidates, { items: [{ kanji: "日" }] });
     assert.equal((await get("/api/kanji/candidates?reading=bad")).status, 400);
@@ -224,6 +263,9 @@ test("API serves SQLite batches, search, relations and strokes with validation a
     assert.deepEqual(await (await get("/api/word-search/vocabulary?level=all")).json(), searchWords);
     assert.equal((await get("/api/word-search/vocabulary?level=6")).status, 400);
     assert.equal((await (await get(`/api/kanji/${encodeURIComponent("日")}/words`)).json()).items[0].slug, "日本");
+    const detail = await (await get("/api/kanji/日")).json();
+    assert.deepEqual(detail.meanings, ["day"]);
+    assert.deepEqual(detail.meanings_by_language, { es: ["día"], pt: ["dia"] });
     assert.equal((await (await get("/api/words?keyword=nihon")).json()).data[0].slug, "日本");
     assert.equal((await (await get("/api/sentences?q=nihon")).json()).data[0].id, 123);
     assert.equal(fallbacks, 0, "Local examples must not call the provider");

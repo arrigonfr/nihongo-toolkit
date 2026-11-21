@@ -9,7 +9,7 @@ const commonScopes = [
   "details#settingsPanel", "details#settingsDrawer", "#settings",
   ".session-stats", ".replay-actions", ".sentence-actions", ".sentence-status",
   ".sentence-results:not(:has(.sentence-list))", ".request-loading-status", ".start-error",
-  "footer", "[data-i18n-scope]"
+  ".translation-note", "footer", "[data-i18n-scope]"
 ];
 const attributeScopes = [
   ".brand", ".cw-brand", ".quiz-card", ".history-panel", ".main-column",

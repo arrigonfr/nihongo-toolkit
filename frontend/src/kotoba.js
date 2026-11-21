@@ -1,6 +1,7 @@
 import { API_BASE } from "./api.js";
 import { rememberControls } from "./settings-storage.js";
 import { sentencesHTML } from "./examples.js";
+import { definitionsHTML } from "./content-language.js";
 import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML } from "./study-controls.js";
 import { toHiragana } from "wanakana";
 (() => {
@@ -14,6 +15,7 @@ import { toHiragana } from "wanakana";
   const $ = (selector) => document.querySelector(selector);
   const input = $("#query"), results = $("#results"), searchButton = $("#searchButton");
   const resultLabel = $("#resultLabel"), kanjiMode = $("#kanjiMode");
+  let displayedKanji;
   let activeController, activeSearchKey, requestNumber = 0, selectedIndex = -1;
 
   function readStorage(key, fallback) {
@@ -102,7 +104,8 @@ import { toHiragana } from "wanakana";
       .map((item) => {
         const translation = item.translations?.find((entry) => entry.lang === "eng");
         return { id: item.id, japanese: item.text, furigana: item.furigana, english: translation?.text ?? "",
-          owner: item.owner, translationOwner: translation?.owner, translationId: translation?.id, license: item.license };
+          owner: item.owner, translationOwner: translation?.owner, translationId: translation?.id, license: item.license,
+          translations_by_language: item.translations_by_language };
       });
   }
   function missingExamples(term) {
@@ -120,14 +123,13 @@ import { toHiragana } from "wanakana";
       const word = forms.find((form) => form.word)?.word || forms[0]?.reading || item.slug || "";
       const readings = [...new Set(forms.map((form) => form.reading).filter((reading) => reading && reading !== word))];
       const parts = formatPos((item.senses || []).flatMap((sense) => sense.parts_of_speech || []));
-      const meanings = [...new Set((item.senses || []).flatMap((sense) => sense.english_definitions || []))].slice(0,8);
       const jlpt = (item.jlpt || []).filter(Boolean).map((level) => String(level).toUpperCase());
       const examples = index === 0 ? matchingExamples(sentenceData,item).slice(0, 1) : [], audio = audioURL(item);
       return `<article class="result-card" data-result-index="${index}" style="animation-delay:${Math.min(index*35,210)}ms">
         <div class="entry-head"><div><button class="word-button" type="button" data-search-word="${escapeHTML(word)}" aria-label="Search ${escapeHTML(word)}">${japaneseHTML(word, readings[0] || word)}</button>${audioHTML(readings[0] || word)}</div>
         ${audio ? `<button class="audio-button" type="button" data-audio="${escapeHTML(audio)}" aria-label="Play pronunciation"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l14-8Z"/></svg></button>` : item.is_common ? '<span class="common-badge">COMMON</span>' : ""}</div>
         <div class="tags">${parts.map((part) => `<span class="tag">${escapeHTML(part)}</span>`).join("")}${jlpt.map((level) => `<span class="tag jlpt">${escapeHTML(level)}</span>`).join("")}</div>
-        ${meanings.length ? `<ol class="meanings">${meanings.map((meaning) => `<li>${escapeHTML(meaning)}</li>`).join("")}</ol>` : '<p class="example-empty">No English definitions provided.</p>'}
+        ${definitionsHTML(item.senses, { limit: 8, empty: "No English definitions provided." })}
         <div class="examples"><h3 class="section-label">Example sentences</h3>${examples.length ? sentencesHTML(examples, word) : missingExamples(word)}</div>
       </article>`;
     }).join("");
@@ -155,6 +157,19 @@ import { toHiragana } from "wanakana";
     }).join("");
     return `<section class="kanji-section" id="kanjiComponents"><h3 class="section-label">Components (構成要素)</h3><div class="reading-list">${chips}</div><p class="example-empty">All visual building blocks that make up this character (click a component to inspect it).</p></section>`;
   }
+  function renderKanjiMeanings() {
+    const container = $("#kanjiMeanings");
+    if (!container || !displayedKanji) return;
+    const requested = document.documentElement.dataset.interfaceLanguage || "en";
+    const localized = displayedKanji.meanings_by_language?.[requested];
+    const language = localized?.length ? requested : "en";
+    const meanings = language === "en" ? displayedKanji.meanings : localized;
+    const note = language !== requested ? "English fallback"
+      : language !== "en" && displayedKanji.machine_translated_languages?.includes(language) ? "Machine translation" : "";
+    container.innerHTML = meanings?.length
+      ? `${note ? `<span class="example-empty">${note}</span> · ` : ""}<span data-i18n-study lang="${language}">${meanings.map(escapeHTML).join(" · ")}</span>`
+      : '<span class="example-empty">No meanings listed.</span>';
+  }
   async function searchKanji(query, token, signal) {
     const character = pickKanji(query);
     if (!character) {
@@ -162,37 +177,51 @@ import { toHiragana } from "wanakana";
       showMessage("No kanji found in your search", "Enter a word or phrase containing a kanji character, or turn off Kanji mode to search in kana or romaji.");
       return;
     }
-    const key = `kanji:${character}`;
+    const key = `kanji-detail-v3:${character}`;
     let data = cacheRead(key);
-    if (!data) { data = await fetchJSON(KANJI_API + encodeURIComponent(character),signal); cacheWrite(key,data); }
+    let legacyOffline = false;
+    if (!data) {
+      try {
+        data = await fetchJSON(KANJI_API + encodeURIComponent(character),signal);
+      } catch (error) {
+        const legacy = cacheRead(`kanji:${character}`);
+        if (!legacy || signal.aborted || error.name === "AbortError"
+            || !(error instanceof TypeError || error.status >= 500)) throw error;
+        console.warn("Kanji refresh failed; using cached details:",error);
+        data = legacy;
+        legacyOffline = true;
+      }
+      if (!legacyOffline && Object.hasOwn(data, "meanings_by_language")) cacheWrite(key,data);
+    }
     if (token !== requestNumber) return;
-    resultLabel.textContent = `Kanji: ${character}${cacheRead(key) ? " · saved locally" : ""}`;
-    let compounds = cacheRead(`compounds:${character}`);
+    resultLabel.textContent = legacyOffline
+      ? "Cached kanji details; reconnect to load translated meanings."
+      : `Kanji: ${character}${cacheRead(key) ? " · saved locally" : ""}`;
+    let compounds = cacheRead(`compounds-v2:${character}`);
     if (!compounds) {
       const response = await fetchJSON(KANJI_API + encodeURIComponent(character) + "/words",signal);
       compounds = response.items || [];
-      cacheWrite(`compounds:${character}`,compounds);
+      cacheWrite(`compounds-v2:${character}`,compounds);
     }
     if (token !== requestNumber) return;
     const words = compounds.filter((item) => (item.japanese || []).some((form) => form.word?.includes(character)));
     const examples = words.map((item) => {
       const forms = [...new Map((item.japanese || []).filter((form) => form.word?.includes(character))
         .map((form) => [`${form.word}\0${form.reading}`, form])).values()];
-      const meanings = [...new Set((item.senses || []).flatMap((sense) => sense.english_definitions || []))];
       const sentences = (item.examples || []).filter((example) => example.japanese && example.english
         && forms.some((form) => example.japanese.includes(form.word)));
       return `<li><div class="compound-forms">${forms.map((form) =>
         `<button class="history-item compound-variant" type="button" data-search-word="${escapeHTML(form.word)}">
           ${japaneseHTML(form.word, form.reading)}
         </button>${audioHTML(form.reading || form.word)}`).join("")}</div>
-        <div class="compound-meaning"${showMeaning ? "" : " hidden"}>${meanings.slice(0, 3).map(escapeHTML).join("; ")}</div>
+        <div class="compound-meaning"${showMeaning ? "" : " hidden"}>${definitionsHTML(item.senses, { limit: 3, inline: true, tag: "span" })}</div>
         <div class="compound-examples"><h4 class="section-label">Example sentences</h4>
           ${sentences.length ? sentencesHTML(sentences, forms[0].word) : missingExamples(forms[0].word)}
         </div></li>`;
     }).join("");
     results.innerHTML = `<article class="kanji-card">
       <div class="kanji-title"><div class="kanji-glyph" lang="ja">${escapeHTML(character)}</div><div class="kanji-meta">Stroke count: ${Number.isFinite(data.stroke_count) ? escapeHTML(data.stroke_count) : "—"}<br>JLPT: ${data.jlpt ? `N${escapeHTML(data.jlpt)}` : "Not listed"}${data.grade ? `<br>Grade: ${escapeHTML(data.grade)}` : ""}</div></div>
-      <section class="kanji-section"><h3 class="section-label">Meanings</h3><div>${(data.meanings || []).length ? data.meanings.map(escapeHTML).join(" · ") : '<span class="example-empty">No meanings listed.</span>'}</div></section>
+      <section class="kanji-section"><h3 class="section-label">Meanings</h3><div id="kanjiMeanings"></div></section>
       <section class="kanji-section"><h3 class="section-label">On readings</h3><div class="reading-list">${(data.on_readings || []).length ? readingsHTML(data.on_readings) : '<span class="example-empty">None listed</span>'}</div></section>
       <section class="kanji-section"><h3 class="section-label">Kun readings</h3><div class="reading-list">${(data.kun_readings || []).length ? readingsHTML(data.kun_readings) : '<span class="example-empty">None listed</span>'}</div></section>
       ${(data.nanori || []).length ? `<section class="kanji-section"><h3 class="section-label">Name readings (nanori)</h3><div class="reading-list">${readingsHTML(data.nanori)}</div></section>` : ""}
@@ -206,6 +235,8 @@ import { toHiragana } from "wanakana";
         ${examples ? `<ul class="compound-list" id="compoundList">${examples}</ul>` : '<p class="example-empty">No compounds found.</p>'}
       </section>
     </article>`;
+    displayedKanji = data;
+    renderKanjiMeanings();
     setIdle();
   }
   async function search(requestedQuery = null, requestedMode = null) {
@@ -237,7 +268,7 @@ import { toHiragana } from "wanakana";
     resultLabel.textContent = "Searching…";
     try {
       if (isKanji) { await searchKanji(query,token,controller.signal); return; }
-      const key = `words:${query}`;
+      const key = `words-v2:${query}`;
       const cached = cacheRead(key);
       let words;
       if (cached) words = cached;
@@ -250,7 +281,7 @@ import { toHiragana } from "wanakana";
     } catch (error) {
       if (error.name === "AbortError" || token !== requestNumber) return;
       console.error("Search failed:",error);
-      const cached = isKanji ? cacheRead(`kanji:${pickKanji(query)}`) : cacheRead(`words:${query}`);
+      const cached = !isKanji && cacheRead(`words-v2:${query}`);
       if (cached && !isKanji) {
         renderWordResults(cached,cacheRead(`sentences:${query}`) || [],query,true);
         resultLabel.textContent += " · offline mode";
@@ -289,6 +320,7 @@ import { toHiragana } from "wanakana";
     }
   });
   $("#searchButton").addEventListener("click",() => search());
+  document.addEventListener("nihon:language-change", renderKanjiMeanings);
   results.addEventListener("change", (event) => {
     if (event.target.id !== "compoundMeaning") return;
     showMeaning = $("#compoundMeaning").checked;

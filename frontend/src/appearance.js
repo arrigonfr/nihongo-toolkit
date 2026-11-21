@@ -6,6 +6,8 @@ const key = "nihon:appearance-v1";
 const languageKey = "nihon:language-v1";
 export const colorThemes = { matcha: "Matcha", sakura: "Sakura", ocean: "Ocean", wisteria: "Wisteria", amber: "Amber", sumi: "Sumi" };
 export const interfaceLanguages = { en: "English", es: "Español", pt: "Português" };
+// Hidden until study content is fully translated; saved choices are kept but not applied.
+export const languageSelectionEnabled = import.meta.env.VITE_LANGUAGE_SELECTION === "true";
 const languageLabels = { en: "Interface language", es: "Idioma de la interfaz", pt: "Idioma da interface" };
 const languageFlags = {
   en: '<path fill="#fff" d="M0 0h24v16H0z"/><path stroke="#b31942" stroke-width="1.23" d="M0 .62h24M0 3.08h24M0 5.54h24M0 8h24M0 10.46h24M0 12.92h24M0 15.38h24"/><path fill="#0a3161" d="M0 0h10v8.62H0z"/><path stroke="#fff" stroke-linecap="round" stroke-dasharray=".1 1.65" d="M1.5 2h7M1.5 4.3h7M1.5 6.6h7"/>',
@@ -19,6 +21,7 @@ let language = "en";
 let initialized = false;
 
 function browserLanguage() {
+  if (!languageSelectionEnabled) return "en";
   for (const candidate of navigator.languages || [navigator.language]) {
     const code = candidate.split("-")[0].toLowerCase();
     if (Object.hasOwn(interfaceLanguages, code)) return code;
@@ -52,6 +55,7 @@ function flagIcon(code) {
 
 export function setInterfaceLanguage(value) {
   if (!Object.hasOwn(interfaceLanguages, value)) throw new Error("Unknown interface language.");
+  if (!languageSelectionEnabled) throw new Error("Interface language selection is disabled.");
   language = value;
   renderLanguage();
   try { localStorage.setItem(languageKey, language); }
@@ -108,7 +112,7 @@ export function initializeAppearance() {
   try { restore(localStorage.getItem(key)); }
   catch (error) { console.warn("Could not restore appearance preferences.", error); }
   try {
-    const savedLanguage = localStorage.getItem(languageKey);
+    const savedLanguage = languageSelectionEnabled ? localStorage.getItem(languageKey) : null;
     language = Object.hasOwn(interfaceLanguages, savedLanguage) ? savedLanguage : browserLanguage();
   } catch (error) {
     console.warn("Could not restore interface language preference.", error);
@@ -116,7 +120,7 @@ export function initializeAppearance() {
   }
   media.addEventListener("change", render);
   window.addEventListener("storage", (event) => {
-    if (event.key === languageKey || event.key === null) {
+    if (languageSelectionEnabled && (event.key === languageKey || event.key === null)) {
       try {
         language = Object.hasOwn(interfaceLanguages, event.newValue) ? event.newValue : browserLanguage();
         renderLanguage();
@@ -166,12 +170,14 @@ export function mountAppearance(header, toggle) {
   }
   const controls = document.createElement("div");
   controls.className = "study-appearance";
-  const languagePicker = document.createElement("details");
-  languagePicker.className = "study-language";
-  languagePicker.innerHTML = `<summary></summary><div class="study-language-options" role="group">${Object.entries(interfaceLanguages)
-    .map(([code, name]) => `<button type="button" data-language="${code}" lang="${code}" aria-label="${name}" title="${name}">${flagIcon(code)}</button>`).join("")}</div>`;
-  bindPicker(languagePicker, "[data-language]", (option) => setInterfaceLanguage(option.dataset.language));
-  controls.append(languagePicker);
+  if (languageSelectionEnabled) {
+    const languagePicker = document.createElement("details");
+    languagePicker.className = "study-language";
+    languagePicker.innerHTML = `<summary></summary><div class="study-language-options" role="group">${Object.entries(interfaceLanguages)
+      .map(([code, name]) => `<button type="button" data-language="${code}" lang="${code}" aria-label="${name}" title="${name}">${flagIcon(code)}</button>`).join("")}</div>`;
+    bindPicker(languagePicker, "[data-language]", (option) => setInterfaceLanguage(option.dataset.language));
+    controls.append(languagePicker);
+  }
   const label = document.createElement("details");
   label.className = "study-palette";
   label.innerHTML = `<summary aria-label="Color theme" title="Color theme"><span class="study-palette-dot" aria-hidden="true"></span></summary>
