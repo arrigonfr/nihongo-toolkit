@@ -2,8 +2,10 @@ import { initializeAppearance, mountAppearance } from "./appearance.js";
 import "./study-controls.css";
 import { createSupportButton } from "./support.js";
 import { legacyRoutes, navigationPage, pageFile } from "./routes.js";
+import { initializeInterfaceLocalization } from "./interface-i18n.js";
 
 initializeAppearance();
+initializeInterfaceLocalization();
 const siteHeader = document.querySelector("[data-site-header]");
 if (siteHeader) mountAppearance(siteHeader, siteHeader.querySelector("#themeButton"));
 for (const link of document.querySelectorAll(".helper-link, .dashboard-link")) {

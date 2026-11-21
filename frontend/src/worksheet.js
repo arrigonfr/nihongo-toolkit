@@ -3,6 +3,7 @@ import strokes from "./worksheet-strokes.json";
 import fontUrl from "./KanjiStrokeOrders_v4.005.ttf?url";
 import { PDFDocument } from "pdf-lib";
 import { strToU8, zipSync } from "fflate";
+import { interfaceSourceText } from "./interface-i18n.js";
 
 const kana = [..."あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ"];
 const escape = (value) => String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
@@ -84,10 +85,10 @@ export function mountWorksheet({ picker, preview, panel, grayscale }) {
     for (const item of panel.querySelectorAll("[data-format]")) {
       item.hidden = ["md", "txt", "csv"].includes(item.dataset.format);
       const title = item.querySelector("strong");
-      if (title && !item.dataset.originalTitle) item.dataset.originalTitle = title.textContent;
+      if (title && !item.dataset.originalTitle) item.dataset.originalTitle = interfaceSourceText(title);
       if (title && item.dataset.format === "png") title.textContent = "PNG Images";
       const description = item.querySelector("small");
-      if (description && !item.dataset.originalNote) item.dataset.originalNote = description.textContent;
+      if (description && !item.dataset.originalNote) item.dataset.originalNote = interfaceSourceText(description);
       if (description && ["png", "svg", "html"].includes(item.dataset.format)) description.textContent = "ZIP compressed";
       else if (description && item.dataset.format === "pdf") description.textContent = "All pages in one PDF";
     }

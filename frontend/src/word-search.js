@@ -548,7 +548,12 @@ $("hintButton").onclick = () => {
   const label = `Hint for word ${game.puzzle.entries.indexOf(entry) + 1}: `;
   const messages = { first: `starts with ${[...entry.answer][0]}`, direction: `runs ${directionNames[entry.direction.join(",")]}`,
     length: `${[...entry.answer].length} characters`, meaning: entry.meaning, area: "look in the outlined area" };
-  $("selectionStatus").textContent = label + messages[kind];
+  const hintLabel = document.createElement("span");
+  hintLabel.textContent = label;
+  const hint = document.createElement("span");
+  if (kind === "meaning") hint.dataset.i18nStudy = "";
+  hint.textContent = messages[kind];
+  $("selectionStatus").replaceChildren(hintLabel, hint);
   if (kind === "area") {
     const size = game.puzzle.size, cell = entry.cells[Math.floor(entry.cells.length / 2)];
     const row = Math.floor(cell / size), col = cell % size;

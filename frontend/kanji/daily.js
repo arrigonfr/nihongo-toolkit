@@ -1,4 +1,11 @@
 import "./daily.css";
+import { initializeAppearance } from "../src/appearance.js";
+import { initializeInterfaceLocalization } from "../src/interface-i18n.js";
+
+if (document.body.classList.contains("daily-embed")) {
+  initializeAppearance();
+  initializeInterfaceLocalization();
+}
 
 const card = document.querySelector("[data-daily-kanji]");
 if (card) {
@@ -6,8 +13,13 @@ if (card) {
   const details = card.querySelector(".daily-kanji-details");
   const date = card.querySelector("time");
   const dayLength = 86_400_000;
-  const formatDate = new Intl.DateTimeFormat("en", { dateStyle: "long", timeZone: "UTC" });
   let timer;
+
+  function displayDate() {
+    const language = document.documentElement.dataset.interfaceLanguage || "en";
+    const formatDate = new Intl.DateTimeFormat(language, { dateStyle: "long", timeZone: "UTC" });
+    date.textContent = formatDate.format(new Date(`${date.dateTime}T00:00:00Z`));
+  }
 
   function showToday() {
     clearTimeout(timer);
@@ -15,7 +27,7 @@ if (card) {
     const day = Math.floor(now / dayLength);
     const entry = entries[day % entries.length];
     date.dateTime = new Date(now).toISOString().slice(0, 10);
-    date.textContent = formatDate.format(now);
+    displayDate();
     card.querySelector(".daily-glyph").textContent = entry.character;
     card.querySelector(".daily-readings").textContent = entry.readings.join(" / ");
     card.querySelector(".daily-meanings").textContent = entry.meanings.join("; ");
@@ -25,6 +37,7 @@ if (card) {
   }
 
   showToday();
+  document.addEventListener("nihon:language-change", displayDate);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) showToday(); });
 }
 

@@ -34,6 +34,7 @@
     "test:e2e": "node scripts/browser-test.mjs && node scripts/shared-ui-browser-test.mjs",
     "test:tool-fixes": "VITE_SITE_URL=https://nihongo-toolkit.pages.dev npm run build && node scripts/tool-fixes-browser-test.mjs",
     "test:settings": "node scripts/settings-browser-test.mjs && node scripts/settings-availability-browser-test.mjs",
+    "test:language": "node scripts/language-browser-test.mjs",
     "test:study-improvements": "node scripts/study-improvements-browser-test.mjs",
     "test:session-flow": "node scripts/session-flow-browser-test.mjs",
     "test:reading-options": "node --test frontend/test/reading-answers.test.js backend/test/practice-kanji.test.js && node scripts/reading-options-browser-test.mjs",

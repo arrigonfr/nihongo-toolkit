@@ -1128,7 +1128,7 @@ import {
             <div>
               <div class="cw-word-title" lang="ja">${wordDisplayHTML}</div>
               <div class="cw-word-reading">
-                Reading: <strong lang="ja">${escapeHTML(reading)}</strong>
+                <span class="cw-reading-label">Reading:</span> <strong lang="ja">${escapeHTML(reading)}</strong>
                 ${state.settings.romanization ? ` · <span>${escapeHTML(romaji)}</span>` : ""}
                 · <span class="cw-badge">JLPT N${escapeHTML(item.level)}</span>
               </div>
@@ -1137,13 +1137,13 @@ import {
           </div>
 
           <div><strong>Definition:</strong> ${escapeHTML(item.meaning)}</div>
-          ${item.partOfSpeech ? `<div style="margin-top:4px;font-size:12px;color:var(--muted)">Part of speech: ${escapeHTML(item.partOfSpeech)}</div>` : ""}
+          ${item.partOfSpeech ? `<div class="cw-part-of-speech" style="margin-top:4px;font-size:12px;color:var(--muted)">Part of speech: ${escapeHTML(item.partOfSpeech)}</div>` : ""}
 
           <div class="cw-example-box"><strong>Example sentences</strong><div id="cwSentenceExamples"></div></div>
 
           ${kanjiChars.length ? `
             <div style="margin-top:10px">
-              <span style="font-size:11px;font-weight:700;color:var(--muted)">KANJI IN THIS WORD (Hover or tap to inspect):</span>
+              <span class="cw-kanji-heading" style="font-size:11px;font-weight:700;color:var(--muted)">KANJI IN THIS WORD (Hover or tap to inspect):</span>
               <div class="cw-kanji-Chips">
                 ${kanjiChars.map((ch) => `
                   <button class="cw-kanji-chip${ch === activeKanji ? " active" : ""}" type="button" data-inspect-kanji="${escapeHTML(ch)}" lang="ja">
@@ -1163,7 +1163,7 @@ import {
                 <div>
                   <div style="font-weight:800;font-size:15px">${escapeHTML((kanjiData.meanings || []).join(", ") || "Kanji")}</div>
                   <div style="font-size:12px;color:var(--muted)">
-                    ${kanjiData.jlpt ? `JLPT N${kanjiData.jlpt}` : "Unrated"}
+                    ${kanjiData.jlpt ? `JLPT N${kanjiData.jlpt}` : '<span class="cw-unrated">Unrated</span>'}
                     ${kanjiData.stroke_count ? ` · ${kanjiData.stroke_count} strokes` : ""}
                   </div>
                 </div>
@@ -1192,7 +1192,7 @@ import {
                     return `<li><strong lang="ja">${wDisp}</strong> (${escapeHTML(cw.reading)}${rom}) — ${escapeHTML((cw.meanings || []).join("; "))}</li>`;
                   }).join("")}
                 </ul>
-              ` : `<div style="font-size:12px;color:var(--muted);margin-top:4px">No compound examples listed.</div>`}
+              ` : `<div class="cw-no-compounds" style="font-size:12px;color:var(--muted);margin-top:4px">No compound examples listed.</div>`}
             </div>
           ` : `
             <div style="color:var(--muted);padding:16px;text-align:center">

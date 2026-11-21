@@ -11,6 +11,7 @@ import { mountFontControls } from "./japanese-fonts.js";
 import { mountLevelControls } from "./jlpt-levels.js";
 import { createSupportButton } from "./support.js";
 import { cancelLocalSpeech, preloadLocalSpeech, speakLocalJapanese } from "./local-speech.js";
+import { translateInterface } from "./interface-i18n.js";
 
 const key = "nihon:study-controls-v1";
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
@@ -41,7 +42,7 @@ export function speakJapanese(text) {
     return;
   }
   if (!window.speechSynthesis) {
-    window.alert("Speech playback is not supported by this browser.");
+    window.alert(translateInterface("Speech playback is not supported by this browser."));
     return;
   }
   const utterance = new SpeechSynthesisUtterance(text);
@@ -54,7 +55,7 @@ export function speakJapanese(text) {
   utterance.onerror = (error) => {
     if (!["interrupted", "canceled"].includes(error.error)) {
       console.error("Japanese speech playback failed.", error);
-      window.alert("Japanese speech playback is unavailable. Check your device's Japanese speech voices.");
+      window.alert(translateInterface("Japanese speech playback is unavailable. Check your device's Japanese speech voices."));
     }
   };
   window.speechSynthesis.speak(utterance);

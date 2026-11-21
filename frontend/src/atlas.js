@@ -2,6 +2,7 @@ import { API_BASE } from "./api.js";
 import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML } from "./study-controls.js";
 import { wordsHTML, mountSentenceExamples } from "./examples.js";
 import { kanjiReportPath } from "./contact-fields.js";
+import { interfaceSourceText } from "./interface-i18n.js";
 (() => {
   "use strict";
   const API = API_BASE;
@@ -179,6 +180,7 @@ import { kanjiReportPath } from "./contact-fields.js";
       glyph.textContent = character;
       const meaning = document.createElement("span");
       meaning.className = "result-meaning";
+      if (!meanings(record)) meaning.setAttribute("data-i18n-scope", "");
       meaning.textContent = meanings(record) || "View details";
       button.append(glyph, meaning);
       grid.append(button);
@@ -199,10 +201,10 @@ import { kanjiReportPath } from "./contact-fields.js";
       if (!selected || seen.has(selected.word)) return;
       seen.add(selected.word);
       const glosses = (entry.senses || []).flatMap((sense) => sense.english_definitions || []);
-      compounds.push({ written: selected.word, reading: selected.reading || "—", gloss: glosses.slice(0, 3).join("; ") || "Meaning unavailable" });
+      compounds.push({ written: selected.word, reading: selected.reading || "—", gloss: glosses.slice(0, 3).join("; ") });
     });
     const compoundMarkup = compounds.length
-      ? `<div class="compound-list">${compounds.slice(0, 10).map((item) => `<div class="compound"><span class="compound-word">${japaneseHTML(item.written, item.reading)}</span>${audioHTML(item.reading)}<span class="compound-meaning">${escapeHtml(item.gloss)}</span></div>`).join("")}</div>`
+      ? `<div class="compound-list">${compounds.slice(0, 10).map((item) => `<div class="compound"><span class="compound-word">${japaneseHTML(item.written, item.reading)}</span>${audioHTML(item.reading)}<span class="compound-meaning"${item.gloss ? "" : " data-i18n-scope"}>${escapeHtml(item.gloss || "Meaning unavailable")}</span></div>`).join("")}</div>`
       : '<span class="radical-note">No example compounds were found for this character.</span>';
     const jlpt = record.jlpt ? `JLPT N${record.jlpt}` : "No JLPT level";
     const frequency = record.freq_mainichi_shinbun ? `#${record.freq_mainichi_shinbun}` : "Not ranked";
@@ -219,7 +221,7 @@ import { kanjiReportPath } from "./contact-fields.js";
         </button>
         <div class="hero-info">
           <div class="hero-title"><h2>${escapeHtml(character)}</h2><span class="tag">${escapeHtml(jlpt)}</span></div>
-          <p class="meanings">${escapeHtml(meanings(record) || "No English meanings listed.")}</p>
+          <p class="meanings">${meanings(record) ? escapeHtml(meanings(record)) : '<span data-i18n-scope>No English meanings listed.</span>'}</p>
           ${incomplete ? `<p><a href="${kanjiReportPath(character)}">Suggest a missing Japanese reading or English meaning</a></p>` : ""}
           <button class="button copy-button" id="copyKanji" type="button" data-kanji="${escapeHtml(character)}">Copy kanji</button>
         </div>
@@ -229,11 +231,11 @@ import { kanjiReportPath } from "./contact-fields.js";
         ${textBlock("Kun-yomi · 訓読み", readingsHTML(record.kun_readings))}
         ${record.nanori?.length ? textBlock("Name readings", readingsHTML(record.nanori)) : ""}
         ${textBlock("Stroke count", escapeHtml(record.stroke_count ?? "—"))}
-        ${textBlock("Frequency rank", escapeHtml(frequency))}
+        ${textBlock("Frequency rank", record.freq_mainichi_shinbun ? escapeHtml(frequency) : `<span data-i18n-scope>${escapeHtml(frequency)}</span>`)}
         ${textBlock("Radical(s) · 部首", radicalValue)}
-        ${textBlock("Grade", escapeHtml(record.grade ? `School grade ${record.grade}` : "Not specified"))}
+        ${textBlock("Grade", `<span data-i18n-scope>${escapeHtml(record.grade ? `School grade ${record.grade}` : "Not specified")}</span>`)}
         ${componentsContent(record)}
-        ${textBlock("Example words", record.examples?.length ? wordsHTML(record.examples) : "No example words listed.", "compounds")}
+        ${textBlock("Example words", record.examples?.length ? wordsHTML(record.examples) : "<span data-i18n-scope>No example words listed.</span>", "compounds")}
         ${textBlock("Example compounds", compoundMarkup, "compounds")}
         ${textBlock("Example sentences", `<div id="kanjiSentences"></div>`, "compounds")}
       </div>`;
@@ -395,6 +397,13 @@ import { kanjiReportPath } from "./contact-fields.js";
     const storedHistory = readStorage(HISTORY_KEY, []);
     const history = Array.isArray(storedHistory) ? storedHistory : [];
     elements.historyList.replaceChildren();
+    if (!history.length) {
+      const empty = document.createElement("span");
+      empty.className = "history-empty";
+      empty.textContent = "Kanji you view will appear here.";
+      elements.historyList.append(empty);
+      return;
+    }
     history.slice(0, 20).forEach((item) => {
       const button = document.createElement("button");
       button.type = "button";
@@ -568,7 +577,7 @@ import { kanjiReportPath } from "./contact-fields.js";
   });
   window.addEventListener("kanji-network", (event) => {
     if (event.detail.online) {
-      if (elements.notice.textContent.startsWith("Offline")) setNotice("");
+      if (interfaceSourceText(elements.notice).startsWith("Offline")) setNotice("");
     } else if (event.detail.cached) {
       setNotice("Offline — showing saved data.", false);
     }

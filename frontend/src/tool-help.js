@@ -1,4 +1,5 @@
 import "./tool-help.css";
+import { interfaceSourceAttribute, interfaceSourceText } from "./interface-i18n.js";
 
 const tools = {
   "eawase.html": ["Eawase", "Flip two cards to match representations of the same word or kana. Choose Words or Syllabaries, a matching direction, and a board size in Settings. Arrow keys move between cards; Enter or Space flips one. A correct match keeps the turn in local two-player games; a mismatch passes it. Hints and reveals do not earn points or unassisted accuracy. Listening needs Audio On and Japanese device voices. Kana meaning clues describe sounds, not vocabulary meanings. Script conversions are recognition exercises. Picture clues are disabled: no dictionary picture dataset is available. Mistake Review reloads saved word identities from the dictionary; imported clues are not question sources."],
@@ -126,7 +127,7 @@ export function mountToolHelp() {
     activeControl = control;
     describe(trigger, true);
     if (control !== trigger) describe(control, true);
-    tooltip.textContent = trigger.dataset.studyHelp;
+    tooltip.textContent = interfaceSourceAttribute(trigger, "data-study-help");
     tooltip.showPopover();
     const rect = trigger.getBoundingClientRect();
     const width = tooltip.getBoundingClientRect().width;
@@ -146,7 +147,7 @@ export function mountToolHelp() {
     if (!action) {
       trigger.tabIndex = 0;
       trigger.setAttribute("role", "button");
-      trigger.setAttribute("aria-label", `Help: ${trigger.textContent.trim()}`);
+      trigger.setAttribute("aria-label", `Help: ${interfaceSourceText(trigger).trim()}`);
     }
     trigger.dataset.studyHelp = text;
     trigger.addEventListener("pointerenter", (event) => {
@@ -180,11 +181,11 @@ export function mountToolHelp() {
       if (control.closest(".chips") || ["colorThemeSelect", "answerChoice"].includes(control.id) || mounted.get(control)?.every((node) => node.isConnected)) continue;
       const label = control.labels?.[0];
       if (!label) continue;
-      const text = label.dataset.settingDescription || descriptions[control.id];
+      const text = interfaceSourceAttribute(label, "data-setting-description") || descriptions[control.id];
       const nodes = [...label.childNodes]
         .filter((node) => node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE && node.matches("span:not(.font-preview)"))
         .filter((node) => node.textContent.trim());
-      const labelText = nodes.map((node) => node.textContent.trim()).join(" ");
+      const labelText = nodes.map((node) => interfaceSourceText(node).trim()).join(" ");
       if (!text && /font|jlpt|level|range|contrast|compact|politeness|polarity|tense|category|theme/i.test(labelText)) continue;
       const description = text || (control.type === "checkbox" ? `Enable or disable ${labelText.toLowerCase()}.` : `Choose ${labelText.toLowerCase()}.`);
       const triggers = [];
@@ -202,7 +203,7 @@ export function mountToolHelp() {
     }
     for (const button of document.querySelectorAll(".cw-mode-pill:not([data-help-mounted]), button[data-setting-description]:not([data-help-mounted]), .chip-option[data-setting-description]:not([data-help-mounted])")) {
       button.dataset.helpMounted = "true";
-      bindHelp(button, button.dataset.settingDescription || modeHelp[button.dataset.mode]);
+      bindHelp(button, interfaceSourceAttribute(button, "data-setting-description") || modeHelp[button.dataset.mode]);
     }
   }
   enhance();

@@ -1,4 +1,6 @@
 
+import { interfaceSourceText } from "./interface-i18n.js";
+
 // One configurable chip group used for level filters, font pickers, mode pills and any other
 // small choice list. The source of truth stays a hidden <select> (or any value holder), so
 // persistence, tests and page logic keep working with the same ids and change events.
@@ -64,7 +66,7 @@ function optionsFromSelect(select, config) {
   if (select.type === "checkbox") return [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }];
   const hidden = new Set([config.allValue, config.emptyValue].filter((value) => value != null && value !== config.exclusive));
   return [...select.options].filter((option) => !hidden.has(option.value) && !option.hidden && !(config.multiple && option.value.includes(",")))
-    .map((option) => ({ value: option.value, label: option.textContent.trim(), disabled: option.disabled }));
+    .map((option) => ({ value: option.value, label: interfaceSourceText(option).trim(), disabled: option.disabled }));
 }
 
 const escapeHTML = (text) => String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -85,14 +87,14 @@ function wrapField(select, config) {
       if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) parts.push(node);
       else if (node.nodeType === Node.ELEMENT_NODE && node.matches("span:not(.setting-availability):not(.font-preview)") && node.textContent.trim()) parts.push(node);
     }
-    if (titleText === undefined) titleText = parts.map((node) => node.textContent.trim()).join(" ");
+    if (titleText === undefined) titleText = parts.map((node) => interfaceSourceText(node).trim()).join(" ");
     for (const node of parts) node.remove();
     container.querySelector(":scope > .font-preview")?.remove();
     description ??= container.dataset.settingDescription;
   } else {
     const oldTitle = host.querySelector(":scope > .setting-title");
     if (oldTitle) {
-      if (titleText === undefined) titleText = oldTitle.textContent.trim();
+      if (titleText === undefined) titleText = interfaceSourceText(oldTitle).trim();
       description ??= oldTitle.querySelector("[data-setting-description]")?.dataset.settingDescription;
       oldTitle.remove();
     }
@@ -135,7 +137,13 @@ export function mountChips(select, config = {}) {
   group.setAttribute("role", config.presentation === "radio" ? "radiogroup" : "group");
   const titleNode = config.wrap && host.querySelector(":scope > .chips-title");
   if (titleNode) { titleNode.id ||= `${id}-title`; group.setAttribute("aria-labelledby", titleNode.id); }
-  else group.setAttribute("aria-label", config.label || select.labels?.[0]?.textContent.trim().split("\n")[0] || "Options");
+  else {
+    const label = select.labels?.[0];
+    const labelText = label && [...label.childNodes]
+      .filter((node) => node !== select && !node.contains(select))
+      .map(interfaceSourceText).join(" ").trim();
+    group.setAttribute("aria-label", config.label || labelText || "Options");
+  }
 
   const items = new Map();
   for (const option of config.options) {

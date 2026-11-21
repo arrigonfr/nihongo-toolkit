@@ -34,6 +34,11 @@ Audio uses Japanese speech voices on your device, except in Firefox where a
 local Japanese voice loads in the background when a page opens with Audio On.
 Settings and supported
 progress are stored in your browser, not in an account or across devices.
+Use the flag picker in the header to choose English, Spanish or Brazilian
+Portuguese. The first visit follows the browser language; your choice is saved
+and shared across tools and tabs. This changes interface text, not Japanese
+study material, English dictionary definitions, example translations or quiz
+answers; no dictionary database changes are required.
 
 Jump to [local development](#local-development), [data sources](#importing-data),
 [Cloudflare deployment](#deploy), or [checks](#checks) for technical details.
@@ -619,8 +624,8 @@ explicitly saved unfinished questions. Comparison accepts multiple valid analyse
 食べられる. Reverse can ask for the base word, form, polarity, tense or
 politeness. No hardcoded vocabulary substitutes are used. Auxiliary-pattern vocabulary is
 unavailable without dictionary classification.
-Prompts and grammatical traits always show Japanese and English;
-general interface and feedback text remain English.
+Prompts and grammatical traits continue to use Japanese and English;
+interface controls and feedback follow the selected interface language.
 Politeness has its own prominent, labeled line, including unmarked connectives.
 “Requested form shown as” offers form names, usage descriptions,
 or **Mixed**, which randomly chooses a presentation for each new question and
@@ -1476,6 +1481,7 @@ configuring secrets and deploying.
 The last command builds and performs a Worker dry-run; it does not deploy.
 An imported local SQLite database is required by the dictionary regression tests.
 Browser checks remain available through the `test:*` scripts in `package.json`.
+`npm run test:language` checks language switching and preservation of study content.
 `npm run test:examples` checks enrichment, quarantine/approval, safe delta replay,
 and provenance rendering in a real browser.
 

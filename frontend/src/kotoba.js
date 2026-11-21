@@ -192,7 +192,7 @@ import { toHiragana } from "wanakana";
     }).join("");
     results.innerHTML = `<article class="kanji-card">
       <div class="kanji-title"><div class="kanji-glyph" lang="ja">${escapeHTML(character)}</div><div class="kanji-meta">Stroke count: ${Number.isFinite(data.stroke_count) ? escapeHTML(data.stroke_count) : "—"}<br>JLPT: ${data.jlpt ? `N${escapeHTML(data.jlpt)}` : "Not listed"}${data.grade ? `<br>Grade: ${escapeHTML(data.grade)}` : ""}</div></div>
-      <section class="kanji-section"><h3 class="section-label">Meanings</h3><div>${(data.meanings || []).length ? data.meanings.map(escapeHTML).join(" · ") : "No meanings listed."}</div></section>
+      <section class="kanji-section"><h3 class="section-label">Meanings</h3><div>${(data.meanings || []).length ? data.meanings.map(escapeHTML).join(" · ") : '<span class="example-empty">No meanings listed.</span>'}</div></section>
       <section class="kanji-section"><h3 class="section-label">On readings</h3><div class="reading-list">${(data.on_readings || []).length ? readingsHTML(data.on_readings) : '<span class="example-empty">None listed</span>'}</div></section>
       <section class="kanji-section"><h3 class="section-label">Kun readings</h3><div class="reading-list">${(data.kun_readings || []).length ? readingsHTML(data.kun_readings) : '<span class="example-empty">None listed</span>'}</div></section>
       ${(data.nanori || []).length ? `<section class="kanji-section"><h3 class="section-label">Name readings (nanori)</h3><div class="reading-list">${readingsHTML(data.nanori)}</div></section>` : ""}

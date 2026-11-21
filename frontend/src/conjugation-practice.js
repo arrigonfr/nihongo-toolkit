@@ -347,7 +347,7 @@ function renderProgress() {
     .sort((a, b) => b[1].last - a[1].last).map(([key, record]) => {
       const q = lookup.get(key);
       return `<li><span lang="ja">${escape(q.entry.word)}</span> · ${escape(q.row.label)} · ${escape(q.row.politeness)} <span class="muted">${record.wrong ? `${record.wrong} missed` : "Saved unfinished"}</span></li>`;
-    }).join("") || "<li>No missed words yet.</li>";
+    }).join("") || '<li class="empty-message">No missed words yet.</li>';
 }
 function tick() {
   if (!session || session.ended) return;

@@ -19,7 +19,7 @@ import "./analysis-stats.css";
   statsPanel.className = "analysis-stats";
   parsedText.after(statsPanel);
   let analysisKanji = [];
-  let tokens = [], currentTranslation = "", currentTranslationSource = "", selectedTokenIndex = -1, requestId = 0, parseRequestId = 0, activeController = null, history = [];
+  let tokens = [], currentTranslation = "", currentTranslationSource = "", currentTranslationIsStudy = false, selectedTokenIndex = -1, requestId = 0, parseRequestId = 0, activeController = null, history = [];
   rememberControls("nihon:fumitoki-settings-v1", ["translationToggle"], (message) => setStatus(message, true));
 
   function readJSON(key, fallback) {
@@ -113,6 +113,7 @@ import "./analysis-stats.css";
     translationBox.hidden = !show;
     if (!show) return;
     translationLabel.textContent = "Sentence translation";
+    translationText.toggleAttribute("data-i18n-study", currentTranslationIsStudy);
     translationText.textContent = currentTranslation || "Translating sentence…";
   }
   function renderTokens() {
@@ -139,6 +140,7 @@ import "./analysis-stats.css";
     if (!tokens.length) {
       const empty = document.createElement("div");
       empty.className = "empty";
+      empty.lang = "en";
       empty.textContent = "Your parsed sentence will appear here. Click any word or particle to look it up.";
       parsedText.append(empty);
     }
@@ -156,6 +158,7 @@ import "./analysis-stats.css";
     analysisKanji = [];
     currentTranslation = "";
     currentTranslationSource = "";
+    currentTranslationIsStudy = false;
     selectedTokenIndex = -1;
     detailPanel.hidden = true;
     renderTokens();
@@ -184,6 +187,7 @@ import "./analysis-stats.css";
         }));
       }
       currentTranslation = payload.translation || "Translation unavailable for this sentence.";
+      currentTranslationIsStudy = Boolean(payload.translation);
       currentTranslationSource = payload.translationSource || "";
       renderTokens();
       if (selectedTokenIndex >= 0 && tokens[selectedTokenIndex]?.results?.length) {
@@ -303,7 +307,10 @@ import "./analysis-stats.css";
     const term = String(query || "").trim();
     if (!term || isPunctuation(term)) {
       detailPanel.hidden = false;
-      detailWord.textContent = "Lookup";
+      const label = document.createElement("span");
+      label.setAttribute("data-i18n-scope", "");
+      label.textContent = "Lookup";
+      detailWord.replaceChildren(label);
       detailContent.replaceChildren();
       addText(detailContent, "p", "Enter a word or particle to search.", "small-note");
       lookupInput.focus();

@@ -530,8 +530,8 @@ try {
   assert.equal(await page.locator(".helper-link").count(), 15);
   for (const item of await page.locator(".helper-link").all()) {
     const description = await item.locator(".helper-description").textContent();
-    assert.match(description, /^\(.+\)$/);
-    assert.ok(description.slice(1, -1).split(/\s+/).length <= 6);
+    assert.doesNotMatch(description, /^\(.+\)$/);
+    assert.ok(description.trim().split(/\s+/).length <= 6);
     assert.equal(await item.locator(".helper-icon").count(), 1);
     assert.equal(await item.evaluate((node) => getComputedStyle(node).textAlign), "center");
   }

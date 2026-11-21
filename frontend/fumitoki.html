@@ -154,7 +154,7 @@
       <div class="layout">
         <section class="card" aria-labelledby="parsedTitle">
           <h2 class="card-title" id="parsedTitle"><span>Parsed text</span><span class="muted" id="tokenCount"></span></h2>
-          <div class="parsed-text" id="parsedText" lang="ja" aria-live="polite"><div class="empty">Your parsed sentence will appear here. Click any word or particle to look it up.</div></div>
+          <div class="parsed-text" id="parsedText" lang="ja" aria-live="polite"><div class="empty" lang="en">Your parsed sentence will appear here. Click any word or particle to look it up.</div></div>
           <div class="translation-box" id="translationBox" hidden>
             <span class="translation-label" id="translationLabel">Sentence translation</span>
             <div id="translationText"></div>
@@ -162,7 +162,7 @@
         </section>
         <aside class="side-panel" id="detailPanel" aria-label="Dictionary entry" hidden>
           <section class="card">
-            <div class="detail-header"><h2 class="detail-word" id="detailWord">Lookup</h2><button class="close-button" id="closePanel" type="button" aria-label="Close dictionary panel">×</button></div>
+            <div class="detail-header"><h2 class="detail-word" id="detailWord"><span data-i18n-scope>Lookup</span></h2><button class="close-button" id="closePanel" type="button" aria-label="Close dictionary panel">×</button></div>
             <form class="lookup-form" id="lookupForm">
               <label class="sr-only" for="lookupInput">Look up another word</label>
               <input class="lookup-input" id="lookupInput" type="search" autocomplete="off" placeholder="Look up another word">

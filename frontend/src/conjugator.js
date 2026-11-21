@@ -158,7 +158,8 @@ function renderResult() {
   if (!current) return;
   $("result").hidden = false; $("emptyState").hidden = true;
   $("baseWord").innerHTML = japanese(current.word, current.reading) + audioHTML(current.reading);
-  $("wordSummary").textContent = `${current.meanings?.join("; ") || "Meaning unknown"} · ${typeNames[current.type]} · ${current.level ? `N${current.level} (estimated)` : "JLPT unknown"}${current.manual ? " · User-confirmed classification" : ""}`;
+  const meanings = current.meanings?.join("; ");
+  $("wordSummary").innerHTML = `${meanings ? `<span data-i18n-study>${escape(meanings)}</span>` : '<span data-i18n-scope>Meaning unknown</span>'} · <span data-i18n-scope>${escape(typeNames[current.type])}</span> · <span data-i18n-scope>${current.level ? `N${escape(current.level)} (estimated)` : "JLPT unknown"}</span>${current.manual ? ' · <span data-i18n-scope>User-confirmed classification</span>' : ""}`;
   $("saveWord").textContent = saved.some((item) => sameWord(item, current)) ? "Word saved" : "Save word";
   const rows = visibleRows();
   $("formCount").textContent = `Showing ${rows.length} of ${allForms.length} forms`;
@@ -167,7 +168,7 @@ function renderResult() {
     const selected = rows.filter((row) => row.group === id);
     if (!selected.length) return "";
     return `<section class="panel table-panel"><h3>${name}</h3><div class="table-wrap"><table>
-      <caption class="sr-only">${escape(current.word)}: ${name}</caption><thead><tr><th scope="col">Form</th><th scope="col">Conjugation</th>${settings.compact ? "" : '<th scope="col">Meaning & usage</th>'}</tr></thead><tbody>
+      <caption class="sr-only"><span lang="ja">${escape(current.word)}</span>: <span data-i18n-scope>${name}</span></caption><thead><tr><th scope="col">Form</th><th scope="col">Conjugation</th>${settings.compact ? "" : '<th scope="col">Meaning & usage</th>'}</tr></thead><tbody>
       ${selected.map((row) => `<tr data-form="${row.id}">
         <th scope="row">${row.label}<span class="register">${row.politeness === "neutral" ? "Shared / connective" : row.politeness}</span></th>
         <td><span class="conjugated">${japanese(row.word, row.reading, { compact: settings.compact })}</span>
