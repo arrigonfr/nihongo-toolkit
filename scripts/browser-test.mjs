@@ -344,7 +344,7 @@ try {
   }
 
   await go("index.html");
-  assert.equal(await page.title(), "日本語道具箱 · Japanese Toolkit · Nihongo Toolkit");
+  assert.equal(await page.title(), "NihongoToolkit");
 
   await page.goto("http://127.0.0.1:5179/kanji/日");
   await page.getByRole("link", { name: "Explore in Kanji Atlas" }).click();

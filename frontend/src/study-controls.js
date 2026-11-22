@@ -93,7 +93,7 @@ export function mountStudyControls({ furigana = true, romaji = true, onChange = 
   const theme = document.querySelector("#themeButton, #themeCycleBtn");
   header.classList.add("study-header");
   header.classList.add("study-embedded");
-  for (const note of header.querySelectorAll(".brand-note, .cw-brand-note, .brand-sub")) note.textContent = "Nihongo Toolkit";
+  for (const note of header.querySelectorAll(".brand-note, .cw-brand-note, .brand-sub")) note.textContent = "NihongoToolkit";
   for (const panel of document.querySelectorAll("details#settingsPanel, details#settingsDrawer, details:has(> #settings)")) panel.open = true;
   const toolbar = header.querySelector(".study-toolbar");
   for (const [name, visible] of Object.entries({ audio: true, furigana, romaji })) {

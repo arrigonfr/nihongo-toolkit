@@ -37,6 +37,24 @@ try {
   await page.locator(".study-palette > summary").waitFor();
   assert.equal(await page.locator("#colorThemeSelect").inputValue(), "ocean");
   assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
+  const pageBackground = () => page.locator("body").evaluate(async (body) => {
+    await Promise.all(body.getAnimations().map((animation) => animation.finished));
+    return getComputedStyle(body).backgroundColor;
+  });
+  const oceanBackground = await pageBackground();
+  await go("");
+  await page.locator(".study-palette > summary").waitFor();
+  assert.equal(await pageBackground(), oceanBackground, "The homepage uses the saved light palette");
+  await page.click(".study-palette > summary");
+  await page.click('[data-palette="sakura"]');
+  const sakuraLightBackground = await pageBackground();
+  assert.notEqual(sakuraLightBackground, oceanBackground, "Changing palettes updates the homepage immediately");
+  await page.click("#themeButton");
+  const sakuraDarkBackground = await pageBackground();
+  assert.notEqual(sakuraDarkBackground, sakuraLightBackground, "Dark mode updates the homepage background");
+  await go("kana.html");
+  await page.locator(".study-palette > summary").waitFor();
+  assert.equal(await pageBackground(), sakuraDarkBackground, "The tool page uses the same dark palette as the homepage");
   await page.evaluate(() => localStorage.removeItem("nihon:appearance-v1"));
   await page.reload();
   await page.locator(".study-palette > summary").waitFor();

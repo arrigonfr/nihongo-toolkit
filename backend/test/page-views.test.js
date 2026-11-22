@@ -52,7 +52,7 @@ test("counter schedules server UTC aggregate writes without awaiting D1", async 
   const tasks = [];
   let values, complete;
   const pending = new Promise((resolve) => { complete = resolve; });
-  const env = { TRACK_VISITS: "true", ALLOWED_ORIGINS: "https://nihongo-toolkit.pages.dev",
+  const env = { TRACK_VISITS: "true", ALLOWED_ORIGINS: "https://nihongotoolkit.pages.dev",
     PAGE_VIEWS_DB: { prepare(sql) {
       assert.match(sql, /ON CONFLICT\(date, page\) DO UPDATE SET views = views \+ 1/);
       return { bind(...args) { values = args; return { run: () => pending }; } };

@@ -9,76 +9,77 @@ const root = fileURLToPath(new URL(".", import.meta.url));
 const toolFiles = readdirSync(root).filter((file) => file.endsWith(".html") && !["index.html", "data-sources.html", "文字.html"].includes(file));
 const seoPages = {
   "contact.html": {
-    title: "Contact | Nihongo Toolkit",
-    description: "Send feedback, feature requests, data corrections and bug reports to Nihongo Toolkit."
+    title: "Contact | NihongoToolkit",
+    description: "Send feedback, feature requests, data corrections and bug reports to NihongoToolkit."
   },
   "index.html": {
-    title: "Japanese Learning Tools | Nihongo Toolkit",
-    description: "Explore free Japanese learning tools for hiragana, katakana, kanji, vocabulary, reading, grammar, and word games."
+    title: "NihongoToolkit",
+    description: "Free Japanese learning tools for kana, kanji, vocabulary, conjugation practice, dictionary lookup, word games, and printable study sheets.",
+    image: { path: "og-image.png", type: "image/png", width: "1200", height: "630", alt: "NihongoToolkit homepage with Japanese learning tools and its student mascot." }
   },
   "kana.html": {
-    title: "Hiragana and Katakana Practice | Nihongo Toolkit",
+    title: "Hiragana and Katakana Practice | NihongoToolkit",
     description: "Practice reading and recognizing Japanese hiragana and katakana with interactive kana exercises."
   },
   "yomi.html": {
-    title: "Kanji Reading Practice | Nihongo Toolkit",
+    title: "Kanji Reading Practice | NihongoToolkit",
     description: "Practice Japanese kanji readings with interactive exercises for reading characters in context."
   },
   "imi.html": {
-    title: "Kanji Meaning Practice | Nihongo Toolkit",
+    title: "Kanji Meaning Practice | NihongoToolkit",
     description: "Build your understanding of Japanese kanji with focused meaning practice and review."
   },
   "goi.html": {
-    title: "Japanese Vocabulary Practice | Nihongo Toolkit",
+    title: "Japanese Vocabulary Practice | NihongoToolkit",
     description: "Build Japanese vocabulary with interactive JLPT-focused practice, review, and study sessions."
   },
   "katsuyo-renshuu.html": {
-    title: "Japanese Conjugation Practice | Nihongo Toolkit",
+    title: "Japanese Conjugation Practice | NihongoToolkit",
     description: "Practice Japanese verb and adjective conjugations with focused interactive exercises."
   },
   "kotoba.html": {
-    title: "Japanese Dictionary | Nihongo Toolkit",
+    title: "Japanese Dictionary | NihongoToolkit",
     description: "Look up Japanese words, readings, meanings, and example information in an interactive dictionary."
   },
   "kanji-chizucho.html": {
-    title: "Explore Kanji and Compounds | Nihongo Toolkit",
+    title: "Explore Kanji and Compounds | NihongoToolkit",
     description: "Explore Japanese kanji, their components, and related compounds in an interactive character atlas."
   },
   "katsuyo.html": {
-    title: "Japanese Verb and Adjective Conjugator | Nihongo Toolkit",
+    title: "Japanese Verb and Adjective Conjugator | NihongoToolkit",
     description: "Look up Japanese verb and adjective conjugations across common forms with an interactive conjugator."
   },
   "shiryo.html": {
-    title: "Printable Japanese Study Sheets | Nihongo Toolkit",
+    title: "Printable Japanese Study Sheets | NihongoToolkit",
     description: "Browse and print Japanese learning reference sheets and study cheatsheets."
   },
   "fumitoki.html": {
-    title: "Japanese Sentence Breakdown | Nihongo Toolkit",
+    title: "Japanese Sentence Breakdown | NihongoToolkit",
     description: "Break down Japanese sentences to explore words, readings, and grammatical structure."
   },
   "eawase.html": {
-    title: "Japanese Vocabulary Matching Game | Nihongo Toolkit",
+    title: "Japanese Vocabulary Matching Game | NihongoToolkit",
     description: "Play a Japanese memory-matching game pairing vocabulary words with their kana readings."
   },
   "kotoba-sagashi.html": {
-    title: "Japanese Vocabulary Word Search | Nihongo Toolkit",
+    title: "Japanese Vocabulary Word Search | NihongoToolkit",
     description: "Find Japanese vocabulary in an interactive word-search puzzle and practice as you play."
   },
   "pazuru.html": {
-    title: "Japanese Vocabulary Crossword | Nihongo Toolkit",
+    title: "Japanese Vocabulary Crossword | NihongoToolkit",
     description: "Solve a Japanese vocabulary crossword puzzle to practice words and their meanings."
   },
   "shiritori.html": {
-    title: "Japanese Shiritori Word Game | Nihongo Toolkit",
+    title: "Japanese Shiritori Word Game | NihongoToolkit",
     description: "Play shiritori, the Japanese word-chain game, and keep the chain going with Japanese words."
   },
   "kanji-kuizu.html": {
-    title: "Kanji Quiz Game | Nihongo Toolkit",
+    title: "Kanji Quiz Game | NihongoToolkit",
     description: "Play a Japanese kanji quiz and spot the matching character in an interactive game."
   },
   "data-sources.html": {
-    title: "Data Sources and Licenses | Nihongo Toolkit",
-    description: "Review the data sources, attributions, and licenses used by Nihongo Toolkit's Japanese learning tools."
+    title: "Data Sources and Licenses | NihongoToolkit",
+    description: "Review the data sources, attributions, and licenses used by NihongoToolkit's Japanese learning tools."
   }
 };
 
@@ -106,7 +107,7 @@ function toolNavigation(site, disabled = new Set()) {
             const website = data["@graph"].find((node) => node["@type"] === "WebSite");
             const source = new URL(website.url);
             for (const node of data["@graph"]) {
-              if (node.alternateName) node.alternateName = [...node.alternateName.filter((name) => name !== source.hostname), new URL(site).hostname];
+              if (node.alternateName) node.alternateName = [...[node.alternateName].flat().filter((name) => name !== source.hostname), new URL(site).hostname];
             }
             const normalized = JSON.stringify(data, (key, value) => {
               if (typeof value !== "string" || !(value === source.origin || value.startsWith(`${source.origin}/`))) return value;
@@ -116,7 +117,7 @@ function toolNavigation(site, disabled = new Set()) {
             return `${open}${normalized.replaceAll("<", "\\u003c")}${close}`;
           });
         }
-        const tags = [{ tag: "link", attrs: { rel: "apple-touch-icon", sizes: "180x180", href: reference ? "/apple-touch-icon.png?v=2" : "./apple-touch-icon.png?v=2" }, injectTo: "head" }];
+        const tags = [{ tag: "link", attrs: { rel: "apple-touch-icon", sizes: "180x180", href: reference ? "/apple-touch-icon.png?v=4" : "./apple-touch-icon.png?v=4" }, injectTo: "head" }];
         if (!reference) tags.push({ tag: "script", attrs: { type: "module", src: "./src/page-views.js" }, injectTo: "body" });
         if (canonical) tags.push({ tag: "link", attrs: { rel: "canonical", href: canonical }, injectTo: "head" });
         if (reference || file === "index.html" || file === "data-sources.html" || toolFiles.includes(file)) {
@@ -131,7 +132,7 @@ function toolNavigation(site, disabled = new Set()) {
             html = html.replace("<!-- dashboard-tools -->", groups);
           } else {
             const name = menu.match(new RegExp(`data-file="${file}"[^>]*>\\s*<span class="helper-name">([^<]+)`))?.[1].replace(/\s*·\s*$/, "");
-            if (name && !seoPages[file]) html = html.replace(/<title>[^<]*<\/title>/, `<title>${name} · Nihongo Toolkit</title>`);
+            if (name && !seoPages[file]) html = html.replace(/<title>[^<]*<\/title>/, `<title>${name} · NihongoToolkit</title>`);
             const menuCSS = launcher.slice(launcher.indexOf("    .navigation {"), launcher.indexOf("    .helper-frame {"));
             tags.push(
               { tag: "style", injectTo: "head", children: `${menuCSS}
@@ -168,18 +169,18 @@ function toolNavigation(site, disabled = new Set()) {
             { tag: "meta", attrs: { name: "twitter:description", content: seo.description }, injectTo: "head" }
           );
           if (file !== "index.html") {
-            tags.push({ tag: "meta", attrs: { property: "og:site_name", content: "Nihongo Toolkit" }, injectTo: "head" });
+            tags.push({ tag: "meta", attrs: { property: "og:site_name", content: "NihongoToolkit" }, injectTo: "head" });
           }
           if (canonical) {
             const image = new URL("og-image.png", site).href;
-            const imageAlt = "Nihongo Toolkit homepage with Japanese practice tools, dictionary tools, and word games";
+            const imageAlt = "NihongoToolkit homepage with Japanese practice tools, dictionary tools, and word games";
+            const ogImage = seo.image
+              ? [{ property: "og:image", content: new URL(seo.image.path, site).href }, { property: "og:image:type", content: seo.image.type }, ...(seo.image.width ? [{ property: "og:image:width", content: seo.image.width }, { property: "og:image:height", content: seo.image.height }] : []), { property: "og:image:alt", content: seo.image.alt }]
+              : [{ property: "og:image", content: image }, { property: "og:image:type", content: "image/png" }, { property: "og:image:width", content: "1200" }, { property: "og:image:height", content: "630" }, { property: "og:image:alt", content: imageAlt }];
             tags.push(
               { tag: "meta", attrs: { property: "og:url", content: canonical }, injectTo: "head" },
-              { tag: "meta", attrs: { property: "og:image", content: image }, injectTo: "head" },
-              { tag: "meta", attrs: { property: "og:image:type", content: "image/png" }, injectTo: "head" },
-              { tag: "meta", attrs: { property: "og:image:width", content: "1200" }, injectTo: "head" },
-              { tag: "meta", attrs: { property: "og:image:height", content: "630" }, injectTo: "head" },
-              { tag: "meta", attrs: { property: "og:image:alt", content: imageAlt }, injectTo: "head" },
+              ...ogImage.map((attrs) => ({ tag: "meta", attrs, injectTo: "head" })),
+              // X does not display SVG cards, so Twitter keeps the PNG preview.
               { tag: "meta", attrs: { name: "twitter:image", content: image }, injectTo: "head" },
               { tag: "meta", attrs: { name: "twitter:image:alt", content: imageAlt }, injectTo: "head" }
             );

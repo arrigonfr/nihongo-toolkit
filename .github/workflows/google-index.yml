@@ -21,7 +21,7 @@ jobs:
       - name: Submit Sitemap to Search Console
         env:
           GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
-          SITE_URL: https://nihongo-toolkit.pages.dev/
+          SITE_URL: https://nihongotoolkit.pages.dev/
         run: node scripts/submit-sitemap.js
 
       - name: Run Indexing Script

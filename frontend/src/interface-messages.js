@@ -46,6 +46,7 @@ export const interfaceMessages = {
   "Japanese vocabulary crossword": ["Crucigrama de vocabulario japonés", "Palavras cruzadas de vocabulário japonês"],
   "Japanese word-chain game": ["Juego japonés de cadena de palabras", "Jogo japonês de cadeia de palavras"],
   "Feedback, requests and bug reports": ["Comentarios, solicitudes e informes de errores", "Comentários, solicitações e relatos de erros"],
+  "Free Japanese learning tools": ["Herramientas gratuitas para aprender japonés", "Ferramentas gratuitas para aprender japonês"],
   "Japanese practice, reference and games": ["Práctica, consulta y juegos de japonés", "Prática, consulta e jogos de japonês"],
   "Data sources and licenses": ["Fuentes de datos y licencias", "Fontes de dados e licenças"],
   "Color theme": ["Tema de color", "Tema de cores"],
@@ -479,7 +480,6 @@ export const interfaceMessages = {
   "Valid settings save automatically in this browser. Audio, furigana, romaji and appearance preferences are shared across Nihon tools. Hover, focus or tap a setting name for details. Practice examples are original teaching templates, not dictionary quotations. Speech availability depends on your device’s Japanese voices.": ["Los ajustes válidos se guardan automáticamente en este navegador. Las preferencias de audio, furigana, romaji y apariencia se comparten entre las herramientas de Nihon. Pasa el cursor, enfoca o toca el nombre de un ajuste para ver detalles. Los ejemplos de práctica son plantillas didácticas originales, no citas del diccionario. La disponibilidad de voz depende de las voces japonesas de tu dispositivo.", "As configurações válidas são salvas automaticamente neste navegador. As preferências de áudio, furigana, romaji e aparência são compartilhadas entre as ferramentas do Nihon. Passe o cursor, foque ou toque no nome de uma configuração para ver detalhes. Os exemplos de prática são modelos didáticos originais, não citações do dicionário. A disponibilidade de voz depende das vozes japonesas do dispositivo."],
 
   "at NihongoToolkit": ["en NihongoToolkit", "no NihongoToolkit"],
-  "at Nihongo Toolkit": ["en Nihongo Toolkit", "no Nihongo Toolkit"],
   "Data sources & licenses": ["Fuentes de datos y licencias", "Fontes de dados e licenças"],
   "Kanji Imposters": ["Kanji impostores", "Kanji impostores"],
   "Potential, passive and causative": ["Potencial, pasiva y causativa", "Potencial, passiva e causativa"],

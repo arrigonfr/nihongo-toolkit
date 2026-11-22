@@ -31,7 +31,7 @@
     "vars": {
       "CONTACT_ENABLED": "false",
       "TRACK_VISITS": "false",
-      "ALLOWED_ORIGINS": "https://develop.nihongo-toolkit.pages.dev",
+      "ALLOWED_ORIGINS": "https://develop.nihongotoolkit.pages.dev",
       "SENTENCE_API_FALLBACK": "true",
       "TRANSLATION_API_FALLBACK": "true",
       "WORD_API_FALLBACK": "true",
@@ -42,7 +42,7 @@
   "vars": {
     "CONTACT_ENABLED": "true",
     "TRACK_VISITS": "true",
-    "ALLOWED_ORIGINS": "https://nihongo-toolkit.pages.dev",
+    "ALLOWED_ORIGINS": "https://nihongotoolkit.pages.dev",
     "SENTENCE_API_FALLBACK": "true",
     "TRANSLATION_API_FALLBACK": "true",
     "WORD_API_FALLBACK": "true",

@@ -84,7 +84,7 @@ export async function contactForm(request, env, ctx) {
 }
 
 export const contactReplyCommand = {
-  name: "reply", description: "Reply by email to a Nihongo Toolkit contact submission", type: 1,
+  name: "reply", description: "Reply by email to a NihongoToolkit contact submission", type: 1,
   default_member_permissions: "8192",
   options: [
     { name: "ticket", description: "Contact reference from the website notification", type: 3, required: true, min_length: 36, max_length: 36 },

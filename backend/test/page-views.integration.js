@@ -20,13 +20,13 @@ test("real Worker/D1 migration, concurrent UPSERTs, CORS and isolation from Turs
       modules: true, script: output.outputFiles[0].text,
       compatibilityDate: "2026-08-06", compatibilityFlags: ["nodejs_compat"],
       defaultPersistRoot: directory, d1Databases: ["PAGE_VIEWS_DB"],
-      bindings: { TRACK_VISITS: "true", ALLOWED_ORIGINS: "https://nihongo-toolkit.pages.dev" },
+      bindings: { TRACK_VISITS: "true", ALLOWED_ORIGINS: "https://nihongotoolkit.pages.dev" },
       outboundService: () => { throw new Error("No external requests are permitted"); }
     });
     const db = await mf.getD1Database("PAGE_VIEWS_DB");
     await db.exec((await readFile("backend/migrations/page-views/0001_daily_page_views.sql", "utf8")).replace(/\n/g, " "));
     const url = "https://worker.test/api/page-views";
-    const headers = { Origin: "https://nihongo-toolkit.pages.dev", "Content-Type": "application/json" };
+    const headers = { Origin: "https://nihongotoolkit.pages.dev", "Content-Type": "application/json" };
     const options = await mf.dispatchFetch(url, { method: "OPTIONS", headers: { ...headers, "Access-Control-Request-Method": "POST" } });
     assert.equal(options.status, 204);
     assert.equal(options.headers.get("access-control-allow-methods"), "GET, POST, OPTIONS");

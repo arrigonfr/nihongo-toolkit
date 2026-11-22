@@ -170,10 +170,10 @@ export function translateInterface(source, language = currentLanguage()) {
   const es = language === "es";
   const entry = interfaceMessages[source];
   if (entry) return entry[es ? 0 : 1];
-  const pageTitle = source.match(/^(.+) \| Nihongo Toolkit$/);
+  const pageTitle = source.match(/^(.+) \| NihongoToolkit$/);
   if (pageTitle) {
     const title = translateInterface(pageTitle[1], language);
-    if (title !== pageTitle[1]) return `${title} | Nihongo Toolkit`;
+    if (title !== pageTitle[1]) return `${title} | NihongoToolkit`;
   }
   const parenthesized = source.match(/^\((.+)\)$/s);
   if (parenthesized && interfaceMessages[parenthesized[1]]) return `(${translateInterface(parenthesized[1], language)})`;

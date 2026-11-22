@@ -18,7 +18,7 @@ async function runIndexing() {
     });
 
     // List the page or pages you want crawled automatically on deployment
-    const targetUrl = 'https://nihongo-toolkit.pages.dev';
+    const targetUrl = 'https://nihongotoolkit.pages.dev';
 
     console.log(`Sending indexing request for: ${targetUrl}...`);
 

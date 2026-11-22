@@ -39,7 +39,7 @@ test("Gmail MIME preserves Unicode and rejects header injection", () => {
   const raw = gmailMessage(env, contact, { message: "ありがとう！" }, job);
   assert.match(raw, /^[A-Za-z0-9_-]+$/);
   const mime = Buffer.from(raw, "base64url").toString();
-  assert.match(mime, /From: Nihongo Toolkit <support@gmail.com>\r\n/);
+  assert.match(mime, /From: NihongoToolkit <support@gmail.com>\r\n/);
   assert.doesNotMatch(mime, /Message-ID:/i);
   assert.match(emailPart(mime, "text/plain"), /ありがとう！/);
   assert.match(emailPart(mime, "text/html"), /ありがとう！/);
@@ -62,7 +62,7 @@ test("HTML replies escape visitor and staff content and retain readable plain te
   assert.ok(plain.includes(contact.name));
   assert.ok(plain.includes(reply.message));
   assert.ok(mime.endsWith("--nihongo-email-501--\r\n"));
-  assert.equal(Buffer.from(mime.match(/Subject: =\?UTF-8\?B\?([^?]+)/)[1], "base64").toString(), "Nihongo Toolkit: Feedback & ideas");
+  assert.equal(Buffer.from(mime.match(/Subject: =\?UTF-8\?B\?([^?]+)/)[1], "base64").toString(), "NihongoToolkit: Feedback & ideas");
 });
 
 test("contact D1 lifecycle, signed Discord authorization and safe Gmail delivery", { timeout: 60000 }, async (t) => {

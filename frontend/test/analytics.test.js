@@ -9,7 +9,7 @@ import config from "../vite.config.js";
 import { selectDailyKanji } from "../kanji/pages.js";
 
 test("public URLs and tool identifiers round-trip across clean and HTML routes", () => {
-  assert.equal(pageFile("/favicon.svg"), "favicon.svg");
+  assert.equal(pageFile("/favicon.png"), "favicon.png");
   assert.equal(pageFile("/kanji-stroke-orders-license.txt"), "kanji-stroke-orders-license.txt");
   for (const file of ["index.html", "kana.html", "kanji-chizucho.html", "data-sources.html"]) {
     assert.equal(pageFile(`/${publicPath(file)}`), file);
@@ -31,7 +31,7 @@ test("daily kanji rotation skips incomplete records and blank values", () => {
 
 test("deployment metadata and sitemap use final clean URLs and explicit site identity", () => {
   const previousSite = process.env.VITE_SITE_URL;
-  const site = "https://nihongo-toolkit.pages.dev/";
+  const site = "https://nihongotoolkit.pages.dev/";
   const directory = mkdtempSync(join(tmpdir(), "nihon-seo-"));
   try {
     process.env.VITE_SITE_URL = site;
@@ -69,7 +69,7 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
       }
     }
     assert.match(daily, /id="copy-daily-embed"/);
-    assert.match(daily, /data-path="https:\/\/nihongo-toolkit\.pages\.dev\/embed\/kanji-of-the-day"/);
+    assert.match(daily, /data-path="https:\/\/nihongotoolkit\.pages\.dev\/embed\/kanji-of-the-day"/);
     assert.match(widget, /<meta name="robots" content="noindex">/);
     assert.doesNotMatch(widget, /googletagmanager|page-views|helperMenu|study-support/);
     const files = readdirSync(join(directory, "kanji")).filter((file) => file.endsWith(".html"));
@@ -87,7 +87,7 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     assert.ok(!kanjiUrls.includes(new URL("/kanji/氵", site).href));
     assert.ok(!files.includes("氵.html"));
     const page = readFileSync(join(directory, "kanji", "食.html"), "utf8");
-    assert.match(page, /rel="canonical" href="https:\/\/nihongo-toolkit\.pages\.dev\/kanji\/%E9%A3%9F"/);
+    assert.match(page, /rel="canonical" href="https:\/\/nihongotoolkit\.pages\.dev\/kanji\/%E9%A3%9F"/);
     assert.match(page, /<h1><span class="glyph" lang="ja">食<\/span>/);
     assert.match(page, /eat; food/);
     assert.match(page, /ショク/);
@@ -117,22 +117,30 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
         assert.equal(data["@graph"].length, 3);
         const identity = data["@graph"][0];
         assert.equal(identity["@type"], "WebSite");
-        assert.equal(identity.name, "Nihongo Toolkit");
+        assert.equal(identity.name, "NihongoToolkit");
         assert.equal(identity.url, site);
         assert.ok(identity.alternateName.includes(new URL(site).hostname));
         assert.equal(identity.publisher.name, identity.name);
-        assert.equal(identity.publisher.logo.url, `${site}logo.svg`);
+        assert.equal(identity.publisher.logo.url, `${site}favicon.png`);
         assert.notEqual(identity.publisher["@id"], data["@graph"][1]["@id"]);
         assert.notEqual(identity.publisher.logo["@id"], identity["@id"]);
         assert.equal(data["@graph"][2].screenshot, `${site}og-image.png`);
         assert.ok(!/FSRS|Cloud sync|AI-powered/.test(JSON.stringify(data)));
       }
       const meta = (name) => result.tags.find((tag) => (tag.attrs?.property || tag.attrs?.name) === name)?.attrs.content;
-      assert.equal(meta("og:image"), `${site}og-image.png`);
-      assert.equal(meta("twitter:image"), meta("og:image"));
+      assert.equal(meta("twitter:image"), `${site}og-image.png`);
       assert.equal(meta("twitter:card"), "summary_large_image");
-      assert.equal(meta("og:image:width"), "1200");
-      assert.equal(meta("og:image:height"), "630");
+      if (file === "index.html") {
+        assert.equal(meta("og:image"), `${site}og-image.png`);
+        assert.equal(meta("og:image:type"), "image/png");
+        assert.equal(meta("og:title"), "NihongoToolkit");
+        assert.equal(meta("og:image:width"), "1200");
+        assert.equal(meta("og:image:height"), "630");
+      } else {
+        assert.equal(meta("og:image"), `${site}og-image.png`);
+        assert.equal(meta("og:image:width"), "1200");
+        assert.equal(meta("og:image:height"), "630");
+      }
     }
   } finally {
     if (previousSite === undefined) delete process.env.VITE_SITE_URL;
@@ -146,8 +154,9 @@ test("social assets have the dimensions declared in metadata", () => {
   assert.equal(image.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
   assert.equal(image.readUInt32BE(16), 1200);
   assert.equal(image.readUInt32BE(20), 630);
-  const logo = readFileSync(new URL("../public/logo.svg", import.meta.url), "utf8");
-  assert.match(logo, /width="512" height="512"/);
+  const logo = readFileSync(new URL("../public/favicon.png", import.meta.url));
+  assert.equal(logo.readUInt32BE(16), 1024);
+  assert.equal(logo.readUInt32BE(20), 1024);
 });
 
 test("all graph identities and image URLs follow a configured production domain", () => {
@@ -162,10 +171,10 @@ test("all graph identities and image URLs follow a configured production domain"
     assert.equal(website.url, "https://example.com/");
     assert.equal(website["@id"], "https://example.com/#website");
     assert.equal(webpage.isPartOf["@id"], website["@id"]);
-    assert.equal(website.publisher.logo.url, "https://example.com/logo.svg");
+    assert.equal(website.publisher.logo.url, "https://example.com/favicon.png");
     assert.equal(website.publisher.logo.contentUrl, website.publisher.logo.url);
     assert.equal(application.screenshot, "https://example.com/og-image.png");
-    assert.ok(!JSON.stringify(data).includes("nihongo-toolkit.pages.dev"));
+    assert.ok(!JSON.stringify(data).includes("nihongotoolkit.pages.dev"));
   } finally {
     if (previousSite === undefined) delete process.env.VITE_SITE_URL;
     else process.env.VITE_SITE_URL = previousSite;

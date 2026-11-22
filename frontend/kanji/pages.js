@@ -38,7 +38,7 @@ export function selectDailyKanji(visible) {
 }
 
 function document(shell, { title, description, canonical, body }) {
-  return shell.replace("<!-- catalogue-head -->", () => `<title>${escape(title)} | Nihongo Toolkit</title>
+  return shell.replace("<!-- catalogue-head -->", () => `<title>${escape(title)} | NihongoToolkit</title>
 <meta name="description" content="${escape(description)}">
 ${canonical ? `<link rel="canonical" href="${escape(canonical)}">` : ""}`)
     .replace("<!-- catalogue-body -->", () => body);
@@ -91,7 +91,7 @@ ${compounds?.length ? `<section><h2>Example words</h2><ul class="compounds">${co
     `<li><span lang="ja">${related(word)}</span> (${japanese(reading)}) — ${escape(gloss)}</li>`).join("")}</ul></section>` : ""}
 ${tools.length ? `<nav class="tool-links" aria-label="Study tools">${tools.map(([page, label]) =>
     `<a href="/${page}${page === "kanji-chizucho" ? `?kanji=${encodeURIComponent(character)}` : ""}">${label}</a>`).join("")}</nav>` : ""}
-<p>Character and word data from EDRDG’s <a href="https://www.edrdg.org/wiki/KANJIDIC_Project.html">KANJIDIC2</a> and <a href="https://www.edrdg.org/jmdict/j_jmdict.html">JMdict</a>, adapted by Nihongo Toolkit under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.</p>
+<p>Character and word data from EDRDG’s <a href="https://www.edrdg.org/wiki/KANJIDIC_Project.html">KANJIDIC2</a> and <a href="https://www.edrdg.org/jmdict/j_jmdict.html">JMdict</a>, adapted by NihongoToolkit under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.</p>
 </article>`
   });
 }
@@ -142,7 +142,7 @@ function dailyCard(entries, embed = false) {
     <a class="daily-entry-link"${external}>View full kanji entry${embed ? " ↗" : ""}</a></div>
   </div>
   <noscript><p>Enable JavaScript to see today’s kanji, or <a href="${cataloguePath}"${external}>browse the catalogue</a>.</p></noscript>
-  <p class="daily-credits"><a href="${dailyPath}"${external}>Nihongo Toolkit</a> ·
+  <p class="daily-credits"><a href="${dailyPath}"${external}>NihongoToolkit</a> ·
     Data: <a href="https://www.edrdg.org/wiki/KANJIDIC_Project.html"${external}>EDRDG KANJIDIC2</a>
     (<a href="https://creativecommons.org/licenses/by-sa/4.0/"${external}>CC BY-SA 4.0</a>)</p>
   <script type="application/json">${JSON.stringify(entries).replaceAll("<", "\\u003c")}</script>
@@ -190,7 +190,7 @@ export function kanjiCatalogue(site, disabled) {
   const render = (shell, entry) => detail(shell, entry, drawings ??= JSON.parse(readFileSync(new URL("../src/worksheet-strokes.json", import.meta.url), "utf8")), entries, site, disabled);
   const notFound = (shell) => document(shell, {
     title: "Page not found",
-    description: "This Nihongo Toolkit page could not be found.",
+    description: "This NihongoToolkit page could not be found.",
     body: '<h1>Page not found</h1><p><a href="/kanji/">Browse the kanji catalogue</a> or <a href="/">return to all tools</a>.</p>'
   });
 

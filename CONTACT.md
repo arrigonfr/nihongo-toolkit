@@ -5,9 +5,9 @@ Turnstile, saves the contact in **D1**, and posts it to a private **Discord**
 channel. A staff member uses Discord's `/reply` command to send a response
 through **Gmail**. There is no automatic acknowledgement email.
 
-| What | Nihongo Toolkit production value |
+| What | NihongoToolkit production value |
 | --- | --- |
-| Website origin | `https://nihongo-toolkit.pages.dev` |
+| Website origin | `https://nihongotoolkit.pages.dev` |
 | Worker origin | `https://nihongo-toolkit.fragappstore.workers.dev` |
 | Discord Interactions Endpoint URL | `https://nihongo-toolkit.fragappstore.workers.dev/api/discord/contact` |
 | D1 database | `nihongo_toolkit_view` |
@@ -37,7 +37,7 @@ No custom domain or paid Google Workspace account is needed.
 ## 2. Discord: create the private channel and support role
 
 1. In the Discord app, click **+ > Create My Own** in the server sidebar if you
-   need a server. Name it `Nihongo Toolkit Support` or use your existing server.
+   need a server. Name it `NihongoToolkit Support` or use your existing server.
 2. Open **Server Settings > Roles > Create Role**. Name it `Contact Support`.
    Leave its server-wide permissions off and assign the role to **your human
    account** under **Manage Members**. Do not assign it to the bot. Owners and
@@ -149,7 +149,7 @@ No custom domain or paid Google Workspace account is needed.
 ## 7. Cloudflare Turnstile: create a widget for Pages
 
 1. In **Cloudflare > Turnstile**, click **Add widget**. Name it
-   `Nihongo Toolkit Contact`, add hostname `nihongo-toolkit.pages.dev` (no
+   `NihongoToolkit Contact`, add hostname `nihongotoolkit.pages.dev` (no
    `https://` or path), select **Managed**, and create the widget.
 2. Copy both keys from the same widget. The **Site Key** goes to Pages as
    `VITE_TURNSTILE_SITE_KEY`. The **Secret Key** goes to the Worker as
@@ -191,13 +191,13 @@ No custom domain or paid Google Workspace account is needed.
 
 ## 11. Cloudflare Pages: publish and test the complete flow
 
-1. In **Workers & Pages > nihongo-toolkit (Pages) > Settings > Variables and
+1. In **Workers & Pages > nihongotoolkit (Pages) > Settings > Variables and
    secrets**, select **Production** and set the [frontend build variables](#frontend-pages-production-build).
 2. Set `CONTACT_ENABLED` to `"true"` in the Worker's production `vars` and
    deploy again as in step 8. On the Pages project's **Deployments** tab,
    retry the production deployment (or push a new production build) so it picks
    up the build variables. Keep the contact API disabled on Worker previews.
-3. Open [the contact page](https://nihongo-toolkit.pages.dev/contact), submit a
+3. Open [the contact page](https://nihongotoolkit.pages.dev/contact), submit a
    message with an email address you control, and confirm the receipt and
    Discord notification have the same reference.
 4. In the configured channel itself (not in a thread or DM), **select**
@@ -233,7 +233,7 @@ credentials. Never put secret values in Git or a `VITE_*` variable.
 | Name | Value / where to get it | Type | Where to set it |
 | --- | --- | --- | --- |
 | `CONTACT_ENABLED` | `"true"` for live contacts; `"false"` during setup and for previews | Text | `wrangler.jsonc` > `vars` (already declared) |
-| `ALLOWED_ORIGINS` | `https://nihongo-toolkit.pages.dev` (exact origin, no path or trailing slash) | Text | `wrangler.jsonc` > `vars` (already declared) |
+| `ALLOWED_ORIGINS` | `https://nihongotoolkit.pages.dev` (exact origin, no path or trailing slash) | Text | `wrangler.jsonc` > `vars` (already declared) |
 | `PAGE_VIEWS_DB` | Existing D1 database `nihongo_toolkit_view` (step 1) | D1 binding, not text or secret | `wrangler.jsonc` > `d1_databases` (already declared) |
 | `CONTACT_DISCORD_GUILD_ID` | Discord **server** ID (step 2); same ID used in GitHub | Text | `vars` or Worker dashboard |
 | `CONTACT_DISCORD_CHANNEL_ID` | `website-contact` **channel** ID (step 2) | Text | `vars` or Worker dashboard |

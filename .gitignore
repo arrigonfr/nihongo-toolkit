@@ -18,3 +18,4 @@ DEPLOYMENT.md
 backend/data/*export*/
 .vscode/
 docs/
+redirect/

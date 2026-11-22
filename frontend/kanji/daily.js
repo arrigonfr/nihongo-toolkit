@@ -46,7 +46,7 @@ if (copy) {
   const code = document.getElementById("daily-embed-code");
   const status = document.getElementById("daily-copy-status");
   const src = new URL(code.dataset.path, location.origin).href;
-  code.value = `<iframe src="${src}" title="Kanji of the day from Nihongo Toolkit" width="360" height="280" style="max-width:100%;border:0" loading="lazy" referrerpolicy="no-referrer"></iframe>`;
+  code.value = `<iframe src="${src}" title="Kanji of the day from NihongoToolkit" width="360" height="280" style="max-width:100%;border:0" loading="lazy" referrerpolicy="no-referrer"></iframe>`;
   copy.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(code.value);

@@ -7,13 +7,16 @@ import { createServer as createVite, preview } from "vite";
 import { chromium } from "playwright";
 import { createHandler } from "../backend/src/app.js";
 
+// Pages are linked by clean URL (/kana) but may also be served as /kana.html.
+const pagePath = (path) => decodeURIComponent(path).replace(/\.html$/, "");
+const atPage = (origin, file) => (url) => url.origin === origin && pagePath(url.pathname) === pagePath(`/${file}`);
 const root = fileURLToPath(new URL("../frontend", import.meta.url));
 const origins = [];
 const api = createServer(createHandler({ origins, sentenceFallback: async () => [] }));
 api.listen(0, "127.0.0.1");
 await once(api, "listening");
 process.env.VITE_API_BASE_URL = `http://127.0.0.1:${api.address().port}`;
-process.env.VITE_SITE_URL = "https://nihongo-toolkit.pages.dev";
+process.env.VITE_SITE_URL = "https://nihongotoolkit.pages.dev";
 let vite, built, browser;
 try {
   vite = await createVite({ root, server: { host: "127.0.0.1", port: 0, strictPort: false } });
@@ -27,21 +30,27 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
-  const siteName = "日本語道具箱 · Japanese Toolkit · Nihongo Toolkit";
+  const siteName = "NihongoToolkit";
+  const siteUrl = "https://nihongotoolkit.pages.dev/";
   assert.equal(await page.locator('meta[property="og:site_name"]').getAttribute("content"), siteName);
-  assert.deepEqual(await page.locator('script[type="application/ld+json"]').evaluate((script) => JSON.parse(script.textContent)), {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: siteName,
-    alternateName: "Nihongo Toolkit",
-    url: "https://nihongo-toolkit.pages.dev/"
-  });
+  const structuredData = await page.locator('script[type="application/ld+json"]').evaluate((script) => JSON.parse(script.textContent));
+  assert.equal(structuredData["@context"], "https://schema.org");
+  const [website, webpage, application] = structuredData["@graph"];
+  assert.deepEqual([website["@type"], webpage["@type"], application["@type"]], ["WebSite", "WebPage", "SoftwareApplication"]);
+  assert.equal(website.name, siteName);
+  assert.equal(website.url, siteUrl);
+  assert.equal(website["@id"], `${siteUrl}#website`);
+  assert.ok(website.alternateName.includes("nihongotoolkit.pages.dev"));
+  assert.equal(webpage.url, siteUrl);
+  assert.equal(webpage.isPartOf["@id"], website["@id"]);
+  assert.equal(application.name, siteName);
+  assert.equal(application.url, siteUrl);
   const frame = page;
   async function select(file) {
     await page.click("#menuButton");
     await page.locator(`#helperMenu [data-file="${file}"]`).click();
-    await page.waitForURL(`${base}/${file}`);
-    await frame.locator("#colorThemeSelect").waitFor();
+    await page.waitForURL(atPage(base, file));
+    await frame.locator("#colorThemeSelect").waitFor({ state: "attached" });
   }
   async function checkMenuDismissal(tab, content = tab, touch = false) {
     const menu = tab.locator("#helperMenu"), button = tab.locator("#menuButton");
@@ -136,7 +145,7 @@ try {
   assert.equal(await frame.locator("#setting-romaji, #setting-furigana, #setting-audio").count(), 0);
   await frame.getByRole("link", { name: /Put the patterns into practice/ }).click();
   await frame.locator("#startButton").waitFor();
-  assert.equal(new URL(page.url()).pathname, "/katsuyo-renshuu.html");
+  assert.equal(pagePath(new URL(page.url()).pathname), "/katsuyo-renshuu");
   await frame.getByRole("link", { name: /Explore the conjugation reference/ }).click();
   await frame.locator("#wordInput").waitFor();
   const newTabEvent = context.waitForEvent("page");
@@ -144,7 +153,7 @@ try {
   const tab = await newTabEvent;
   await tab.locator("#startButton").waitFor();
   assert.equal(await tab.locator("#helperFrame").count(), 0);
-  assert.equal(decodeURIComponent(new URL(tab.url()).pathname), "/katsuyo-renshuu.html");
+  assert.equal(pagePath(new URL(tab.url()).pathname), "/katsuyo-renshuu");
   assert.equal(await tab.locator("#menuButton").isVisible(), true);
   await tab.close();
 
@@ -196,10 +205,10 @@ try {
     for (const file of files) {
       const response = await navigationPage.goto(`${origin}/${encodeURIComponent(file)}`);
       assert.equal(response.status(), 200);
-      await navigationPage.locator("#colorThemeSelect").waitFor();
+      await navigationPage.locator("#colorThemeSelect").waitFor({ state: "attached" });
       assert.equal(decodeURIComponent(new URL(navigationPage.url()).pathname), `/${file}`);
       assert.equal(await navigationPage.locator("#helperFrame").count(), 0);
-      assert.equal(await navigationPage.locator('link[rel="canonical"]').getAttribute("href"), new URL(file, "https://nihongo-toolkit.pages.dev/").href);
+      assert.equal(await navigationPage.locator('link[rel="canonical"]').getAttribute("href"), new URL(file, "https://nihongotoolkit.pages.dev/").href);
       for (const width of [375, 1280]) {
         await navigationPage.setViewportSize({ width, height: 900 });
         assert.equal(await navigationPage.locator("#menuButton").isVisible(), true);
@@ -213,26 +222,26 @@ try {
     }
     await navigationPage.click("#menuButton");
     await navigationPage.locator('.helper-link[data-file="kana.html"]').click();
-    await navigationPage.waitForURL(`${origin}/${encodeURIComponent("kana.html")}`);
+    await navigationPage.waitForURL(atPage(origin, "kana.html"));
     await navigationPage.reload();
-    await navigationPage.locator("#colorThemeSelect").waitFor();
+    await navigationPage.locator("#colorThemeSelect").waitFor({ state: "attached" });
     await navigationPage.goBack();
-    assert.equal(decodeURIComponent(new URL(navigationPage.url()).pathname), `/${files.at(-1)}`);
+    assert.equal(pagePath(new URL(navigationPage.url()).pathname), pagePath(`/${files.at(-1)}`));
     const sitemap = await (await navigationPage.request.get(`${origin}/sitemap.xml`)).text();
     const locations = [...sitemap.matchAll(/<loc>(.*?)<\/loc>/g)].map((match) => decodeURIComponent(new URL(match[1]).pathname));
     assert.ok(locations.includes("/kanji/"));
     assert.ok(locations.includes("/kanji/食"));
     assert.deepEqual(locations.filter((path) => !path.startsWith("/kanji/")).sort(),
       ["/", "/data-sources", "/kanji-of-the-day", ...files.map((file) => `/${file.slice(0, -5)}`)].sort());
-    assert.match(await (await navigationPage.request.get(`${origin}/robots.txt`)).text(), /Sitemap: https:\/\/nihongo-toolkit.pages.dev\/sitemap.xml/);
+    assert.match(await (await navigationPage.request.get(`${origin}/robots.txt`)).text(), /Sitemap: https:\/\/nihongotoolkit.pages.dev\/sitemap.xml/);
     await navigationPage.goto(`${origin}/index.html`);
     await navigationPage.waitForURL(`${origin}/`);
     assert.equal(await navigationPage.locator('.dashboard-link[href="/kanji/"]').count(), 1);
     for (const file of files) {
       await navigationPage.click("#menuButton");
       await navigationPage.locator(`#helperMenu .helper-link[data-file="${file}"]`).click();
-      await navigationPage.waitForURL(`${origin}/${file}`);
-      await navigationPage.locator("#colorThemeSelect").waitFor();
+      await navigationPage.waitForURL(atPage(origin, file));
+      await navigationPage.locator("#colorThemeSelect").waitFor({ state: "attached" });
       for (const width of [375, 1280]) {
         await navigationPage.setViewportSize({ width, height: 900 });
         await navigationPage.click("#menuButton");
@@ -249,7 +258,7 @@ try {
     const touch = await touchContext.newPage();
     touch.on("pageerror", (error) => errors.push(error.message));
     await touch.goto(`${origin}/${encodeURIComponent("shiritori.html")}`);
-    await touch.locator("#colorThemeSelect").waitFor();
+    await touch.locator("#colorThemeSelect").waitFor({ state: "attached" });
     await touch.locator("#menuButton").tap();
     await checkMenuDismissal(touch, touch, true);
     await touch.goto(origin);
