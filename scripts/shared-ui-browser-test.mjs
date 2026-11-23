@@ -32,6 +32,8 @@ try {
     assert.equal(await page.locator(".study-toolbar .study-support").count(), 1);
     assert.equal(await page.locator('a.helper-link[data-file="faq.html"]').getAttribute("aria-current"), "page");
     assert.ok(await page.locator(".faq").textContent().then((text) => text.includes("xtsu") && text.includes("xya")));
+    assert.ok(await page.locator(".faq details summary").first().evaluate((element) => parseFloat(getComputedStyle(element).fontSize)) >= 16, "FAQ questions remain readable");
+    assert.ok(await page.locator(".faq-answer p").first().evaluate((element) => parseFloat(getComputedStyle(element).fontSize)) >= 16, "FAQ answers remain readable");
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `FAQ fits at ${width}px`);
     const answer = page.locator("details").filter({ hasText: "Why are some settings unavailable?" });
     await answer.locator("summary").focus();

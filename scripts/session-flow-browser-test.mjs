@@ -60,6 +60,10 @@ try {
     if (["goi", "kana", "imi", "yomi"].includes(file)) assert.equal(await page.locator("#startError").isVisible(), false, `${file} initial error hidden`);
     for (const width of [360, 1280]) {
       await page.setViewportSize({ width, height: 900 });
+      if (["kana", "imi", "yomi"].includes(file)) {
+        assert.ok(await page.locator(".stat-label").first().evaluate((node) => parseFloat(getComputedStyle(node).fontSize)) >= 13, `${file} statistics labels remain readable`);
+        assert.ok(await page.locator("#sessionStatus").evaluate((node) => parseFloat(getComputedStyle(node).fontSize)) >= 13, `${file} session status remains readable`);
+      }
       if (["goi", "kotoba-sagashi", "shiritori"].includes(file)) {
         assert.equal(await page.locator("#settingsPanel > summary").evaluate((node) => getComputedStyle(node).paddingLeft), "20px", `${file} settings heading inset at ${width}`);
       }
