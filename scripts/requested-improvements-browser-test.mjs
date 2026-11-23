@@ -57,7 +57,7 @@ try {
     assert.ok(Math.abs(menu.y + menu.height / 2 - theme.y - theme.height / 2) < 2);
     await page.click("#menuButton");
     assert.equal(await page.locator("#helperMenu > a .helper-name").first().textContent(), "Home");
-    assert.equal(await page.locator(".home-link .helper-icon").textContent(), "家");
+    assert.equal(await page.locator(".home-link .helper-icon img").getAttribute("src"), "/logo-mark.webp");
     await page.keyboard.press("Escape");
     await page.screenshot({ path: `/tmp/nihon-header-${width}.png` });
     await page.click("#startSessionButton");

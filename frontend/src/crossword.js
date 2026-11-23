@@ -185,8 +185,8 @@ import {
       <div class="cw-shell">
         <header class="cw-header">
           <a class="cw-brand" href="#top" id="brandLink" aria-label="Pazuru Japanese Crossword">
-            <span class="cw-brand-mark" aria-hidden="true">謎</span>
-            <span class="cw-brand-name">Pazuru<span class="cw-brand-note">at NihongoToolkit</span></span>
+            <span class="cw-brand-mark" aria-hidden="true"><img src="/tool-icons/pazuru.webp" alt=""></span>
+            <span class="cw-brand-name">Pazuru<span class="cw-brand-note">NihongoToolkit</span></span>
           </a>
             <button class="cw-icon-btn" id="themeCycleBtn" type="button" aria-label="Switch appearance theme">◐</button>
         </header>

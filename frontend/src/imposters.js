@@ -13,7 +13,7 @@ const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "
 const options = (values) => values.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
 const modes = [["practice", "Practice"], ["timed", "Timed Challenge"], ["high", "High Score"], ["sudden", "Sudden Death"], ["review", "Mistake Review"]];
 const variants = [["kanji-reading", "Kanji → Readings"], ["reading-kanji", "Reading → Kanji"]];
-root.innerHTML = `<div class="shell imposters-shell"><header><div class="brand"><span class="brand-mark" lang="ja">似</span><span class="brand-name">Kanji Kuizu<span class="brand-note">at NihongoToolkit</span></span></div><button id="themeButton" type="button" aria-label="Toggle theme"></button></header>
+root.innerHTML = `<div class="shell imposters-shell"><header><div class="brand"><span class="brand-mark" aria-hidden="true"><img src="/tool-icons/kanji-kuizu.webp" alt=""></span><span class="brand-name">Kanji Kuizu<span class="brand-note">NihongoToolkit</span></span></div><button id="themeButton" type="button" aria-label="Toggle theme"></button></header>
 <section class="intro"><span class="eyebrow">Kanji Imposters</span><h1>Kanji Kuizu <span lang="ja">漢字クイズ</span></h1></section>
 <details class="card game-settings imposters-settings" id="settings" open><summary>Game settings</summary><div class="settings-body"><form id="settingsForm">
 <fieldset class="settings-section"><legend>Session</legend><div class="settings-grid">

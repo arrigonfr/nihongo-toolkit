@@ -136,6 +136,43 @@ export function translationWriter(db) {
   };
 }
 
+const SYNC_COLUMNS = ["kind", "item_id", "lang", "value", "method", "source", "license", "attribution", "source_hash", "updated_at"];
+// Rows are re-sent from this far before the watermark, so writes whose timestamps were taken just before a sync aren't missed.
+const SYNC_OVERLAP_MS = 60_000;
+
+// The local database is the source of truth; rows are only ever upserted, never deleted.
+export function pendingTranslationSync(db, destination) {
+  db.exec("CREATE TABLE IF NOT EXISTS translation_sync (destination TEXT PRIMARY KEY, synced_until TEXT NOT NULL)");
+  const last = db.prepare("SELECT synced_until FROM translation_sync WHERE destination = ?").get(destination)?.synced_until;
+  const since = last ? new Date(Date.parse(last) - SYNC_OVERLAP_MS).toISOString() : "";
+  // The write lock waits for open write transactions (e.g. import-human) so none commit older timestamps after this snapshot.
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    return db.prepare(`SELECT ${SYNC_COLUMNS.join(", ")} FROM content_translations WHERE updated_at > ?
+      ORDER BY updated_at, kind, item_id, lang`).all(since);
+  } finally { db.exec("COMMIT"); }
+}
+
+export async function syncTranslations(db, client, destination, { batchSize = 200, onBatch } = {}) {
+  const rows = pendingTranslationSync(db, destination);
+  await client.executeMultiple(readFileSync(new URL("../src/translations.sql", import.meta.url), "utf8"));
+  const sql = `INSERT INTO content_translations (${SYNC_COLUMNS.join(", ")}) VALUES (${SYNC_COLUMNS.map(() => "?").join(", ")})
+    ON CONFLICT(kind, item_id, lang) DO UPDATE SET ${SYNC_COLUMNS.slice(3).map((column) => `${column} = excluded.${column}`).join(", ")}`;
+  const save = db.prepare(`INSERT INTO translation_sync VALUES (?, ?)
+    ON CONFLICT(destination) DO UPDATE SET synced_until = excluded.synced_until`);
+  for (let start = 0; start < rows.length; start += batchSize) {
+    const batch = rows.slice(start, start + batchSize);
+    await client.batch(batch.map((row) => ({ sql, args: SYNC_COLUMNS.map((column) => row[column]) })), "write");
+    save.run(destination, batch.at(-1).updated_at);
+    onBatch?.(start + batch.length, rows.length);
+  }
+  const local = db.prepare("SELECT kind, lang, count(*) AS n FROM content_translations GROUP BY 1, 2 ORDER BY 1, 2").all();
+  const remote = (await client.execute("SELECT kind, lang, count(*) AS n FROM content_translations GROUP BY 1, 2 ORDER BY 1, 2")).rows;
+  const mismatches = local.filter((row) => Number(remote.find((other) => other.kind === row.kind && other.lang === row.lang)?.n ?? 0) !== row.n)
+    .map((row) => `${row.kind} ${row.lang}`);
+  return { synced: rows.length, mismatches };
+}
+
 export function translationStatus(db, kind, lang) {
   const saved = new Map(db.prepare("SELECT item_id, method, source_hash FROM content_translations WHERE kind = ? AND lang = ?")
     .all(kind, lang).map((row) => [row.item_id, row]));

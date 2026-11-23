@@ -9,7 +9,7 @@ import { parseArgs } from "node:util";
 import { databasePath } from "../src/database.js";
 import {
   LANGUAGES, KINDS, ensureTranslationSchema, translationItem, translationItems, translationStatus,
-  translationWriter, translateGemmaPrompt, splitModelOutput, checkTranslation, parseTatoebaLinks, parseTatoebaSentences, pickTatoebaTranslation
+  translationWriter, translateGemmaPrompt, pendingTranslationSync, syncTranslations, splitModelOutput, checkTranslation, parseTatoebaLinks, parseTatoebaSentences, pickTatoebaTranslation
 } from "./translation-lib.js";
 
 const usage = `Usage: npm run db:translations -- <command> [options]
@@ -21,6 +21,7 @@ const usage = `Usage: npm run db:translations -- <command> [options]
                                    Validate provider JSONL results (export rows plus "value": [...]) and store them
   translate --lang es --kind sense [--model translategemma:4b] [--concurrency 4] [--limit N]
                                    Machine-translate pending items one by one with a local Ollama model (free, resumable)
+  sync-turso [--apply]             Upsert translations changed since the last sync into TURSO_DATABASE_URL (dry run by default)
 Options: --db PATH (default DATABASE_PATH or backend/data/nihon.sqlite)`;
 
 const { values: options, positionals } = parseArgs({
@@ -29,7 +30,7 @@ const { values: options, positionals } = parseArgs({
     db: { type: "string", default: databasePath }, lang: { type: "string" }, kind: { type: "string" },
     out: { type: "string" }, "chunk-size": { type: "string", default: "500" }, limit: { type: "string" },
     source: { type: "string" }, model: { type: "string", default: "translategemma:4b" },
-    concurrency: { type: "string", default: "4" }, ollama: { type: "string", default: "http://127.0.0.1:11434" }, help: { type: "boolean" }
+    concurrency: { type: "string", default: "4" }, ollama: { type: "string", default: "http://127.0.0.1:11434" }, help: { type: "boolean" }, apply: { type: "boolean" }
   }
 });
 const [command, ...files] = positionals;
@@ -235,6 +236,31 @@ async function translateLocal() {
   await Promise.all(Array.from({ length: positiveInteger("concurrency", options.concurrency) }, worker));
 }
 
+async function syncTurso() {
+  const url = process.env.TURSO_DATABASE_URL;
+  if (!url) throw new Error("TURSO_DATABASE_URL is required (backend/.env or the environment)");
+  const destination = createHash("sha256").update(new URL(url.replace(/^libsql:/, "https:")).origin).digest("hex");
+  if (!options.apply) {
+    const rows = pendingTranslationSync(db, destination);
+    const counts = {};
+    for (const row of rows) counts[`${row.kind} ${row.lang}`] = (counts[`${row.kind} ${row.lang}`] ?? 0) + 1;
+    console.log(`${rows.length} translations to upsert ${JSON.stringify(counts)}. Dry run; pass --apply to write to Turso.`);
+    return;
+  }
+  if (!process.env.TURSO_AUTH_TOKEN) throw new Error("TURSO_AUTH_TOKEN is required");
+  const { createClient } = await import("@libsql/client/web");
+  const client = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN, intMode: "number" });
+  try {
+    const { synced, mismatches } = await syncTranslations(db, client, destination, {
+      onBatch: (done, total) => { if (done === total || done % 5000 < 200) console.log(`${done}/${total} upserted`); } });
+    console.log(`${synced} translations upserted.`);
+    if (mismatches.length) {
+      console.error(`Row counts differ from Turso for: ${mismatches.join(", ")}. Rerun; if it persists, delete this destination from translation_sync for a full resync.`);
+      process.exitCode = 1;
+    } else console.log("Turso row counts match the local database.");
+  } finally { client.close(); }
+}
+
 function report() {
   for (const kind of KINDS) for (const lang of LANGUAGES) {
     const { counts } = translationStatus(db, kind, lang);
@@ -250,5 +276,6 @@ try {
   else if (command === "export") await exportPending();
   else if (command === "apply") await applyResults();
   else if (command === "translate") await translateLocal();
+  else if (command === "sync-turso") await syncTurso();
   else { console.error(usage); process.exitCode = 1; }
 } finally { db.close(); }

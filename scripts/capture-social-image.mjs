@@ -34,7 +34,7 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.screenshot({ path: "/tmp/nihon-social-home-mobile.png" });
   await page.setViewportSize({ width: 512, height: 512 });
-  await page.goto(`${base}/favicon.png`);
+  await page.goto(`${base}/logo.png`);
   await page.screenshot({ path: "/tmp/nihon-social-logo.png" });
 } finally {
   await browser?.close();

@@ -1,0 +1,45 @@
+body[data-mascot="home"] {
+  --mascot-image: url("/mascot.webp");
+  --mascot-aspect-ratio: 440 / 622;
+}
+body[data-mascot="kana"] { --mascot-image: url("/mascot-kana.webp"); }
+body[data-mascot="yomi"] { --mascot-image: url("/mascot-yomi.webp"); }
+body[data-mascot="imi"] { --mascot-image: url("/mascot-imi.webp"); }
+body[data-mascot="goi"] { --mascot-image: url("/mascot-goi.webp"); }
+body[data-mascot="katsuyo-renshuu"] { --mascot-image: url("/mascot-katsuyo-renshuu.webp"); }
+body[data-mascot="kana"], body[data-mascot="goi"] {
+  --mascot-aspect-ratio: 864 / 1232;
+}
+body[data-mascot]::before {
+  content: "";
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  height: 100vh;
+  height: 100dvh;
+  max-width: 100vw;
+  aspect-ratio: var(--mascot-aspect-ratio, 864 / 1221);
+  z-index: -1;
+  pointer-events: none;
+  background: var(--mascot-image) right bottom / cover no-repeat;
+  opacity: var(--mascot-opacity, .2);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 40%);
+  mask-image: linear-gradient(to right, transparent, #000 40%);
+}
+:root[data-theme="dark"] { --mascot-opacity: .14; }
+@media (max-width: 650px) {
+  body[data-mascot]::before {
+    background-position: 55% bottom;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 15%);
+    mask-image: linear-gradient(to right, transparent, #000 15%);
+  }
+}
+@supports (background: color-mix(in srgb, red 50%, transparent)) {
+  body[data-mascot] :is(.quiz-card, .practice-layout .panel),
+  body[data-mascot="goi"] :is(.settings-panel, .session-stats) {
+    background: color-mix(in srgb, var(--card) 78%, transparent);
+  }
+  body[data-mascot="katsuyo-renshuu"] .quiet-panel {
+    background: color-mix(in srgb, var(--soft) 78%, transparent);
+  }
+}

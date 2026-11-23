@@ -53,7 +53,7 @@ const directionNames = { "0,1": "right →", "0,-1": "left ←", "1,0": "down �
 const directionLabels = { forward: "Right → · Down ↓", vertical: "Right → · Down ↓ · Up ↑", all: "All eight directions", reverse: "Backward & diagonal" };
 
 $("wordSearchRoot").innerHTML = `<div class="shell">
-  <header><div class="brand"><span class="brand-mark" lang="ja">探</span><span class="brand-name">Kotoba Sagashi<span class="brand-note">at NihongoToolkit</span></span></div><button id="themeButton" aria-label="Toggle theme" type="button">◐</button></header>
+  <header><div class="brand"><span class="brand-mark" aria-hidden="true"><img src="/tool-icons/kotoba-sagashi.webp" alt=""></span><span class="brand-name">Kotoba Sagashi<span class="brand-note">NihongoToolkit</span></span></div><button id="themeButton" aria-label="Toggle theme" type="button">◐</button></header>
   <section class="intro"><span class="eyebrow">A little discovery, every day</span><h1>Find a word.<br><span>Make it yours.</span></h1><p>A quiet corner for your Japanese. Follow the characters, uncover familiar words, and discover a few new ones.</p></section>
   <details id="settingsPanel" class="card puzzle-settings" open><summary>Puzzle settings</summary><div class="settings-body"><p class="small">Valid settings save automatically and apply to your next puzzle. The top reading, audio and appearance controls stay live. Mode overrides are described below.</p><form id="settingsForm"></form></div></details>
   <div class="toolbar"><div><span class="tag" id="modeBadge">Classic</span></div><div class="actions"><button id="reviewButton" type="button">Notebook <span id="reviewCount">0</span></button></div></div>

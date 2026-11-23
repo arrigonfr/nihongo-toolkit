@@ -60,7 +60,7 @@ for (let from = 5; from >= 2; from--) for (let to = from - 1; to >= 1; to--) lev
 const availability = { limited: "Limited", unlimited: "Unlimited", disabled: "Disabled" };
 
 $("memoryRoot").innerHTML = `<div class="shell">
-  <header><div class="brand"><span class="brand-mark" lang="ja">合</span><span class="brand-name">Eawase<span class="brand-note">at NihongoToolkit</span></span></div><button id="themeButton" type="button" aria-label="Toggle theme">◐</button></header>
+  <header><div class="brand"><span class="brand-mark" aria-hidden="true"><img src="/tool-icons/eawase.webp" alt=""></span><span class="brand-name">Eawase<span class="brand-note">NihongoToolkit</span></span></div><button id="themeButton" type="button" aria-label="Toggle theme">◐</button></header>
   <section class="intro"><span class="eyebrow">絵合わせ · Japanese Memory</span><h1>A little memory.<br><span>A lasting connection.</span></h1><p>Turn a card. Recognize a sound. Bring two pieces of Japanese together, one pair at a time.</p></section>
   <details id="settingsPanel" class="panel puzzle-settings" open><summary>Puzzle settings</summary><div class="settings-body">
     <p class="small">Valid settings save automatically and apply to your next puzzle. The top reading, audio and appearance controls stay live. Script conversions are recognition exercises, not alternative standard spellings.</p>

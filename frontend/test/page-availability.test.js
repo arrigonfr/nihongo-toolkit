@@ -13,7 +13,7 @@ test("page replacement removes original HTML and rejects leaked worksheet import
   const original = '<script src="./src/resources.js"></script><p>Full content</p>';
   const html = plugin.transformIndexHtml.handler(original, { filename: "/frontend/shiryo.html" });
   assert.ok(!html.includes("resources.js") && !html.includes("Full content"));
-  assert.equal((html.match(/<img /g) || []).length, 1);
+  assert.equal((html.match(/<img (?!src="\/tool-icons\/)/g) || []).length, 1);
   assert.match(html, /cropped, watermarked sample/);
   assert.match(html, /src="\.\/src\/shiryo-preview.js"/);
   assert.match(html, /id="sheetPicker"/);

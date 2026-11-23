@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { createDatabase } from "../src/database.js";
 import { insertKanjis, insertWords } from "../scripts/import-data.js";
 import {
-  checkTranslation, ensureTranslationSchema, pickTatoebaTranslation, splitModelOutput, parseTatoebaLinks, parseTatoebaSentences,
+  checkTranslation, ensureTranslationSchema, syncTranslations, pickTatoebaTranslation, splitModelOutput, parseTatoebaLinks, parseTatoebaSentences,
   translationItem, translationItems, translationStatus, translationWriter, validateTranslation
 } from "../scripts/translation-lib.js";
 
@@ -91,4 +92,31 @@ test("machine output checks dedupe glosses and reject garbled or incomplete text
   assert.equal(checkTranslation(sentence("Hi! How are you?"), ["Hola, ¿cómo estás?"]).issue, null, "merged sentences are kept");
   assert.equal(checkTranslation(sentence("They love each other."), ["Se aman."]).issue, null);
   assert.equal(checkTranslation(sentence("I see."), ["Ya veo ya veo ya veo."]).issue, "repetition loop");
+});
+
+test("Turso sync upserts only rows changed since the last sync, including human replacements", async () => {
+  const db = fixture(), remote = new DatabaseSync(":memory:");
+  const client = {
+    executeMultiple: async (sql) => remote.exec(sql),
+    execute: async (sql) => ({ rows: remote.prepare(sql).all() }),
+    batch: async (statements) => {
+      remote.exec("BEGIN");
+      for (const { sql, args } of statements) remote.prepare(sql).run(...args);
+      remote.exec("COMMIT");
+    }
+  };
+  const write = translationWriter(db);
+  const kanji = translationItem(db, "kanji", "日"), sense = translationItem(db, "sense", "1:0");
+  write({ item: kanji, lang: "es", value: ["día"], method: "machine", source: "model" });
+  write({ item: sense, lang: "pt", value: ["Japão"], method: "machine", source: "model" });
+  assert.deepEqual(await syncTranslations(db, client, "turso", { batchSize: 1 }), { synced: 2, mismatches: [] });
+
+  db.prepare("UPDATE content_translations SET updated_at = ?").run(new Date(Date.now() - 300_000).toISOString());
+  db.prepare("UPDATE translation_sync SET synced_until = ?").run(new Date(Date.now() - 240_000).toISOString());
+  write({ item: kanji, lang: "es", value: ["día", "sol"], method: "human", source: "KANJIDIC2" });
+  assert.deepEqual(await syncTranslations(db, client, "turso"), { synced: 1, mismatches: [] });
+  assert.deepEqual({ ...remote.prepare("SELECT value, method FROM content_translations WHERE item_id = '日'").get() },
+    { value: '["día","sol"]', method: "human" });
+  assert.equal(remote.prepare("SELECT count(*) AS n FROM content_translations").get().n, 2);
+  db.close(); remote.close();
 });

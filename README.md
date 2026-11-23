@@ -1143,7 +1143,16 @@ npm run db:translations -- import-human
 npm run db:translations -- export --lang es --kind sense --out translations/es --chunk-size 500
 npm run db:translations -- apply --source "provider/model" translations/es/*.results.jsonl
 npm run db:translations -- translate --lang pt --kind sense --limit 1000 --concurrency 4
+npm run db:translations -- sync-turso            # dry run: rows to upsert by kind and language
+npm run db:translations -- sync-turso --apply    # needs TURSO_DATABASE_URL and a write-capable TURSO_AUTH_TOKEN
 ```
+
+`sync-turso` creates `content_translations` in Turso if needed and upserts rows
+changed since the last sync to that database (tracked locally in `translation_sync`;
+the first run sends everything). The local database is the source of truth: a human
+translation replacing a machine one, or a retranslated stale row, overwrites the
+Turso copy. It ends by comparing row counts per kind and language. `db:sync-turso`
+does not include translations.
 
 `import-human` copies KANJIDIC2 meanings and direct Japanese→Spanish/Portuguese
 Tatoeba translations (lowest translation ID, translator credited); downloads are

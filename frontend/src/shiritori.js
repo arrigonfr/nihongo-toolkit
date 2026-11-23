@@ -128,7 +128,7 @@ function settingsMarkup() {
   </div>`;
 }
 $("shiritoriRoot").innerHTML = `<div class="shell">
-  <header><div class="brand"><span class="brand-mark" lang="ja">し</span><span class="brand-name">Shiritori<span class="brand-note">at NihongoToolkit</span></span></div><button id="themeButton" type="button" aria-label="Toggle light and dark mode">◐</button></header>
+  <header><div class="brand"><span class="brand-mark" aria-hidden="true"><img src="/tool-icons/shiritori.webp" alt=""></span><span class="brand-name">Shiritori<span class="brand-note">NihongoToolkit</span></span></div><button id="themeButton" type="button" aria-label="Toggle light and dark mode">◐</button></header>
   <section class="intro"><span class="eyebrow">A little play. A little Japanese.</span><h1>Shiritori <span lang="ja">しりとり</span> <button id="helpButton" class="help-button" type="button" aria-label="How to play Shiritori">?</button></h1><p>One word leads to another. Follow the last sound, discover new words, and see how far your Japanese can take you.</p></section>
   <details id="settingsPanel" class="card game-settings" open><summary>Game settings</summary><div class="settings-body">${settingsMarkup()}</div></details>
   <div class="toolbar"><span id="modeBadge" class="tag">Classic · vs. computer</span><button id="reviewButton" type="button">Review list <span id="reviewCount">0</span></button><button id="newGame" class="primary" type="button">Start game →</button></div>

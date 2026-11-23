@@ -2,9 +2,9 @@ import "./practice.css";
 import "./answer-feedback.css";
 
 const tools = {
-  kana: { name: "Kana", icon: "あ", description: "Hiragana and katakana", heading: "Make kana second nature." },
-  meaning: { name: "Imi", icon: "意", description: "Kanji meaning practice", heading: "Find meaning in every kanji." },
-  reading: { name: "Yomi", icon: "読", description: "Kanji reading practice", heading: "Give every kanji a voice." }
+  kana: { name: "Kana", icon: "あ", image: "kana", description: "Hiragana and katakana", heading: "Make kana second nature." },
+  meaning: { name: "Imi", icon: "意", image: "imi", description: "Kanji meaning practice", heading: "Find meaning in every kanji." },
+  reading: { name: "Yomi", icon: "読", image: "yomi", description: "Kanji reading practice", heading: "Give every kanji a voice." }
 };
 
 export function renderPractice(kind) {
@@ -30,7 +30,7 @@ export function renderPractice(kind) {
   document.getElementById("practiceRoot").innerHTML = `
     <div class="shell">
       <header>
-        <a class="brand" href="#" aria-label="${tool.name} at NihongoToolkit home"><span class="brand-mark" aria-hidden="true">${tool.icon}</span><span class="brand-name">${tool.name}<span class="brand-note">at NihongoToolkit</span></span></a>
+        <a class="brand" href="#" aria-label="${tool.name} at NihongoToolkit home"><span class="brand-mark" aria-hidden="true"><img src="/tool-icons/${tool.image}.webp" alt=""></span><span class="brand-name">${tool.name}<span class="brand-note">NihongoToolkit</span></span></a>
         <button class="icon-button" id="themeButton" type="button" aria-label="Toggle theme">◐</button>
       </header>
       <main>

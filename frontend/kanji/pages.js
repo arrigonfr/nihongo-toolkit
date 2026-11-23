@@ -150,6 +150,8 @@ function dailyCard(entries, embed = false) {
 }
 
 function dailyPage(shell, entries, site) {
+  shell = shell.replace('<span class="brand-mark" aria-hidden="true"><img src="/tool-icons/kanji-catalogue.webp"', '<span class="brand-mark" aria-hidden="true"><img src="/tool-icons/kanji-of-the-day.webp"')
+    .replace('<span class="brand-name">Kanji catalogue', '<span class="brand-name">Kanji of the Day');
   return document(shell, {
     title: "Kanji of the Day",
     description: "Learn one common Japanese kanji each day, with readings, meanings and a free widget for your site.",

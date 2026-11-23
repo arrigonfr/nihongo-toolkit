@@ -121,7 +121,7 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
         assert.equal(identity.url, site);
         assert.ok(identity.alternateName.includes(new URL(site).hostname));
         assert.equal(identity.publisher.name, identity.name);
-        assert.equal(identity.publisher.logo.url, `${site}favicon.png`);
+        assert.equal(identity.publisher.logo.url, `${site}logo.png`);
         assert.notEqual(identity.publisher["@id"], data["@graph"][1]["@id"]);
         assert.notEqual(identity.publisher.logo["@id"], identity["@id"]);
         assert.equal(data["@graph"][2].screenshot, `${site}og-image.png`);
@@ -154,7 +154,7 @@ test("social assets have the dimensions declared in metadata", () => {
   assert.equal(image.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
   assert.equal(image.readUInt32BE(16), 1200);
   assert.equal(image.readUInt32BE(20), 630);
-  const logo = readFileSync(new URL("../public/favicon.png", import.meta.url));
+  const logo = readFileSync(new URL("../public/logo.png", import.meta.url));
   assert.equal(logo.readUInt32BE(16), 1024);
   assert.equal(logo.readUInt32BE(20), 1024);
 });
@@ -171,7 +171,7 @@ test("all graph identities and image URLs follow a configured production domain"
     assert.equal(website.url, "https://example.com/");
     assert.equal(website["@id"], "https://example.com/#website");
     assert.equal(webpage.isPartOf["@id"], website["@id"]);
-    assert.equal(website.publisher.logo.url, "https://example.com/favicon.png");
+    assert.equal(website.publisher.logo.url, "https://example.com/logo.png");
     assert.equal(website.publisher.logo.contentUrl, website.publisher.logo.url);
     assert.equal(application.screenshot, "https://example.com/og-image.png");
     assert.ok(!JSON.stringify(data).includes("nihongotoolkit.pages.dev"));
