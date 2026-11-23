@@ -628,6 +628,14 @@ body details .cw-toggle-group .cw-reset-setting legend + small { clear: both; }
   transition: none;
 }
 
+@media (max-width: 760px) {
+  .cw-cell-popover-inline {
+    position: sticky;
+    top: 0;
+    margin: 0 0 12px;
+  }
+}
+
 .cw-popover-top {
   display: flex;
   align-items: center;
@@ -1061,6 +1069,8 @@ body details .cw-toggle-group .cw-reset-setting legend + small { clear: both; }
     order: unset;
   }
 }
+
+.cw-board-panel.clue-popup-open .cw-active-clue-bar { display: none; }
 
 @media (max-width: 900px) {
   .cw-board-panel.popover-open .cw-active-clue-bar { display: none; }

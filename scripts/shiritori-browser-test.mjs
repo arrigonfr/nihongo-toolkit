@@ -38,6 +38,19 @@ try {
   assert.equal(await page.locator("header #furiganaQuickToggle, header #romajiQuickToggle, header #audioQuickToggle, header #themeButton, header #colorThemeSelect").count(), 5);
   assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), true);
   assert.equal(await page.locator(".session-setup #settingsPanel").count(), 1);
+  await page.selectOption("#setting-hints", "disabled");
+  await page.uncheck("#setting-reveal");
+  await page.click('[data-mode="relaxed"]');
+  for (const id of ["hints", "hintLimit", "reveal", "revealLimit"]) {
+    assert.equal(await page.locator(`#setting-${id}`).isDisabled(), true);
+    assert.equal(await page.locator(`#setting-${id}-availability`).isVisible(), true);
+  }
+  await page.reload();
+  await page.click('[data-mode="classic"]');
+  assert.equal(await page.locator("#setting-hints").inputValue(), "disabled", "Relaxed mode preserves the saved hint preference");
+  assert.equal(await page.locator("#setting-reveal").isChecked(), false, "Relaxed mode preserves the saved reveal preference");
+  await page.selectOption("#setting-hints", "limited");
+  await page.check("#setting-reveal");
   assert.equal(await page.locator("#modeNote").count(), 0);
   for (const width of [375, 768, 1280]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -282,7 +295,12 @@ try {
   await page.locator('#results [data-option="answers"]').check();
   assert.match(decodeURIComponent(await page.locator("#results .game-export-preview").getAttribute("src")), /御社/);
   await page.locator('#results .game-export-dialog button[aria-label="Close"]').click();
-  await reset({ mode: "relaxed" });
+  await reset({ mode: "relaxed", hints: "disabled", reveal: false, revealLimit: 0 });
+  for (let i = 0; i < 2; i++) {
+    await page.click("#revealButton");
+    await page.waitForFunction(() => !document.querySelector("#hintPanel").hidden && !document.querySelector("#revealButton").disabled);
+    assert.equal(await page.locator("#revealButton").textContent(), "Reveal Answer");
+  }
   await play("ごりら"); await play("らっぱ"); await play("ぱん");
   assert.equal(await page.locator("#results").isVisible(), false, "Relaxed retries forbidden endings");
   assert.match(await page.locator("#feedback").textContent(), /ん \/ ン/);

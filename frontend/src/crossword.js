@@ -859,6 +859,20 @@ import {
     renderGridCluePopover();
   }
 
+  const narrowGridViewport = window.matchMedia("(max-width: 760px)");
+
+  function positionInlineClue() {
+    const popEl = document.getElementById("gridCluePopover");
+    const gridScroll = document.getElementById("gridScrollWrap");
+    if (!popEl?.classList.contains("cw-cell-popover-inline") || !gridScroll) return;
+    if (narrowGridViewport.matches) {
+      if (popEl.nextElementSibling !== gridScroll) gridScroll.before(popEl);
+    } else if (gridScroll.nextElementSibling !== popEl) {
+      gridScroll.after(popEl);
+    }
+  }
+  narrowGridViewport.addEventListener("change", positionInlineClue);
+
   function renderGridCluePopover() {
     const popEl = document.getElementById("gridCluePopover");
     const stageEl = document.getElementById("gridStage");
@@ -870,9 +884,10 @@ import {
     const boardPanel = popEl.closest(".cw-board-panel");
     const inSquare = state.settings.inputStyle === "cell";
     popEl.classList.toggle("cw-cell-popover-inline", inSquare);
-    if (inSquare && popEl.parentElement === stageEl) stageEl.closest(".cw-grid-scroll").after(popEl);
-    else if (!inSquare && popEl.parentElement !== stageEl) stageEl.append(popEl);
+    if (inSquare) positionInlineClue();
+    else if (popEl.parentElement !== stageEl) stageEl.append(popEl);
     boardPanel?.classList.toggle("popover-open", !!(state.puzzle && entry && state.popoverOpen && shouldShowPopup));
+    boardPanel?.classList.toggle("clue-popup-open", !!(state.puzzle && entry && state.popoverOpen && state.settings.inputStyle === "popup"));
     if (!state.puzzle || !entry || !state.popoverOpen || !shouldShowPopup) {
       popEl.hidden = true;
       popEl.innerHTML = "";
@@ -901,6 +916,7 @@ import {
       <div class="cw-popover-clue">
         <strong>Clue:</strong> ${formatClueDisplayHTML(entry.clue)}
       </div>
+      ${!inSquare && state.settings.romanization && entry.clue.romaji ? `<div class="cw-active-clue-sub">Romaji: ${escapeHTML(entry.clue.romaji)}</div>` : ""}
 
       ${showTextBox ? `
         <div class="cw-popover-length-row">

@@ -155,6 +155,11 @@ try {
     assert.equal(await page.locator("#newPuzzleBtn").isVisible(), false);
     assert.equal(await page.locator("#nextPuzzleBtn").isVisible(), false);
     assert.equal(await page.locator("#revealPuzzleBtn").textContent(), "End and Reveal puzzle");
+    await page.locator("#crosswordGrid .cw-cell:not(.block)").first().click();
+    assert.equal(await page.locator("#gridCluePopover").isVisible(), true);
+    assert.equal(await page.locator("#activeClueBar").isVisible(), false, "The open clue popup replaces the active clue bar");
+    await page.click('[data-popover-action="close"]');
+    assert.equal(await page.locator("#activeClueBar").isVisible(), true, "Closing the popup restores the active clue bar");
     await page.locator("#crosswordGrid .cw-cell:not(.block)").first().scrollIntoViewIfNeeded();
     const tileUnderMenu = await page.locator("#crosswordGrid .cw-cell:not(.block)").evaluateAll((tiles) => {
       const left = innerWidth / 2 - Math.min(560, innerWidth - 24) / 2;
@@ -368,6 +373,15 @@ try {
 
     await inputPuzzle("kana");
     const kanaEntry = await selectTypedEntry(false);
+    if (width === 390) {
+      const popover = page.locator("#gridCluePopover");
+      assert.equal(await popover.evaluate((element) => element.nextElementSibling?.id), "gridScrollWrap");
+      await page.setViewportSize({ width, height: 400 });
+      await page.locator("#crosswordGrid").scrollIntoViewIfNeeded();
+      const bounds = await popover.boundingBox();
+      assert.ok(bounds.y >= 0 && bounds.y + bounds.height <= 400, "The clue stays visible above the grid in a reduced viewport");
+      await page.setViewportSize({ width, height: 900 });
+    }
     await input.focus();
     await page.keyboard.type(typedReading(kanaEntry.item.furigana));
     if (await input.count() && await input.inputValue()) await input.press("Enter");
@@ -482,6 +496,7 @@ try {
       if (style === "popup") {
         assert.ok(await page.locator("#popoverAnswerInput").isVisible());
       } else {
+        assert.equal(await page.locator("#activeClueBar").isVisible(), width > 900, "In-square clue bar behavior is unchanged");
         await input.fill("kax");
         assert.equal(await input.inputValue(), "かx", "In-square typing still works after moving the clue card");
         await input.press("Escape");

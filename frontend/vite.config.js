@@ -8,6 +8,10 @@ import { kanjiCatalogue } from "./kanji/pages.js";
 const root = fileURLToPath(new URL(".", import.meta.url));
 const toolFiles = readdirSync(root).filter((file) => file.endsWith(".html") && !["index.html", "data-sources.html", "文字.html"].includes(file));
 const seoPages = {
+  "faq.html": {
+    title: "Frequently Asked Questions | NihongoToolkit",
+    description: "Find help typing Japanese kana, using study controls, and navigating NihongoToolkit."
+  },
   "contact.html": {
     title: "Contact | NihongoToolkit",
     description: "Send feedback, feature requests, data corrections and bug reports to NihongoToolkit."

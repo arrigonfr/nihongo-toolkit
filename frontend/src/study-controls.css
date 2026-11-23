@@ -83,8 +83,8 @@ header.study-embedded { grid-template-columns: minmax(0, 1fr) auto; }
   .study-header .brand-note, .study-header .cw-brand-note, .study-header .brand-sub { font-size: 10px; }
   .study-header-description { grid-row: 2; font-size: 11px; }
   .study-embedded .study-toolbar { grid-row: 3; }
-  .study-toolbar > button { min-height: 40px; border-radius: 8px; }
-  .study-support .pp-BGUN4RBRVZKKJ { min-height: 40px; height: 40px; padding: 0 8px; font-size: 11px; }
+  .study-toolbar > button { min-height: 44px; border-radius: 8px; }
+  .study-support .pp-BGUN4RBRVZKKJ { min-height: 44px; height: 44px; padding: 0 8px; font-size: 11px; }
   .study-support .study-support-label { padding: 0; }
 }
 body header.study-header:has(> .navigation) { grid-template-columns: 40px minmax(0, 1fr) auto; gap: 8px; }

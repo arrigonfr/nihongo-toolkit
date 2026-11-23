@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ef">
+  <title>Frequently Asked Questions | NihongoToolkit</title>
+  <link rel="icon" type="image/png" href="./favicon.png">
+</head>
+<body>
+  <div class="shell">
+    <header class="study-header">
+      <a class="brand" href="./index.html"><span class="brand-mark" aria-hidden="true"><img src="/tool-icons/faq.webp" alt=""></span><span class="brand-name">FAQ<span class="brand-note">NihongoToolkit</span></span></a>
+      <button id="themeButton" type="button" aria-label="Change theme"></button>
+    </header>
+    <main class="faq">
+      <div class="intro">
+        <h1>How can we help?</h1>
+        <p class="faq-intro">Answers to common questions about typing, studying and using the tools.</p>
+      </div>
+      <nav class="faq-topics" aria-label="FAQ topics"><a href="#typing">Typing Japanese</a><a href="#studying">Studying</a><a href="#site">Using the site</a></nav>
+
+      <section id="typing" aria-labelledby="typing-title">
+        <h2 id="typing-title">Typing Japanese</h2>
+        <details open>
+          <summary>How do I type kana with a non-Japanese keyboard?</summary>
+          <div class="faq-answer">
+            <p>In fields that support romaji conversion, type the sounds using Latin letters: <kbd>ka</kbd> becomes <span lang="ja">か</span>, and <kbd>kya</kbd> becomes <span lang="ja">きゃ</span>. The expected script depends on the tool and question. A Japanese keyboard or input method (IME) can also be used.</p>
+            <p>For <span lang="ja">ん</span>, try <kbd>nn</kbd>. A doubled consonant can produce a small <span lang="ja">っ</span>, as in <kbd>kitte</kbd> → <span lang="ja">きって</span>. Exact conversion and confirmation can vary by input method.</p>
+          </div>
+        </details>
+        <details open>
+          <summary>How do I type a small kana by itself?</summary>
+          <div class="faq-answer">
+            <p>In Pazuru's Clue popup or another compatible Japanese input, prefix the kana with <kbd>x</kbd> or <kbd>l</kbd>:</p>
+            <ul class="faq-examples">
+              <li><kbd>xya</kbd> or <kbd>lya</kbd> → <span lang="ja">ゃ</span></li>
+              <li><kbd>xyu</kbd> or <kbd>lyu</kbd> → <span lang="ja">ゅ</span></li>
+              <li><kbd>xyo</kbd> or <kbd>lyo</kbd> → <span lang="ja">ょ</span></li>
+              <li><kbd>xtsu</kbd> or <kbd>ltsu</kbd> → <span lang="ja">っ</span></li>
+              <li><kbd>xa</kbd>, <kbd>xi</kbd>, <kbd>xu</kbd>, <kbd>xe</kbd>, <kbd>xo</kbd> → <span lang="ja">ぁ ぃ ぅ ぇ ぉ</span></li>
+            </ul>
+            <p>If a single In-square cell in Pazuru does not accept the shortcut, try a Japanese IME or switch Grid input style to Clue popup and enter the whole answer. Shortcuts can differ between keyboards and tools.</p>
+          </div>
+        </details>
+        <details>
+          <summary>Why is my answer not being accepted?</summary>
+          <div class="faq-answer"><p>Check the requested script and direction, including small kana and long vowels. Some questions ask for a reading; others ask for a meaning or written form. In Pazuru, Clue popup expects the complete answer, including any solved crossing letters.</p></div>
+        </details>
+      </section>
+
+      <section id="studying" aria-labelledby="studying-title">
+        <h2 id="studying-title">Studying</h2>
+        <details><summary>How do I show furigana or romaji, or hear audio?</summary><div class="faq-answer"><p>Use the shared controls in the tool's header when available. They apply across supported tools. Some controls are hidden where they would give away an answer or do not apply.</p></div></details>
+        <details><summary>Why are some settings unavailable?</summary><div class="faq-answer"><p>A setting may not apply to the selected mode or another choice. Its explanation appears beside the disabled control. Your saved choice is kept for when it becomes relevant again.</p></div></details>
+        <details><summary>Are JLPT levels official?</summary><div class="faq-answer"><p>Modern vocabulary levels are estimates, not official JLPT classifications. See <a href="./data-sources.html">Data and licenses</a> for source details.</p></div></details>
+      </section>
+
+      <section id="site" aria-labelledby="site-title">
+        <h2 id="site-title">Using the site</h2>
+        <details><summary>How do I change the theme?</summary><div class="faq-answer"><p>Use the appearance controls in the header to choose a palette and light, dark or system mode. Your preference is stored in this browser.</p></div></details>
+        <details><summary>Where are my settings saved?</summary><div class="faq-answer"><p>Supported preferences are stored in your browser. Clearing site data, using another browser or device, or blocking storage can prevent them from carrying over.</p></div></details>
+        <details><summary>How can I report a problem or suggest an improvement?</summary><div class="faq-answer"><p>Use the <a href="./contact.html">contact page</a> and include the tool, what you tried, and what happened. Please do not include passwords or other sensitive information.</p></div></details>
+      </section>
+      <p class="faq-contact">Still need help? <a href="./contact.html">Contact us</a>.</p>
+    </main>
+  </div>
+  <script type="module" src="./src/faq.js"></script>
+</body>
+</html>

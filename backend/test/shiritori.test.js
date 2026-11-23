@@ -164,6 +164,9 @@ test("reveal limit is validated, defaulted and enforced per player", () => {
   assert.equal(assistAllowed(limited, { reveals: 1 }, "reveal"), true);
   assert.equal(assistAllowed(limited, { reveals: 2 }, "reveal"), false);
   assert.equal(assistAllowed(rules({ reveal: false }), { reveals: 0 }, "reveal"), false);
+  const relaxed = rules({ mode: "relaxed", hints: "disabled", reveal: false, revealLimit: 0 });
+  assert.equal(assistAllowed(relaxed, { hints: 100, reveals: 100 }, "hint"), true);
+  assert.equal(assistAllowed(relaxed, { hints: 100, reveals: 100 }, "reveal"), true);
   assert.equal(assistAllowed(rules({ mode: "daily" }), { reveals: 0 }, "reveal"), true);
   assert.equal(assistAllowed(rules({ hintLimit: 1 }), { hints: 1 }, "hint"), false);
   assert.equal(assistAllowed(rules({ hints: "unlimited" }), { hints: 99 }, "hint"), true);

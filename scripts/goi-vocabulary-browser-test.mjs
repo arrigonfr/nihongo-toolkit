@@ -31,6 +31,16 @@ try {
     await page.goto(`http://127.0.0.1:${vite.httpServer.address().port}/goi.html`);
     await page.locator("#startButton").waitFor();
   };
+  for (const width of [320, 390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await open();
+    const clipped = await page.locator(".goi-settings .mode-chips .chip-label").evaluateAll((labels) =>
+      labels.filter((label) => label.scrollWidth > label.clientWidth + 1 || label.scrollHeight > label.clientHeight + 1).map((label) => label.textContent)
+    );
+    assert.deepEqual(clipped, [], `Quiz mode and direction labels fit at ${width}px`);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  }
+  await page.setViewportSize({ width: 390, height: 900 });
   for (const mode of ["typing-je"]) {
     word = { word: "プール", reading: "プール", meaning: "swimming pool", acceptedMeanings: ["swimming pool", "(swimming) pool", "pool (cue sport)"],
       examples: [{ ja: "プールで泳ぎます。", en: "I swim in the pool." }] };

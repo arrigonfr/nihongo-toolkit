@@ -25,6 +25,77 @@ try {
   context.on("page", (tab) => tab.on("pageerror", (error) => errors.push(error.message)));
   page.on("pageerror", (error) => errors.push(error.message));
   const go = (file) => page.goto(`${origin}/${encodeURIComponent(file)}`);
+  for (const width of [320, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await go("faq");
+    assert.equal(await page.locator("h1").textContent(), "How can we help?");
+    assert.equal(await page.locator(".study-toolbar .study-support").count(), 1);
+    assert.equal(await page.locator('a.helper-link[data-file="faq.html"]').getAttribute("aria-current"), "page");
+    assert.ok(await page.locator(".faq").textContent().then((text) => text.includes("xtsu") && text.includes("xya")));
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `FAQ fits at ${width}px`);
+    const answer = page.locator("details").filter({ hasText: "Why are some settings unavailable?" });
+    await answer.locator("summary").focus();
+    await page.keyboard.press("Enter");
+    assert.equal(await answer.locator(".faq-answer").isVisible(), true);
+    await page.click(".study-palette > summary");
+    await page.click('[data-palette="ocean"]');
+    await page.click("#themeButton");
+    const theme = await page.locator("html").getAttribute("data-theme");
+    await page.reload();
+    assert.equal(await page.locator("html").getAttribute("data-theme"), theme);
+    assert.equal(await page.locator("html").getAttribute("data-color-theme"), "ocean");
+  }
+  await page.evaluate(() => localStorage.removeItem("nihon:appearance-v1"));
+  await go("");
+  assert.equal(await page.locator('.dashboard-link[data-file="faq.html"]').count(), 1);
+  assert.equal(await page.locator('.dashboard-link[data-file="faq.html"] .helper-description').textContent(), "Help and common questions");
+  await page.locator('.dashboard-link[data-file="faq.html"]').click();
+  await page.waitForURL(/\/faq$/);
+  await page.goBack();
+  assert.equal(await page.locator('.dashboard-link[data-file="faq.html"]').isVisible(), true);
+  await page.setViewportSize({ width: 375, height: 900 });
+  await go("kotoba.html");
+  await page.evaluate(() => localStorage.setItem("kotoba-history-v1", JSON.stringify([{ query: "日本", kanji: false }])));
+  await page.reload();
+  await page.locator("#historyList .history-item").waitFor();
+  const clearHistory = page.locator("#clearHistory");
+  const clearBounds = await clearHistory.boundingBox();
+  assert.ok(clearBounds.width >= 44 && clearBounds.height >= 44, "Clear history has a touch-friendly target");
+  await clearHistory.click();
+  assert.equal(await page.locator("#historyList .history-item").count(), 0, "Clear history still clears recent searches");
+  for (const width of [320, 375, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const [file, selector] of [
+      ["", ".dashboard-link .helper-description"],
+      ["goi.html", ".intro p:not(.eyebrow)"],
+      ["kana.html", ".study-settings-note"]
+    ]) {
+      await go(file);
+      const size = await page.locator(selector).first().evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
+      assert.ok(size >= 13, `${file || "dashboard"}: supporting text remains readable at ${width}px`);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${file || "dashboard"}: no horizontal overflow at ${width}px`);
+    }
+  }
+  for (const width of [375, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await go("fumitoki.html");
+    const layout = page.locator(".layout");
+    const parsedCard = layout.locator("section").first();
+    const panel = page.locator("#detailPanel");
+    const layoutWidth = (await layout.boundingBox()).width;
+    assert.ok(Math.abs((await parsedCard.boundingBox()).width - layoutWidth) < 1, "Hidden dictionary panel leaves the full width for parsed text");
+    await panel.evaluate((element) => { element.hidden = false; });
+    const parsedBounds = await parsedCard.boundingBox();
+    const panelBounds = await panel.boundingBox();
+    if (width > 760) {
+      assert.ok(panelBounds.x >= parsedBounds.x + parsedBounds.width, "Open dictionary panel sits beside parsed text on desktop");
+    } else {
+      assert.ok(panelBounds.y < parsedBounds.y && Math.abs(parsedBounds.width - layoutWidth) < 1, "Open dictionary panel stacks above parsed text on mobile");
+    }
+    await panel.evaluate((element) => { element.hidden = true; });
+    assert.ok(Math.abs((await parsedCard.boundingBox()).width - layoutWidth) < 1, "Closing the dictionary restores the full width");
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
   await go("kana.html");
   await page.locator(".study-palette > summary").waitFor();
   assert.equal(await page.locator("#colorThemeSelect").inputValue(), "sumi");

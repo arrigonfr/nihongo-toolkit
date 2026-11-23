@@ -150,13 +150,16 @@ export function parseRules(input = {}) {
     }
     rules[key] = value;
   }
-  if (rules.mode === "relaxed") rules.hints = "unlimited";
+  if (rules.mode === "relaxed") {
+    rules.hints = "unlimited";
+    rules.reveal = true;
+  }
   if (rules.mode === "beginner") rules.hints = "unlimited";
   return rules;
 }
 
 // `used` is the player's { hints, reveals } counters for the current round.
 export function assistAllowed(rules, used, kind) {
-  if (kind === "reveal") return Boolean(rules.reveal) && (used.reveals || 0) < rules.revealLimit;
+  if (kind === "reveal") return Boolean(rules.reveal) && (rules.mode === "relaxed" || (used.reveals || 0) < rules.revealLimit);
   return rules.hints === "unlimited" || rules.hints === "limited" && (used.hints || 0) < rules.hintLimit;
 }

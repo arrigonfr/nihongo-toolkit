@@ -8,7 +8,7 @@ body :is(details, .ui-panel) {
   --ui-title-h: 24px;
 }
 body :is(details, .ui-panel) :is(label, legend, summary, p, small, span, div, button, select, input) { font-size: var(--ui-fs); }
-body :is(details, .ui-panel) :is(.small, small, .setting-availability, .study-settings-note, .font-chip-name small) { font-size: 11.5px; }
+body :is(details, .ui-panel) :is(.small, small, .setting-availability, .study-settings-note, .font-chip-name small) { font-size: 13px; }
 body :is(details, .ui-panel) :is(legend, summary) { font-weight: 700; color: var(--accent-strong); letter-spacing: 0; }
 body :is(details, .ui-panel) legend { padding: 0 8px; }
 

@@ -19,7 +19,7 @@ const progressKey = "nihon:shiritori-progress-v1";
 const modes = { classic: "Classic", relaxed: "Relaxed", timed: "Timed", sudden: "Sudden Death", kanji: "Kanji Shiritori", katakana: "Katakana Challenge", beginner: "Beginner", marathon: "Marathon" };
 const modeDescriptions = {
   classic: "Build a chain by connecting each word to the previous word's ending.",
-  relaxed: "No timer and unlimited hints. An invalid connection still ends the round.",
+  relaxed: "No timer and unlimited hints and reveals. An invalid connection still ends the round.",
   timed: "Play a valid word before the turn countdown expires.", sudden: "Any invalid play ends the round with a loss.",
   kanji: "Connect words using kanji, rather than kana endings.",
   katakana: "Use words written in katakana.", beginner: "Words up to four morae, unlimited hints and furigana.",
@@ -43,6 +43,7 @@ try {
   delete saved.level;
   validateSettings(saved);
   settings = { ...defaults, ...Object.fromEntries(Object.entries(saved).filter(([key]) => Object.hasOwn(defaults, key))), ...parseRules(saved) };
+  for (const key of ["hints", "reveal"]) if (Object.hasOwn(saved, key)) settings[key] = saved[key];
   localStorage.setItem(settingsKey, JSON.stringify(settings));
   const stored = JSON.parse(localStorage.getItem(progressKey) || "null");
   if (stored) {
@@ -152,7 +153,7 @@ $("shiritoriRoot").innerHTML = `<div class="shell">
   <dialog id="helpDialog" aria-labelledby="helpTitle"><div class="dialog-head"><h2 id="helpTitle">A word game that keeps you learning</h2><button class="close" data-close type="button" aria-label="Close help">×</button></div><div class="dialog-body">
     <div class="help-example" lang="ja">りんご → ごりら → らっぱ</div>
     <p><strong>Shiritori means “taking the tail”.</strong> Start your word with the last syllable of the previous word, or with more of it: the last two or three syllables, or its last kanji or kanji compound. The answer must be longer than the overlap, so it can never begin with the entire previous word. Small kana stay attached (しょ needs しょ, and しょう works). Hiragana and katakana are equivalent. Submit with Enter or Play. Words ending in <strong>ん / ン</strong> and the particle <strong>を / ヲ</strong> are not accepted. Stuck? Use <strong>Pass</strong> to skip your turn; if everyone passes in a row, the round ends.</p>
-    <h3>Play your way</h3><p>Play the computer, practice alone, or share this device with up to six local players. Classic retries invalid entries. Sudden Death loses on any invalid submission. Relaxed has unlimited hints and no timer: an invalid connection ends the round. Timed includes dictionary-check time. Beginner caps words at four morae and enables furigana. Marathon adds points for every word.</p>
+    <h3>Play your way</h3><p>Play the computer, practice alone, or share this device with up to six local players. Classic retries invalid entries. Sudden Death loses on any invalid submission. Relaxed has unlimited hints and reveals and no timer: an invalid connection ends the round. Timed includes dictionary-check time. Beginner caps words at four morae and enables furigana. Marathon adds points for every word.</p>
     <p>Katakana Challenge uses words written in katakana. Advanced Kanji Shiritori only accepts overlaps made of the last kanji or kanji compound.</p>
     <h3>Make the rules yours</h3><p>Choose a game mode, assistance and scoring options. Conjugated verbs and adjectives are accepted. Romaji converts as you type; pick the right spelling when a reading is ambiguous. Kanji Shiritori accepts a typed reading after you confirm its spelling.</p>
     <p>For kanji chains: ${escape(READING_ENDING_RULE)} Dictionary readings are checked even when you type kanji. A long-vowel mark inside a word is fine, as in ケーキ. Outside Kanji Shiritori, a final ー stays attached to its syllable (コーヒー requires ヒー). Repeated words and words ending in ん / ン are never accepted. You can allow voiced/unvoiced pairs. No available dictionary continuation ends the round with an explanation, not an invented word.</p>
@@ -195,7 +196,8 @@ function syncAvailability() {
     timer: mode !== "timed" ? "Used in Timed mode." : "",
     hints: forcedHints ? "Hint availability is determined by this mode." : "",
     hintLimit: forcedHints || $("setting-hints").value !== "limited" ? "Choose limited hints outside a fixed-hint mode." : "",
-    revealLimit: !$("setting-reveal").checked ? "Allow Reveal Answer to set a limit." : "",
+    reveal: mode === "relaxed" ? "Relaxed mode allows unlimited reveals." : "",
+    revealLimit: mode === "relaxed" ? "Relaxed mode allows unlimited reveals." : !$("setting-reveal").checked ? "Allow Reveal Answer to set a limit." : "",
     voicing: mode === "kanji" ? "Kana voicing does not affect kanji connections." : ""
   };
   for (const control of document.querySelectorAll("[data-setting]")) {
@@ -285,7 +287,7 @@ function enableControls() {
   $("hintButton").disabled = !playable || game.rules.hints === "disabled" || game.rules.hints === "limited" && player.hints >= game.rules.hintLimit;
   $("revealButton").disabled = !playable || !assistAllowed(game.rules, player, "reveal");
   $("hintButton").textContent = game?.active && game.rules.hints === "limited" ? `Hint · ${Math.max(0, game.rules.hintLimit - player.hints)} left` : "Hint";
-  $("revealButton").textContent = game?.active && game.rules.reveal ? `Reveal Answer · ${Math.max(0, game.rules.revealLimit - player.reveals)} left` : "Reveal Answer";
+  $("revealButton").textContent = game?.active && game.rules.reveal && game.rules.mode !== "relaxed" ? `Reveal Answer · ${Math.max(0, game.rules.revealLimit - player.reveals)} left` : "Reveal Answer";
   $("passButton").disabled = !playable;
   $("newGame").disabled = busy;
   $("stopGame").hidden = !game?.active;

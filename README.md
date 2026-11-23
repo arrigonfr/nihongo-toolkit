@@ -65,6 +65,9 @@ Jump to [local development](#local-development), [data sources](#importing-data)
 
 ## Support
 
+The **FAQ** page covers common questions about typing kana (including small
+kana), study controls, preferences, and getting help.
+
 The **Contact** page accepts feedback, feature requests, data inconsistencies,
 bug reports and other messages. Its Cloudflare-only API stores submissions in
 the existing `PAGE_VIEWS_DB`, not the dictionary database. A private Discord
@@ -795,7 +798,8 @@ and saved theme filters are discarded; JLPT, script, size and other settings rem
 Choose settings, then click **New
 puzzle** below the settings panel; this button remains visible when settings are
 collapsed. Pazuru's Check button sits beside the clue textbox or inside the cell popover,
-not in the status bar. Enter saves textbox answers. Textboxes start empty, without
+not in the status bar. When a clue popup is open, it replaces the active clue bar;
+closing it restores the bar. Enter saves textbox answers. Textboxes start empty, without
 prefilled crossing letters or gap spaces; enter the complete answer normally.
 Backspace/Delete edits the typed answer, while solved intersections remain protected
 when answers are submitted or grid cells are edited.
@@ -807,8 +811,9 @@ Escape clears it, and moving to another cell or starting a puzzle clears the dra
 Mobile deletion also works when the keyboard sends input events without keydown.
 An unfinished word remains typeable from a locked crossing: after solving 渡す,
 selecting 渡る accepts the complete word/reading or just its remaining る, without
-changing the shared 渡. In-square clue cards sit below the grid so they cannot
-cover the remaining cells.
+changing the shared 渡. In-square clue cards sit below the grid on desktop.
+On mobile they sit above the grid and stay visible while scrolling, so the
+on-screen keyboard is less likely to cover the clue.
 Save/Clear and duplicate Close buttons are removed. Direction buttons appear only
 at across/down intersections. Check/reveal availability and hint limits still apply.
 Kotoba rejects word searches longer than the API's 100-character limit before
@@ -931,7 +936,7 @@ Rule defaults are **exact**, not the common relaxed classroom variants:
 - Kanji Shiritori mode only accepts kanji / kanji-compound overlaps.
 
 Classic retries rejected submissions; Sudden Death loses on a rejected Play.
-Relaxed has unlimited hints and no timer; an invalid connection loses the round,
+Relaxed has unlimited hints and reveals and no timer; an invalid connection loses the round,
 while vocabulary-rule violations can be retried. Timed counts wall-clock
 time, including dialogs and dictionary requests, and ignores responses arriving
 after a timeout or new game. Beginner caps words at four morae, supplies automatic
