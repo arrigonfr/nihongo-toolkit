@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { createServer as createVite, preview } from "vite";
 import { chromium } from "playwright";
 import { createHandler } from "../backend/src/app.js";
+import { editorialPage } from "../frontend/editorial-tools.js";
 
 // Pages are linked by clean URL (/kana) but may also be served as /kana.html.
 const pagePath = (path) => decodeURIComponent(path).replace(/\.html$/, "");
@@ -19,7 +20,7 @@ process.env.VITE_API_BASE_URL = `http://127.0.0.1:${api.address().port}`;
 process.env.VITE_SITE_URL = "https://nihongotoolkit.pages.dev";
 let vite, built, browser;
 try {
-  vite = await createVite({ root, server: { host: "127.0.0.1", port: 0, strictPort: false } });
+  vite = await createVite({ root, server: { host: "127.0.0.1", port: 0, strictPort: false, hmr: false, watch: null } });
   await vite.listen();
   const base = `http://127.0.0.1:${vite.httpServer.address().port}`;
   origins.push(base);
@@ -64,7 +65,7 @@ try {
         event.stopPropagation();
       }, { once: true });
     });
-    if (touch) await tab.touchscreen.tap(350, 10);
+    if (touch) await tab.locator(".study-palette > summary").tap();
     else await tab.mouse.click(6, 180);
     await menu.waitFor({ state: "hidden" });
     assert.equal(await button.getAttribute("aria-expanded"), "false");
@@ -182,19 +183,20 @@ try {
   assert.deepEqual(migrated.progress.recent, ["retained"]);
   await select("eawase.html");
   assert.equal(await frame.locator("#settingsDialog, #settingsButton, #setting-appearance").count(), 0);
-  assert.equal(await frame.locator("#settingsPanel").evaluate((panel) => panel.open && panel.previousElementSibling.classList.contains("intro")), true);
+  assert.equal(await frame.locator("#settingsPanel").evaluate((panel) =>
+    panel.open && Boolean(document.querySelector(".intro").compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING)), true);
   for (const width of [1280, 375]) {
     await page.setViewportSize({ width, height: 900 });
     assert.equal(await frame.locator("html").evaluate((node) => node.scrollWidth <= innerWidth), true);
   }
-  await frame.locator("#setting-content").selectOption("kana", { force: true });
+  await frame.locator('#setting-content ~ .chips [data-value="kana"]').click();
   assert.equal(await frame.locator('#settingsForm button[type="submit"]').count(), 0);
   assert.equal(await frame.locator("#settingsPanel").evaluate((panel) => panel.open), true);
-  await frame.locator("#newGame").click();
+  await frame.locator("#startButton").click();
   await frame.locator("[data-card]").first().waitFor();
   assert.equal(await frame.locator("[data-card]").count(), 12);
 
-  const files = (await readdir(root)).filter((file) => file.endsWith(".html") && !["index.html", "data-sources.html", "文字.html"].includes(file));
+  const files = (await readdir(root)).filter((file) => file.endsWith(".html") && !editorialPage(file) && !["index.html", "data-sources.html", "文字.html"].includes(file));
   built = await preview({ root, preview: { host: "127.0.0.1", port: 0, strictPort: false } });
   const builtBase = `http://127.0.0.1:${built.httpServer.address().port}`;
   for (const origin of [base, builtBase]) {
@@ -208,7 +210,7 @@ try {
       await navigationPage.locator("#colorThemeSelect").waitFor({ state: "attached" });
       assert.equal(decodeURIComponent(new URL(navigationPage.url()).pathname), `/${file}`);
       assert.equal(await navigationPage.locator("#helperFrame").count(), 0);
-      assert.equal(await navigationPage.locator('link[rel="canonical"]').getAttribute("href"), new URL(file, "https://nihongotoolkit.pages.dev/").href);
+      assert.equal(await navigationPage.locator('link[rel="canonical"]').getAttribute("href"), new URL(pagePath(file), "https://nihongotoolkit.pages.dev/").href);
       for (const width of [375, 1280]) {
         await navigationPage.setViewportSize({ width, height: 900 });
         assert.equal(await navigationPage.locator("#menuButton").isVisible(), true);
@@ -236,7 +238,7 @@ try {
     assert.match(await (await navigationPage.request.get(`${origin}/robots.txt`)).text(), /Sitemap: https:\/\/nihongotoolkit.pages.dev\/sitemap.xml/);
     await navigationPage.goto(`${origin}/index.html`);
     await navigationPage.waitForURL(`${origin}/`);
-    assert.equal(await navigationPage.locator('.dashboard-link[href="/kanji/"]').count(), 1);
+    assert.equal(await navigationPage.locator('.helper-link[href="/kanji/"]').count(), 1);
     for (const file of files) {
       await navigationPage.click("#menuButton");
       await navigationPage.locator(`#helperMenu .helper-link[data-file="${file}"]`).click();
@@ -262,7 +264,7 @@ try {
     await touch.locator("#menuButton").tap();
     await checkMenuDismissal(touch, touch, true);
     await touch.goto(origin);
-    await touch.locator(".dashboard-link").first().waitFor();
+    await touch.locator(".home-tool").first().waitFor();
     await touch.locator("#menuButton").tap();
     await checkMenuDismissal(touch, touch, true);
     await touchContext.close();

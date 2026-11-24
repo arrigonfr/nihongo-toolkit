@@ -13,7 +13,7 @@ api.listen(0, "127.0.0.1"); await once(api, "listening");
 process.env.VITE_API_BASE_URL = `http://127.0.0.1:${api.address().port}`;
 let vite, browser;
 try {
-  vite = await viteServer({ root: fileURLToPath(new URL("../frontend", import.meta.url)), server: { host: "127.0.0.1", port: 5181, strictPort: true } });
+  vite = await viteServer({ root: fileURLToPath(new URL("../frontend", import.meta.url)), server: { host: "127.0.0.1", port: 5181, strictPort: false } });
   await vite.listen();
   browser = await chromium.launch({ headless: true });
   const page = toolPage(await browser.newPage({ reducedMotion: "reduce", viewport: { width: 1280, height: 1000 } }));
@@ -370,7 +370,8 @@ try {
   await page.selectOption("#setting-fontSize", "larger");
   await page.check("#setting-contrast");
   if (await page.locator("html").getAttribute("data-theme") !== "dark") await page.click("#themeButton");
-  await page.selectOption("#colorThemeSelect", "ocean");
+  await page.click(".study-palette > summary");
+  await page.click('[data-palette="ocean"]');
   assert.equal(await page.locator("html").getAttribute("data-contrast"), "false", "Accessibility edits wait for the next game");
   await page.click("#newGame");
   await page.waitForFunction(() => !document.querySelector("#wordInput").disabled || !document.querySelector("#results").hidden);

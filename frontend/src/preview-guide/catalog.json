@@ -1,0 +1,884 @@
+{
+  "manifest": {
+    "edition": "editorial-1",
+    "dictionary": {
+      "release": "3.6.2+20261019180022",
+      "sha256": "1dca86908663dcddb8c3bcff9dc5e2bc73037bbdeed9c705c896a3845e7635a5",
+      "credit": "JMdict, EDRDG; JSON conversion by scriptin and contributors. CC BY-SA 4.0.",
+      "usage": "Local entry identifiers, forms, commonness, restrictions and sense evidence. No sentence text imported."
+    },
+    "editorial": {
+      "source": "NihongoToolkit",
+      "rights": "Project-authored draft descriptions, examples, translations and contrasts; not reviewed."
+    },
+    "acquisition": {
+      "source": "November 2026 discovery comparison",
+      "expected": 1158,
+      "keysImported": 0,
+      "disposition": "Blocked: no rights-cleared, individually verifiable baseline supplied. No upstream material ingested."
+    }
+  },
+  "cards": [
+    {
+      "id": "quiet-rain",
+      "entry": "1005570",
+      "fingerprint": "2aac51b27a965b336a57",
+      "form": "しとしと",
+      "scene": "Rain",
+      "type": "non-audible-mimetic",
+      "register": "Descriptive",
+      "meaning": "Rain falls lightly and steadily. The focus here is on how it falls, not on a loud noise.",
+      "markup": "{庭|にわ}にしとしとと{雨|あめ}が{降|ふ}っている。",
+      "translation": "A gentle rain is falling in the garden.",
+      "status": "draft",
+      "source": "project-original",
+      "canonical": "しとしと",
+      "reading": "しとしと",
+      "common": true,
+      "aliases": [
+        "シトシト"
+      ]
+    },
+    {
+      "id": "driving-rain",
+      "entry": "1058910",
+      "fingerprint": "88f194fa68b2ce3f4fb4",
+      "form": "ざあざあ",
+      "scene": "Rain",
+      "type": "sound-imitation",
+      "register": "Descriptive",
+      "meaning": "Rain pours down with a continuous rushing sound.",
+      "markup": "{屋根|やね}の{上|うえ}で{雨|あめ}がざあざあと{音|おと}を{立|た}てている。",
+      "translation": "Rain is making a rushing sound on the roof.",
+      "status": "draft",
+      "source": "project-original",
+      "canonical": "ザーザー",
+      "reading": "ザーザー",
+      "common": false,
+      "aliases": [
+        "ざーざー",
+        "ザーザー"
+      ]
+    },
+    {
+      "id": "springy-bite",
+      "entry": "2403780",
+      "fingerprint": "3927280a287421c153a0",
+      "form": "もちもち",
+      "scene": "Food texture",
+      "type": "non-audible-mimetic",
+      "register": "Descriptive",
+      "meaning": "Something soft gives under the teeth and springs back as you chew.",
+      "markup": "このパンはもちもちしている。",
+      "translation": "This bread has a springy chew.",
+      "status": "draft",
+      "source": "project-original",
+      "canonical": "もちもち",
+      "reading": "もちもち",
+      "common": false,
+      "aliases": []
+    },
+    {
+      "id": "yielding-dough",
+      "entry": "2772190",
+      "fingerprint": "873cc2a185b78bafb518",
+      "form": "もっちり",
+      "scene": "Food texture",
+      "type": "non-audible-mimetic",
+      "register": "Descriptive",
+      "meaning": "A bite feels soft and elastic rather than brittle.",
+      "markup": "この{麺|めん}はもっちりしている。",
+      "translation": "These noodles have a soft, chewy texture.",
+      "status": "draft",
+      "source": "project-original",
+      "canonical": "もっちり",
+      "reading": "もっちり",
+      "common": false,
+      "aliases": []
+    },
+    {
+      "id": "crisp-bite",
+      "entry": "1005130",
+      "fingerprint": "e8d71ff38fc73a354d5f",
+      "form": "さくさく",
+      "scene": "Food texture",
+      "type": "non-audible-mimetic",
+      "register": "Descriptive",
+      "meaning": "A light, crisp bite breaks apart easily under the teeth.",
+      "markup": "{焼|や}きたてのパイはさくさくだ。",
+      "translation": "The freshly baked pie has a light, crisp crust.",
+      "status": "draft",
+      "source": "project-original",
+      "canonical": "サクサク",
+      "reading": "サクサク",
+      "common": false,
+      "aliases": [
+        "サクサク"
+      ]
+    },
+    {
+      "id": "snow-steps",
+      "entry": "1005130",
+      "fingerprint": "67239d16c4316b6f3212",
+      "form": "さくさく",
+      "scene": "Footsteps",
+      "type": "sound-imitation",
+      "register": "Descriptive",
+      "meaning": "Successive steps make little crunching sounds underfoot.",
+      "markup": "{雪|ゆき}を{踏|ふ}むとさくさくと{音|おと}がする。",
+      "translation": "The snow crunches when I step on it.",
+      "status": "draft",
+      "source": "project-original",
+      "canonical": "サクサク",
+      "reading": "サクサク",
+      "common": false,
+      "aliases": [
+        "サクサク"
+      ]
+    },
+    {
+      "id": "wind-whistle",
+      "entry": "2059800",
+      "fingerprint": "983f4ea41457c86ef517",
+      "form": "ひゅうひゅう",
+      "scene": "Wind",
+      "type": "sound-imitation",
+      "register": "Descriptive",
+      "meaning": "Air streams through a gap with a whistling sound.",
+      "markup": "{窓|まど}のすきまから{風|かぜ}がひゅうひゅう{鳴|な}る。",
+      "translation": "The wind whistles through a gap in the window.",
+      "status": "draft",
+      "source": "project-original",
+      "canonical": "ビュービュー",
+      "reading": "ビュービュー",
+      "common": false,
+      "aliases": [
+        "びゅうびゅう",
+        "ぴゅうぴゅう",
+        "ヒューヒュー",
+        "ビュウビュウ",
+        "ビュービュー",
+        "ピュウピュウ"
+      ]
+    },
+    {
+      "id": "whispered-voices",
+      "entry": "1010520",
+      "fingerprint": "4a132db31582c19fe680",
+      "form": "ひそひそ",
+      "scene": "Voices",
+      "type": "sound-imitation",
+      "register": "Descriptive",
+      "meaning": "People speak in low whispers so others cannot easily hear.",
+      "markup": "{後|うし}ろの{席|せき}で{二人|ふたり}がひそひそ{話|はな}している。",
+      "translation": "Two people are whispering in the seats behind me.",
+      "status": "draft",
+      "source": "project-original",
+      "canonical": "ヒソヒソ",
+      "reading": "ヒソヒソ",
+      "common": true,
+      "aliases": [
+        "ヒソヒソ"
+      ]
+    },
+    {
+      "id": "single-bang",
+      "entry": "2142690",
+      "fingerprint": "e00fd252ed0b4fd1ffae",
+      "form": "どん",
+      "scene": "Impacts",
+      "type": "sound-imitation",
+      "register": "Sound effect",
+      "meaning": "One heavy impact lands with a short, low thud.",
+      "markup": "{箱|はこ}がどんと{床|ゆか}に{落|お}ちた。",
+      "translation": "The box hit the floor with a thud.",
+      "status": "draft",
+      "source": "project-original",
+      "canonical": "どん",
+      "reading": "どん",
+      "common": false,
+      "aliases": [
+        "ドン"
+      ]
+    },
+    {
+      "id": "unhurried-walk",
+      "entry": "1011230",
+      "fingerprint": "dea0fb1d6c0825917b28",
+      "form": "ぶらぶら",
+      "scene": "Movement",
+      "type": "non-audible-mimetic",
+      "register": "Descriptive",
+      "meaning": "Someone walks about without a particular destination or hurry.",
+      "markup": "{川|かわ}に{沿|そ}ってぶらぶら{歩|ある}いた。",
+      "translation": "I wandered along the river.",
+      "status": "draft",
+      "source": "project-original",
+      "canonical": "ぶらぶら",
+      "reading": "ぶらぶら",
+      "common": true,
+      "aliases": [
+        "ブラブラ"
+      ]
+    },
+    {
+      "id": "points-of-light",
+      "entry": "1003500",
+      "fingerprint": "53c95a6a7582be0ea874",
+      "form": "きらきら",
+      "scene": "Appearance",
+      "type": "non-audible-mimetic",
+      "register": "Descriptive",
+      "meaning": "Little points of light catch the eye as they shine or flicker.",
+      "markup": "{波|なみ}が{朝日|あさひ}できらきら{光|ひか}っている。",
+      "translation": "The waves sparkle in the morning sunlight.",
+      "status": "draft",
+      "source": "project-original",
+      "canonical": "キラキラ",
+      "reading": "キラキラ",
+      "common": true,
+      "aliases": [
+        "キラキラ"
+      ]
+    },
+    {
+      "id": "pulsing-pain",
+      "entry": "1006340",
+      "fingerprint": "be970ebfe3630b553409",
+      "form": "ずきずき",
+      "scene": "Bodily sensations",
+      "type": "non-audible-mimetic",
+      "register": "Descriptive",
+      "meaning": "Pain comes in repeated pulses rather than a single sharp jab.",
+      "markup": "{走|はし}ったあと、ひざがずきずき{痛|いた}んだ。",
+      "translation": "My knee throbbed after the run.",
+      "status": "draft",
+      "source": "project-original",
+      "canonical": "ずきずき",
+      "reading": "ずきずき",
+      "common": true,
+      "aliases": [
+        "ズキズキ"
+      ]
+    },
+    {
+      "id": "nervous-heart",
+      "entry": "1009050",
+      "fingerprint": "bdac393a0152e8b2e0dc",
+      "form": "どきどき",
+      "scene": "Emotions",
+      "type": "non-audible-mimetic",
+      "register": "Descriptive",
+      "meaning": "Someone feels their heart racing in anticipation.",
+      "markup": "{名前|なまえ}を{呼|よ}ばれるのを{待|ま}つ{間|あいだ}、どきどきした。",
+      "translation": "My heart raced as I waited for my name to be called.",
+      "status": "draft",
+      "source": "project-original",
+      "canonical": "ドキドキ",
+      "reading": "ドキドキ",
+      "common": true,
+      "aliases": [
+        "どきんどきん",
+        "どっきどき",
+        "ドキドキ",
+        "ドキンドキン",
+        "ドッキドキ"
+      ]
+    }
+  ],
+  "contrasts": [
+    {
+      "ids": [
+        "quiet-rain",
+        "driving-rain"
+      ],
+      "note": "Picture the same roof in two showers. With しとしと, notice the steady, delicate fall. With ざあざあ, the rush of water is hard to ignore."
+    },
+    {
+      "ids": [
+        "springy-bite",
+        "crisp-bite"
+      ],
+      "note": "Both describe what happens as you bite. A もちもち texture gives and stretches; a さくさく texture breaks apart instead."
+    },
+    {
+      "ids": [
+        "crisp-bite",
+        "snow-steps"
+      ],
+      "note": "The spelling stays the same. In the pie example, notice the texture; in the snow example, listen for each footstep."
+    }
+  ],
+  "dictionary": [
+    {
+      "entry": "1003500",
+      "form": "キラキラ",
+      "reading": "キラキラ",
+      "forms": [
+        "きらきら",
+        "キラキラ"
+      ],
+      "senses": [
+        {
+          "fingerprint": "53c95a6a7582be0ea874",
+          "meanings": [
+            "glittering",
+            "sparkling",
+            "glistening",
+            "twinkling"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        }
+      ]
+    },
+    {
+      "entry": "1005130",
+      "form": "サクサク",
+      "reading": "サクサク",
+      "forms": [
+        "さくさく",
+        "サクサク"
+      ],
+      "senses": [
+        {
+          "fingerprint": "e8d71ff38fc73a354d5f",
+          "meanings": [
+            "crisp (not moist or juicy)",
+            "crunchy",
+            "flaky (as in pastry)"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        },
+        {
+          "fingerprint": "67239d16c4316b6f3212",
+          "meanings": [
+            "crunching sound (of walking on snow, frost, sand, etc.)"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        },
+        {
+          "fingerprint": "b499a7da24c4ea1d0e36",
+          "meanings": [
+            "doing skillfully and efficiently",
+            "doing quickly",
+            "proceeding smoothly"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        },
+        {
+          "fingerprint": "41de171527e2e0237392",
+          "meanings": [
+            "sound of pouring liquid"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        },
+        {
+          "fingerprint": "62d72b78f36fa6778a5b",
+          "meanings": [
+            "speaking clearly"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        }
+      ]
+    },
+    {
+      "entry": "1005570",
+      "form": "しとしと",
+      "reading": "しとしと",
+      "forms": [
+        "しとしと",
+        "シトシト"
+      ],
+      "senses": [
+        {
+          "fingerprint": "2aac51b27a965b336a57",
+          "meanings": [
+            "gently (raining)",
+            "drizzling"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        },
+        {
+          "fingerprint": "70988bb8b4cb86fc6ac8",
+          "meanings": [
+            "moist",
+            "damp"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        }
+      ]
+    },
+    {
+      "entry": "1006340",
+      "form": "ずきずき",
+      "reading": "ずきずき",
+      "forms": [
+        "ずきずき",
+        "ズキズキ"
+      ],
+      "senses": [
+        {
+          "fingerprint": "be970ebfe3630b553409",
+          "meanings": [
+            "throbbingly (of pain)"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        }
+      ]
+    },
+    {
+      "entry": "1009050",
+      "form": "ドキドキ",
+      "reading": "ドキドキ",
+      "forms": [
+        "どきどき",
+        "どきんどきん",
+        "どっきどき",
+        "ドキドキ",
+        "ドキンドキン",
+        "ドッキドキ"
+      ],
+      "senses": [
+        {
+          "fingerprint": "0f750adc7411700e1466",
+          "meanings": [
+            "thump-thump",
+            "bang-bang",
+            "pit-a-pat",
+            "pitapat",
+            "pitter-patter"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        },
+        {
+          "fingerprint": "bdac393a0152e8b2e0dc",
+          "meanings": [
+            "to beat fast (of one's heart)",
+            "to throb",
+            "to pound",
+            "to palpitate"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        }
+      ]
+    },
+    {
+      "entry": "1010520",
+      "form": "ヒソヒソ",
+      "reading": "ヒソヒソ",
+      "forms": [
+        "ひそひそ",
+        "ヒソヒソ"
+      ],
+      "senses": [
+        {
+          "fingerprint": "4a132db31582c19fe680",
+          "meanings": [
+            "in a whisper",
+            "in a low voice",
+            "in undertones"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        },
+        {
+          "fingerprint": "3fbb9c2a344db0aeeab9",
+          "meanings": [
+            "in secret",
+            "stealthily"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        }
+      ]
+    },
+    {
+      "entry": "1011230",
+      "form": "ぶらぶら",
+      "reading": "ぶらぶら",
+      "forms": [
+        "ぶらぶら",
+        "ブラブラ"
+      ],
+      "senses": [
+        {
+          "fingerprint": "183910a5d6c2d5a5f66e",
+          "meanings": [
+            "dangling",
+            "swaying",
+            "swinging"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        },
+        {
+          "fingerprint": "dea0fb1d6c0825917b28",
+          "meanings": [
+            "(walking) leisurely",
+            "aimlessly",
+            "strolling",
+            "wandering",
+            "rambling"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        },
+        {
+          "fingerprint": "b656bdc818cac7b474aa",
+          "meanings": [
+            "idly",
+            "lazily",
+            "leisurely",
+            "aimlessly"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        }
+      ]
+    },
+    {
+      "entry": "1058910",
+      "form": "ザーザー",
+      "reading": "ザーザー",
+      "forms": [
+        "ざあざあ",
+        "ざーざー",
+        "ザーザー"
+      ],
+      "senses": [
+        {
+          "fingerprint": "88f194fa68b2ce3f4fb4",
+          "meanings": [
+            "(raining) heavily",
+            "(water rushing) plentily"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        },
+        {
+          "fingerprint": "21a9a12c70f93b9831f3",
+          "meanings": [
+            "with white noise",
+            "with a buzz"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        }
+      ]
+    },
+    {
+      "entry": "2059800",
+      "form": "ビュービュー",
+      "reading": "ビュービュー",
+      "forms": [
+        "ひゅうひゅう",
+        "びゅうびゅう",
+        "ぴゅうぴゅう",
+        "ヒューヒュー",
+        "ビュウビュウ",
+        "ビュービュー",
+        "ピュウピュウ"
+      ],
+      "senses": [
+        {
+          "fingerprint": "983f4ea41457c86ef517",
+          "meanings": [
+            "whistling sound",
+            "wheezing sound",
+            "sound of the wind",
+            "wuthering",
+            "howling",
+            "soughing",
+            "moaning"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        }
+      ]
+    },
+    {
+      "entry": "2142690",
+      "form": "どん",
+      "reading": "どん",
+      "forms": [
+        "どん",
+        "ドン"
+      ],
+      "senses": [
+        {
+          "fingerprint": "e00fd252ed0b4fd1ffae",
+          "meanings": [
+            "bang",
+            "bam",
+            "boom",
+            "thud",
+            "thump",
+            "crash"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        },
+        {
+          "fingerprint": "791ffb883a361f33e934",
+          "meanings": [
+            "noontime signal gun (carried out early Meiji to Taishō)",
+            "noon gun",
+            "noonday gun"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": false
+        },
+        {
+          "fingerprint": "8a38857dd496ca915b16",
+          "meanings": [
+            "last round in a game of 12 rounds"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": false
+        },
+        {
+          "fingerprint": "e6414d693a0e4481abcd",
+          "meanings": [
+            "precisely",
+            "exactly",
+            "plumb",
+            "totally",
+            "very"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": false
+        },
+        {
+          "fingerprint": "8052d5cc89489eeb4fb0",
+          "meanings": [
+            "Mr.",
+            "Mrs.",
+            "Miss",
+            "Ms.",
+            "-san"
+          ],
+          "appliesToKana": [
+            "どん"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": false
+        }
+      ]
+    },
+    {
+      "entry": "2403780",
+      "form": "もちもち",
+      "reading": "もちもち",
+      "forms": [
+        "もちもち"
+      ],
+      "senses": [
+        {
+          "fingerprint": "3927280a287421c153a0",
+          "meanings": [
+            "springy (texture)",
+            "doughy",
+            "elastic"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": true
+        }
+      ]
+    },
+    {
+      "entry": "2772190",
+      "form": "もっちり",
+      "reading": "もっちり",
+      "forms": [
+        "もっちり"
+      ],
+      "senses": [
+        {
+          "fingerprint": "873cc2a185b78bafb518",
+          "meanings": [
+            "springy (texture)",
+            "puffy"
+          ],
+          "appliesToKana": [
+            "*"
+          ],
+          "appliesToKanji": [
+            "*"
+          ],
+          "umbrellaTag": false
+        }
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "id": "rain-noun",
+      "entry": "1171900",
+      "fingerprint": "2653daed23df5fd02a15",
+      "form": "雨",
+      "reading": "あめ",
+      "rationale": "Names the weather, not how the rain sounds or falls.",
+      "type": "ordinary",
+      "status": "draft",
+      "source": "project-original",
+      "aliases": []
+    },
+    {
+      "id": "daily",
+      "entry": "1602120",
+      "fingerprint": "1f9e9b962a02b1ee0362",
+      "form": "日々",
+      "reading": "ひび",
+      "rationale": "Refers to days; iteration is not evidence of imitation.",
+      "type": "ordinary",
+      "status": "draft",
+      "source": "project-original",
+      "aliases": []
+    },
+    {
+      "id": "precisely",
+      "entry": "2142690",
+      "fingerprint": "e6414d693a0e4481abcd",
+      "form": "どん",
+      "reading": "どん",
+      "rationale": "Expresses exactness rather than the sound of an impact.",
+      "type": "ordinary",
+      "status": "draft",
+      "source": "project-original",
+      "aliases": []
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+.preview-practice-field { display:grid; justify-items:start; gap:.25rem; min-width:0; }
+.preview-practice-answer,.preview-practice-options { display:flex; flex-wrap:wrap; align-items:end; gap:.5rem; }
+.preview-practice-options button { min-width:2.75rem; min-height:2.75rem; }
+.preview-practice-answer { margin-block:1rem; }
+.preview-practice-table { border-collapse:collapse; margin-top:.75rem; font-variant-numeric:tabular-nums; }
+.preview-practice-table :is(td,th) { border-bottom:1px solid var(--line); padding:.35rem .65rem; text-align:start; }
+.preview-practice-table button { margin-inline-start:.5rem; }

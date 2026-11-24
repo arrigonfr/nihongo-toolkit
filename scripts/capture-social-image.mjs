@@ -23,9 +23,9 @@ try {
   });
   const base = `http://127.0.0.1:${server.httpServer.address().port}`;
   await page.goto(base, { waitUntil: "networkidle", timeout: 20000 });
-  await page.locator(".dashboard-link").first().waitFor();
+  await page.locator(".home-tool").first().waitFor();
   await page.evaluate(() => document.fonts.ready);
-  assert.ok(await page.locator(".dashboard-link").count() >= 15);
+  assert.ok(await page.locator(".helper-link[data-file]").count() >= 15);
   assert.equal(await page.evaluate(() => [...document.images].every((image) => image.complete && image.naturalWidth > 0)), true, "Screenshot must not contain broken images");
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.screenshot({ path: fileURLToPath(new URL("../frontend/public/og-image.png", import.meta.url)) });

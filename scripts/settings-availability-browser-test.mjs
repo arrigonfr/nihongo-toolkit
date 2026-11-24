@@ -50,7 +50,7 @@ try {
     }).map((note) => note.id));
     assert.deepEqual(misplaced, [], "Availability notes stay below their controls within the label");
   };
-  for (const file of ["絵合わせ", "言葉探し"]) {
+  for (const file of ["eawase", "kotoba-sagashi"]) {
     await go(file);
     await change("setting-hints", "unlimited");
     await disabled("setting-hintLimit", "setting-seconds", "setting-mistakes", "setting-rounds");
@@ -76,7 +76,7 @@ try {
     await enabled("setting-mistakes");
     await change("setting-mode", "marathon");
     await enabled("setting-rounds");
-    if (file === "絵合わせ") {
+    if (file === "eawase") {
       await change("setting-mode", "listening");
       await disabled("setting-display", "setting-pairing");
       await change("setting-content", "kana");
@@ -108,7 +108,7 @@ try {
     }
     assert.ok(await page.locator("#settingsForm fieldset").count() >= 6);
   }
-  await go("活用練習");
+  await go("katsuyo-renshuu");
   await disabled("setting-seconds", "setting-mistakes", "setting-reverseTask", "setting-hintLimit", "setting-revealLimit");
   await change("setting-mode", "reverse");
   await enabled("setting-reverseTask");
@@ -122,7 +122,7 @@ try {
   await enabled("setting-hintLimit");
   await change("setting-reveals", "limited");
   await enabled("setting-revealLimit");
-  await go("活用");
+  await go("katsuyo");
   await page.locator("#list-groups ~ .chips .chip-action:text-is(\"Clear\")").evaluate((node) => node.click());
   await disabled("setting-politeness", "setting-polarity", "setting-tense");
   await page.locator("#list-groups ~ .chips .chip-action:text-is(\"All\")").evaluate((node) => node.click());
@@ -133,7 +133,7 @@ try {
     const fields = ["field-fontSize", "field-compact", "field-contrast"].map((id) => document.getElementById(id).getBoundingClientRect());
     return fields[0].right <= fields[1].left && fields[1].right <= fields[2].left;
   }), "Display controls share one desktop row");
-  await go("パズル");
+  await go("pazuru");
   await disabled("hintLimitInput", "timedMinutesInput", "customWordsInput");
   await change("checkAvailSelect", "limited");
   await enabled("hintLimitInput");
@@ -205,7 +205,7 @@ try {
   await change("setting-mode", "relaxed");
   await disabled("setting-timer");
   await raw.setViewportSize({ width: 390, height: 844 });
-  for (const file of ["絵合わせ", "言葉探し", "活用練習", "活用", "パズル"]) {
+  for (const file of ["eawase", "kotoba-sagashi", "katsuyo-renshuu", "katsuyo", "pazuru"]) {
     await go(file);
     await checkNotes();
     const overflow = await page.evaluate(() => [...document.querySelectorAll("fieldset")].filter((node) => {

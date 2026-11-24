@@ -192,9 +192,8 @@ import {
         </header>
 
         <main>
-          <section class="cw-intro">
-            <p class="cw-eyebrow">Interactive Vocabulary & Kanji Grid</p>
-            <h1>Cross paths with Japanese words.</h1>
+          <section class="cw-intro"><span class="eyebrow"><span lang="ja">パズル</span> · <span>Japanese crossword</span></span>
+        <h1>Cross paths <br><span>with Japanese words.</span></h1>
             <p id="modeDescriptionText"></p>
           </section>
 
@@ -2322,6 +2321,14 @@ import {
     const cellInput = cellEl?.querySelector(".cw-cell-input");
     if (cellInput) {
       cellInput.focus({ preventScroll: true });
+      const clue = document.getElementById("gridCluePopover");
+      if (narrowGridViewport.matches && !clue.hidden) {
+        const tile = cellEl.getBoundingClientRect();
+        const card = clue.getBoundingClientRect();
+        if (tile.top < card.bottom && tile.bottom > card.top) {
+          window.scrollBy({ top: tile.top - card.bottom - 8, behavior: "instant" });
+        }
+      }
     } else {
       cellEl?.focus({ preventScroll: true });
     }

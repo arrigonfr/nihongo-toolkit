@@ -2,7 +2,7 @@ import { interfaceMessages } from "./interface-messages.js";
 import { navigationPage } from "./routes.js";
 
 const commonScopes = [
-  ".navigation", ".dashboard", ".intro", ".cw-intro", ".brand-name", ".cw-brand-name", ".study-header-description",
+  ".navigation", ".dashboard", ".intro", ".cw-intro", ".brand-name", ".cw-brand-name",
   ".study-palette", ".study-theme", ".study-toolbar", ".study-support",
   ".study-help-dialog", ".study-setting-tooltip", ".study-confirm-dialog",
   ".game-export-open", ".game-export-dialog",
@@ -170,6 +170,10 @@ export function translateInterface(source, language = currentLanguage()) {
   const es = language === "es";
   const entry = interfaceMessages[source];
   if (entry) return entry[es ? 0 : 1];
+  const eligible = source.match(/^(\d+) eligible · (\d+) in this session$/);
+  if (eligible) return es ? `${eligible[1]} disponibles · ${eligible[2]} en esta sesión` : `${eligible[1]} disponíveis · ${eligible[2]} nesta sessão`;
+  const editorialRound = source.match(/^Round (\d+) of (\d+)$/);
+  if (editorialRound) return `${es ? "Ronda" : "Rodada"} ${editorialRound[1]} de ${editorialRound[2]}`;
   const pageTitle = source.match(/^(.+) \| NihongoToolkit$/);
   if (pageTitle) {
     const title = translateInterface(pageTitle[1], language);
@@ -177,7 +181,7 @@ export function translateInterface(source, language = currentLanguage()) {
   }
   const parenthesized = source.match(/^\((.+)\)$/s);
   if (parenthesized && interfaceMessages[parenthesized[1]]) return `(${translateInterface(parenthesized[1], language)})`;
-  const about = source.match(/^About (Kana|Imi|Yomi|Goi|Kotoba|Fumitoki|Kanji Chizuchō|Kanji Kuizu|Katsuyō|Katsuyō Renshuu|Eawase|Kotoba Sagashi|Pazuru|Shiryō)$/);
+  const about = source.match(/^About (Kana|Imi|Yomi|Goi|Kotoba|Fumitoki|Kanji Chizuchō|Kanji Kuizu|Katsuyō|Katsuyō Renshuū|Eawase|Kotoba Sagashi|Pazuru|Shiryō)$/);
   if (about) return `${language === "es" ? "Acerca de" : "Sobre"} ${about[1]}`;
   const home = source.match(/^(Kana|Imi|Yomi) at NihongoToolkit home$/);
   if (home) return es ? `${home[1]} en la página principal de NihongoToolkit` : `${home[1]} na página inicial do NihongoToolkit`;

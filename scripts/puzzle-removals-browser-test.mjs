@@ -31,7 +31,7 @@ const profiles = [
 ];
 let vite, browser;
 try {
-  vite = await createServer({ root: fileURLToPath(new URL("../frontend", import.meta.url)), server: { host: "127.0.0.1", port: 0 } });
+  vite = await createServer({ root: fileURLToPath(new URL("../frontend", import.meta.url)), server: { host: "127.0.0.1", port: 0, strictPort: false } });
   await vite.listen();
   browser = await chromium.launch();
   const base = `http://127.0.0.1:${vite.httpServer.address().port}`;

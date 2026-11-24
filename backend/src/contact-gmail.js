@@ -63,7 +63,7 @@ You received this email because you contacted NihongoToolkit.<br>Reference: ${em
   const mime = [
     `From: NihongoToolkit <${env.CONTACT_EMAIL_FROM}>`, `To: <${contact.email}>`,
     `Subject: =?UTF-8?B?${subject}?=`,
-    `Date: ${new Date().toUTCString()}`,
+    `Date: ${new Date(job.created_at).toUTCString()}`,
     ...(env.CONTACT_EMAIL_REPLY_TO ? [`Reply-To: <${env.CONTACT_EMAIL_REPLY_TO}>`] : []),
     "MIME-Version: 1.0", `Content-Type: multipart/alternative; boundary="${boundary}"`,
     "", `--${boundary}`, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64",

@@ -40,3 +40,5 @@ body .study-help-button { width: 30px; height: 30px; font-size: 16px; cursor: po
 label:has(> input[type="checkbox"]) { align-items: center; justify-content: flex-start; align-self: end; min-height: 38px; text-align: left; }
 label:has(> input[type="checkbox"]) > input[type="checkbox"] { flex: 0 0 auto; }
 label:has(> input[type="checkbox"]) > .study-setting-name:not(button) { align-self: center; text-align: left; }
+.help-steps { padding-inline-start: 1.5em; line-height: 1.6; }
+.help-steps li + li { margin-block-start: .5em; }

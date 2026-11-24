@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { createServer as createVite } from "vite";
 import { chromium } from "playwright";
 import { createHandler } from "../backend/src/app.js";
 
+const screenshotPath = (name) => join(process.env.SCREENSHOT_DIR || "/tmp", `nihon-${name}.png`);
 const origins = [];
 const api = createServer(createHandler({ origins, sentenceFallback: async () => [], wordFallback: async () => [] }));
 api.listen(0, "127.0.0.1");
@@ -55,7 +57,7 @@ try {
       assert.equal(await page.locator(".session-setup > .start-line").evaluate((node) => getComputedStyle(node).justifyContent), "flex-end");
       await page.setViewportSize({ width: 360, height: 900 });
       await page.locator(start).scrollIntoViewIfNeeded();
-      await page.screenshot({ path: `/tmp/nihon-${file}-settings-footer.png` });
+      await page.screenshot({ path: screenshotPath(`${file}-settings-footer`) });
     }
     if (["goi", "kana", "imi", "yomi"].includes(file)) assert.equal(await page.locator("#startError").isVisible(), false, `${file} initial error hidden`);
     for (const width of [360, 1280]) {
@@ -135,7 +137,7 @@ try {
       assert.equal(await page.locator(".imposters-feedback-details").isVisible(), true);
       await page.setViewportSize({ width: 360, height: 900 });
       await page.locator("#choices").scrollIntoViewIfNeeded();
-      await page.screenshot({ path: "/tmp/nihon-kuizu-answer-feedback.png" });
+      await page.screenshot({ path: screenshotPath("kuizu-answer-feedback") });
     }
     if (file === "pazuru") {
       await page.click("#revealPuzzleBtn");
@@ -154,7 +156,7 @@ try {
         await page.setViewportSize({ width, height: 900 });
         await page.locator("#studyInspector").scrollIntoViewIfNeeded();
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-        await page.screenshot({ path: `/tmp/nihon-pazuru-review-${width}.png` });
+        await page.screenshot({ path: screenshotPath(`pazuru-review-${width}`) });
       }
     }
     assert.equal(await page.locator(`${results} .replay-actions`).evaluate((node) => getComputedStyle(node).justifyContent), "flex-end");
@@ -176,19 +178,20 @@ try {
   await page.locator("#settingsPanel > summary").click();
   assert.equal(await reset.isVisible(), true);
   await reset.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: "/tmp/nihon-renshuu-reset.png" });
+  await page.screenshot({ path: screenshotPath("renshuu-reset") });
   await page.goto(`${base}/index.html`);
   await page.click("#menuButton");
   for (const width of [360, 1280]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const link of await page.locator("#helperMenu .helper-link").all()) {
+    assert.equal(await page.locator("#helperMenu .home-link .helper-name").innerText(), "Home");
+    for (const link of await page.locator("#helperMenu .helper-link:not(.home-link)").all()) {
       assert.ok(await link.evaluate((node) => {
         const name = node.querySelector(".helper-name").getBoundingClientRect();
         const description = node.querySelector(".helper-description").getBoundingClientRect();
         return description.top - name.bottom <= 6;
       }), `Compact menu text at ${width}`);
     }
-    await page.screenshot({ path: `/tmp/nihon-menu-${width}.png` });
+    await page.screenshot({ path: screenshotPath(`menu-${width}`) });
   }
   await page.goto(`${base}/katsuyo.html`);
   let conjugations = 0;
@@ -226,15 +229,15 @@ try {
   assert.equal(sentences, 1);
   await page.setViewportSize({ width: 360, height: 900 });
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({ path: "/tmp/nihon-mobile-header.png" });
+  await page.screenshot({ path: screenshotPath("mobile-header") });
   await page.goto(base);
-  await page.locator(".dashboard-link > .helper-icon").first().waitFor();
-  assert.equal(await page.locator(".dashboard-link .helper-description").first().isVisible(), true);
-  await page.screenshot({ path: "/tmp/nihon-mobile-dashboard.png", fullPage: true });
+  await page.locator(".home-tool").first().waitFor();
+  assert.equal(await page.locator(".home-tool-copy p").first().isVisible(), true);
+  await page.screenshot({ path: screenshotPath("mobile-dashboard"), fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.screenshot({ path: "/tmp/nihon-desktop-dashboard.png", fullPage: true });
+  await page.screenshot({ path: screenshotPath("desktop-dashboard"), fullPage: true });
   assert.deepEqual(errors, []);
-  console.log("Explicit dictionary search and on-demand examples passed; screenshots saved in /tmp/nihon-*.png");
+  console.log(`Explicit dictionary search and on-demand examples passed; screenshots saved in ${screenshotPath("*")}`);
 } finally {
   await browser?.close();
   await vite?.close();

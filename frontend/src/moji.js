@@ -391,7 +391,8 @@ import { readingType, selectedReadings, matchesReading } from "./reading-answers
     updateSessionStatus();
   }
   function randomKana(type) {
-    const choice = randomItem(kanaDirections(sessionSettings.kanaDirection));
+    const saved = sessionSettings.kanaDirection;
+    const choice = saved === "romaji-any" ? saved : randomItem(kanaDirections(saved));
     if (choice.includes("hiragana")) type = "hiragana";
     if (choice.includes("katakana")) type = "katakana";
     const direction = choice.startsWith("romaji-") || choice === "to-kana" ? "to-kana" : "to-romaji";

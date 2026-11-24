@@ -1,10 +1,12 @@
 import "./tool-help.css";
 import { interfaceSourceAttribute, interfaceSourceText } from "./interface-i18n.js";
+import { navigationPage } from "./routes.js";
+import { helpSteps } from "./help-steps.js";
 
 const tools = {
   "eawase.html": ["Eawase", "Flip two cards to match representations of the same word or kana. Choose Words or Syllabaries, a matching direction, and a board size in Settings. Arrow keys move between cards; Enter or Space flips one. A correct match keeps the turn in local two-player games; a mismatch passes it. Hints and reveals do not earn points or unassisted accuracy. Listening needs Audio On and Japanese device voices. Kana meaning clues describe sounds, not vocabulary meanings. Script conversions are recognition exercises. Picture clues are disabled: no dictionary picture dataset is available. Mistake Review reloads saved word identities from the dictionary; imported clues are not question sources."],
   "kotoba-sagashi.html": ["Kotoba Sagashi", "Find Japanese words in straight lines. Drag from the first character to the last, or tap both endpoints. With a keyboard, use arrow keys to move, Enter or Space to set each endpoint, and Escape to cancel. Single-character words use the same cell twice. Settings apply to new puzzles; reading and appearance controls stay live. Quick uses 8×8 with five words. Marathon increases the grid and word count between rounds. Sudden Death ends after your chosen mistake limit. Hints and reveals follow your limits; missed and revealed words go to review. Japanese descriptions are disabled because the dictionary has no Japanese definitions. Review questions reload dictionary words, not imported clues. Kanji words retain necessary okurigana. JLPT levels are study estimates."],
-  "katsuyo-renshuu.html": ["Katsuyō Renshuu", "Choose JLPT levels, word types and forms, then load a session from the JMdict database with linked JLPT vocabulary. Type kana, kanji, mixed spelling or romaji and press Enter to check. Only first, unassisted answers earn credit. Missed questions return for review. Comparison and Reverse accept valid ambiguous analyses. Dictionary access is required to start; no offline word bank is substituted. Sentence prompts and auxiliary-pattern vocabulary are unavailable without verified aligned sources."],
+  "katsuyo-renshuu.html": ["Katsuyō Renshuū", "Choose JLPT levels, word types and forms, then load a session from the JMdict database with linked JLPT vocabulary. Type kana, kanji, mixed spelling or romaji and press Enter to check. Only first, unassisted answers earn credit. Missed questions return for review. Comparison and Reverse accept valid ambiguous analyses. Dictionary access is required to start; no offline word bank is substituted. Sentence prompts and auxiliary-pattern vocabulary are unavailable without verified aligned sources."],
   "katsuyo.html": ["Katsuyō", "Enter a dictionary-form verb or adjective in Japanese or romaji. Choose an interpretation when a word is ambiguous. Explore plain and polite endings, open usage rules, filter forms and save words. Unknown words require a confirmed reading and class. Advanced forms are grammatical references, not guarantees of natural usage for every meaning. Form examples search the corpus and Tatoeba for that written form; matching text can have different grammatical interpretations. Word information also offers sourced base-word examples."],
   "kana.html": ["Kana", "Practice hiragana and katakana in either direction. Choose a script or mix both, type your answer, and check it. Incorrect answers show the correct answer before you continue. Free, question-count and timed sessions track your progress."],
   "imi.html": ["Imi", "Practice kanji meanings from Japanese to English or in reverse. Choose a JLPT level, type an answer and check it. Pause to review readings and example words before continuing."],
@@ -61,12 +63,32 @@ const modeHelp = {
   reverse: "Read Japanese clues and enter English meanings."
 };
 
-export function mountToolHelp() {
-  const file = decodeURIComponent(location.pathname.split("/").pop());
-  const [name, description] = tools[file] || ["Japanese practice", "Choose your study settings, then begin practicing. Review answers and use the shared reading and audio controls as needed."];
+export function mountHelpDialog(pageHelp, stepsKey = navigationPage(location.pathname)) {
+  const file = navigationPage(location.pathname);
+  const [name, description] = pageHelp || tools[file];
+  const steps = document.createElement("ol");
+  steps.className = "help-steps";
+  for (const [instruction] of helpSteps[stepsKey]) {
+    const item = document.createElement("li");
+    item.textContent = instruction;
+    steps.append(item);
+  }
+  const details = document.createElement("details");
+  const summary = document.createElement("summary");
+  summary.textContent = "How to use this tool";
+  details.append(summary, steps);
+  const custom = document.querySelector("#helpDialog .dialog-body");
+  if (custom) {
+    const intro = document.createElement("p");
+    intro.textContent = "Build a word chain by starting each Japanese word with the ending of the previous one.";
+    details.append(...custom.childNodes);
+    custom.append(intro, details);
+    custom.closest("dialog").addEventListener("close", () => { details.open = false; });
+    return;
+  }
   const brand = document.querySelector(".brand-name, .cw-brand-name");
   if (tools[file] && brand?.firstChild?.nodeType === Node.TEXT_NODE) brand.firstChild.textContent = name;
-  const heading = document.querySelector(".intro h1, .cw-intro h1");
+  const heading = document.querySelector(".study-intro h1, .intro h1, .cw-intro h1");
   if (heading && !document.getElementById("helpButton")) {
     const button = document.createElement("button");
     button.id = "helpButton";
@@ -83,22 +105,23 @@ export function mountToolHelp() {
     title.textContent = `About ${name}`;
     const text = document.createElement("p");
     text.textContent = description;
-    const shared = document.createElement("p");
-    shared.textContent = "Valid settings save automatically in this browser. Audio, furigana, romaji and appearance preferences are shared across Nihon tools. Hover, focus or tap a setting name for details. " + (file === "katsuyo-renshuu.html"
-      ? "Practice examples are original teaching templates, not dictionary quotations. Speech availability depends on your device’s Japanese voices."
-      : "Example availability depends on the dictionary and the optional Tatoeba service; unavailable examples are not generated or invented.");
     const close = document.createElement("button");
     close.type = "button";
     close.className = "study-help-close";
     close.textContent = "Close";
     close.addEventListener("click", () => dialog.close());
-    dialog.append(title, text, shared, close);
+    dialog.append(title, text, details, close);
+    dialog.addEventListener("close", () => { details.open = false; });
     document.body.append(dialog);
     heading.append(" ", button);
     button.addEventListener("click", () => dialog.showModal());
     dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
   }
+}
 
+export function mountToolHelp(pageHelp) {
+  const file = navigationPage(location.pathname);
+  mountHelpDialog(pageHelp);
   const tooltip = document.createElement("div");
   tooltip.id = "studySettingTooltip";
   tooltip.className = "study-setting-tooltip";

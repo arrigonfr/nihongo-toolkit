@@ -36,7 +36,7 @@ const fonts = new Map([
 for (const [file, values] of cases) if (fonts.has(file)) values["setting-font"] = fonts.get(file);
 
 try {
-  vite = await createVite({ root: fileURLToPath(new URL("../frontend", import.meta.url)), server: { host: "127.0.0.1", port: 0, strictPort: false } });
+  vite = await createVite({ root: fileURLToPath(new URL("../frontend", import.meta.url)), server: { host: "127.0.0.1", port: 0, strictPort: false, watch: null } });
   await vite.listen();
   const base = `http://127.0.0.1:${vite.httpServer.address().port}`;
   origins.push(base);
@@ -74,7 +74,8 @@ try {
   }
   for (const [file, values] of cases) {
     await go(file);
-    await page.selectOption("#colorThemeSelect", "wisteria");
+    await page.locator(".study-palette > summary").click();
+    await page.locator('[data-palette="wisteria"]').click();
     if (await page.getAttribute("html", "data-theme") !== "dark") await page.click("#themeButton");
     if (await page.getAttribute("html", "data-study-audio") !== "false") await page.click("#audioQuickToggle");
     for (const [id, pressed] of [["furiganaQuickToggle", "false"], ["romajiQuickToggle", "true"]]) {
@@ -135,10 +136,19 @@ try {
   })));
   await page.reload();
   assert.equal(await page.inputValue("#kanaDirection"), "romaji-any");
+  assert.deepEqual(await page.locator(".direction-chips .is-active").evaluateAll((chips) => chips.map((chip) => chip.dataset.value)),
+    ["romaji-hiragana", "romaji-katakana"]);
   assert.equal(await page.inputValue("#fontChoice"), "Noto Sans JP");
   assert.equal(await page.inputValue("#sessionTarget"), "20");
   assert.equal(await page.locator("#showStatsToggle").isChecked(), true);
   assert.match(await page.textContent("#apiWarning"), /invalid/);
+  await page.evaluate(() => { Math.random = () => 0; });
+  await page.click("#startSessionButton");
+  assert.equal(await page.textContent("#glyph"), "a");
+  assert.equal(await page.locator("#typeTag").isVisible(), false);
+  await page.fill("#answerInput", "ア");
+  await page.click("#checkButton");
+  assert.equal(await page.textContent("#accuracyStat"), "100%", "Legacy either-script mode accepts katakana for a hiragana draw");
   await page.evaluate(() => localStorage.setItem("nihon:goi-settings-v1", "{"));
   await go("goi.html");
   assert.match(await page.textContent("#warning"), /could not be restored/);

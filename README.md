@@ -12,7 +12,36 @@ and local preferences are preserved. Sentence lookups use the dictionary databas
 first, with an optional server-side Tatoeba API fallback when no local examples exist
 or when you request another random example.
 
+The homepage introduces the learning tools through grouped illustrative previews
+and provides a compact index where each tool name opens the tool directly.
+On phones, a cropped mascot welcomes learners above the headline, and the index
+stacks Practice, Reference, and Games with one or two columns of tools per group.
+Homepage category links and FAQ topic links scroll to their headings without changing the URL.
+The homepage links directly to the shared menu and offers a shortcut to the most
+recently visited learning tool. Appearance preferences carry across the homepage
+and tool pages.
+
 ## Getting started
+
+### Seven-tool editorial preview
+
+All study intros use Eawase’s layout: a Japanese and English tool label,
+a two-line headline with an accented second line, and a short introduction.
+
+Run `npm run dev:editorial` from the repository root, then open
+<http://127.0.0.1:5173/>. Use the Practice, Games and Reference sections, or
+open a [direct route](docs/SEVEN-TOOL-DEVELOPMENT-SPEC.md#completion-record).
+Only this local development mode lists and runs the seven new tools. Stop
+the server and run the usual dev command to return to the normal edition.
+Do not expose the development server: Vite serves project sources. Production
+builds omit the draft entries, decks and sitemap links even if the opt-in is set.
+No release flag promotes draft content.
+
+The previews are for editorial evaluation, not an approved Japanese curriculum.
+See the [coverage and release gates](docs/SEVEN-TOOL-DEVELOPMENT-SPEC.md#completion-record)
+and [icon generation prompts](docs/SEVEN-TOOL-ICON-PROMPTS.md).
+
+### Standard installation
 
 Install **Node.js 24** with npm, then run:
 
@@ -29,7 +58,8 @@ The first data import needs internet access and creates a 200+ MiB SQLite
 database; downloads are cached for later imports. Open http://localhost:5173
 with the backend running at http://localhost:3000. Use the top-center menu to
 choose a practice tool, reference tool or game, and the `?` beside its heading
-for instructions. Choose settings and start a session where applicable.
+for a description. Expand **How to use this tool** for numbered instructions
+and any additional rules. Choose settings and start a session where applicable.
 Audio uses Japanese speech voices on your device, except in Firefox where a
 local Japanese voice loads in the background when a page opens with Audio On.
 Settings and supported
@@ -214,7 +244,7 @@ Run `npm run test:study-improvements` for the cross-tool interaction checks.
 Run `npm run test:reading-options` for Yomi reading filters, kana conversion,
 IME clearing and live kanji-review behavior.
 
-Pazuru, Eawase, Kotoba Sagashi, Katsuyo and Katsuyo Renshuu group settings by
+Pazuru, Eawase, Kotoba Sagashi, Katsuyō and Katsuyō Renshuū group settings by
 purpose. Currently relevant dependent controls sit inside softly tinted, rounded
 outlines with breathing room around the control, without shifting the layout.
 The highlight disappears when another choice makes them irrelevant.
@@ -227,7 +257,7 @@ the control (for example, hint budgets require limited hints and challenge limit
 require the corresponding mode). Mode overrides do not replace saved preferences:
 switching back makes those preferences available again. Puzzle and practice
 settings still apply to the next round; Katsuyo's display and form filters stay live.
-Kotoba Sagashi, Eawase, Shiritori and Katsuyō Renshuu offer a Japanese font
+Kotoba Sagashi, Eawase, Shiritori and Katsuyō Renshuū offer a Japanese font
 selector: system default, Noto Sans JP, Sawarabi Mincho, M PLUS Rounded 1c and
 Zen Kurenaido, plus Rotate fonts and a preview. Rotation chooses a font per game
 or practice session (per question in Kana, Yomi, Imi and Goi).
@@ -320,7 +350,9 @@ level uses a separate batch queue and invalidates any pending previous question.
 Kana supports hiragana-only, katakana-only, or mixed questions to romaji, and
 romaji questions with hiragana-only, katakana-only, script-tagged mixed, or
 untagged either-script answers. The last option accepts both scripts and does not
-show a type tag. Same-sound kana within the selected script are accepted.
+show a type tag. A saved `romaji-any` preference restores both romaji-to-kana
+chips and keeps this untagged behavior until the direction is changed.
+Same-sound kana within the selected script are accepted.
 Standalone small kana and IME shortcuts (`xa`, `xtsu`, etc.) are not quiz terms.
 Romaji answers match taught syllables strictly, ignoring only case and surrounding
 whitespace; punctuation, extra text, and mixed-script answers are not accepted.
@@ -622,7 +654,7 @@ Run `npm run test:conjugator` for the engine, dictionary and browser checks.
 
 ## Katsuyō conjugation practice
 
-Open **Katsuyō Renshuu · 活用練習** in the launcher.
+Open **Katsuyō Renshuū · 活用練習** in the launcher.
 The trainer loads vocabulary, readings, meanings and word classes from the
 JMdict database through `/api/conjugation-practice`, reusing the conjugator's
 spelling/sense restrictions and exact JLPT vocabulary links. Grammar rules
@@ -812,8 +844,8 @@ Mobile deletion also works when the keyboard sends input events without keydown.
 An unfinished word remains typeable from a locked crossing: after solving 渡す,
 selecting 渡る accepts the complete word/reading or just its remaining る, without
 changing the shared 渡. In-square clue cards sit below the grid on desktop.
-On mobile they sit above the grid and stay visible while scrolling, so the
-on-screen keyboard is less likely to cover the clue.
+On mobile they sit above the grid and stay visible while scrolling. If the
+sticky clue covers a newly focused square, the page scrolls it into view.
 Save/Clear and duplicate Close buttons are removed. Direction buttons appear only
 at across/down intersections. Check/reveal availability and hint limits still apply.
 Kotoba rejects word searches longer than the API's 100-character limit before

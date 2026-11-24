@@ -39,6 +39,11 @@ export function pageAvailability(pages) {
       }
     },
     generateBundle(_options, bundle) {
+      for (const output of Object.values(bundle)) {
+        if (output.type === "chunk" && Object.keys(output.modules).some(id => /\/src\/(?:preview-(?:games|practice|guide)\/|editorial-session\.js)/.test(id))) {
+          throw new Error("Editorial preview content cannot be included in a deployment.");
+        }
+      }
       if (!pages.has("shiryo.html")) return;
       // Fail closed if a new entry point accidentally starts importing the paid sheets.
       for (const output of Object.values(bundle)) {

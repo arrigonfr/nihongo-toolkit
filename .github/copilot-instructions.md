@@ -8,6 +8,22 @@ Use the checklist below for new pages and for changes that affect existing page
 integration; apply conditional items where relevant and explain material
 exceptions instead of silently omitting them.
 
+## Required workflow
+
+- At the start of page work, read the current version of this file, identify
+  the checklist items affected by the request, and inspect the corresponding
+  shared implementation and tests. Implement those integrations as part of
+  the task, not as optional follow-up work.
+- When the user specifies a reusable page structure, layout, shared behavior,
+  or verification requirement, update the relevant guidance in this file as
+  part of the same task. Record the applicable scope and existing shared
+  implementation; revise conflicting or outdated instructions. Do not turn
+  a clearly one-off request into a repository-wide rule; clarify scope when
+  it is genuinely ambiguous.
+- Before finishing, check the applicable checklist items against the changes
+  and their actual behavior. Report material exceptions or unverified items
+  explicitly rather than assuming an integration is present.
+
 ## Project shape
 
 - The frontend is a vanilla JavaScript, CSS, and Vite multi-page application in
@@ -46,7 +62,10 @@ exceptions instead of silently omitting them.
    special handling.
 3. **Shared header and appearance:** Match the site's header, brand, navigation,
    support/contribution affordances, and layout using existing markup and
-   shared modules. For study tools, initialize `mountStudyControls` from
+   shared modules. Study intros follow Eawase: bilingual label, two-line headline
+   with an accented second line, and a short learner-facing description. Use
+   `frontend/src/tool-intro.css` rather than per-page intro styling.
+   For study tools, initialize `mountStudyControls` from
    `frontend/src/study-controls.js` after the expected page DOM exists; it
    integrates appearance, support, tool help, and applicable shared controls.
    For pages without study controls, use the appropriate existing
@@ -60,7 +79,15 @@ exceptions instead of silently omitting them.
    Quick controls and appearance apply live, including to already rendered
    content; do not create competing per-page versions of shared preferences.
 5. **Help and settings:** Register specific tool help in
-   `frontend/src/tool-help.js` and provide meaningful contextual descriptions
+   `frontend/src/tool-help.js`. Every tool's `#helpDialog` must open with its
+   description visible. Put ordered instructions under a collapsed “How to use
+   this tool” disclosure: cover setup, the main task, and a useful next step or
+   recovery. Maintain them in `frontend/src/help-steps.js` in English, Spanish,
+   and Portuguese. On every tool change, check the dialog against the actual flow.
+   If controls, labels, modes, grading, availability or results change, update
+   the affected steps, detailed help and translations **in the same change**.
+   Open the dialog on the clean route and verify its instructions match what a
+   learner can do in that edition (including restricted previews). Provide meaningful contextual descriptions
    for applicable setting names and mode choices. Use existing settings,
    `chips.js`, `choice-controls.js`, `jlpt-levels.js`, and
    `japanese-fonts.js` patterns when applicable. Group related settings;
@@ -126,3 +153,9 @@ exceptions instead of silently omitting them.
   paths change.
 - Report checks actually run and any blocked verification. Do not claim an
   untested page or unsupported feature is complete.
+- Track servers and other listening processes started for a task, including
+  their ports and process or session IDs. Once they are no longer needed, stop
+  those processes and verify their ports are no longer listening before
+  finishing, including after failed checks. Leave pre-existing or unrelated
+  processes alone. If the user explicitly needs a server left running, report
+  its port and stop it when the dependent work is complete.

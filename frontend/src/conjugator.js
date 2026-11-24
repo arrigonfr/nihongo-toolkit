@@ -295,7 +295,7 @@ $("manualForm").addEventListener("submit", (event) => {
 $("randomButton").addEventListener("click", async () => {
   const token = ++request;
   const doneLoading = beginLoading([...document.querySelectorAll("#searchForm button")], $("result").parentElement);
-  $("randomButton").disabled = true; status("Finding a new word…");
+  status("Finding a new word…");
   try {
     const items = await load({ random: "true", level: settings.level, category: settings.category, exclude: [...new Set([...randomHistory, ...(current ? [current.reading] : [])])].slice(-80) });
     if (token !== request) return;
@@ -303,7 +303,7 @@ $("randomButton").addEventListener("click", async () => {
     randomHistory = [...randomHistory, items[0].reading].slice(-80);
     showEntry(items[0]);
   } catch (error) { if (token === request) status(error.message, true); }
-  finally { await doneLoading(); if (token === request) $("randomButton").disabled = false; }
+  finally { await doneLoading(); }
 });
 function renderLists() {
   $("history").innerHTML = recent.length ? recent.map((entry, i) => `<button type="button" data-recent="${i}" lang="ja">${escape(entry.word)}</button>`).join("") : '<p class="muted">Your recent words will appear here.</p>';

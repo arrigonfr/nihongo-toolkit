@@ -297,9 +297,9 @@ try {
   assert.equal(await page.locator("#settingsPanel").evaluate((panel) => panel.open), true, "Failed generation leaves settings open");
   await page.goto(`${base}/index.html`);
   await page.click("#menuButton");
-  assert.equal(await page.locator(".helper-link").count(), 15);
+  assert.equal(await page.locator('#helperMenu [data-file="kotoba-sagashi.html"]').count(), 1);
   await page.click('#helperMenu [data-file="kotoba-sagashi.html"]');
-  await page.waitForURL(`${base}/kotoba-sagashi.html`);
+  await page.waitForURL(`${base}/kotoba-sagashi`);
   await page.locator("#startButton").waitFor();
   assert.deepEqual(errors, []);
   await page.goto(`${base}/index.html`);

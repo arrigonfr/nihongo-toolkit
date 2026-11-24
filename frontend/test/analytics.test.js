@@ -7,6 +7,7 @@ import { pageFile, publicPath } from "../src/routes.js";
 import { runInNewContext } from "node:vm";
 import config from "../vite.config.js";
 import { selectDailyKanji } from "../kanji/pages.js";
+import { editorialPage } from "../editorial-tools.js";
 
 test("public URLs and tool identifiers round-trip across clean and HTML routes", () => {
   assert.equal(pageFile("/favicon.png"), "favicon.png");
@@ -54,7 +55,8 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     const kanjiUrls = locations.filter((url) => new URL(url).pathname.startsWith("/kanji/"));
     assert.equal(kanjiUrls.length, source.filter(({ kind }) => kind !== "radical-only").length + 1);
     assert.equal(new Set(kanjiUrls).size, kanjiUrls.length);
-    assert.equal(locations.length - kanjiUrls.length, 19);
+    assert.equal(locations.length - kanjiUrls.length, 20);
+    assert.ok(locations.includes(new URL("/contact", site).href));
     assert.ok(locations.includes(new URL("/kanji-of-the-day", site).href));
     assert.ok(!locations.includes(new URL("/embed/kanji-of-the-day", site).href));
     const daily = readFileSync(join(directory, "kanji-of-the-day.html"), "utf8");
@@ -76,7 +78,7 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     assert.deepEqual(new Set(kanjiUrls), new Set(files.map((file) => new URL(
       file === "index.html" ? "/kanji/" : `/kanji/${encodeURIComponent(file.slice(0, -5))}`, site).href)));
     const index = readFileSync(join(directory, "kanji", "index.html"), "utf8");
-    assert.match(index, /<section class="study-intro"[^>]*>\s*<div class="study-intro-content">[\s\S]*?<h1 id="catalogue-title">/);
+    assert.match(index, /<section class="study-intro tool-intro"[^>]*>\s*<div class="study-intro-content">[\s\S]*?<h1 id="catalogue-title">/);
     assert.match(index, /<select id="catalogue-group"><option value="jlpt" selected>/);
     assert.deepEqual([...index.matchAll(/<details><summary>(.*?) \(\d+\)<\/summary>/g)].map(([, group]) => group),
       ["N5", "N4", "N3", "N2", "N1", "No JLPT estimate"]);
@@ -105,6 +107,10 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     assert.equal(readFileSync(join(directory, "robots.txt"), "utf8"), `User-agent: *\nAllow: /\n\nSitemap: ${site}sitemap.xml\n`);
     const root = new URL("../", import.meta.url);
     for (const file of readdirSync(root).filter((name) => name.endsWith(".html") && name !== "文字.html")) {
+      if (editorialPage(file)) {
+        assert.ok(!locations.includes(new URL(publicPath(file), site).href));
+        continue;
+      }
       const result = navigation.transformIndexHtml.handler(readFileSync(new URL(file, root), "utf8"), { filename: new URL(file, root).pathname });
       const canonical = result.tags.find((tag) => tag.attrs?.rel === "canonical").attrs.href;
       assert.equal(canonical, new URL(publicPath(file), site).href);
@@ -185,7 +191,7 @@ test("every page configures host-only analytics cookies before loading Google ta
   const { plugins } = config({ mode: "test" });
   const navigation = plugins.find((plugin) => plugin.name === "tool-navigation");
   const root = new URL("../", import.meta.url);
-  for (const file of readdirSync(root).filter((name) => name.endsWith(".html"))) {
+  for (const file of readdirSync(root).filter((name) => name.endsWith(".html") && !editorialPage(name))) {
     const result = navigation.transformIndexHtml.handler(
       readFileSync(new URL(file, root), "utf8"),
       { filename: new URL(file, root).pathname }

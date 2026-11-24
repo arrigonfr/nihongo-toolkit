@@ -1,0 +1,15 @@
+.draw-boards { display:flex; flex-wrap:wrap; align-items:flex-start; gap:1rem; margin-block:1rem; }
+.draw-boards > div { width:min(100%, 16rem); }
+.draw-boards strong { display:block; margin-bottom:.4rem; }
+.draw-square { display:block; width:100%; aspect-ratio:1; color:var(--ink,currentColor); background:var(--card,Canvas); border:1px solid var(--line,GrayText); border-radius:.4rem; }
+.draw-pad { touch-action:none; cursor:crosshair; user-select:none; }
+.draw-stroke { fill:none; stroke:currentColor; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+.draw-template { stroke:var(--accent-strong,currentColor); opacity:.45; }
+.draw-origin { fill:var(--accent-strong,currentColor); }
+.draw-guides { fill:none; stroke:var(--line,GrayText); stroke-width:.5; stroke-dasharray:2 2; }
+.draw-number { font:5px sans-serif; fill:currentColor; }
+.draw-actions { display:flex; flex-wrap:wrap; gap:.5rem; }
+.draw-practice [hidden] { display:none !important; }
+@media (max-width:36rem) {
+  .draw-boards:has(> div:first-child:not([hidden]) + div:not([hidden])) { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2fr); gap:.6rem; }
+}

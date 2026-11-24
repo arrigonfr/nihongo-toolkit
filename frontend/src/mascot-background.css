@@ -1,7 +1,3 @@
-body[data-mascot="home"] {
-  --mascot-image: url("/mascot.webp");
-  --mascot-aspect-ratio: 440 / 622;
-}
 body[data-mascot="kana"] { --mascot-image: url("/mascot-kana.webp"); }
 body[data-mascot="yomi"] { --mascot-image: url("/mascot-yomi.webp"); }
 body[data-mascot="imi"] { --mascot-image: url("/mascot-imi.webp"); }

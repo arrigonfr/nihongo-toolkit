@@ -14,7 +14,8 @@ const options = (values) => values.map(([value, label]) => `<option value="${val
 const modes = [["practice", "Practice"], ["timed", "Timed Challenge"], ["high", "High Score"], ["sudden", "Sudden Death"], ["review", "Mistake Review"]];
 const variants = [["kanji-reading", "Kanji → Readings"], ["reading-kanji", "Reading → Kanji"]];
 root.innerHTML = `<div class="shell imposters-shell"><header><div class="brand"><span class="brand-mark" aria-hidden="true"><img src="/tool-icons/kanji-kuizu.webp" alt=""></span><span class="brand-name">Kanji Kuizu<span class="brand-note">NihongoToolkit</span></span></div><button id="themeButton" type="button" aria-label="Toggle theme"></button></header>
-<section class="intro"><span class="eyebrow">Kanji Imposters</span><h1>Kanji Kuizu <span lang="ja">漢字クイズ</span></h1></section>
+<section class="intro"><span class="eyebrow"><span lang="ja">漢字クイズ</span> · <span>Kanji quiz</span></span>
+        <h1>Look at the kanji. <br><span>Pick its readings.</span></h1><p>Match a character to its readings, or work backwards from a reading to the kanji that use it.</p></section>
 <details class="card game-settings imposters-settings" id="settings" open><summary>Game settings</summary><div class="settings-body"><form id="settingsForm">
 <fieldset class="settings-section"><legend>Session</legend><div class="settings-grid">
 <div class="setting imposters-setting-wide"><span class="field-label" id="modeLabel">Game mode</span><select id="mode" aria-labelledby="modeLabel">${options(modes)}</select></div>

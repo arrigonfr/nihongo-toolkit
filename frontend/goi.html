@@ -143,7 +143,7 @@
     .breakdown { display: grid; grid-template-columns: 1fr auto auto; gap: 6px 10px; align-items: center; font-size: 11px; }
     .breakdown .head { color: var(--muted); font-size: 9px; }
     .breakdown .value { text-align: right; font-variant-numeric: tabular-nums; }
-    .stats-breakdowns .breakdown { max-height: 4rem; overflow: auto; align-content: start; }
+    .stats-breakdowns .breakdown { height: 4rem; overflow: auto; align-content: start; }
     .status { height: 3rem; overflow: auto; margin-top: 10px; color: var(--muted); font-size: 11px; text-align: center; }
     .status.error { color: var(--danger); }
     footer { padding: 17px 0 0; color: var(--muted); text-align: center; font-size: 10px; line-height: 1.6; }
@@ -328,9 +328,8 @@
       </button>
     </header>
     <main>
-      <section class="intro">
-        <p class="eyebrow">Small words, steady progress</p>
-        <h1>Make vocabulary <br>second nature.</h1>
+      <section class="intro"><span class="eyebrow"><span lang="ja">語彙</span> · <span>Vocabulary practice</span></span>
+        <h1>Make vocabulary <br><span>second nature.</span></h1>
         <p>Choose a level, set a practice goal, and build your Japanese vocabulary one word at a time.</p>
       </section>
       <div class="layout">

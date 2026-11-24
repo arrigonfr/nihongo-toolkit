@@ -278,7 +278,9 @@ try {
   await page.click("#audioQuickToggle");
   await start();
   const audioPairs = new Map();
-  for (const id of await order()) {
+  const listeningIds = await order();
+  // Leave one card down so discovering the pairs cannot end this round.
+  for (const id of listeningIds.slice(0, -1)) {
     const before = await page.evaluate(() => window.__spoken.length);
     await card(id).click();
     const audio = await card(id).locator(".audio-face").count() > 0;
@@ -293,6 +295,10 @@ try {
     if (await page.locator(".mismatch").count()) await page.waitForFunction(() => !document.querySelector(".mismatch"));
   }
   assert.equal(audioPairs.size, 3);
+  const incomplete = [...audioPairs.values()].filter((pair) => pair.audio === undefined || pair.written === undefined);
+  assert.equal(incomplete.length, 1);
+  const [lastPair] = incomplete;
+  lastPair[lastPair.audio === undefined ? "audio" : "written"] = listeningIds.at(-1);
   assert.ok([...audioPairs.values()].every((pair) => Number.isInteger(pair.audio) && Number.isInteger(pair.written)));
   const [a, b, c] = [...audioPairs.values()];
   await confirmedClick("#restartButton");
@@ -384,6 +390,8 @@ try {
     const pairs = await scan();
     assert.equal(pairs.length, 2);
     assert.ok(pairs.every((pair) => pair.length === 2));
+    // The scan leaves its penultimate card selected, not necessarily from the first pair.
+    await confirmedClick("#restartButton");
     await solve(pairs);
     await page.reload();
     assert.equal(await page.locator("#setting-pairing").inputValue(), pairing);
@@ -391,7 +399,7 @@ try {
   await page.goto(`${base}/index.html`);
   await page.click("#menuButton");
   await page.click('#helperMenu [data-file="eawase.html"]');
-  await page.waitForURL(`${base}/eawase.html`);
+  await page.waitForURL(`${base}/eawase`);
   await page.locator("#startButton").waitFor();
   assert.deepEqual(errors, []);
   await page.goto(`${base}/index.html`);

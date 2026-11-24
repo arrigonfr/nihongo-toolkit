@@ -2,9 +2,9 @@ import "./practice.css";
 import "./answer-feedback.css";
 
 const tools = {
-  kana: { name: "Kana", icon: "あ", image: "kana", description: "Hiragana and katakana", heading: "Make kana second nature." },
-  meaning: { name: "Imi", icon: "意", image: "imi", description: "Kanji meaning practice", heading: "Find meaning in every kanji." },
-  reading: { name: "Yomi", icon: "読", image: "yomi", description: "Kanji reading practice", heading: "Give every kanji a voice." }
+  kana: { name: "Kana", icon: "あ", image: "kana", japanese: "仮名", description: "Hiragana and katakana", heading: "Make kana <br><span>second nature.</span>" },
+  meaning: { name: "Imi", icon: "意", image: "imi", japanese: "意味", description: "Kanji meaning practice", heading: "Find meaning <br><span>in every kanji.</span>" },
+  reading: { name: "Yomi", icon: "読", image: "yomi", japanese: "読み", description: "Kanji reading practice", heading: "Give every kanji <br><span>a voice.</span>" }
 };
 
 export function renderPractice(kind) {
@@ -16,6 +16,7 @@ export function renderPractice(kind) {
         <option value="hiragana-romaji,katakana-romaji" selected>Kana → romaji</option>
         <option value="to-romaji">Kana (any) → romaji</option>
         <option value="to-kana">Romaji → kana (script shown)</option>
+        <option value="romaji-any" hidden>Romaji → either kana script</option>
       </select></label>`
     : kind === "meaning"
       ? `<label>Meaning direction<select id="meaningDirection">
@@ -35,7 +36,7 @@ export function renderPractice(kind) {
       </header>
       <main>
         <section class="intro">
-          <p class="eyebrow">Focused Japanese practice</p><h1>${tool.heading}</h1>
+          <span class="eyebrow"><span lang="ja">${tool.japanese}</span> · <span>${tool.description}</span></span><h1>${tool.heading}</h1>
           <p>${kanji ? "Choose a JLPT level and build confidence one kanji at a time." : "Practice hiragana and katakana together with quick questions and focused sessions."}</p>
         </section>
         <div class="main-column">

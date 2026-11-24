@@ -224,6 +224,7 @@ import { interfaceSourceText } from "./interface-i18n.js";
           <p class="meanings">${meanings(record) ? escapeHtml(meanings(record)) : '<span data-i18n-scope>No English meanings listed.</span>'}</p>
           ${incomplete ? `<p><a href="${kanjiReportPath(character)}">Suggest a missing Japanese reading or English meaning</a></p>` : ""}
           <button class="button copy-button" id="copyKanji" type="button" data-kanji="${escapeHtml(character)}">Copy kanji</button>
+          ${import.meta.env.EDITORIAL_PREVIEWS_ENABLED ? `<a href="/kanji-kaki?kanji=${encodeURIComponent(character)}" target="_blank" rel="noopener">Practice writing ${escapeHtml(character)}</a>` : ""}
         </div>
       </div>
       <div class="detail-grid">

@@ -11,11 +11,7 @@ button.primary:hover { background: var(--accent-strong); }
 a { color: var(--accent); text-underline-offset: 3px; }
 [hidden] { display: none !important; }
 .shell { max-width: 1320px; margin: auto; padding: 0 32px; }
-.intro { padding: 36px 0 30px; }
 .eyebrow { color: var(--accent); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .15em; }
-h1 { font-size: clamp(32px, 4vw, 48px); line-height: 1.15; letter-spacing: -.04em; margin: 10px 0 16px; font-weight: 650; }
-h1 > span { color: var(--accent); }
-.intro p { font-size: 14px; color: var(--muted); max-width: 540px; margin: 0; }
 h2 { font-size: 17px; margin: 0; letter-spacing: -.02em; font-weight: 650; }
 h3 { font-size: 14px; }
 .small { font-size: 12px; color: var(--muted); }
@@ -83,7 +79,7 @@ progress::-moz-progress-bar { background: var(--accent); }
 #feedback { min-height: 46px; font-size: 12px; color: var(--accent); margin: 18px 0 12px; overflow-wrap: anywhere; }
 .board-actions { border-top: 1px solid var(--line); padding-top: 18px; }
 .board-actions select { font-size: 12px; max-width: 165px; }
-#keyboardHelp { font-size: 10px; margin-bottom: 0; }
+#keyboardHelp { font-size: 14px; margin-bottom: 0; }
 .tag { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 7px; padding: 4px 8px; font-size: 10px; font-weight: 650; }
 .panel-heading { margin-bottom: 18px; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 18px 8px; }
@@ -141,7 +137,7 @@ legend { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
 @media (max-width: 1050px) { .layout { grid-template-columns: minmax(0, 1fr) 265px; gap: 16px; } .shell { padding: 0 20px; } .panel { padding: 18px; } }
 @media (max-width: 850px) { .layout { grid-template-columns: minmax(0, 1fr); } .sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; } .sidebar .panel { margin: 0; } .credits { grid-column: 1 / -1; } }
 @media (max-width: 500px) {
-  .shell { padding: 0 12px; } .intro { padding: 24px 0; } .toolbar { gap: 12px; } .content-choice { width: 100%; } .content-choice button { flex: 1; }
+  .shell { padding: 0 12px; } .toolbar { gap: 12px; } .content-choice { width: 100%; } .content-choice button { flex: 1; }
   .toolbar > .actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; } .toolbar button { padding: 8px; font-size: 12px; }
   .panel { padding: 16px 12px; } #board { grid-template-columns: repeat(var(--columns), minmax(72px, 1fr)); gap: 6px; }
   .memory-card { min-height: 120px; padding: 15px 4px; } .sidebar { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(4, 1fr); }

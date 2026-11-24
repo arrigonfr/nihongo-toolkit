@@ -65,7 +65,7 @@ progress::-moz-progress-bar { background: var(--accent); }
 .selection-status { min-height: 48px; margin: 15px 0 5px; font-size: 12px; color: var(--accent); overflow-wrap: anywhere; }
 .board-bottom { padding-top: 16px; border-top: 1px solid var(--line); flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
 .board-bottom select { font-size: 12px; max-width: 160px; }
-.instructions { margin: 15px 0 0; font-size: 11px; }
+.instructions { margin: 15px 0 0; font-size: 14px; }
 #emptyBoard { padding: 55px 20px; text-align: center; }
 #emptyBoard > span { font-size: 35px; color: var(--accent); letter-spacing: .15em; }
 #emptyBoard p { font-size: 14px; color: var(--muted); }

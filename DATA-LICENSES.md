@@ -28,6 +28,14 @@ EDRDG files are used in conformance with the
 SKIP codes are copyright Jack Halpern and the Kanji Dictionary Publishing Society
 and licensed under CC BY-SA 4.0.
 
+The seven editorial previews are excluded from the deployed frontend. Their
+draft prompts and examples are not marked as reviewer-approved. Kanji Kaki
+adapts KanjiVG stroke paths for replay, tracing and overlay; these adaptations
+retain the KanjiVG attribution and CC BY-SA 3.0 license above. The Sound &
+Sensation Guide must not import a third-party form list, glosses or examples
+based solely on a discovery link; see its
+[acquisition requirements](docs/SEVEN-TOOL-DEVELOPMENT-SPEC.md#internal-ownership-of-the-1158-unmatched-forms).
+
 The conjugation practice word bank and teaching-sentence templates in
 `frontend/src/conjugation-practice-data.js` and
 `frontend/src/conjugation-practice-engine.js` are original application content,

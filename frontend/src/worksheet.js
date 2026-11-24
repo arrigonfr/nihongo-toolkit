@@ -60,13 +60,28 @@ export function mountWorksheet({ picker, preview, panel, grayscale }) {
   const modes = [...section.querySelectorAll('[data-field="mode"]')], levels = [...section.querySelectorAll('[data-field="level"]')];
   const size = section.querySelector('[data-field="size"]'), paper = section.querySelector('[data-field="paper"]'), orientation = section.querySelector('[data-field="orientation"]'), notice = section.querySelector(".worksheet-notice");
   const opacity = section.querySelector('[data-field="opacity"]'), numbers = section.querySelector('[data-field="numbers"]');
+  let target = import.meta.env.EDITORIAL_PREVIEWS_ENABLED && new URLSearchParams(location.search).get("kanji");
+  if (target && /^\p{Script=Han}$/u.test(target) && Object.hasOwn(strokes, target)) {
+    const choice = document.createElement("label");
+    const only = Object.assign(document.createElement("input"), { type: "checkbox", checked: true });
+    choice.append(only, ` Practice only ${target}`);
+    const draw = Object.assign(document.createElement("a"), { textContent: `Draw ${target} on screen`, href: `/kanji-kaki?kanji=${encodeURIComponent(target)}`, target: "_blank", rel: "noopener" });
+    section.prepend(choice, draw);
+    const linked = target;
+    const selectTarget = () => {
+      target = only.checked ? linked : null;
+      for (const mode of modes) mode.disabled = Boolean(target);
+    };
+    only.addEventListener("change", selectTarget);
+    selectTarget();
+  } else target = null;
   let page = 0, active = false, fontData, fontBytes;
-  const characters = () => worksheetCharacters(modes.filter((input) => input.checked).map((input) => input.value), levels.filter((input) => input.checked).map((input) => input.value));
+  const characters = () => target ? [target] : worksheetCharacters(modes.filter((input) => input.checked).map((input) => input.value), levels.filter((input) => input.checked).map((input) => input.value));
   const options = (font = fontUrl) => ({ page, size: Number(size.value), paper: paper.value, orientation: orientation.value, opacity: Number(opacity.value) / 100, numberSize: Number(numbers.value), grayscale: grayscale.checked, font });
   function render() {
     const items = characters(), layout = worksheetLayout(options()), pages = Math.max(1, Math.ceil(items.length / layout.perPage));
     page = Math.max(0, Math.min(page, pages - 1));
-    section.querySelector('[data-levels]').disabled = !modes.some((input) => input.value === "kanji" && input.checked);
+    section.querySelector('[data-levels]').disabled = Boolean(target) || !modes.some((input) => input.value === "kanji" && input.checked);
     for (const input of [...modes, ...levels]) input.closest(".chip-option").classList.toggle("is-active", input.checked);
     section.querySelector("[data-page]").textContent = `${page + 1} / ${pages}`;
     section.querySelector('[data-action="previous"]').disabled = page === 0;

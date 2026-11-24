@@ -6,11 +6,13 @@ import "./shiryo-preview.css";
 import "./navigation.js";
 import { mountAppearance } from "./appearance.js";
 import { mountSupport } from "./study-controls.js";
+import { mountHelpDialog } from "./tool-help.js";
 import previews from "../previews/shiryo/manifest.json";
 
 const images = import.meta.glob("../previews/shiryo/*.png", { eager: true, query: "?url", import: "default" });
 mountAppearance(document.querySelector("header"), document.getElementById("themeButton"));
 mountSupport();
+mountHelpDialog(["Shiryō", "Browse sample pages from the printable study sheets. This edition shows previews only."], "shiryo-preview");
 
 const picker = document.getElementById("sheetPicker");
 const preview = document.getElementById("sheetPreview");

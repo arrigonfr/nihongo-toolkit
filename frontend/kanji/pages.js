@@ -109,10 +109,10 @@ function catalogueIndex(shell, entries, site) {
     title: "Japanese Kanji Catalogue",
     description: "Browse Japanese kanji by stroke count, dictionary radical, or estimated JLPT level. Find meanings, readings, and stroke-order diagrams where available.",
     canonical: site && new URL(cataloguePath, site).href,
-    body: `<section class="study-intro" aria-labelledby="catalogue-title">
+    body: `<section class="study-intro tool-intro" aria-labelledby="catalogue-title">
   <div class="study-intro-content">
-    <p class="eyebrow">Japanese reference</p>
-    <h1 id="catalogue-title">Japanese Kanji Catalogue</h1>
+    <span class="eyebrow"><span lang="ja">漢字一覧</span> · Kanji catalogue</span>
+    <h1 id="catalogue-title">Choose a kanji. <br><span>Explore its readings.</span></h1>
     <p>Browse ${entries.size.toLocaleString("en")} kanji and look up their readings and meanings. JLPT levels are study estimates, not official classifications.</p>
   </div>
 </section>
@@ -156,10 +156,10 @@ function dailyPage(shell, entries, site) {
     title: "Kanji of the Day",
     description: "Learn one common Japanese kanji each day, with readings, meanings and a free widget for your site.",
     canonical: site && new URL(dailyPath, site).href,
-    body: `<section class="study-intro" aria-labelledby="daily-title">
+    body: `<section class="study-intro tool-intro" aria-labelledby="daily-title">
   <div class="study-intro-content">
-    <p class="eyebrow">Daily Japanese reference</p>
-    <h1 id="daily-title">Kanji of the Day</h1>
+    <span class="eyebrow"><span lang="ja">今日の漢字</span> · Kanji of the Day</span>
+    <h1 id="daily-title">A new day. <br><span>Another kanji.</span></h1>
     <p>Learn one common kanji every day. The character changes at midnight UTC for everyone.</p>
   </div>
 </section>

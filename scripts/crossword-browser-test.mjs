@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import { chromium } from "playwright";
+import { toHiragana } from "wanakana";
 import { hasKanji } from "../frontend/src/crossword-engine.js";
 import { romanizeKana } from "../frontend/src/romanize.js";
 
@@ -34,7 +35,7 @@ let vite, browser;
 try {
   vite = await createServer({
     root: fileURLToPath(new URL("../frontend", import.meta.url)),
-    server: { host: "127.0.0.1", port: 0, strictPort: false }
+    server: { host: "127.0.0.1", port: 0, strictPort: false, watch: null }
   });
   await vite.listen();
   browser = await chromium.launch();
@@ -135,7 +136,8 @@ try {
           assert.ok(vocabulary.some((item) => item.word === answer));
           assert.match(entry.badge, /漢字/);
         } else {
-          assert.ok(vocabulary.some((item) => item.furigana === answer));
+          // The grid stores shared kana readings; entry faces retain their original script.
+          assert.ok(vocabulary.some((item) => toHiragana(item.furigana, { convertLongVowelMark: false }) === answer), answer);
           assert.equal(hasKanji(answer), false);
           assert.match(entry.badge, /かな/);
         }
@@ -160,22 +162,10 @@ try {
     assert.equal(await page.locator("#activeClueBar").isVisible(), false, "The open clue popup replaces the active clue bar");
     await page.click('[data-popover-action="close"]');
     assert.equal(await page.locator("#activeClueBar").isVisible(), true, "Closing the popup restores the active clue bar");
-    await page.locator("#crosswordGrid .cw-cell:not(.block)").first().scrollIntoViewIfNeeded();
-    const tileUnderMenu = await page.locator("#crosswordGrid .cw-cell:not(.block)").evaluateAll((tiles) => {
-      const left = innerWidth / 2 - Math.min(560, innerWidth - 24) / 2;
-      const right = innerWidth - left;
-      return tiles.findIndex((tile) => {
-        const rect = tile.getBoundingClientRect();
-        return rect.left < right - 4 && rect.right > left + 4;
-      });
-    });
-    assert.ok(tileUnderMenu >= 0);
-    await page.locator("#crosswordGrid .cw-cell:not(.block)").nth(tileUnderMenu).click();
     await page.click("#menuButton");
     assert.equal(await page.evaluate(() => {
       const menu = document.querySelector("#helperMenu").getBoundingClientRect();
       const tile = document.querySelector("#crosswordGrid .cw-cell.is-active");
-      window.scrollBy(0, tile.getBoundingClientRect().top - menu.top - 20);
       const rect = tile.getBoundingClientRect();
       const x = Math.max(menu.left, rect.left), y = Math.max(menu.top, rect.top);
       if (x + 2 >= Math.min(menu.right, rect.right) || y + 2 >= Math.min(menu.bottom, rect.bottom)) return false;
@@ -386,7 +376,7 @@ try {
     await page.keyboard.type(typedReading(kanaEntry.item.furigana));
     if (await input.count() && await input.inputValue()) await input.press("Enter");
     for (const [i, pos] of kanaEntry.cells.entries()) {
-      assert.equal(await cellAt(pos).getAttribute("data-char"), [...kanaEntry.item.furigana][i], "Kana still advances one square at a time");
+      assert.equal(await cellAt(pos).getAttribute("data-char"), toHiragana([...kanaEntry.item.furigana][i]), "Kana still advances one square at a time");
     }
     await inputPuzzle("kana", "reverse");
     await page.locator(".cw-cell.is-active").click();
@@ -446,10 +436,10 @@ try {
       assert.equal(await page.locator(".cw-clue-item.active").getAttribute("data-entry-id"), down.id);
       assert.equal(await input.count(), 1, `${selection}: the unfinished down word has a real input`);
       assert.ok(await input.evaluate((input) => input === document.activeElement), `${selection}: typing reaches the down word`);
-      assert.ok(await page.evaluate(() => {
-        const grid = document.getElementById("crosswordGrid").getBoundingClientRect();
+      assert.ok(await cellAt(ending).evaluate((cell) => {
+        const tile = cell.getBoundingClientRect();
         const card = document.getElementById("gridCluePopover").getBoundingClientRect();
-        return card.top >= grid.bottom;
+        return card.bottom <= tile.top || card.top >= tile.bottom || card.right <= tile.left || card.left >= tile.right;
       }), "The clue card cannot cover the remaining down cell");
       await input.press("Backspace");
       assert.ok(await input.evaluate((input) => input === document.activeElement), "Backspace never strands focus on a locked cell");

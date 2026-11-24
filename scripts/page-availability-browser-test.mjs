@@ -45,6 +45,11 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
+  await page.goto(`${origin}/`);
+  await page.evaluate(() => localStorage.setItem("nihon:recent-tool", "kana.html"));
+  await page.reload();
+  assert.equal(await page.locator("#homeRecent").isVisible(), false);
+  assert.equal(await page.locator('#helperMenu [data-file="kana.html"]').getAttribute("data-unavailable"), "");
   for (const path of ["/shiryo", "/shiryo.html", "/shiryo.html#worksheet"]) {
     await page.goto(`${origin}${path}`);
     await page.locator('#sheetPicker [data-sheet="worksheet"]').waitFor();
@@ -56,6 +61,10 @@ try {
     assert.equal(await page.locator("header .study-appearance").count(), 1);
     assert.equal(await page.locator('header form[action^="https://www.paypal.com/"]').count(), 1);
     assert.match(await page.locator(".study-intro-content").textContent(), /Ko-fi/);
+    await page.locator("#helpButton").click();
+    await page.locator("#helpDialog summary").click();
+    assert.match(await page.locator("#helpDialog[open] .help-steps").innerText(), /Full sheets are not available in this edition/);
+    await page.keyboard.press("Escape");
     if (path.endsWith("#worksheet")) assert.equal(await page.locator('#sheetPicker [aria-pressed="true"]').getAttribute("data-sheet"), "worksheet");
   }
   await page.locator("#menuButton").click();

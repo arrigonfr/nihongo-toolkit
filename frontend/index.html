@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#171b18">
   <meta property="og:site_name" content="NihongoToolkit">
   <link rel="icon" type="image/png" href="./favicon.png">
-  <link rel="stylesheet" href="./src/mascot-background.css">
+  <link rel="stylesheet" href="./src/homepage.css">
   <title>NihongoToolkit</title>
   <script type="application/ld+json">
     {
@@ -252,7 +252,7 @@
     }
   </style>
 </head>
-<body data-mascot="home">
+<body>
   <header class="site-header study-header" data-site-header>
     <a class="brand" href="./"><span class="brand-name">NihongoToolkit</span></a>
     <button id="themeButton" type="button" aria-label="Toggle color mode" title="Toggle color mode"></button>
@@ -281,7 +281,7 @@
         <span class="helper-description">JLPT vocabulary practice</span>
       </button>
       <button class="helper-link" type="button" data-file="katsuyo-renshuu.html">
-        <span class="helper-name">Katsuyō Renshuu · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/katsuyo-renshuu.webp" alt="" width="26" height="26"></span> · 活用練習</span>
+        <span class="helper-name">Katsuyō Renshuū · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/katsuyo-renshuu.webp" alt="" width="26" height="26"></span> · 活用練習</span>
         <span class="helper-description">Focused Japanese conjugation practice</span>
       </button>
       </section>
@@ -354,7 +354,32 @@
       </section>
     </div>
   </nav>
-  <main class="dashboard"><div class="dashboard-intro"><img class="dashboard-logo" src="/logo-mark.webp" alt="" width="76" height="76"><div><h1>Your Japanese journey starts here</h1><p>Practice, explore, and play with tools for every step.</p></div></div><!-- dashboard-tools --></main>
+  <main class="home">
+    <section class="home-hero">
+      <div class="home-wrap home-hero-layout">
+        <div class="home-welcome">
+          <picture>
+            <source media="(max-width: 720px)" srcset="/mascot.webp">
+            <img class="home-logo" src="/logo-mark.webp" alt="" width="64" height="64">
+          </picture>
+          <h1>Make a little room for Japanese.</h1>
+          <p>Practice Japanese, look up words and kanji, or learn through games. Find a tool that fits your day.</p>
+          <div class="home-actions"><a class="home-primary" href="#showcase">See how tools work</a><button type="button" class="home-browse" id="homeBrowse" aria-controls="helperMenu">Open tool menu</button></div>
+          <a class="home-recent" id="homeRecent" hidden></a>
+          <p class="home-note">Free learning tools · Practice at your own pace</p>
+        </div>
+        <div class="home-hero-art"><img src="/mascot.webp" alt="A learner welcoming you with a notebook" width="440" height="622"></div>
+      </div>
+    </section>
+    <div class="home-wrap"><nav class="home-tool-index" aria-labelledby="tool-index-title"><h2 id="tool-index-title">Open a tool</h2><div class="home-tool-index-groups"></div></nav></div>
+    <section class="home-section" id="showcase"><div class="home-wrap">
+      <header class="home-showcase-intro"><h2 tabindex="-1">Explore the tools</h2><p>Find a way to practice, explore, or play that feels right for today. Each preview is illustrative; open a tool to try it for yourself.</p></header>
+      <nav class="home-group-nav" aria-label="Jump to tool introductions"><span>Jump to introductions:</span><a href="#practice-tools">Practice</a><a href="#reference-tools">Reference</a><a href="#games-tools">Games</a></nav>
+      <div id="paths" class="home-showcase"></div>
+      <noscript><p>Open the navigation menu above to explore all tools.</p></noscript>
+    </div></section>
+  </main>
+  <footer class="home-footer"><div class="home-wrap home-footer-layout"><strong>Support</strong><nav aria-label="Support"><a href="./faq.html">FAQ</a><a href="./contact.html">Contact</a><a href="./data-sources.html">Data sources &amp; licenses</a></nav><div data-site-support></div></div></footer>
 
   <script type="module" src="./src/index.js"></script>
 </body>

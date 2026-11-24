@@ -93,7 +93,9 @@ try {
     button.dataset.studySpeak = "こんにちは";
     button.click();
   });
-  await page.waitForFunction(() => window.speechBuffers.length === 4, null, { timeout: 30000 });
+  // The first word in this pair requires uncached WASM synthesis, not just playback.
+  await page.waitForFunction(() => window.speechBuffers.length === 4 || document.querySelector(".study-speech-status")?.textContent.includes("could not"), null, { timeout: 180000 });
+  assert.equal(await page.evaluate(() => window.speechBuffers.length), 4, await page.locator(".study-speech-status").textContent());
   const starts = await page.evaluate(() => window.speechStarts);
   assert.equal(starts.length, 4, "every successive word must be scheduled");
   for (let index = 1; index < starts.length; index++) {

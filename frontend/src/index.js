@@ -3,6 +3,7 @@ import "./study-controls.css";
 import { createSupportButton } from "./support.js";
 import { legacyRoutes, navigationPage, pageFile } from "./routes.js";
 import { initializeInterfaceLocalization } from "./interface-i18n.js";
+import { mountHomepageShowcase } from "./homepage.js";
 
 initializeAppearance();
 initializeInterfaceLocalization();
@@ -16,6 +17,7 @@ for (const link of document.querySelectorAll(".helper-link, .dashboard-link")) {
   link.prepend(icon);
   name.textContent = title;
 }
+mountHomepageShowcase();
 document.querySelector("[data-site-support], .dashboard")?.prepend(createSupportButton());
 const menuButton = document.getElementById("menuButton");
 const helperMenu = document.getElementById("helperMenu");
@@ -23,6 +25,23 @@ const helperFrame = document.getElementById("helperFrame");
 const helperLinks = [...document.querySelectorAll(".helper-link")];
 const helpers = new Map(helperLinks.map((link) => [link.dataset.file, link]));
 const lastHelperKey = "nihon:last-helper";
+const recentToolKey = "nihon:recent-tool";
+const recentTool = document.getElementById("homeRecent");
+
+function showRecentTool() {
+  if (!recentTool) return;
+  recentTool.hidden = true;
+  try {
+    const file = localStorage.getItem(recentToolKey) || localStorage.getItem(lastHelperKey);
+    const link = helpers.get(legacyRoutes[file] || file);
+    if (!link || link.closest('[aria-label="Support"]') || link.hasAttribute("data-unavailable")) return;
+    recentTool.href = link.href;
+    recentTool.textContent = `Continue with ${link.querySelector(".helper-name").textContent} →`;
+    recentTool.hidden = false;
+  } catch (error) {
+    console.warn("Could not read the recent tool from local storage.", error);
+  }
+}
 
 function setMenuOpen(open) {
   helperMenu.hidden = !open;
@@ -47,6 +66,9 @@ function loadHelper(filename, navigate = true) {
   if (helperFrame) helperFrame.title = `${link.querySelector(".helper-name").textContent} helper`;
   try {
     localStorage.setItem(lastHelperKey, link.dataset.file);
+    if (!link.closest('[aria-label="Support"]') && !link.hasAttribute("data-unavailable")) {
+      localStorage.setItem(recentToolKey, link.dataset.file);
+    }
   } catch (error) {
     console.warn("Could not remember the last helper in local storage.", error);
   }
@@ -70,6 +92,10 @@ window.addEventListener("message", (event) => {
 });
 
 menuButton.addEventListener("click", () => setMenuOpen(helperMenu.hidden));
+document.getElementById("homeBrowse")?.addEventListener("click", () => {
+  setMenuOpen(true);
+  menuButton.focus();
+});
 helperMenu.addEventListener("click", (event) => {
   const link = event.target.closest(".helper-link");
   if (!link) return;
@@ -121,3 +147,7 @@ try {
 loadHelper(helperFrame
   ? helpers.has(requestedHelper) ? requestedHelper : helpers.has(storedHelper) ? storedHelper : helperLinks[0].dataset.file
   : navigationPage(location.pathname));
+showRecentTool();
+window.addEventListener("storage", (event) => {
+  if (event.key === recentToolKey || event.key === lastHelperKey || event.key === null) showRecentTool();
+});

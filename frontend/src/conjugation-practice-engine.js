@@ -128,6 +128,10 @@ export function createPool(settings, progress = {}) {
     && (settings.mode !== "comparison" || ["potential", "passive", "causative", "causativePassive"].includes(family)));
 }
 
+export function reviewLabel({ entry, row, family }) {
+  return { word: entry.word, label: row.label, politeness: row.politeness, family };
+}
+
 export function normalizeAnswer(text) {
   return toHiragana(toKana(String(text).normalize("NFKC").trim().toLowerCase().replace(/[\s。.!！?？]/g, "")));
 }
@@ -367,7 +371,8 @@ export class PracticeSession {
       this.results.push(result);
       const record = this.progress[result.key] || { attempts: 0, correct: 0, wrong: 0 };
       this.progress[result.key] = { attempts: record.attempts + 1, correct: record.correct + Number(correct),
-        wrong: record.wrong + Number(!correct), last: now };
+        wrong: record.wrong + Number(!correct), last: now,
+        ...(record.wrong || !correct ? { question: reviewLabel(this.current) } : {}) };
       this.scored = true;
       if (!correct && this.settings.repeat && !this.repeatKeys.has(result.key)
         && this.settings.mode !== "sudden") {

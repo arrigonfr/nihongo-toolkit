@@ -35,10 +35,11 @@ test("Gmail MIME preserves Unicode and rejects header injection", () => {
   assert.equal(gmailConfigured({ ...env, CONTACT_EMAIL_FROM: "Nihongo <support@gmail.com>" }), false);
   assert.equal(gmailConfigured({ ...env, GMAIL_REFRESH_TOKEN: "" }), false);
   const contact = { ...submission(), message: "日本語の質問", name: "日本 太郎" };
-  const job = { id: "email-500", created_at: Date.now() };
+  const job = { id: "email-500", created_at: Date.UTC(2025, 0, 2, 12) };
   const raw = gmailMessage(env, contact, { message: "ありがとう！" }, job);
   assert.match(raw, /^[A-Za-z0-9_-]+$/);
   const mime = Buffer.from(raw, "base64url").toString();
+  assert.match(mime, /^Date: Thu, 02 Jan 2025 12:00:00 GMT\r$/m);
   assert.match(mime, /From: NihongoToolkit <support@gmail.com>\r\n/);
   assert.doesNotMatch(mime, /Message-ID:/i);
   assert.match(emailPart(mime, "text/plain"), /ありがとう！/);

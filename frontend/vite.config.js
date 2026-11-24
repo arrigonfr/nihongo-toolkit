@@ -4,10 +4,13 @@ import { fileURLToPath } from "node:url";
 import { legacyRoutes, publicPath } from "./src/routes.js";
 import { disabledPages, pageAvailability } from "./page-availability.js";
 import { kanjiCatalogue } from "./kanji/pages.js";
+import { editorialIdentity, editorialPage, editorialTools } from "./editorial-tools.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const toolFiles = readdirSync(root).filter((file) => file.endsWith(".html") && !["index.html", "data-sources.html", "文字.html"].includes(file));
 const seoPages = {
+  ...Object.fromEntries(Object.entries(editorialTools).map(([slug, [name,,, description]]) =>
+    [`${slug}.html`, { title: `${name} | NihongoToolkit`, description }])),
   "faq.html": {
     title: "Frequently Asked Questions | NihongoToolkit",
     description: "Find help typing Japanese kana, using study controls, and navigating NihongoToolkit."
@@ -87,7 +90,7 @@ const seoPages = {
   }
 };
 
-function toolNavigation(site, disabled = new Set()) {
+function toolNavigation(site, disabled = new Set(), editorial = false) {
   function addTagManager(html) {
     html = html.replace(/<head\b[^>]*>/i, (head) => `${head}
 <script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('set', 'cookie_domain', 'none'); gtag('js', new Date()); gtag('config', 'G-LL2V1JZBER', { cookie_domain: 'none' });</script>
@@ -127,13 +130,22 @@ function toolNavigation(site, disabled = new Set()) {
         if (reference || file === "index.html" || file === "data-sources.html" || toolFiles.includes(file)) {
           const launcher = readFileSync(new URL("./index.html", import.meta.url), "utf8");
           const originalMenu = launcher.match(/<nav class="navigation"[\s\S]*?<\/nav>/)[0];
-          let menu = originalMenu.replace(/<button class="helper-link" type="button" data-file="([^"]+)">([\s\S]*?)<\/button>/g,
+          let menu = originalMenu;
+          if (editorial) {
+            for (const [slug, [name, group, purpose, description, example]] of Object.entries(editorialTools)) {
+              const [japanese] = editorialIdentity[slug];
+              const link = `<a class="helper-link" data-file="${slug}.html" href="./${slug}.html" target="_top" data-purpose="${purpose}" data-description="${description}" data-example="${example}"><span class="helper-name">${name} · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/${slug}.webp" alt="" width="26" height="26"></span> · <span lang="ja">${japanese}</span></span><span class="helper-description">${purpose}</span></a>`;
+              menu = menu.replace(new RegExp(`(<section class="menu-group" aria-label="${group}">[\\s\\S]*?)(</section>)`), `$1${link}$2`);
+            }
+          }
+          menu = menu.replace(/<button class="helper-link" type="button" data-file="([^"]+)">([\s\S]*?)<\/button>/g,
             (_, filename, content) => `<a class="helper-link" data-file="${filename}" href="./${filename}" target="_top">${content}</a>`);
+          for (const disabledFile of disabled) {
+            menu = menu.replace(`data-file="${disabledFile}"`, `data-file="${disabledFile}" data-unavailable`);
+          }
           menu = menu.replace('<div class="menu" id="helperMenu" hidden>', '<div class="menu" id="helperMenu" hidden><a class="helper-link home-link" href="./" target="_top"><span class="helper-icon" aria-hidden="true"><img src="/logo-mark.webp" alt="" width="26" height="26"></span><span class="helper-name">Home</span></a>');
           if (file === "index.html") {
             html = html.replace(originalMenu, menu);
-            const groups = menu.match(/<section class="menu-group"[\s\S]*<\/section>/)[0].replaceAll('class="helper-link"', 'class="dashboard-link"');
-            html = html.replace("<!-- dashboard-tools -->", groups);
           } else {
             const name = menu.match(new RegExp(`data-file="${file}"[^>]*>\\s*<span class="helper-name">([^<]+)`))?.[1].replace(/\s*·\s*$/, "");
             if (name && !seoPages[file]) html = html.replace(/<title>[^<]*<\/title>/, `<title>${name} · NihongoToolkit</title>`);
@@ -190,7 +202,8 @@ function toolNavigation(site, disabled = new Set()) {
             );
           }
         }
-        return { html: addTagManager(html), tags };
+        return { html: editorialPage(file) ? html : addTagManager(html), tags: editorialPage(file)
+          ? tags.filter(tag => tag.attrs?.src !== "./src/page-views.js") : tags };
       }
     }
   };
@@ -201,6 +214,8 @@ export default defineConfig(({ mode, command, isPreview }) => {
   if (disabled.size && command === "serve" && !isPreview) {
     throw new Error("DISABLED_PAGES requires a production build. Do not expose the Vite development server; it serves source files.");
   }
+  const editorial = command === "serve" && !isPreview && env.EDITORIAL_PREVIEWS === "1";
+  if (!editorial) for (const slug of Object.keys(editorialTools)) disabled.add(`${slug}.html`);
   const site = env.VITE_SITE_URL ? new URL("/", env.VITE_SITE_URL).href : undefined;
   if (site && !site.startsWith("https://")) {
     throw new Error("VITE_SITE_URL must be the public HTTPS site URL.");
@@ -208,19 +223,30 @@ export default defineConfig(({ mode, command, isPreview }) => {
   const catalogue = kanjiCatalogue(site, disabled);
   const robots = `User-agent: *\nAllow: /\n${site ? `\nSitemap: ${site}sitemap.xml\n` : ""}`;
   const sitemap = () => {
-    const paths = ["", ...toolFiles, "data-sources.html"].map(publicPath).concat(catalogue.paths);
+    const paths = ["", ...toolFiles.filter(file => !editorialPage(file)), "data-sources.html"].map(publicPath).concat(catalogue.paths);
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${paths.map((path) =>
       `  <url><loc>${new URL(path, site).href}</loc></url>`).join("\n")}\n</urlset>\n`;
   };
   return {
-  define: { "process.env.TRACK_VISITS": JSON.stringify(env.TRACK_VISITS || "") },
+  define: {
+    "process.env.TRACK_VISITS": JSON.stringify(env.TRACK_VISITS || ""),
+    "import.meta.env.EDITORIAL_PREVIEWS_ENABLED": JSON.stringify(editorial)
+  },
   worker: { format: "es" },
-  plugins: [pageAvailability(disabled), toolNavigation(site, disabled), catalogue.plugin, {
+  plugins: [pageAvailability(disabled), toolNavigation(site, disabled, editorial), catalogue.plugin, {
     name: "deployment-seo",
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
         const path = request.url?.split("?")[0];
         let legacy;
+        if (editorial) {
+          const alias = path?.slice(1).replace(/\.html$/, "");
+          const match = Object.entries(editorialIdentity).find(([, [, old]]) => old === alias);
+          if (match) {
+            response.writeHead(302, { Location: `/${match[0]}${request.url.slice(path.length)}` });
+            return response.end();
+          }
+        }
         try { legacy = legacyRoutes[decodeURIComponent(path?.slice(1) || "")]; } catch { return next(); }
         if (legacy) {
           response.statusCode = 302;
@@ -252,7 +278,7 @@ export default defineConfig(({ mode, command, isPreview }) => {
     emptyOutDir: true,
     sourcemap: false,
     rollupOptions: {
-      input: readdirSync(root).filter((file) => file.endsWith(".html"))
+      input: readdirSync(root).filter((file) => file.endsWith(".html") && !editorialPage(file))
         .map((file) => fileURLToPath(new URL(file, import.meta.url)))
         .concat(["./kanji/catalogue-shell.html", "./embed/kanji-of-the-day.html"]
           .map((file) => fileURLToPath(new URL(file, import.meta.url))))

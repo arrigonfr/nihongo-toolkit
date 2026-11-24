@@ -6,6 +6,7 @@ import "./chips.css";
 import "./navigation.js";
 import { mountAppearance } from "./appearance.js";
 import { mountSupport } from "./study-controls.js";
+import { mountHelpDialog } from "./tool-help.js";
 import { SHEETS, buildSheet } from "./cheatsheet-data.js";
 import { FORMATS, buildPdf, fileName, textExporters, toSVG } from "./cheatsheet-export.js";
 import { PDFDocument } from "pdf-lib";
@@ -31,6 +32,7 @@ const FORMAT_NOTES = {
 
 mountAppearance(document.querySelector("header"), document.getElementById("themeButton"));
 mountSupport();
+mountHelpDialog();
 
 const picker = document.getElementById("sheetPicker");
 const preview = document.getElementById("sheetPreview");

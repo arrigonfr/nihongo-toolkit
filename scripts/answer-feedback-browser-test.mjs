@@ -32,8 +32,8 @@ try {
     });
     const page = await context.newPage(), errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.clock.install();
-    await page.clock.pauseAt(new Date());
+    await page.clock.install({ time: new Date("2025-01-01T00:00:00Z") });
+    await page.clock.pauseAt(new Date("2025-01-01T00:01:00Z"));
     const position = () => page.locator("#answerInput").evaluate((node) => {
       const rect = node.getBoundingClientRect();
       return { top: rect.top + scrollY, height: rect.height };

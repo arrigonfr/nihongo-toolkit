@@ -49,7 +49,7 @@ try {
   assert.equal(await page.getAttribute("html", "data-interface-language"), "es");
   assert.equal(await trigger.getAttribute("aria-label"), "Idioma de la interfaz: Español");
   assert.equal(await option("Español").isVisible(), false, "Flags are collapsed by default");
-  await page.getByRole("heading", { name: "Ayúdanos a mejorar el aprendizaje" }).waitFor();
+  await page.getByRole("heading", { name: /Cuéntanos qué funciona/ }).waitFor();
   assert.equal(await page.title(), "Contacto | NihongoToolkit");
   await checkDescriptions("#helperMenu", "Práctica de hiragana y katakana");
   await page.locator('#contactForm select[name="subject"]').selectOption("Feature Request");
@@ -65,7 +65,7 @@ try {
   await chooseLanguage("Português");
   assert.equal(await option("Português").isVisible(), false, "Picking a flag closes the panel");
   assert.equal(await trigger.getAttribute("aria-label"), "Idioma da interface: Português");
-  await page.getByRole("heading", { name: "Ajude-nos a melhorar o aprendizado" }).waitFor();
+  await page.getByRole("heading", { name: /Conte o que funciona/ }).waitFor();
   assert.equal(await page.title(), "Contato | NihongoToolkit");
   await checkDescriptions("#helperMenu", "Prática de hiragana e katakana");
   assert.equal(await page.locator('#contactForm select[name="subject"]').inputValue(), "Feature Request", "Translated labels do not change submitted values");
@@ -75,10 +75,8 @@ try {
   await page.goto(`${base}/`);
   assert.equal(await trigger.getAttribute("aria-label"), "Idioma da interface: Português", "Selection is shared with the dashboard");
   await checkDescriptions("#helperMenu", "Prática de hiragana e katakana");
-  await checkDescriptions(".dashboard", "Prática de hiragana e katakana");
   await chooseLanguage("Español");
   await checkDescriptions("#helperMenu", "Práctica de hiragana y katakana");
-  await checkDescriptions(".dashboard", "Práctica de hiragana y katakana");
   await chooseLanguage("Português");
   await trigger.click();
   await page.locator(".study-palette > summary").click();
@@ -88,14 +86,13 @@ try {
   await otherPage.goto(`${base}/contact.html`);
   await chooseLanguage("English");
   await checkDescriptions("#helperMenu", "Hiragana and katakana practice");
-  await checkDescriptions(".dashboard", "Hiragana and katakana practice");
   const otherTrigger = otherPage.locator('.study-language > summary[aria-label="Interface language: English"]');
   await otherTrigger.waitFor();
   assert.equal(await otherPage.title(), "Contact | NihongoToolkit", "Tab titles synchronize and return to their source language");
 
   await page.goto(`${base}/kana.html`);
   assert.equal(await page.title(), "Hiragana and Katakana Practice | NihongoToolkit");
-  assert.equal(await page.locator(".study-header-description").textContent(), "Hiragana and katakana practice");
+  assert.equal(await page.locator(".study-header-description").count(), 0);
   await page.locator("#startSessionButton").click();
   await page.locator("#answerInput").fill("draft");
   const glyph = await page.locator("#glyph").textContent();
@@ -107,7 +104,6 @@ try {
   });
   await chooseLanguage("Español");
   assert.equal(await page.title(), "Práctica de hiragana y katakana | NihongoToolkit");
-  assert.equal(await page.locator(".study-header-description").textContent(), "Práctica de hiragana y katakana");
   assert.equal(await page.locator("#answerInput").inputValue(), "draft", "Switching language preserves an active answer");
   assert.equal(await page.locator("#glyph").textContent(), glyph, "Switching language preserves the active question");
   assert.equal(await page.locator("#dictionary-example").textContent(), "Practice", "Study data is not translated even when it matches UI copy");
@@ -119,7 +115,6 @@ try {
   const answer = feedback.match(/^Respuesta: (.+) · Pulsa Enter para continuar$/)[1];
   await chooseLanguage("Português");
   assert.equal(await page.title(), "Prática de hiragana e katakana | NihongoToolkit");
-  assert.equal(await page.locator(".study-header-description").textContent(), "Prática de hiragana e katakana");
   assert.equal(await page.locator("#incorrectCaption").textContent(), `Resposta: ${answer} · Pressione Enter para continuar`, "Language switching preserves the displayed answer");
 
   await page.locator("#stopSessionButton").click();
@@ -269,7 +264,7 @@ try {
   for (const [file, selector, expected] of [
     ["katsuyo-renshuu.html", "#setup h2", "Sua prática, no seu ritmo"],
     ["eawase.html", "#startButton", "Começar a combinar →"],
-    ["pazuru.html", ".cw-intro h1", "Cruze caminhos com palavras japonesas."],
+    ["pazuru.html", ".cw-intro h1 > span", "com palavras japonesas."],
     ["kanji-kuizu.html", "#reviewList", "Lista de revisão (0)"]
   ]) {
     await page.goto(`${base}/${file}`);
@@ -554,7 +549,7 @@ try {
 
   await chooseLanguage("Português");
   await page.goto(`${base}/shiryo.html`);
-  await page.getByRole("heading", { name: "Folhas de referência para imprimir" }).waitFor();
+  await page.getByRole("heading", { name: /Escolha uma folha/ }).waitFor();
   await page.locator('[data-sheet="particles"]').click();
   await page.locator("#sheetTitle").filter({ hasText: "Partículas japonesas" }).waitFor();
   assert.equal(await page.locator('[data-format="png"] strong').textContent(), "Imagem PNG");
@@ -570,7 +565,7 @@ try {
 
   await chooseLanguage("Español");
   await page.goto(`${base}/kanji/`);
-  await page.getByRole("heading", { name: "Catálogo de kanji japoneses" }).waitFor();
+  await page.getByRole("heading", { name: /Elige un kanji/ }).waitFor();
   await page.goto(`${base}/kanji-of-the-day`);
   await page.getByRole("heading", { name: "Kanji de hoy" }).waitFor();
   const dailyMeaning = await page.locator(".daily-meanings").textContent();

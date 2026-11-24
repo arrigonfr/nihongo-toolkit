@@ -18,9 +18,12 @@ try {
     } });
   });
   const errors = [];
+  async function returnToSetup() {
+    await page.locator("#results [data-play-again]").click();
+  }
   async function stopSession() {
     await page.locator("#stop").click();
-    await page.locator("#results [data-play-again]").click();
+    await returnToSetup();
   }
   page.on("pageerror", (error) => errors.push(error.message));
   const characters = ["木", "本", "日", "白", "目", "自", "人", "入", "大", "犬", "力", "刀"];
@@ -157,13 +160,14 @@ try {
     const nextValid = await page.locator("#choices button").evaluateAll((buttons, { pool, nextPrompt, variant }) => {
       const normalize = (text) => text.replace(/[ァ-ヶ]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
       const readings = (item) => [...item.on_readings, ...item.kun_readings].map(normalize);
-      return buttons.map((button, index) => ({ index, value: button.textContent })).filter(({ value }) => variant === "kanji-reading" ? readings(pool.find((item) => item.kanji === nextPrompt)).includes(value) : readings(pool.find((item) => item.kanji === value)).includes(nextPrompt)).map(({ index }) => index);
+      return buttons.map((button, index) => ({ index, value: button.querySelector(".choice-value").textContent })).filter(({ value }) => variant === "kanji-reading" ? readings(pool.find((item) => item.kanji === nextPrompt)).includes(value) : readings(pool.find((item) => item.kanji === value)).includes(nextPrompt)).map(({ index }) => index);
     }, { pool, nextPrompt, variant });
     for (const index of nextValid) await page.locator(`#choices button[data-choice="${index}"]`).click();
     await page.locator("#check").click();
     assert.match(await page.locator("#feedback").textContent(), /Correct/);
-    await stopSession();
+    await page.locator("#stop").click();
     assert.match(await page.locator("#results").textContent(), /Correct: 1/);
+    await returnToSetup();
   }
   await page.locator("#start").click();
   await page.locator('#game:not([aria-busy="true"]) #choices button').first().waitFor();

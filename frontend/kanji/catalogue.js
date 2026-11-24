@@ -1,5 +1,9 @@
 import { catalogueGroupLabel, compareCatalogueGroups } from "./catalogue-groups.js";
 import "./daily.js";
+import { mountHelpDialog } from "../src/tool-help.js";
+
+if (document.getElementById("catalogue-title")) mountHelpDialog(["Kanji catalogue", "Browse characters by group or search for one to explore its readings and meanings."]);
+if (document.getElementById("daily-title")) mountHelpDialog(["Kanji of the Day", "Study one common kanji each day. Everyone sees the same character until midnight UTC."]);
 
 const listing = document.getElementById("catalogue-list");
 if (listing) {

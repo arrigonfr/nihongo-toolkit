@@ -15,7 +15,7 @@ try {
   const page = await browser.newPage();
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/shiryo.html#worksheet`);
   await page.setViewportSize({ width: 390, height: 844 });
-  assert.equal(await page.locator(".study-header-description").textContent(), "Printable Japanese cheatsheets");
+  assert.equal(await page.locator(".study-header-description").count(), 0);
   assert.equal(await page.locator('link[rel="apple-touch-icon"]').count(), 1);
   const headerGeometry = await page.locator("header").evaluate((header) => {
     const brand = header.querySelector(".brand").getBoundingClientRect();

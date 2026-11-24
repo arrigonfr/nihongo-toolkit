@@ -1,0 +1,14 @@
+body .study-intro.tool-intro {
+  margin: 0;
+  padding: 36px 0 30px;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+}
+.study-intro.tool-intro .eyebrow { font: inherit; color: var(--text-warm); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .15em; }
+.study-intro.tool-intro h1 { font-family: inherit; font-size: clamp(32px, 4vw, 48px); line-height: 1.15; letter-spacing: -.04em; margin: 10px 0 16px; font-weight: 650; }
+.study-intro.tool-intro h1 br { display: inline; }
+.study-intro.tool-intro h1 > span { font: inherit; color: var(--accent); margin: 0; }
+.study-intro.tool-intro p { display: block; font: inherit; font-size: 14px; color: var(--muted); max-width: 540px; margin: 0; }
+@media (max-width: 500px) {
+  body .study-intro.tool-intro { padding: 24px 0; }
+}

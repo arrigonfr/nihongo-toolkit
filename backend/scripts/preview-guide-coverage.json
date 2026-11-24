@@ -1,0 +1,46 @@
+{
+  "version": "7af025e9d292aaa4bd68a3add5f5f6740c97c8223f8a46f72156eff9d105bcfa",
+  "manifest": {
+    "edition": "editorial-1",
+    "dictionary": {
+      "release": "3.6.2+20261019180022",
+      "sha256": "1dca86908663dcddb8c3bcff9dc5e2bc73037bbdeed9c705c896a3845e7635a5",
+      "credit": "JMdict, EDRDG; JSON conversion by scriptin and contributors. CC BY-SA 4.0.",
+      "usage": "Local entry identifiers, forms, commonness, restrictions and sense evidence. No sentence text imported."
+    },
+    "editorial": {
+      "source": "NihongoToolkit",
+      "rights": "Project-authored draft descriptions, examples, translations and contrasts; not reviewed."
+    },
+    "acquisition": {
+      "source": "November 2026 discovery comparison",
+      "expected": 1158,
+      "keysImported": 0,
+      "disposition": "Blocked: no rights-cleared, individually verifiable baseline supplied. No upstream material ingested."
+    }
+  },
+  "sourcesUsed": 2,
+  "dictionaryEntriesWithTag": 1342,
+  "taggedSenses": 2192,
+  "distinctOriginalFormsOfTaggedEntries": 3050,
+  "distinctNormalizedFormsOfTaggedEntries": 1823,
+  "commonTaggedEntries": 192,
+  "taggedEntriesWithSentenceLink": 487,
+  "commonTaggedEntriesWithSentenceLink": 171,
+  "editorialDraftSenses": 13,
+  "editorialMatchedAliasLinks": 21,
+  "editorialOrdinaryProposals": 3,
+  "editorialUntaggedGuideSenses": 1,
+  "editorialContrastNotes": 3,
+  "unresolvedTaggedSenses": 2192,
+  "taggedSensesWithoutReviewedExample": 2192,
+  "publishedByScene": {},
+  "publishedByType": {},
+  "publishedSenses": 0,
+  "reviewedOrdinary": 0,
+  "reviewedAliases": 0,
+  "documentedExclusions": 0,
+  "newUnlinkedSenses": 0,
+  "baselineKeysReconciled": 0,
+  "baselineRightsBlocked": 1158
+}

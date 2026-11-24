@@ -7,16 +7,17 @@ import { createServer as createVite } from "vite";
 import { chromium } from "playwright";
 import { createHandler } from "../backend/src/app.js";
 
-const origin = "http://127.0.0.1:5183";
-const api = createServer(createHandler({ origins: [origin], sentenceFallback: async () => [] }));
+const api = createServer();
 api.listen(0, "127.0.0.1");
 await once(api, "listening");
 process.env.VITE_API_BASE_URL = `http://127.0.0.1:${api.address().port}`;
 let vite, browser;
 try {
   vite = await createVite({ root: fileURLToPath(new URL("../frontend", import.meta.url)),
-    server: { host: "127.0.0.1", port: 5183, strictPort: true } });
+    server: { host: "127.0.0.1", port: 5183, strictPort: false, hmr: false } });
   await vite.listen();
+  const origin = `http://127.0.0.1:${vite.httpServer.address().port}`;
+  api.on("request", createHandler({ origins: [origin], sentenceFallback: async () => [] }));
   browser = await chromium.launch();
   const context = await browser.newContext({ reducedMotion: "reduce" });
   await context.route("**/*", (route) => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
@@ -25,6 +26,57 @@ try {
   context.on("page", (tab) => tab.on("pageerror", (error) => errors.push(error.message)));
   page.on("pageerror", (error) => errors.push(error.message));
   const go = (file) => page.goto(`${origin}/${encodeURIComponent(file)}`);
+  await go("");
+  await page.evaluate(() => { localStorage.removeItem("nihon:recent-tool"); localStorage.removeItem("nihon:last-helper"); });
+  for (const width of [320, 390, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    await go("");
+    assert.equal(await page.locator("#homeRecent").isVisible(), false);
+    const initialURL = page.url();
+    const initialHistoryLength = await page.evaluate(() => history.length);
+    if (width <= 390) {
+      const tops = await page.locator(".home-group-nav a").evaluateAll((links) => links.map((link) => link.getBoundingClientRect().top));
+      assert.equal(new Set(tops).size, 1, "All three showcase links share one mobile row");
+      if (width === 390) assert.ok(await page.locator(".home-tool-index-links li").first().evaluate((item) => item.getBoundingClientRect().bottom <= innerHeight), "First tool fits on the welcome screen");
+    }
+    await page.locator(".home-primary").focus();
+    await page.keyboard.press("Enter");
+    assert.equal(page.url(), initialURL, "Showcase navigation does not change the URL");
+    assert.equal(await page.evaluate(() => history.length), initialHistoryLength, "Showcase navigation does not add a history entry");
+    assert.equal(await page.locator("#showcase h2").evaluate((element) => element === document.activeElement), true);
+    assert.ok(await page.locator("#showcase").evaluate((element) => Math.abs(element.getBoundingClientRect().top) < 2), "Showcase is scrolled into view");
+    await page.locator('.home-group-nav a[href="#reference-tools"]').click();
+    assert.equal(page.url(), initialURL);
+    assert.equal(await page.locator("#reference-tools h3:focus").count(), 1);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.locator("#homeBrowse").focus();
+    await page.keyboard.press("Enter");
+    assert.equal(await page.locator("#helperMenu").isVisible(), true);
+    assert.equal(await page.locator("#menuButton").getAttribute("aria-expanded"), "true");
+    await page.keyboard.press("Escape");
+    assert.equal(await page.locator("#helperMenu").isVisible(), false);
+    assert.equal(await page.locator("#menuButton").evaluate((element) => element === document.activeElement), true);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  }
+  await go("yomi");
+  await go("faq");
+  await go("");
+  assert.equal(await page.locator("#homeRecent").textContent(), "Continue with Yomi →");
+  for (const width of [320, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    const shortcut = await page.locator("#homeRecent").boundingBox();
+    const welcome = await page.locator(".home-welcome").boundingBox();
+    assert.ok(Math.abs(shortcut.x + shortcut.width - welcome.x - welcome.width) < 1, "Recent tool is right-aligned");
+    assert.ok(shortcut.height >= 44, "Recent tool has a touch-friendly target");
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  }
+  await page.locator("#homeRecent").click();
+  await page.waitForURL(/\/yomi$/);
+  await go("");
+  await page.evaluate(() => localStorage.setItem("nihon:recent-tool", "invalid.html"));
+  await page.reload();
+  assert.equal(await page.locator("#homeRecent").isVisible(), false);
+  await page.evaluate(() => { localStorage.removeItem("nihon:recent-tool"); localStorage.removeItem("nihon:last-helper"); });
   for (const width of [320, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     await go("faq");
@@ -49,12 +101,46 @@ try {
   }
   await page.evaluate(() => localStorage.removeItem("nihon:appearance-v1"));
   await go("");
-  assert.equal(await page.locator('.dashboard-link[data-file="faq.html"]').count(), 1);
-  assert.equal(await page.locator('.dashboard-link[data-file="faq.html"] .helper-description').textContent(), "Help and common questions");
-  await page.locator('.dashboard-link[data-file="faq.html"]').click();
+  assert.equal(await page.locator('.home-footer a[href="./faq"]').count(), 1);
+  await page.locator('.home-footer a[href="./faq"]').click();
   await page.waitForURL(/\/faq$/);
   await page.goBack();
-  assert.equal(await page.locator('.dashboard-link[data-file="faq.html"]').isVisible(), true);
+  assert.equal(await page.locator('.home-footer a[href="./faq"]').isVisible(), true);
+  const showcase = page.locator(".home-tool");
+  await showcase.first().waitFor();
+  assert.equal(await page.locator("body").evaluate((body) => getComputedStyle(body, "::before").content), "none", "The homepage has no mascot background behind the header");
+  assert.equal(await page.locator(".home-hero-art img").isVisible(), true, "The hero mascot remains visible");
+  const menuTools = await page.locator('.menu-group:not([aria-label="Support"]) .helper-link[data-file]').evaluateAll((links) => links.map((link) => [link.dataset.file, link.href]));
+  const showcaseTools = await showcase.evaluateAll((items) => items.map((item) => [item.dataset.file, item.querySelector(".home-tool-copy a").href]));
+  assert.deepEqual(showcaseTools, menuTools, "Every learning tool has a matching showcase link");
+  assert.equal(await page.locator(".home-tool-group").count(), 3);
+  const directTargets = await page.locator(".home-tool-index-links a").evaluateAll((links) => links.map((link) => link.href));
+  assert.deepEqual(directTargets, menuTools.map(([, href]) => href), "The tool index links directly to each matching tool");
+  const indexIcons = await page.locator(".home-tool-index-links a").evaluateAll((links) => links.map((link) => link.querySelector("img")?.getAttribute("src")));
+  const menuIcons = await page.locator('.menu-group:not([aria-label="Support"]) .helper-link[data-file]').evaluateAll((links) => links.map((link) => link.querySelector(".helper-icon img")?.getAttribute("src")));
+  assert.deepEqual(indexIcons, menuIcons, "The index uses the matching tool icons");
+  assert.ok(indexIcons.every(Boolean), "Every index link has an icon");
+  const showcaseIcons = await page.locator(".home-tool-copy h4").evaluateAll((headings) => headings.map((heading) => heading.querySelector("img")?.getAttribute("src")));
+  assert.deepEqual(showcaseIcons, menuIcons, "Each showcase heading uses the matching tool icon");
+  assert.equal(await page.locator('.home-tool[data-file="goi.html"] .home-preview-pair').innerText(), "食べる\n→\nto eat");
+  assert.equal(await page.locator(".home-tool-purpose").count(), menuTools.length);
+  assert.equal(await page.locator(".home-tool-figure figcaption").count(), menuTools.length);
+  assert.equal(await page.locator("#showcase").evaluate((element) => getComputedStyle(element).backgroundColor), await page.locator("body").evaluate((element) => getComputedStyle(element).backgroundColor), "Showcase uses the shared page background");
+  assert.equal(new Set(await page.locator(".home-tool-group > h3").evaluateAll((headings) => headings.map((heading) => getComputedStyle(heading).color))).size, 3, "Tool groups use distinct text colors");
+  await page.locator('.home-tool[data-file="yomi.html"] .home-tool-copy a').click();
+  await page.waitForURL(/\/yomi$/);
+  await page.goBack();
+  await page.locator(".study-palette > summary").click();
+  await page.locator('[data-palette="ocean"]').click();
+  await page.locator("#themeButton").click();
+  const homepageTheme = await page.locator("html").getAttribute("data-theme");
+  await page.reload();
+  assert.equal(await page.locator("html").getAttribute("data-theme"), homepageTheme);
+  assert.equal(await page.locator("html").getAttribute("data-color-theme"), "ocean");
+  await go("faq");
+  assert.equal(await page.locator("html").getAttribute("data-theme"), homepageTheme);
+  assert.equal(await page.locator("html").getAttribute("data-color-theme"), "ocean");
+  await page.evaluate(() => localStorage.removeItem("nihon:appearance-v1"));
   await page.setViewportSize({ width: 375, height: 900 });
   await go("kotoba.html");
   await page.evaluate(() => localStorage.setItem("kotoba-history-v1", JSON.stringify([{ query: "日本", kanji: false }])));
@@ -68,7 +154,7 @@ try {
   for (const width of [320, 375, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     for (const [file, selector] of [
-      ["", ".dashboard-link .helper-description"],
+      ["", ".home-welcome > p"],
       ["goi.html", ".intro p:not(.eyebrow)"],
       ["kana.html", ".study-settings-note"]
     ]) {
@@ -118,13 +204,18 @@ try {
   await go("");
   await page.locator(".study-palette > summary").waitFor();
   assert.equal(await pageBackground(), oceanBackground, "The homepage uses the saved light palette");
+  const showcaseBackground = () => page.locator("#showcase").evaluate((element) => getComputedStyle(element).backgroundColor);
+  const oceanShowcase = await showcaseBackground();
   await page.click(".study-palette > summary");
   await page.click('[data-palette="sakura"]');
   const sakuraLightBackground = await pageBackground();
   assert.notEqual(sakuraLightBackground, oceanBackground, "Changing palettes updates the homepage immediately");
+  const sakuraLightShowcase = await showcaseBackground();
+  assert.notEqual(sakuraLightShowcase, oceanShowcase, "Changing palettes updates the showcase");
   await page.click("#themeButton");
   const sakuraDarkBackground = await pageBackground();
   assert.notEqual(sakuraDarkBackground, sakuraLightBackground, "Dark mode updates the homepage background");
+  assert.notEqual(await showcaseBackground(), sakuraLightShowcase, "Dark mode updates the showcase");
   await go("kana.html");
   await page.locator(".study-palette > summary").waitFor();
   assert.equal(await pageBackground(), sakuraDarkBackground, "The tool page uses the same dark palette as the homepage");
@@ -153,21 +244,22 @@ try {
         const bounds = await supportButton.boundingBox();
         assert.ok(bounds.height >= 44 && bounds.width < 240, `${file}: compact badge with a touch-friendly target`);
       }
-      const contribution = page.locator(".study-contribute");
-      assert.equal(await contribution.count(), 1, `${file}: one shared contribution message`);
-      assert.equal(await contribution.isVisible(), true, `${file}: contribution message is visible`);
-      assert.notEqual(await contribution.locator("a").first().evaluate((link) => getComputedStyle(link).color), await contribution.locator("a").last().evaluate((link) => getComputedStyle(link).color));
-      assert.deepEqual(await contribution.locator("a").evaluateAll((links) => links.map((link) =>
-        [link.href, link.target, link.rel])), [
-        ["https://github.com/arrigonfr/nihongo-toolkit/issues", "_blank", "noopener noreferrer"],
-        ["https://github.com/arrigonfr/nihongo-toolkit", "_blank", "noopener noreferrer"]
-      ], `${file}: feedback links open GitHub outside the launcher`);
+      await page.click("#menuButton");
+      const contact = page.locator("#helperMenu").getByRole("link", { name: /Contact/ });
+      assert.equal(await contact.isVisible(), true, `${file}: Contact is available in the menu`);
+      assert.equal(await contact.evaluate((link) => new URL(link.href).pathname), "/contact");
+      await page.keyboard.press("Escape");
       await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const style = await page.locator("header.study-header").evaluate((header) => {
         const mark = header.querySelector(".brand-mark, .cw-brand-mark");
         const name = header.querySelector(".brand-name, .cw-brand-name");
         const css = getComputedStyle(header);
-        return [css.padding, css.minHeight, css.height, css.borderBottomWidth,
+        const bounds = header.getBoundingClientRect();
+        for (const child of header.children) {
+          const box = child.getBoundingClientRect();
+          if (box.height && (box.top < bounds.top || box.bottom > bounds.bottom)) throw new Error("Header content escapes its rows");
+        }
+        return [css.padding, css.minHeight, css.rowGap, css.borderBottomWidth,
           getComputedStyle(mark).width, getComputedStyle(mark).height, getComputedStyle(name).font];
       });
       reference ||= style;
@@ -215,12 +307,16 @@ try {
   }
 
   await go("goi.html");
+  await page.click("#startButton");
+  await page.locator("#questionContent").waitFor();
   const checkboxLabel = page.locator('label:has(#showStatsToggle) .study-setting-name');
+  await page.locator(".request-loading-panel").waitFor({ state: "detached" });
+  await checkboxLabel.scrollIntoViewIfNeeded();
   const wasChecked = await page.locator("#showStatsToggle").isChecked();
   await checkboxLabel.click();
   assert.equal(await page.locator("#showStatsToggle").isChecked(), wasChecked, "A title opens help without changing its input");
   assert.equal(await page.locator("#studySettingTooltip").isVisible(), true);
-  await page.locator("#levelSelect + .study-levels input").first().focus();
+  await page.locator("#stopSessionButton").focus();
   assert.equal(await page.locator("#studySettingTooltip").isVisible(), false, "Input focus dismisses help instead of reopening it");
   assert.equal(await page.locator('label[for="levelSelect"] .study-setting-name').count(), 0, "JLPT level has no tooltip");
   if (process.env.TOOLTIP_SCREENSHOT) await page.screenshot({ path: process.env.TOOLTIP_SCREENSHOT });
@@ -272,10 +368,11 @@ try {
   const other = await context.newPage();
   await other.goto(`${origin}/kana.html`);
   const frame = other;
-  await frame.locator("#colorThemeSelect").waitFor();
+  await frame.locator(".study-palette > summary").waitFor();
   const palettes = new Set();
   for (const palette of ["matcha", "sakura", "ocean", "wisteria", "amber", "sumi"]) {
-    await page.selectOption("#colorThemeSelect", palette);
+    await page.click(".study-palette > summary");
+    await page.click(`[data-palette="${palette}"]`);
     await other.waitForFunction((value) => document.documentElement.dataset.colorTheme === value, palette);
     await frame.locator(`#colorThemeSelect option[value="${palette}"]:checked`).waitFor({ state: "attached" });
     for (let i = 0; i < 2; i++) {

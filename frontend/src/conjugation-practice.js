@@ -1,6 +1,6 @@
 import { bind } from "wanakana";
 import { API_BASE } from "./api.js";
-import { PracticeSession, cleanSettings, defaults, modes, createPool, loadPracticeEntries, ruleFor, normalizeAnswer, sampleChoices, answerHint } from "./conjugation-practice-engine.js";
+import { PracticeSession, cleanSettings, defaults, modes, createPool, loadPracticeEntries, reviewLabel, ruleFor, normalizeAnswer, sampleChoices, answerHint } from "./conjugation-practice-engine.js";
 import { wordCategories, formCatalog } from "./conjugation-practice-data.js";
 import { mountStudyControls, study, japaneseHTML, audioHTML } from "./study-controls.js";
 import { escape } from "./examples.js";
@@ -335,18 +335,19 @@ function renderProgress() {
   const all = createPool({ ...defaults, levels: [5, 4, 3, 2, 1], forms: Object.keys(formCatalog) });
   const lookup = new Map(all.map((q) => [q.key, q]));
   const weak = new Map();
+  const missed = [];
   for (const [key, record] of records) {
-    const question = lookup.get(key);
-    if (!question || !record.wrong && !record.review) continue;
+    if (!record.wrong && !record.review) continue;
+    const question = record.question || (lookup.has(key) && reviewLabel(lookup.get(key)));
+    if (!question || !Object.hasOwn(formCatalog, question.family)) continue;
+    missed.push({ question, record });
     weak.set(question.family, (weak.get(question.family) || 0) + record.wrong + Number(Boolean(record.review)));
   }
   $("weakForms").innerHTML = [...weak.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
     .map(([family, wrong]) => `<div class="weak-item"><span>${escape(formCatalog[family].en)}</span><span>${wrong} to review</span></div>`).join("")
     || '<p class="muted small">Your review list will take shape as you practice.</p>';
-  $("missedWords").innerHTML = records.filter(([key, record]) => lookup.has(key) && (record.wrong || record.review))
-    .sort((a, b) => b[1].last - a[1].last).map(([key, record]) => {
-      const q = lookup.get(key);
-      return `<li><span lang="ja">${escape(q.entry.word)}</span> · ${escape(q.row.label)} · ${escape(q.row.politeness)} <span class="muted">${record.wrong ? `${record.wrong} missed` : "Saved unfinished"}</span></li>`;
+  $("missedWords").innerHTML = missed.sort((a, b) => b.record.last - a.record.last).map(({ question, record }) => {
+      return `<li><span lang="ja">${escape(question.word)}</span> · ${escape(question.label)} · ${escape(question.politeness)} <span class="muted">${record.wrong ? `${record.wrong} missed` : "Saved unfinished"}</span></li>`;
     }).join("") || '<li class="empty-message">No missed words yet.</li>';
 }
 function tick() {
@@ -438,7 +439,7 @@ $("endButton").addEventListener("click", async () => {
   if (!choice || session !== active || session.ended) return;
   if (choice === "save" && !session.scored) {
     const record = progress[session.current.key] || { attempts: 0, correct: 0, wrong: 0 };
-    progress[session.current.key] = { ...record, review: true, last: Date.now() };
+    progress[session.current.key] = { ...record, question: reviewLabel(session.current), review: true, last: Date.now() };
   }
   session.end("Session ended"); finish();
 });

@@ -31,8 +31,8 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("dialog", async (dialog) => { errors.push(`Unexpected native dialog: ${dialog.message()}`); await dialog.dismiss(); });
   const go = async (name) => {
-    await page.goto(`${base}/${encodeURIComponent(name)}.html`);
-    await page.locator("#colorThemeSelect").waitFor();
+    await page.goto(`${base}/${encodeURIComponent(name)}.html`, { waitUntil: "domcontentloaded" });
+    await page.locator(".study-palette > summary").waitFor();
   };
   const change = async (id, value) => page.locator(`#${id}`).evaluate((input, value) => {
     if (input.type === "checkbox") input.checked = value;
@@ -40,10 +40,15 @@ try {
     input.dispatchEvent(new Event("change", { bubbles: true }));
   }, value);
   const allDetails = () => page.evaluate(() => document.querySelectorAll("details").forEach((details) => { details.open = true; }));
+  const startKanjiSession = async () => {
+    await page.click("#startSessionButton");
+    await page.waitForFunction(() => document.getElementById("questionCount").textContent === "Question 1" &&
+      !document.getElementById("answerInput").disabled);
+  };
   const pages = ["仮名", "意味", "読み", "語彙", "活用", "活用練習", "言葉探し", "パズル", "しりとり", "絵合わせ", "文解き", "言葉", "漢字地図帳"];
   for (const name of pages) {
     await go(name); await allDetails();
-    assert.ok(await page.locator('#colorThemeSelect option[value="sumi"]').count(), name);
+    assert.ok(await page.locator('.study-palette [data-palette="sumi"]').isVisible(), name);
     for (const font of await page.locator("#fontChoice, #setting-font").all()) {
       assert.equal(await font.locator("..").locator(".font-chip").count(), 4, `${name}: all font choices`);
     }
@@ -71,8 +76,7 @@ try {
 
   await go("読み");
   await change("readingDirection", "reading-katakana");
-  await page.click("#startSessionButton");
-  await page.waitForFunction(() => !document.getElementById("answerInput").disabled);
+  await startKanjiSession();
   await page.check("#reviewKanjiToggle");
   await page.fill("#answerInput", "日");
   assert.equal(await page.inputValue("#answerInput"), "");
@@ -91,8 +95,7 @@ try {
   await page.waitForFunction(() => document.getElementById("questionCount").textContent === "Question 2");
   await go("読み");
   await change("readingDirection", "reading-hiragana");
-  await page.click("#startSessionButton");
-  await page.waitForFunction(() => !document.getElementById("answerInput").disabled);
+  await startKanjiSession();
   await page.check("#reviewKanjiToggle");
   await page.fill("#answerInput", "ニチ");
   await page.click("#checkButton");
@@ -103,15 +106,13 @@ try {
   assert.equal(await page.textContent("#accuracyStat"), "50%", "Katakana is accepted for the selected kun'yomi reading");
   await go("読み");
   await change("readingDirection", "reading-any-kana");
-  await page.click("#startSessionButton");
-  await page.waitForFunction(() => !document.getElementById("answerInput").disabled);
+  await startKanjiSession();
   await page.locator("#answerInput").pressSequentially("hi");
   assert.equal(await page.inputValue("#answerInput"), "ひ");
 
   await go("意味");
   await change("meaningDirection", "meaning-reverse");
-  await page.click("#startSessionButton");
-  await page.waitForFunction(() => !document.getElementById("answerInput").disabled);
+  await startKanjiSession();
   await page.fill("#answerInput", "hi");
   await page.click("#checkButton");
   await page.locator("#answerCandidates button").first().waitFor();
@@ -148,6 +149,7 @@ try {
   assert.match(await page.textContent("#missedWords"), /Saved unfinished/);
   await change("setting-mode", "weak");
   await page.click("#startButton");
+  await page.locator("#practice").waitFor();
   assert.equal(await page.locator("#practice").isVisible(), true);
   await page.click("#endButton"); await page.getByRole("button", { name: "Discard & continue" }).click();
   await page.click("#restartButton");
@@ -164,12 +166,16 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await go("言葉探し");
   await change("sizePreset", "20");
-  await change("setting-list", "japaneseClue");
+  assert.equal(await page.locator('[data-value="japaneseClue"] input').isDisabled(), true);
+  await change("setting-list", "clue");
   await page.click("#startButton");
   await page.locator("#grid [data-cell]").first().waitFor();
   assert.equal(await page.locator("#grid [data-cell]").count(), 400);
-  assert.match(await page.textContent("#listNote"), /Category clues/);
+  const clues = await page.locator("#wordList .word-label").allTextContents();
+  assert.ok(clues.length > 0 && clues.every((text) => /^.+: .+/.test(text)), "English clues include a category and meaning");
+  await page.locator(".request-loading-panel").waitFor({ state: "hidden" });
   await page.click("#endButton");
+  await page.locator(".study-confirm-dialog[open]").waitFor();
   await page.mouse.click(5, 5);
   await page.locator(".study-confirm-dialog").waitFor({ state: "detached" });
   assert.equal(await page.locator(".study-confirm-dialog").count(), 0, "Backdrop dismisses modal");
@@ -193,12 +199,13 @@ try {
   await go("意味");
   const group = page.locator("#levelSelect + .study-levels");
   await group.locator("[data-level-clear]").click();
-  await group.locator('input[value="5"]').check();
-  await group.locator('input[value="3"]').check();
+  await group.getByText("N5", { exact: true }).click();
+  await group.getByText("N3", { exact: true }).click();
   await page.reload();
   assert.equal(await page.inputValue("#levelSelect"), "5,3");
   assert.equal(await group.locator('input[value="4"]').isChecked(), false);
-  await page.selectOption("#colorThemeSelect", "sumi");
+  await page.locator(".study-palette > summary").click();
+  await page.locator('.study-palette [data-palette="sumi"]').click();
   await page.click("#themeButton");
   assert.equal(await page.getAttribute("html", "data-color-theme"), "sumi");
   await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });

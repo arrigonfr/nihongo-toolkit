@@ -425,7 +425,7 @@ try {
   await page.goto(base);
   await page.click("#menuButton");
   await page.click('#helperMenu [data-file="katsuyo-renshuu.html"]');
-  await page.waitForURL(`${base}/katsuyo-renshuu.html`);
+  await page.waitForURL(`${base}/katsuyo-renshuu`);
   await page.locator("#startButton").waitFor();
   assert.deepEqual(errors, []);
   console.log("Conjugation practice browser checks passed: typing, grading, no auto-reveal, retry scoring, assistance limits, kanji, every recognition task, quick practice, sudden death, marathon, timer, filters, persistence, mobile, reset and launcher.");

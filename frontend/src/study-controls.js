@@ -1,4 +1,5 @@
 import "./study-controls.css";
+import "./tool-intro.css";
 import "./settings-panel.css";
 import "./select-controls.css";
 import "./ui-kit.css";
@@ -68,7 +69,7 @@ export function mountSupport() {
   content.className = "study-intro-content";
   content.append(...intro.childNodes);
   intro.append(content);
-  intro.classList.add("study-intro");
+  intro.classList.add("study-intro", "tool-intro");
   const header = document.querySelector("header");
   let toolbar = header.querySelector(".study-toolbar");
   if (!toolbar) {
@@ -84,7 +85,7 @@ export function sentenceHTML(text, markup) {
   const reading = markup?.replace(/\{[^{}|]+\|([^{}]+)\}/g, "$1");
   return `<span class="study-japanese" lang="ja">${markup ? formatFurigana(markup) : escape(text)}</span>${reading ? `<span class="study-romaji">${escape(romanizeKana(reading))}</span>` : ""}${audioHTML(text)}`;
 }
-export function mountStudyControls({ furigana = true, romaji = true, onChange = () => {} } = {}) {
+export function mountStudyControls({ audio = true, furigana = true, romaji = true, help, onChange = () => {} } = {}) {
   mountSupport();
   mountFontControls();
   mountLevelControls();
@@ -95,7 +96,7 @@ export function mountStudyControls({ furigana = true, romaji = true, onChange = 
   header.classList.add("study-embedded");
   for (const panel of document.querySelectorAll("details#settingsPanel, details#settingsDrawer, details:has(> #settings)")) panel.open = true;
   const toolbar = header.querySelector(".study-toolbar");
-  for (const [name, visible] of Object.entries({ audio: true, furigana, romaji })) {
+  for (const [name, visible] of Object.entries({ audio, furigana, romaji })) {
     const button = document.createElement("button");
     button.type = "button";
     button.id = `${name}QuickToggle`;
@@ -111,7 +112,7 @@ export function mountStudyControls({ furigana = true, romaji = true, onChange = 
   }
   header.append(toolbar);
   mountAppearance(header, theme);
-  mountToolHelp();
+  mountToolHelp(help);
   let audioWasEnabled = false;
   function refresh() {
     for (const name of Object.keys(study)) {

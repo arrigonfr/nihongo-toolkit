@@ -43,7 +43,7 @@
     .input-panel,.card,.history-panel,.notice { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
     .input-panel { padding: 14px; box-shadow: var(--shadow); }
     textarea { display: block; width: 100%; min-height: 135px; max-height: 360px; resize: vertical; padding: 7px; border: 0; outline: 0; background: transparent; color: var(--ink); font: 20px/1.8 "Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif; }
-    textarea::placeholder,.lookup-input::placeholder { color: var(--muted); opacity: .7; }
+    textarea::placeholder,.lookup-input::placeholder { color: var(--ink); opacity: 1; }
     .input-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 4px 0; border-top: 1px solid var(--line); }
     .input-options,.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
     .toggle { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); cursor: pointer; font-size: 12px; }
@@ -130,9 +130,8 @@
       </button>
     </header>
     <main>
-      <section class="intro">
-        <p class="eyebrow">Read between the characters</p>
-        <h1>Unpack a Japanese sentence.</h1>
+      <section class="intro"><span class="eyebrow"><span lang="ja">文解き</span> · <span>Sentence breakdown</span></span>
+        <h1>Start with a sentence. <br><span>Explore it word by word.</span></h1>
         <p>Parse text into clickable pieces, then look up readings, meanings, grammar, and more.</p>
       </section>
       <section class="input-panel" aria-label="Japanese text input">

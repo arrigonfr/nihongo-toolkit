@@ -25,16 +25,18 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
-  assert.equal(await page.locator('.dashboard-link[href="/kanji/"]').count(), 1);
+  assert.equal(await page.locator('.helper-link[href="/kanji/"]').count(), 1);
   assert.equal(await page.locator("#helperFrame").count(), 0);
-  assert.equal(await page.locator('.dashboard .study-support img[alt="PayPal"]').count(), 1);
+  assert.equal(await page.locator('.home-footer .study-support img[alt="PayPal"]').count(), 1);
   await page.setViewportSize({ width: 375, height: 812 });
-  assert.equal(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight), true, "Dashboard fits a mobile viewport");
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "Homepage fits a mobile viewport");
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.locator('.dashboard-link[data-file="kana.html"]').click();
-  await page.waitForURL(`${base}/kana.html`);
-  assert.equal(await page.locator('.dashboard-back[href="./"]').count(), 1);
-  await page.locator("#colorThemeSelect").selectOption("sakura");
+  await page.locator("#menuButton").click();
+  await page.locator('.helper-link[data-file="kana.html"]').click();
+  await page.waitForURL(`${base}/kana`);
+  assert.equal(await page.locator('.home-link[href="./"]').count(), 1);
+  await page.click(".study-palette > summary");
+  await page.click('[data-palette="sakura"]');
   assert.equal(await page.locator(".navigation").evaluate((node) => getComputedStyle(node).getPropertyValue("--surface").trim()), await page.locator("html").evaluate((node) => getComputedStyle(node).getPropertyValue("--card").trim()));
   await page.goto(`${base}/${encodeURIComponent("仮名.html")}`);
   await page.waitForURL(`${base}/kana.html`);
@@ -47,7 +49,7 @@ try {
     assert.equal((source.match(/gtm\.js\?id=/g) || []).length, 1, `${file} has one GTM script`);
     const head = source.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)[1];
     assert.equal((head.match(/gtag\/js\?id=G-LL2V1JZBER/g) || []).length, 1, `${file} loads the Google tag once`);
-    assert.equal((head.match(/gtag\('config', 'G-LL2V1JZBER'\)/g) || []).length, 1, `${file} configures the Google tag once`);
+    assert.equal((head.match(/gtag\('config', 'G-LL2V1JZBER'(?=[,)])/g) || []).length, 1, `${file} configures the Google tag once`);
     assert.match(source, /<body[^>]*>\s*<noscript><iframe src="https:\/\/www\.googletagmanager\.com\/ns\.html\?id=GTM-T7N85X93"/);
   }
   await page.goto(`${base}/data-sources.html`);

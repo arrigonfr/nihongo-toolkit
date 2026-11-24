@@ -1,5 +1,4 @@
 import "./appearance.css";
-import { navigationPage } from "./routes.js";
 import { translateInterface } from "./interface-i18n.js";
 
 const key = "nihon:appearance-v1";
@@ -159,15 +158,6 @@ export function mountAppearance(header, toggle) {
   initializeAppearance();
   const navigation = document.querySelector(".navigation");
   if (navigation) header.prepend(navigation);
-  const file = navigationPage(location.pathname);
-  const menuItem = [...document.querySelectorAll(".helper-link[data-file]")].find((item) => item.dataset.file === file);
-  const description = menuItem?.querySelector(".helper-description")?.textContent.trim();
-  if (description && !header.querySelector(".study-header-description")) {
-    const subtitle = document.createElement("p");
-    subtitle.className = "study-header-description";
-    subtitle.textContent = description;
-    header.append(subtitle);
-  }
   const controls = document.createElement("div");
   controls.className = "study-appearance";
   if (languageSelectionEnabled) {
