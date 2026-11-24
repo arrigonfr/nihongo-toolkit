@@ -36,14 +36,30 @@ convert romaji to hiragana as you type. A Japanese keyboard is optional.
 All study intros use Eawase’s layout: a Japanese and English tool label,
 a two-line headline with an accented second line, and a short introduction.
 
-Run `npm run dev:editorial` from the repository root, then open
+Run `npm run dev:editorial` from the repository root to start both the local API
+and the editorial frontend, then open
 <http://127.0.0.1:5173/>. Use the Practice, Games and Reference sections, or
 open a [direct route](docs/SEVEN-TOOL-DEVELOPMENT-SPEC.md#completion-record).
-Only this local development mode lists and runs the seven new tools. Stop
-the server and run the usual dev command to return to the normal edition.
-Do not expose the development server: Vite serves project sources. Production
-builds omit the draft entries, decks and sitemap links even if the opt-in is set.
-No release flag promotes draft content.
+Normal development and production builds also include all seven tools. A small
+Preview badge identifies them in the homepage index, navigation and tool pages.
+They remain excluded from the sitemap while their content awaits review.
+
+The seven previews load learning content from the toolkit API, not bundled
+frontend decks. After importing the dictionary, provision local SQLite:
+
+```sh
+node backend/scripts/seed-study-decks.js
+node backend/scripts/provision-study-guide.mjs backend/data/nihon.sqlite
+node backend/scripts/provision-study-drawing.mjs backend/data/nihon.sqlite
+```
+
+Before deploying, run `npm run db:sync-study-turso` to inspect the six local
+table counts without contacting Turso. Check `TURSO_DATABASE_URL` and supply a
+write-capable `TURSO_AUTH_TOKEN` in `backend/.env`, then run
+`npm run db:sync-study-turso -- --apply`. It creates missing tables and upserts
+local rows by primary key; remote-only rows are not deleted. Writes commit in
+batches, so rerun after an interruption. This command is separate from dictionary
+enrichment sync. Deploy the backend serving `/api/study/` before the frontend.
 
 The previews are for editorial evaluation, not an approved Japanese curriculum.
 See the [coverage and release gates](docs/SEVEN-TOOL-DEVELOPMENT-SPEC.md#completion-record)
@@ -1638,6 +1654,13 @@ The original root `kanjidb.sqlite` is **untouched and unused**. Its provenance/l
 was not supplied, so it is not merged into or bundled with the new backend.
 
 ## Seeding more vocabulary and example sentences
+
+The dictionary import also seeds the Crossroads, Train, Karuta, Particle, and
+Counter decks. To refresh only those decks, run `node backend/scripts/seed-study-decks.js`
+from the repository root (`DATABASE_PATH` overrides the SQLite path). For Turso,
+set `TURSO_DATABASE_URL` and a write-capable `TURSO_AUTH_TOKEN` in the environment
+and run `node backend/scripts/seed-study-decks.js --turso` before deploying the
+reader. Both commands atomically replace these five decks and are safe to repeat.
 
 `npm run seed:vocab` (after `npm run db:import`) adds tables to the local SQLite
 database without touching existing ones: `vocabulary_words` (word, reading, meaning,

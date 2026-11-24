@@ -214,8 +214,7 @@ export default defineConfig(({ mode, command, isPreview }) => {
   if (disabled.size && command === "serve" && !isPreview) {
     throw new Error("DISABLED_PAGES requires a production build. Do not expose the Vite development server; it serves source files.");
   }
-  const editorial = command === "serve" && !isPreview && env.EDITORIAL_PREVIEWS === "1";
-  if (!editorial) for (const slug of Object.keys(editorialTools)) disabled.add(`${slug}.html`);
+  const editorial = true;
   const site = env.VITE_SITE_URL ? new URL("/", env.VITE_SITE_URL).href : undefined;
   if (site && !site.startsWith("https://")) {
     throw new Error("VITE_SITE_URL must be the public HTTPS site URL.");
@@ -278,7 +277,7 @@ export default defineConfig(({ mode, command, isPreview }) => {
     emptyOutDir: true,
     sourcemap: false,
     rollupOptions: {
-      input: readdirSync(root).filter((file) => file.endsWith(".html") && !editorialPage(file))
+      input: readdirSync(root).filter((file) => file.endsWith(".html"))
         .map((file) => fileURLToPath(new URL(file, import.meta.url)))
         .concat(["./kanji/catalogue-shell.html", "./embed/kanji-of-the-day.html"]
           .map((file) => fileURLToPath(new URL(file, import.meta.url))))

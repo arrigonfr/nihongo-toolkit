@@ -1,11 +1,12 @@
+import { studyPool } from "../study-pool.js";
 import { study } from "../study-controls.js";
 import { el, ja, button, root, setupNote, silence, status, playButton } from "./dom.js";
-import { pictures, deal, karutaResult } from "./karuta-data.js";
+import { deal, karutaResult } from "./karuta-data.js";
 import { createCluePlayer } from "./clue-player.js";
 import { picture } from "./pictures.js";
 
 export const karuta = {
-  items: pictures,
+  ...studyPool("karuta"),
   setup(container) {
     setupNote(container, "Listen to a description and pick one of six pictures. You can switch to a text clue at any time.");
   },
@@ -35,7 +36,7 @@ export const karuta = {
       notice.textContent = "Text-clue round. Choose the matching picture.";
       unlock();
     });
-    for (const card of deal(item)) {
+    for (const card of deal(item, karuta.items)) {
       const tile = button("", () => {
         if (ended || !mode) return;
         ended = true;

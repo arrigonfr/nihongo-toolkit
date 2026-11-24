@@ -93,3 +93,4 @@ body header.study-header:has(> .navigation) { grid-template-columns: 40px minmax
 @media (max-width: 380px) {
   .study-header .brand-mark, .study-header .cw-brand-mark { display: none; }
 }
+.tool-preview-badge { display: inline-block; justify-self: start; align-self: center; vertical-align: middle; margin-inline-start: .3em; padding: .1em .45em; border: 1px solid currentColor; border-radius: .4em; color: var(--muted); font: 600 11px/1.35 system-ui, sans-serif; }

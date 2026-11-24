@@ -34,7 +34,7 @@ const root = $("editorialRoot");
 root.classList.add("shell");
 root.innerHTML = `<header><a class="brand" href="./" target="_top"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">${name}<span class="brand-note">NihongoToolkit</span></span></a><button id="themeButton" type="button" aria-label="Toggle theme"></button></header>
   <main><section class="intro tool-intro"><span class="eyebrow"><span lang="ja">${japanese}</span> · <span>${label}</span></span><h1>${firstLine}<br><span>${secondLine}</span></h1><p>${lead}</p></section>
-  <p class="editorial-notice" data-i18n-scope><strong>Editorial preview</strong> · Japanese content and English glosses await review.</p>
+  <p class="editorial-notice" data-i18n-scope><small class="tool-preview-badge">Preview</small> Japanese content and English glosses await review.</p>
   <section id="workspace" aria-busy="true" data-i18n-scope><p role="status">Loading preview…</p></section></main>`;
 root.querySelector(".brand-mark").append(document.querySelector(`.navigation [data-file="${slug}.html"] .helper-icon img`).cloneNode());
 const workspace = $("workspace");
@@ -171,10 +171,12 @@ async function load() {
   try {
     if (key === "guide") {
       const { mountGuide } = await import("./preview-guide/index.js");
-      workspace.replaceChildren(); mountGuide(workspace);
+      workspace.replaceChildren(); await mountGuide(workspace);
     } else {
       const definitions = group === "Games" ? await import("./preview-games/index.js") : await import("./preview-practice/index.js");
-      mountActivity(definitions[key]);
+      const definition = definitions[key];
+      await definition.prepare?.();
+      mountActivity(definition);
     }
   } catch (error) {
     console.error("Could not initialize editorial preview.", error);

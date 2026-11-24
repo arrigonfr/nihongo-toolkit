@@ -5,6 +5,7 @@ import { dirname } from "node:path";
 import { t as readTar } from "tar";
 import { createDatabase, databasePath } from "../src/database.js";
 import { insertKanjis, insertWords, insertVocabulary } from "./import-data.js";
+import { seedStudyDecks } from "./seed-study-decks.js";
 import { dictionaryUrl, dictionaryRelease, openJlptUrl, openJlptRevision, kanjiVgUrl, kanjiVgRevision } from "./sources.js";
 
 const cache = fileURLToPath(new URL("../.cache/", import.meta.url));
@@ -90,6 +91,7 @@ try {
     vocabulary.push(...words);
   }
   db = createDatabase(staging);
+  seedStudyDecks(db);
   db.exec("BEGIN");
   console.log("Importing KANJIDIC2...");
   insertKanjis(db, await dictionary("kanjidic2-all"), levels);

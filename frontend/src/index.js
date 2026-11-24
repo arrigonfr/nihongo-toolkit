@@ -4,6 +4,7 @@ import { createSupportButton } from "./support.js";
 import { legacyRoutes, navigationPage, pageFile } from "./routes.js";
 import { initializeInterfaceLocalization } from "./interface-i18n.js";
 import { mountHomepageShowcase } from "./homepage.js";
+import { editorialPage } from "../editorial-tools.js";
 
 initializeAppearance();
 initializeInterfaceLocalization();
@@ -16,6 +17,12 @@ for (const link of document.querySelectorAll(".helper-link, .dashboard-link")) {
   const title = name.firstChild.textContent.replace(/\s*·\s*$/, "").trim();
   link.prepend(icon);
   name.textContent = title;
+  if (editorialPage(link.dataset.file || "")) {
+    const badge = document.createElement("small");
+    badge.className = "tool-preview-badge";
+    badge.textContent = "Preview";
+    name.after(badge);
+  }
 }
 mountHomepageShowcase();
 document.querySelector("[data-site-support], .dashboard")?.prepend(createSupportButton());

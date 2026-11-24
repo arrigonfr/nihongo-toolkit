@@ -15,7 +15,7 @@
     "dev": "node scripts/dev.mjs",
     "dev:backend": "npm run dev -w backend",
     "dev:frontend": "npm run dev -w frontend",
-    "dev:editorial": "EDITORIAL_PREVIEWS=1 npm run dev -w frontend",
+    "dev:editorial": "EDITORIAL_PREVIEWS=1 node scripts/dev.mjs",
     "test:editorial": "node --test frontend/test/preview-*.test.js && node scripts/editorial-browser-test.mjs",
     "db:init": "npm run db:init -w backend",
     "db:index-words": "node --use-system-ca --env-file-if-exists=backend/.env backend/scripts/index-word-forms.js",
@@ -59,6 +59,7 @@
     "db:review-examples": "node backend/scripts/review-examples.js",
     "db:translations": "node --max-old-space-size=4096 --use-system-ca --env-file-if-exists=backend/.env backend/scripts/translations.js",
     "db:sync-turso": "node --use-system-ca --env-file-if-exists=backend/.env backend/scripts/sync-enrichment.js",
+    "db:sync-study-turso": "node --use-system-ca --env-file-if-exists=backend/.env backend/scripts/sync-study-turso.js",
     "test:examples": "node --test backend/test/examples.test.js backend/test/enrichment.test.js && node scripts/example-provenance-browser-test.mjs"
   },
   "overrides": {

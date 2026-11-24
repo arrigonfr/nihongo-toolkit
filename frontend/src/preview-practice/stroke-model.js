@@ -1,14 +1,17 @@
-import manifest from "./stroke-index.json" with { type: "json" };
-import { inflateSync, strFromU8 } from "fflate";
-
-let offset = 0;
-export const models = [...manifest.characters].map((character,i) => {
-  const start = offset;
-  offset += manifest.sizes[i];
-  return { id:`draw-${character}`, character, level:manifest.levels[i], grade:manifest.grades[i], start, end:offset-1,
-    source:"KanjiVG · Ulrich Apel and contributors", license:"CC BY-SA 3.0", contentVersion:manifest.revision, reviewStatus:"source model; feedback uncalibrated" };
-});
-const byCharacter = new Map(models.map(i=>[i.character,i]));
+async function drawingRequest(params) {
+  const {fetchItems} = await import("../api.js");
+  return fetchItems("/api/study/drawing",params);
+}
+export const models = [];
+const byCharacter = new Map();
+export async function prepareModels(request=drawingRequest) {
+  const rows = await request({});
+  models.length=0; byCharacter.clear();
+  for (const row of rows) {
+    const item={...row,id:`draw-${row.character}`,source:"KanjiVG · Ulrich Apel and contributors",license:"CC BY-SA 3.0", reviewStatus:"source model; feedback uncalibrated"};
+    models.push(item); byCharacter.set(item.character,item);
+  }
+}
 export function parseList(text) {
   const seen = new Set(), items = [], duplicates = new Set(), unsupported = new Set();
   for (const c of text.replace(/[\s,、]+/gu,"")) {
@@ -19,13 +22,9 @@ export function parseList(text) {
   }
   return {items,duplicates:[...duplicates],unsupported:[...unsupported]};
 }
-export async function loadModel(item,signal) {
-  const response = await fetch(new URL("./stroke-models.bin",import.meta.url),{headers:{Range:`bytes=${item.start}-${item.end}`},signal});
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  const block = response.status === 206 ? bytes : bytes.subarray(item.start,item.end+1);
-  if (block.length !== item.end-item.start+1) throw new Error("Incomplete stroke asset");
-  return JSON.parse(strFromU8(inflateSync(block)));
+export async function loadModel(item) {
+  const [model]=await drawingRequest({character:item.character});
+  return model;
 }
 const dist = (a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 const length = line => line.slice(1).reduce((sum,p,i)=>sum+dist(line[i],p),0);

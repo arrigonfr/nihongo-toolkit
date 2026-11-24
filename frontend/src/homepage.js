@@ -95,6 +95,11 @@ export function mountHomepageShowcase() {
       indexLinks.append(indexItem);
       const copy = element("div", "home-tool-copy");
       const heading = element("h4", "", name);
+      const badge = tool.querySelector(".tool-preview-badge");
+      if (badge) {
+        indexLink.append(badge.cloneNode(true));
+        heading.append(badge.cloneNode(true));
+      }
       if (icon) heading.prepend(icon.cloneNode(true));
       const link = element("a", "", `Open ${name} →`);
       link.href = tool.href;

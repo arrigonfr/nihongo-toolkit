@@ -1,11 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { inflateRawSync } from "node:zlib";
+import { DatabaseSync } from "node:sqlite";
+import { provision } from "../../backend/scripts/provision-study-drawing.mjs";
+import { studyDrawing } from "../../backend/src/study-drawing.js";
 import { counter,draw,particle } from "../src/preview-practice/index.js";
 import { gradeParticle } from "../src/preview-practice/particle.js";
 import { gradeCounter } from "../src/preview-practice/counter.js";
 import { compareDrawing,compareStroke,parseList,resample } from "../src/preview-practice/stroke-model.js";
+import { loadDeck } from "./support/study-decks.js";
+
+await Promise.all([particle.prepare(loadDeck), counter.prepare(loadDeck)]);
 
 const fields = values => ({querySelector:selector=>Object.hasOwn(values,selector) ? {value:values[selector]} : null});
 test("particle contrasts are reciprocal; each role has nonempty, graded blank and contrast prompts",()=>{
@@ -56,14 +61,20 @@ test("counter matrix explicitly supports each 1–10 cell, never native teens or
   assert.deepEqual(filtered.map(i=>i.quantity),[3]);assert.equal(filtered[0].input,"reading");
 });
 
-test("stroke index exactly reproduces every ideographic Han entry in the worksheet",()=>{
+test("drawing requests preserve worksheet coverage, ordered models and custom selection",async t=>{
   const src=JSON.parse(readFileSync(new URL("../src/worksheet-strokes.json",import.meta.url)));
-  const archive=readFileSync(new URL("../src/preview-practice/stroke-models.bin",import.meta.url));
+  const db=new DatabaseSync(":memory:");
+  t.after(()=>db.close());
+  db.exec("CREATE TABLE kanjis(character TEXT,grade INTEGER); INSERT INTO kanjis VALUES('日',1)");
+  provision(db);
+  const request=async params=>(await studyDrawing(db,new URL(`http://test/api/study/drawing?${new URLSearchParams(params)}`))).items;
+  await draw.prepare(request);
   const keys=Object.keys(src).filter(k=>/^\p{Script=Han}$/u.test(k) && /^\p{Ideographic}$/u.test(k));
   assert.deepEqual(draw.items.map(i=>i.character),keys);
-  for (const item of draw.items) {
-    assert.deepEqual(JSON.parse(inflateRawSync(archive.subarray(item.start,item.end+1))),src[item.character]);
-  }
+  for (const character of ["日","語",keys.at(-1)]) assert.deepEqual(await request({character}),[src[character]]);
+  assert.deepEqual(await request({character:"☀"}),[]);
+  assert.deepEqual(draw.pool(fields({"#draw-collection":"grade1"})).map(i=>i.character),["日"]);
+  assert.deepEqual(draw.pool(fields({"#draw-collection":"custom","#draw-list":"語あ日語"})).map(i=>i.character),["語","日"]);
   assert.deepEqual(parseList(" 日語、一 日☀☀").items.map(i=>i.character),["日","語","一"]);
   assert.deepEqual(parseList(" 日語、一 日☀☀").duplicates,["日","☀"]);
   assert.deepEqual(parseList("☀").unsupported,["☀"]);
@@ -141,7 +152,10 @@ test("actual gated draw rounds: capture, interruption, resize, ordered models, s
     page.setDefaultTimeout(8000);
     const errors=[];
     page.on("pageerror",error=>errors.push(error.message));
-    await page.route("**/*",route=>new URL(route.request().url()).origin===new URL(base).origin ? route.continue() : route.abort());
+    await page.route("**/*",route=>{
+      const url=new URL(route.request().url());
+      return url.origin===new URL(base).origin || url.pathname==="/api/study/drawing" ? route.continue() : route.abort();
+    });
     const start=async(char,mode)=>{
       await page.goto(`${base}/kanji-kaki?kanji=${encodeURIComponent(char)}`);
       await page.locator(`#draw-mode + .chips [data-value="${mode}"]`).click();
@@ -186,7 +200,7 @@ test("actual gated draw rounds: capture, interruption, resize, ordered models, s
       assert.equal(await page.locator("#roundFeedback a").first().getAttribute("href"),`/kanji-chizucho?kanji=${encodeURIComponent(char)}`);
       await page.setViewportSize({width:390,height:844});
     }
-    await page.route("**/stroke-models.bin",route=>route.fulfill({status:503}),{times:1});
+    await page.route("**/api/study/drawing?character=*",route=>route.fulfill({status:503}),{times:1});
     await start("日","study");
     await page.getByRole("button",{name:"Retry model"}).click();
     await page.getByRole("button",{name:"Next stroke"}).focus();

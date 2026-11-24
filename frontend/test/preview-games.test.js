@@ -2,9 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
-import { puzzles, frame, crossResult, validatePuzzle } from "../src/preview-games/crossroads-data.js";
-import { networks, journeys, validateJourney, solveLeg, routeFor, clueFor } from "../src/preview-games/train-data.js";
-import { pictures, deal, karutaResult } from "../src/preview-games/karuta-data.js";
+import { frame, crossResult, validatePuzzle } from "../src/preview-games/crossroads-data.js";
+import { validateJourney, solveLeg, routeFor, clueFor } from "../src/preview-games/train-data.js";
+import { deal, karutaResult } from "../src/preview-games/karuta-data.js";
+import { loadDeck } from "./support/study-decks.js";
+const [puzzles, journeys, pictures] = await Promise.all(["crossroads","train","karuta"].map(loadDeck));
+const networks = Object.fromEntries(journeys.map(j => [j.network, j.net]));
 import { drawings } from "../src/preview-games/pictures.js";
 import { createCluePlayer } from "../src/preview-games/clue-player.js";
 
@@ -54,13 +57,13 @@ test("each journey resolves uniquely and resumes from the last intended platform
 
 test("every karuta deal has unique, illustrated and named cards, and retains the answer mode", () => {
   for (const item of pictures) {
-    const cards = deal(item);
+    const cards = deal(item, pictures);
     assert.equal(new Set(cards.map(c => c.description)).size,6);
     assert.equal(cards.filter(c => karutaResult(item,c,"listening").correct).length,1);
     assert.ok(cards.every(c => drawings[c.id]));
     assert.equal(karutaResult(item,item,"text").mode,"text");
     assert.match(item.reading,/^[ぁ-ゖー、。]+$/u);
-    assert.throws(() => deal({...item,distractors:Array(5).fill("clock")}));
+    assert.throws(() => deal({...item,distractors:Array(5).fill("clock")}, pictures));
   }
 });
 

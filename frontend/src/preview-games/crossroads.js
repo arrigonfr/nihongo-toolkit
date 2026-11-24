@@ -1,10 +1,10 @@
+import { studyPool } from "../study-pool.js";
 import { shuffle } from "../imposters-engine.js";
 import { el, ja, button, root, setupNote, status } from "./dom.js";
-import { puzzles, frame, crossResult, validatePuzzle } from "./crossroads-data.js";
+import { frame, crossResult, validatePuzzle } from "./crossroads-data.js";
 
-puzzles.forEach(validatePuzzle);
 export const crossroads = {
-  items: puzzles,
+  ...studyPool("crossroads", validatePuzzle),
   setup(container) {
     setupNote(container, "Find the one missing kanji in three compounds. Readings appear after answering.");
   },

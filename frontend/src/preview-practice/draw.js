@@ -1,5 +1,5 @@
 import { button, el, select, setting } from "./ui.js";
-import { compareDrawing, loadModel, models, parseList } from "./stroke-model.js";
+import { compareDrawing, loadModel, models, parseList, prepareModels } from "./stroke-model.js";
 
 const modes = [["trace","Trace the next stroke"],["copy","Copy beside a model"],["memory","Draw from memory"],["study","Study stroke order without drawing"]];
 const choices = [["starter","Start with 一・日・語"],["custom","One character or a custom list"],...["5","4","3","2","1"].map(n=>[n,`JLPT N${n} estimate`]),["0","No JLPT estimate"],...[1,2,3,4,5,6].map(n=>[`grade${n}`,`School grade ${n}`]),["all","All supported kanji"]];
@@ -194,6 +194,7 @@ function credit(c) {
 }
 export const draw = {
   items:models,
+  prepare:prepareModels,
   credits:credit,
   setup(c) {
     select(c,"draw-mode","Practice",modes);
@@ -233,7 +234,7 @@ export const draw = {
       region.replaceChildren();
       el(region,"p",`Loading the stroke model for ${item.character}…`,{role:"status"});
       try {
-        const [data]=await Promise.all([loadModel(item,controller.signal),import("./draw.css")]);
+        const [data]=await Promise.all([loadModel(item),import("./draw.css")]);
         if (controller.signal.aborted) return;
         region.replaceChildren();
         mount(region,item,finish,data,controller.signal);

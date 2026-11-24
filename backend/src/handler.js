@@ -1,4 +1,7 @@
 import { asyncDatabase, rowsByWordIds, exactWordCandidates } from "./async-database.js";
+import { studyDeck } from "./study-decks.js";
+import { studyGuide } from "./study-guide.js";
+import { studyDrawing } from "./study-drawing.js";
 import { localExamples, localExamplesMany, createSentenceFallback, shuffleExamples } from "./examples.js";
 import { enrichRadicals, extractComponents } from "./radicals.js";
 import { analyzeSentence, createSentenceTranslator, deinflectCandidates } from "./analyze.js";
@@ -229,6 +232,10 @@ export function createHandler({
         practiceFilterRegistered = true;
       }
       const db = asyncDatabase(source);
+      if (path === "/api/study/guide") return send(200, await studyGuide(db, url));
+      if (path === "/api/study/drawing") return send(200, await studyDrawing(db, url));
+      const deckRoute = /^\/api\/study\/deck\/(crossroads|train|karuta|particle|counter)$/.exec(path);
+      if (deckRoute) return send(200, await studyDeck(db, deckRoute[1]));
       tags ??= parse((await db.prepare("SELECT value FROM metadata WHERE key = 'jmdict_tags'").get())?.value ?? "{}");
       const toWords = async (rows) => {
         const ids = rows.map((row) => row.id);

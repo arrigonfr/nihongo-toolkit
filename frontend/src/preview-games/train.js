@@ -1,14 +1,15 @@
+import { studyPool } from "../study-pool.js";
 import { el, ja, root, button, setupNote, playButton, silence, status } from "./dom.js";
-import { networks, station, journeys, validateJourney, routeFor, clueFor } from "./train-data.js";
+import { validateJourney, routeFor, clueFor } from "./train-data.js";
 
-journeys.forEach(validateJourney);
 export const train = {
-  items: journeys,
+  ...studyPool("train", validateJourney),
   setup(container) {
     setupNote(container, "Count stops ahead, not your starting station. A transfer changes lines without moving.");
   },
   render(container, item, finish) {
-    const net = networks[item.network], board = root(container), results = [];
+    const net = item.net, board = root(container), results = [];
+    const station = id => net.stations[id];
     let index = 0, map = true, locked = false, ended = false;
     function summary() {
       if (!results.length) return null;
