@@ -23,6 +23,7 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("requestfailed", (request) => errors.push(`${request.url()}: ${request.failure()?.errorText}`));
   await page.addInitScript(() => {
+    Object.defineProperty(speechSynthesis, "getVoices", { value: () => [{ lang: "zh-CN", name: "Natural" }] });
     window.speechBuffers = [];
     window.speechStarts = [];
     window.speechEvents = [];
@@ -55,13 +56,10 @@ try {
       return buffer;
     };
   });
-  const preload = page.waitForRequest((request) => request.url().includes("/Kokoro-82M-v1.0-ONNX/"));
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/kana.html`, { waitUntil: "domcontentloaded" });
-  await preload;
   await page.waitForSelector("#audioQuickToggle");
   await page.evaluate(() => {
-    Object.defineProperty(speechSynthesis, "getVoices", { value: () => [{ lang: "ja-JP", name: "Late system voice" }] });
-    speechSynthesis.speak = () => { throw new Error("Firefox must not switch to a late system voice."); };
+    speechSynthesis.speak = () => { throw new Error("Chinese voices must not read Japanese."); };
     const button = document.createElement("button");
     button.id = "testSpeech";
     button.dataset.studySpeak = "こんにちは";
@@ -128,6 +126,7 @@ try {
   assert.equal(repeatedDownloads, 0, "changing pages must reuse the cached model and voice");
   await page.unroute(assetPattern);
   const failurePage = await browser.newPage();
+  await failurePage.addInitScript(() => Object.defineProperty(speechSynthesis, "getVoices", { value: () => [] }));
   await failurePage.route(/googletagmanager\.com/, (route) => route.fulfill({ body: "" }));
   await failurePage.route(assetPattern, (route) => route.abort());
   await failurePage.goto(`http://127.0.0.1:${server.httpServer.address().port}/kana.html`, { waitUntil: "domcontentloaded" });
@@ -152,10 +151,10 @@ try {
   await offPage.waitForSelector("#audioQuickToggle");
   await offPage.waitForTimeout(1000);
   assert.equal(offRequests, 0, "Audio Off must not preload the voice");
-  const enabledPreload = offPage.waitForRequest((request) => request.url().includes("/Kokoro-82M-v1.0-ONNX/"));
   await offPage.click("#audioQuickToggle");
-  await enabledPreload;
-  console.log("Firefox kept local speech despite late system voices, scheduled cached speech within 1.5s, queued every word without overlap, reused cached assets, and respected Audio Off.");
+  await offPage.waitForTimeout(500);
+  assert.equal(offRequests, 0, "Audio On must not download a model before playback");
+  console.log("Japanese fallback, caching, scheduling and Audio toggle checks passed.");
 } finally {
   await browser?.close();
   if (dev) await server.close();

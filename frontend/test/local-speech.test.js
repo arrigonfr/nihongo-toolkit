@@ -2,6 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
+import { japaneseVoice } from "../src/japanese-voice.js";
+
+test("only explicitly Japanese voices qualify, with enhanced Japanese preferred", () => {
+  const other = { lang: "zh-CN", name: "Natural", default: true };
+  const basic = { lang: "ja-JP", name: "Standard" };
+  const enhanced = { lang: "ja_JP", name: "Enhanced" };
+  assert.equal(japaneseVoice([other]), undefined);
+  assert.equal(japaneseVoice([other, basic, enhanced]), enhanced);
+});
 
 test("local speech queues every clip without overlap and Audio Off cancels pending and playing clips", async () => {
   const originals = { Worker: globalThis.Worker, AudioContext: globalThis.AudioContext, document: globalThis.document };

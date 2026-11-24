@@ -11,14 +11,14 @@ import { mountToolHelp } from "./tool-help.js";
 import { mountFontControls } from "./japanese-fonts.js";
 import { mountLevelControls } from "./jlpt-levels.js";
 import { createSupportButton } from "./support.js";
-import { cancelLocalSpeech, preloadLocalSpeech, speakLocalJapanese } from "./local-speech.js";
-import { translateInterface } from "./interface-i18n.js";
+import { cancelLocalSpeech, speakLocalJapanese } from "./local-speech.js";
+import { japaneseVoice } from "./japanese-voice.js";
 
 const key = "nihon:study-controls-v1";
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 export const study = { audio: true, furigana: true, romaji: false };
-const usesLocalSpeech = () => /Firefox\//.test(navigator.userAgent);
+let speechGeneration = 0;
 try {
   const saved = JSON.parse(localStorage.getItem(key) || "{}");
   for (const name of Object.keys(study)) if (typeof saved[name] === "boolean") study[name] = saved[name];
@@ -38,25 +38,19 @@ export function readingsHTML(readings = []) {
 }
 export function speakJapanese(text) {
   if (!study.audio || !text) return;
-  if (usesLocalSpeech()) {
+  const voice = japaneseVoice(window.speechSynthesis?.getVoices() || []);
+  if (!voice || !window.SpeechSynthesisUtterance) {
     void speakLocalJapanese(text);
-    return;
-  }
-  if (!window.speechSynthesis) {
-    window.alert(translateInterface("Speech playback is not supported by this browser."));
     return;
   }
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "ja-JP";
-  const voices = window.speechSynthesis.getVoices().filter((voice) => /^ja(?:[-_]|$)/i.test(voice.lang));
-  const quality = (voice) => /premium|enhanced|natural|neural/i.test(voice.name) ? 3
-    : /google|microsoft/i.test(voice.name) ? 2 : voice.default ? 1 : 0;
-  utterance.voice = voices.sort((a, b) => quality(b) - quality(a))[0] || null;
-  utterance.rate = 0.9;
+  utterance.voice = voice;
+  const generation = speechGeneration;
   utterance.onerror = (error) => {
-    if (!["interrupted", "canceled"].includes(error.error)) {
-      console.error("Japanese speech playback failed.", error);
-      window.alert(translateInterface("Japanese speech playback is unavailable. Check your device's Japanese speech voices."));
+    if (study.audio && generation === speechGeneration && !["interrupted", "canceled"].includes(error.error)) {
+      console.warn("Japanese device voice failed; trying Japanese synthesis.", error);
+      void speakLocalJapanese(text);
     }
   };
   window.speechSynthesis.speak(utterance);
@@ -113,7 +107,6 @@ export function mountStudyControls({ audio = true, furigana = true, romaji = tru
   header.append(toolbar);
   mountAppearance(header, theme);
   mountToolHelp(help);
-  let audioWasEnabled = false;
   function refresh() {
     for (const name of Object.keys(study)) {
       document.documentElement.dataset[`study${name[0].toUpperCase()}${name.slice(1)}`] = String(study[name]);
@@ -123,12 +116,10 @@ export function mountStudyControls({ audio = true, furigana = true, romaji = tru
       button.setAttribute("aria-pressed", String(study[name]));
     }
     if (!study.audio) {
+      speechGeneration++;
       window.speechSynthesis?.cancel();
       cancelLocalSpeech();
-    } else if (!audioWasEnabled && usesLocalSpeech()) {
-      preloadLocalSpeech();
     }
-    audioWasEnabled = study.audio;
   }
   window.addEventListener("storage", (event) => {
     if (event.key !== key) return;
@@ -146,6 +137,7 @@ export function mountStudyControls({ audio = true, furigana = true, romaji = tru
   });
   refresh();
   window.addEventListener("pagehide", () => {
+    speechGeneration++;
     window.speechSynthesis?.cancel();
     cancelLocalSpeech();
   });

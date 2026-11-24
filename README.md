@@ -84,8 +84,8 @@ with the backend running at http://localhost:3000. Use the top-center menu to
 choose a practice tool, reference tool or game, and the `?` beside its heading
 for a description. Expand **How to use this tool** for numbered instructions
 and any additional rules. Choose settings and start a session where applicable.
-Audio uses Japanese speech voices on your device, except in Firefox where a
-local Japanese voice loads in the background when a page opens with Audio On.
+Audio looks for a voice explicitly labeled Japanese on every browser. It prefers
+enhanced voices when available, and never asks the browser to choose an unspecified voice.
 Settings and supported
 progress are stored in your browser, not in an account or across devices.
 Use the flag picker in the header to choose English, Spanish or Brazilian
@@ -211,9 +211,10 @@ or kanji, never the whole previous word) and **Bonus kana** (+15 when the accept
 word contains the kana offered every third move). A single-unit connection earns no
 overlap bonus. Marathon adds 5 per accepted word; feedback itemizes the award.
 
-Firefox consistently uses the local Japanese model, even if system voices appear
-after page load; successive clips play in order. Its first model download and uncached synthesis can
-still be slow on low-powered devices.
+When no Japanese voice is available or native playback reports an error, the app
+loads a Japanese speech model on demand. Its first download and uncached synthesis
+can be slow; installing an enhanced Japanese device voice avoids that fallback
+when the browser exposes it.
 
 Each tool's intro includes links to report suggestions or bugs and send pull
 requests on GitHub, alongside the PayPal support button.
