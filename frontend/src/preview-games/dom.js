@@ -31,7 +31,7 @@ export function root(container) {
   return node;
 }
 export function setupNote(container, description) {
-  container.append(el("p", `${description} Draft content · pending Japanese review.`));
+  container.append(el("p", description));
 }
 export function silence() {
   window.speechSynthesis?.cancel();

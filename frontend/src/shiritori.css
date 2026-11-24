@@ -22,7 +22,7 @@ button, input, select { border: 1px solid var(--line); border-radius: 10px; back
 button { min-height: 44px; font-weight: 600; transition: background .15s, border-color .15s; }
 button:hover:not(:disabled) { border-color: var(--accent); background: var(--tint); }
 button:disabled { opacity: .48; cursor: not-allowed; }
-:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+:focus-visible { outline: var(--ui-focus-ring); outline-offset: 3px; }
 [hidden] { display: none !important; }
 a { color: var(--accent); }
 h1, h2, h3, p { margin-top: 0; }

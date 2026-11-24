@@ -87,8 +87,8 @@ $("memoryRoot").innerHTML = `<div class="shell">
   </main><aside class="sidebar">
     <section class="panel notebook"><div class="panel-heading"><h2>A closer look</h2><span aria-hidden="true">✎</span></div><div id="details"><p class="empty-detail" lang="ja">少しずつ。</p><p class="small">Matched pairs open their reading, meaning, and examples here.</p></div></section>
     <section class="panel"><h2>Your connections</h2><div id="matches" class="matches"><p class="small">Your matched pairs will collect here.</p></div></section>
-    <p class="small credits">JLPT levels are study estimates. Kana represent sounds, not English meanings.<br><a href="./data-sources.html" target="_blank" rel="noopener">Dictionary & sentence credits ↗</a></p>
   </aside></div>
+  <p class="small credits">JLPT levels are study estimates. Kana represent sounds, not English meanings.<br><a href="./data-sources.html" target="_blank" rel="noopener">Dictionary & sentence credits ↗</a></p>
   <footer><span>A little practice goes a long way.</span><span lang="ja">ひとつずつ、つながる。</span></footer>
   <dialog id="reviewDialog" aria-labelledby="reviewTitle"><div class="dialog-head"><h2 id="reviewTitle">Your review notebook</h2><button type="button" data-close aria-label="Close notebook">×</button></div><div class="dialog-body"><p class="small">Missed, assisted, unfinished, and saved items. Mistake Review uses this list, keeping your chosen filters. Imported vocabulary is personal study data, not dictionary verification.</p><div class="actions"><button id="exportReview" type="button">Export JSON</button><button id="importReview" type="button">Import JSON</button><button id="resetProgress" type="button">Reset progress</button></div><input id="reviewFile" type="file" accept=".json,application/json" hidden><p id="reviewNotice" role="status"></p><div id="reviewList"></div></div></dialog>
 </div>`;

@@ -128,7 +128,8 @@ exceptions instead of silently omitting them.
    unavailable, and retryable error states; prevent stale asynchronous results
    from replacing a newer state or an ended session. Do not fabricate
    dictionary entries, quiz questions, or sentence examples as fallbacks.
-   Preserve source credits and licenses; escape untrusted content when
+   Place general source credits and licenses below the workspace, outside
+   settings; keep item-specific attribution with its example. Escape untrusted content when
    constructing HTML. External calls and storage failures must not appear
    successful when they fail.
 

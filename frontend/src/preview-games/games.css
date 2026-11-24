@@ -2,7 +2,7 @@
 .pg-round :is(h3,h4,p,ol) { margin: 0; }
 .pg-round h3 { line-height: 1.4; text-wrap: balance; }
 .pg-round button { min-height: 44px; white-space: normal; }
-.pg-round :is(button,input):focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.pg-round :is(button,input):focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
 .pg-round [role=status]:empty { display: none; }
 .pg-round :is(.pg-actions,.pg-bank,form) { display: flex; gap: .55rem; flex-wrap: wrap; align-items: end; }
 .pg-round form label { display: grid; gap: .35rem; }

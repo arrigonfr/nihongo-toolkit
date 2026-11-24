@@ -1,4 +1,4 @@
-import { toHiragana } from "wanakana";
+import { bind, toHiragana } from "wanakana";
 import { romanizeKana } from "../romanize.js";
 
 export const draft = { source: "NihongoToolkit original practice material", license: "Unpublished draft", reviewStatus: "awaiting Japanese review", contentVersion: "draft-1" };
@@ -35,11 +35,13 @@ export function answers(c, choices, label, submit) {
     const form = el(c, "form",null,{class:"preview-practice-answer"}), field = el(el(form, "label", label,{class:"preview-practice-field"}), "input", null, {
       lang: "ja", required: "", maxlength: "40", autocomplete: "off", autocapitalize: "off", spellcheck: "false"
     });
+    bind(field, { IMEMode: "toHiragana" });
+    field.placeholder = "Romaji converts to kana";
     el(form, "button", "Check answer", { type: "submit", class: "primary" });
     let composing = false;
     field.oncompositionstart = () => { composing = true; };
     field.oncompositionend = () => { composing = false; };
-    form.onsubmit = event => { event.preventDefault(); if (!composing) send(field.value); };
+    form.onsubmit = event => { event.preventDefault(); if (!composing) send(toHiragana(field.value)); };
   }
 }
 export function reading(c, text) {

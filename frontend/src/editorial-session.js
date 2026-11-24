@@ -3,6 +3,7 @@ import { pageFile } from "./routes.js";
 import { mountStudyControls } from "./study-controls.js";
 import { cancelLocalSpeech } from "./local-speech.js";
 import { rememberControls } from "./settings-storage.js";
+import { mountChips } from "./chips.js";
 import { createSessionView } from "./session-view.js";
 import "./editorial-session.css";
 import "./tool-intro.css";
@@ -57,6 +58,16 @@ function mountActivity(definition) {
     return control.id;
   });
   rememberControls(`nihon:editorial:${preferenceNamespace}:v1`, ids, error => { $("prefError").textContent = error; });
+  for (const select of settings.querySelectorAll("#particle-task, #counter-mode, #draw-mode, #editorialLength")) {
+    mountChips(select, { presentation: "button", title: select.id === "editorialLength" ? "Session length" : "Session mode" });
+  }
+  if (definition.credits) {
+    const credits = document.createElement("details");
+    credits.className = "editorial-credits";
+    credits.append(text("summary", "Sources and licenses"));
+    definition.credits(credits);
+    workspace.after(credits);
+  }
   const view = createSessionView({ settings, play: [$("play")], results, start, footer: true });
   const pool = () => definition.pool ? definition.pool(filters) : definition.items;
   function refresh() {

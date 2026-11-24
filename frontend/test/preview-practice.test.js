@@ -100,14 +100,16 @@ test("gated particle and counter modes accept alternatives without exposing the 
     await page.route("**/*",route=>new URL(route.request().url()).origin===new URL(base).origin ? route.continue() : route.abort());
     await page.goto(`${base}/joshi-renshuu`);
     await page.locator("#particle-role").selectOption("place");
-    await page.locator("#particle-task").selectOption("contrast");
+    await page.locator('#particle-task + .chips [data-value="contrast"]').click();
     await page.locator("#particle-input").selectOption("typed");
     await page.locator("#startButton").tap();
     for (let n=0;n<2;n++) {
       const go=(await page.locator("#roundBody").innerText()).includes("Either an endpoint");
       assert.equal(await page.locator("#roundBody [data-study-speak]").count(),0);
       const field=page.locator("#roundBody input");
-      await field.fill(go?"ヘ":"で");await field.press("Enter");
+      await field.pressSequentially(go?"he":"de");
+      assert.equal(await field.inputValue(),go?"へ":"で");
+      await field.press("Enter");
       await page.locator("#roundFeedback").waitFor();
       assert.match(await page.locator("#roundFeedback h3").innerText(),/Correct/);
       assert.equal(await page.locator("#roundFeedback [data-study-speak]").getAttribute("data-study-speak"),go?"がっこうへいく。":"がっこうでべんきょうする。");
@@ -115,7 +117,7 @@ test("gated particle and counter modes accept alternatives without exposing the 
     }
     assert.match(await page.locator("#resultSummary").innerText(),/2 correct/);
     await page.goto(`${base}/josushi-renshuu`);
-    await page.locator("#counter-mode").selectOption("reading");
+    await page.locator('#counter-mode + .chips [data-value="reading"]').click();
     await page.locator("#counter-family").selectOption("本");
     await page.locator("#counter-sound").selectOption("voicing");
     await page.locator("#startButton").tap();
@@ -125,7 +127,7 @@ test("gated particle and counter modes accept alternatives without exposing the 
     await page.locator("#roundBody button[type=submit]").click();
     await page.locator("#nextButton").click();
     await page.locator("#retryMissed").click();
-    await page.locator("#roundBody input").fill("ｻﾝﾎﾞﾝ");
+    await page.locator("#roundBody input").pressSequentially("sanbon");
     await page.locator("#roundBody input").press("Enter");
     assert.equal(await page.locator("#roundFeedback [data-study-speak]").getAttribute("data-study-speak"),"さんぼん");
     assert.match(await page.locator("#roundFeedback h3").innerText(),/Correct/);
@@ -142,7 +144,7 @@ test("actual gated draw rounds: capture, interruption, resize, ordered models, s
     await page.route("**/*",route=>new URL(route.request().url()).origin===new URL(base).origin ? route.continue() : route.abort());
     const start=async(char,mode)=>{
       await page.goto(`${base}/kanji-kaki?kanji=${encodeURIComponent(char)}`);
-      await page.locator("#draw-mode").selectOption(mode);
+      await page.locator(`#draw-mode + .chips [data-value="${mode}"]`).click();
       await page.getByRole("button",{name:"Start session",exact:true}).click();
     };
     for (const [char,mode] of [["一","memory"],["日","trace"],["語","copy"]]) {

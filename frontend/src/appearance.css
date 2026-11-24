@@ -1,3 +1,4 @@
+:root { --ui-focus-ring: 3px solid var(--accent); }
 :root[data-color-theme] { --theme-hue: 148; --theme-saturation: 28%; }
 :root[data-color-theme="sakura"] { --theme-hue: 332; --theme-saturation: 70%; }
 :root[data-color-theme="ocean"] { --theme-hue: 207; --theme-saturation: 54%; }

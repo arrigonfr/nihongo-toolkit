@@ -15,7 +15,7 @@ button.primary { background: var(--accent); color: var(--page); border-color: va
 button:disabled { opacity: .6; cursor: wait; }
 input, select { width: 100%; min-width: 0; padding: 10px 12px; background: var(--page); border: 1px solid var(--line); border-radius: 9px; }
 input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); }
-input:focus-visible, button:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+input:focus-visible, button:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: var(--ui-focus-ring); outline-offset: 3px; }
 label { display: grid; gap: 5px; font-size: 14px; }
 summary { cursor: pointer; font-weight: 700; }
 details[open] > summary { margin-bottom: 18px; }
@@ -63,7 +63,7 @@ td .conjugated { display: block; font-size: var(--jp-size); line-height: 1.9; }
 .kanji-card p { font-size: 14px; }
 .file-button { position: relative; overflow: hidden; display: inline-flex; }
 .file-button input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.file-button:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+.file-button:focus-within { outline: var(--ui-focus-ring); outline-offset: 2px; }
 footer { font-size: 12px; padding: 10px 0; }
 a { color: var(--accent-strong); }
 [hidden] { display: none !important; }

@@ -194,6 +194,7 @@ function credit(c) {
 }
 export const draw = {
   items:models,
+  credits:credit,
   setup(c) {
     select(c,"draw-mode","Practice",modes);
     const collection=select(c,"draw-collection","Character collection",choices);
@@ -219,7 +220,6 @@ export const draw = {
       sync();
     });sync();
     checkbox(c,"draw-grid","Show grid");checkbox(c,"draw-numbers","Show stroke numbers");
-    credit(c);
   },
   pool(c) {
     const source=setting(c,"draw-collection","starter");

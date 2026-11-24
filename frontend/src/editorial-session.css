@@ -11,7 +11,7 @@ body { margin: 0; font: 1rem/1.6 system-ui, sans-serif; color: var(--ink); backg
 #workspace button:disabled { cursor: default; opacity: .55; }
 #workspace button:hover:not(:disabled), #workspace button[aria-pressed=true] { border-color: var(--accent); background: var(--accent-soft); }
 #workspace button.primary { background: var(--accent); color: var(--page); font-weight: 700; padding-inline: 1.4rem; }
-#workspace :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+#workspace :focus-visible { outline: var(--ui-focus-ring); outline-offset: 3px; }
 #workspace a { color: var(--accent-strong); text-underline-offset: .2em; }
 #workspace #toolFilters:not(:empty) { display: grid; gap: .85rem; }
 #workspace #toolFilters:empty, #prefError:empty { display: none; }
@@ -23,3 +23,18 @@ body { margin: 0; font: 1rem/1.6 system-ui, sans-serif; color: var(--ink); backg
 #workspace dd { margin: 0 0 .65rem; white-space: pre-line; }
 #reviewList > details { padding: .75rem 0; border-top: 1px solid var(--line); }
 #workspace .replay-actions { margin-block: 1rem; }
+#workspace #settingsPanel { max-inline-size: 54rem; }
+#workspace #settingsPanel :is(select,input:not([type=checkbox])) { inline-size: min(100%, 22rem); }
+#workspace #settingsPanel .chips { flex-wrap: wrap; }
+#workspace #settingsPanel .chip-option { min-height: 44px; }
+#workspace #settingsPanel .chip-option[aria-pressed=true] { color: var(--accent-strong); border-color: var(--accent); }
+#workspace #settingsPanel :is(.chips-title,.preview-practice-field > span), #workspace .pg-word { color: var(--text-blue); }
+#workspace :is(#roundLabel,.pg-list-title h2) { color: var(--text-plum); }
+#workspace #roundBody [lang=ja], #workspace #roundFeedback h3 { color: var(--text-warm); }
+.editorial-credits { margin-block: 1.5rem; color: var(--muted); }
+.editorial-credits summary { cursor: pointer; }
+.editorial-credits a { color: var(--text-blue); }
+@media (min-width: 52rem) {
+  #workspace #toolFilters:not(:empty) { grid-template-columns: repeat(2,minmax(0,22rem)); align-items: start; }
+  #toolFilters > :is(.chips-field,details,p) { grid-column: 1 / -1; }
+}

@@ -11,7 +11,7 @@
 .faq details:first-of-type { border-top: 1px solid var(--line); }
 body .faq details summary { padding: 16px 4px; cursor: pointer; font-size: 16px; font-weight: 700; line-height: 1.45; }
 body .faq details :is(.faq-answer, .faq-answer p, .faq-examples li) { font-size: 16px; }
-.faq summary:focus-visible, .faq a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.faq summary:focus-visible, .faq a:focus-visible { outline: var(--ui-focus-ring); outline-offset: 3px; }
 .faq-answer { padding: 0 4px 16px; line-height: 1.65; }
 .faq-answer p { margin: 0 0 12px; }
 .faq-answer p:last-child { margin-bottom: 0; }

@@ -15,7 +15,7 @@
   transition: background .15s, border-color .15s, box-shadow .15s, transform .15s;
 }
 .chips .chip-option:hover:not(.is-disabled) { border-color: var(--accent); transform: translateY(-1px); }
-.chips .chip-option:focus-within, .chips button.chip-option:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.chips .chip-option:focus-within, .chips button.chip-option:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
 .chips .chip-option.is-active {
   border-color: var(--accent); color: var(--accent-strong);
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, var(--card)), var(--accent-soft));

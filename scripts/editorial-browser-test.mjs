@@ -104,7 +104,7 @@ try {
     if (key === "guide") {
       assert.ok(await page.locator("#workspace input").count() > 0);
     } else {
-      await page.locator("#editorialLength").selectOption("extended");
+      await page.locator('#editorialLength + .chips [data-value="extended"]').click();
       await page.reload();
       assert.equal(await page.locator("#editorialLength").inputValue(), "extended");
       await page.getByRole("button", { name: "Start session" }).tap();

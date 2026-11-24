@@ -23,7 +23,15 @@ and tool pages.
 
 ## Getting started
 
+Frontend keyboard focus uses `outline: var(--ui-focus-ring)` for the standard
+palette-colored ring. Keep `outline-offset` local: an inset summary and a
+standalone button need different clearance. Selection and answer feedback are
+separate states and should not use the keyboard-focus token.
+
 ### Seven-tool editorial preview
+
+In Joshi Renshuu and Josūshi Renshuu, typed particle and counter answers
+convert romaji to hiragana as you type. A Japanese keyboard is optional.
 
 All study intros use Eawase’s layout: a Japanese and English tool label,
 a two-line headline with an accented second line, and a short introduction.
