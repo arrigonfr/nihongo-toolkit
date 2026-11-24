@@ -14,8 +14,7 @@ export const train = {
     function summary() {
       if (!results.length) return null;
       return { correct: results.every(r => r.correct), points: results.filter(r => r.correct).length,
-        legs: results.slice(), ...Object.fromEntries(["prompt","answer","response","explanation"]
-          .map(k => [k, results.map((r,i) => `${i+1}. ${r[k]}`).join(" / ")])) };
+        legs: results.slice(), prompt: net.title };
     }
     function draw(focus = false) {
       const leg = item.legs[index], line = net.services[leg.service];

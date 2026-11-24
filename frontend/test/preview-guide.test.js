@@ -6,6 +6,8 @@ import { DatabaseSync } from "node:sqlite";
 import { catalog, classify, findCards, normalize } from "../src/preview-guide/model.js";
 import { activate, collect, fingerprint, install, lookupInstalled } from "../../backend/scripts/preview-guide-inventory.mjs";
 import { drafts } from "../../backend/scripts/preview-guide-input.mjs";
+import { provision } from "../../backend/scripts/provision-study-guide.mjs";
+import { studyGuide } from "../../backend/src/study-guide.js";
 
 const find = opts => findCards({collection:"draft",...opts}).map(c => c.id);
 const editorial = {editorial:true};
@@ -79,7 +81,9 @@ test("localhost browse → comparison → example, dictionary, history and appro
   const oldGate = process.env.EDITORIAL_PREVIEWS;
   process.env.EDITORIAL_PREVIEWS = "1";
   let server, browser;
+  const guideDb = new DatabaseSync(":memory:");
   try {
+    provision(guideDb,catalog);
     server = await createServer({root:fileURLToPath(new URL("../",import.meta.url)),logLevel:"error",server:{host:"127.0.0.1",port:5481,strictPort:false,watch:null}});
     await server.listen();
     const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
@@ -87,18 +91,21 @@ test("localhost browse → comparison → example, dictionary, history and appro
     const page = await browser.newPage({viewport:{width:1100,height:900}});
     const upstream = [], errors = [];
     await page.route("**/*",r => new URL(r.request().url()).origin === origin ? r.continue() : r.abort());
+    await page.route("**/api/study/guide?*",async r => r.fulfill({json:await studyGuide(guideDb,new URL(r.request().url()))}));
     page.on("pageerror",e => errors.push(e.message));
     await page.goto(origin+"/onomatope-jiten");
     await page.getByRole("heading",{name:"Draft senses"}).waitFor();
     page.on("request",r => {
       // The shared support button requests this image on reload; it is still
-      // blocked by the route above. Count all other upstream and API requests.
+      // blocked by the route above. The guide API is served from the fixture.
+      if (new URL(r.url()).pathname === "/api/study/guide") return;
       if (r.resourceType() === "image" && r.url() === "https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-mark-color.svg") return;
-      if (new URL(r.url()).origin !== origin || /\/api\//.test(r.url())) upstream.push(r.url());
+      if (new URL(r.url()).origin !== origin) upstream.push(r.url());
     });
     await page.getByLabel("Scene",{exact:true}).selectOption("Rain");
     await page.getByRole("link",{name:/Compare しとしと/}).click();
     const compare = page.url();
+    assert.equal(compare,origin+"/onomatope-jiten");
     await page.getByText("Rain is making a rushing sound on the roof.",{exact:true}).waitFor();
     const cards = page.locator(".pg-parallel article");
     const bounds = async () => Promise.all([cards.nth(0).boundingBox(),cards.nth(1).boundingBox()]);
@@ -110,6 +117,7 @@ test("localhost browse → comparison → example, dictionary, history and appro
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth+1));
     await page.getByRole("link",{name:"JMdict entry 1058910"}).click();
     await page.getByText(/with white noise/).waitFor();
+    assert.equal(page.url(),compare);
     await page.goBack();
     assert.equal(page.url(),compare);
     await page.reload();
@@ -119,6 +127,7 @@ test("localhost browse → comparison → example, dictionary, history and appro
     await page.getByRole("link",{name:"Back to results"}).click();
     assert.equal(await page.getByLabel("Scene",{exact:true}).inputValue(),"Rain");
     await page.getByLabel("Find an expression").fill("ｻﾞｰｻﾞｰ");
+    await page.waitForFunction(() => document.querySelectorAll(".pg-index li").length === 1);
     assert.equal(await page.locator(".pg-index li").count(),1);
     await page.getByLabel("Collection",{exact:true}).selectOption("approved");
     await page.getByRole("heading",{name:"No approved senses yet"}).waitFor();
@@ -127,6 +136,7 @@ test("localhost browse → comparison → example, dictionary, history and appro
     assert.deepEqual(errors,[]);
   } finally {
     await browser?.close(); await server?.close();
+    guideDb.close();
     if (oldGate === undefined) delete process.env.EDITORIAL_PREVIEWS; else process.env.EDITORIAL_PREVIEWS = oldGate;
   }
 });

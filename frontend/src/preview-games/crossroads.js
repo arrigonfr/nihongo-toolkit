@@ -20,44 +20,16 @@ export const crossroads = {
       frames.append(block);
       return meaning;
     });
-    const form = el("form");
-    const label = el("label", "Missing kanji");
-    const input = el("input");
-    input.autocomplete = "off";
-    input.lang = "ja";
-    label.append(input);
-    const submit = el("button", "Check answer");
-    submit.type = "submit";
     const notice = status();
-    let composing = false, ignoreSubmit = false, ended = false, count = 0;
-    input.addEventListener("compositionstart", () => { composing = true; });
-    input.addEventListener("compositionend", () => { composing = false; });
-    input.onkeydown = event => {
-      if (event.key === "Enter") {
-        ignoreSubmit = event.isComposing || composing || event.keyCode === 229;
-        if (ignoreSubmit) setTimeout(() => { ignoreSubmit = false; }, 0);
-      }
-    };
+    let ended = false, count = 0;
     const commit = guess => {
       if (ended) return;
       ended = true;
       finish(crossResult(item, guess, count));
     };
-    form.onsubmit = event => {
-      event.preventDefault();
-      if (ignoreSubmit || composing) return;
-      const guess = input.value.trim();
-      if (!/^\p{Script=Han}$/u.test(guess)) {
-        notice.textContent = "Enter one kanji or choose one from the bank.";
-        input.focus();
-        return;
-      }
-      commit(guess);
-    };
-    form.append(label, submit);
     const bank = el("div", undefined, "pg-bank");
     for (const char of shuffle(item.bank)) {
-      const tile = button(char, () => { input.value = char; input.focus(); });
+      const tile = button(char, () => commit(char));
       tile.lang = "ja";
       bank.append(tile);
     }
@@ -69,7 +41,7 @@ export const crossroads = {
       hint.disabled = ++count === 3;
     });
     controls.append(hint, button("Reveal answer", () => commit("")));
-    board.append(el("h3", item.theme), frames, el("p", "Type one kanji or choose from the bank, then check your answer. You have one scored guess."), bank, form, controls, notice);
+    board.append(el("h3", item.theme), frames, el("p", "Choose the missing kanji. Your first choice is your scored answer."), bank, controls, notice);
     return () => { ended = true; };
   },
   review(container, item) {

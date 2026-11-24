@@ -23,15 +23,15 @@ export function mountGuide(container) {
       <label>Register<select name="register" aria-label="Register"><option value="">Any register</option></select></label>
     </div></form><div class="pg-body"></div>`;
   const form = root.querySelector("form"), body = root.querySelector(".pg-body");
-  const state = () => new URLSearchParams(location.hash.slice(1));
+  const state = () => new URLSearchParams(history.state?.guide ?? location.hash.slice(1));
   const collection = p => p.has("collection") && p.get("collection") !== "draft" ? "approved" : "draft";
   const link = (p, changes = {}) => {
     const next = new URLSearchParams(p);
     for (const key of fields) next.delete(key);
     for (const [k,v] of Object.entries(changes)) v ? next.set(k,v) : next.delete(k);
-    return `#${next}`;
+    return next.toString();
   };
-  const anchor = (url,text) => `<a href="${esc(url)}">${text}</a>`;
+  const anchor = (params,text) => `<a href="${esc(location.href)}" data-guide="${esc(params)}">${text}</a>`;
   const heading = text => `<h2 tabindex="-1">${text}</h2>`;
   function card(c,p) {
     return `<article class="pg-card"><div class="pg-term"><h3>${japaneseHTML(c.form,c.form)}</h3>${audioHTML(c.form)}</div>
@@ -102,21 +102,24 @@ export function mountGuide(container) {
     body.innerHTML = html + `<p class="pg-credit">Local edition ${esc(catalog.manifest.edition)}. Examples and notes: NihongoToolkit, unreviewed. Dictionary: ${esc(catalog.manifest.dictionary.credit)} Release ${esc(catalog.manifest.dictionary.release)}. <a href="./data-sources" target="_blank" rel="noopener">Source credits (new tab)</a></p>`;
     if (moveFocus) body.querySelector("h2")?.focus();
   }
-  function update(key,value,replace = false) {
-    const url = link(state(),{[key]:value,page:null});
-    history[replace ? "replaceState" : "pushState"](null,"",url);
+  function navigate(params,replace = false,focus = true) {
+    history[replace ? "replaceState" : "pushState"]({...history.state,guide:params},"");
     clearTimeout(timer);
-    if (replace) { generation++; timer = setTimeout(draw,180); } else draw();
+    if (replace) { generation++; timer = setTimeout(draw,180); } else draw(focus);
   }
   form.addEventListener("submit",e => e.preventDefault());
-  body.addEventListener("click",e => { if (e.target.closest("[data-retry]")) draw(true); });
-  form.addEventListener("input",e => { if (e.target.name === "q") update("q",e.target.value,true); });
-  form.addEventListener("change",e => { if (e.target.name !== "q") update(e.target.name,e.target.value); });
-  body.addEventListener("change",e => {
-    if (e.target.dataset.compareFirst && e.target.value) location.hash = link(state(),{compare:`${e.target.dataset.compareFirst},${e.target.value}`});
+  body.addEventListener("click",e => {
+    const action = e.target.closest("[data-guide]");
+    if (action) { e.preventDefault(); navigate(action.dataset.guide); }
+    else if (e.target.closest("[data-retry]")) draw(true);
   });
-  const navigate = () => draw(true);
-  window.addEventListener("hashchange",navigate);
+  form.addEventListener("input",e => { if (e.target.name === "q") navigate(link(state(),{q:e.target.value,page:null}),true,false); });
+  form.addEventListener("change",e => { if (e.target.name !== "q") navigate(link(state(),{[e.target.name]:e.target.value,page:null}),false,false); });
+  body.addEventListener("change",e => {
+    if (e.target.dataset.compareFirst && e.target.value) navigate(link(state(),{compare:`${e.target.dataset.compareFirst},${e.target.value}`}));
+  });
+  const restore = () => { clearTimeout(timer); draw(true); };
+  window.addEventListener("popstate",restore);
   draw();
-  return () => { generation++; clearTimeout(timer); window.removeEventListener("hashchange",navigate); root.remove(); };
+  return () => { generation++; clearTimeout(timer); window.removeEventListener("popstate",restore); root.remove(); };
 }

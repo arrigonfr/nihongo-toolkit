@@ -16,6 +16,7 @@
 .pg-hand { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .6rem; }
 .pg-hand button { display: grid; justify-items: center; align-content: start; gap: .4rem; padding: .75em .4em; color: var(--text); }
 .pg-hand svg { width: min(100%,5.5rem); color: var(--accent-strong); }
+.pg-hand .karuta-icon { width: min(100%,5.5rem); aspect-ratio: 1; background: var(--accent-strong); mask: center / contain no-repeat; }
 .pg-hand button:disabled { opacity: .8; }
 .pg-line { display: flex; align-items: stretch; flex-wrap: wrap; gap: .5em 0; list-style: none; padding: 0; }
 .pg-line li { display: flex; align-items: center; }

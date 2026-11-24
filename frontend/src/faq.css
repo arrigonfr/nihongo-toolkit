@@ -20,3 +20,10 @@ body .faq details :is(.faq-answer, .faq-answer p, .faq-examples li) { font-size:
 .faq-examples li { padding: 8px 12px; border-radius: 8px; background: var(--soft); }
 .faq kbd { font: 600 .95em ui-monospace, monospace; }
 .faq-contact { margin-top: 36px; line-height: 1.6; }
+@media screen {
+  .faq-topics a { background: var(--lookup-surface); color: var(--text-blue); }
+  .faq details[open] { background: var(--lookup-surface); }
+  .faq details[open] > :is(summary, .faq-answer) { padding-inline: 12px; }
+  .faq .faq-examples li { color: var(--text-plum); background: var(--study-surface); }
+  .faq kbd { color: var(--text-warm); }
+}

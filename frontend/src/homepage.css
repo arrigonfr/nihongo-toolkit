@@ -34,9 +34,19 @@
 .home-tool-index-links .helper-icon { flex: none; width: 26px; height: 26px; }
 .home :is(a, button):focus-visible { outline: var(--ui-focus-ring); outline-offset: 3px; }
 .home-tool-group { padding-top: 60px; scroll-margin-top: 24px; }
-.home-tool-group { --home-group-color: var(--text-blue); }
-#reference-tools { --home-group-color: var(--text-plum); }
-#games-tools { --home-group-color: var(--text-warm); }
+.home-tool-group, .home-tool-index-group, .home-group-nav a { --home-group-color: var(--text-blue); }
+#reference-tools, [data-category="reference-tools"], .home-group-nav [href="#reference-tools"] { --home-group-color: var(--text-plum); }
+#games-tools, [data-category="games-tools"], .home-group-nav [href="#games-tools"] { --home-group-color: var(--text-warm); }
+.home-tool-index-group {
+  padding: 16px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--home-group-color) 8%, var(--card));
+}
+.home .home-tool-index-group :is(h3, a), .home .home-group-nav a { color: var(--home-group-color); }
+.home .home-group-nav a, .home-tool-group .home-tool-preview {
+  background: color-mix(in srgb, var(--home-group-color) 10%, var(--card));
+}
+.home .home-group-nav a:hover { background: color-mix(in srgb, var(--home-group-color) 17%, var(--card)); }
 .home-tool-group > h3 { color: var(--home-group-color); font-size: clamp(24px, 2.5vw, 32px); margin: 0 0 8px; }
 .home-tool { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: center; gap: 56px; padding: 32px 0; border-top: 1px solid var(--line); scroll-margin-top: 24px; }
 .home-tool:nth-of-type(even) .home-tool-copy { order: 2; }
@@ -48,19 +58,19 @@
 .home-tool-figure { margin: 0; min-width: 0; }
 .home-tool-preview { min-height: 0; padding: 20px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); text-align: center; }
 .home-preview-label { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; font-weight: 700; text-align: left; }
-.home-preview-sample { margin: 15px 0 0; color: var(--home-group-color); font-size: clamp(32px, 4vw, 48px); font-weight: 700; line-height: 1.2; }
+.home-section .home-preview-sample { margin: 15px 0 0; color: var(--text-plum); font-size: clamp(32px, 4vw, 48px); font-weight: 700; line-height: 1.2; }
 .home-preview-pair { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 12px; font-size: clamp(24px, 3vw, 36px); }
 .home-preview-pair .home-preview-arrow { color: var(--muted); font-size: .65em; }
 #reference-tools .home-preview-pair { justify-content: flex-start; }
 .home-section .home-preview-prompt { margin: 10px 0 16px; color: var(--ink); font-size: 15px; }
 .home-preview-options { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-.home-preview-options span { padding: 3px 8px; color: var(--muted); font-size: 14px; }
+.home-preview-options span { padding: 3px 8px; color: var(--text-blue); font-size: 14px; }
 .home-preview-options span + span { border-left: 1px solid var(--line); }
 #reference-tools .home-tool-preview { text-align: left; }
 #reference-tools .home-preview-options { justify-content: flex-start; }
 #games-tools .home-preview-sample { letter-spacing: .08em; }
 #games-tools .home-preview-options { gap: 12px; }
-.home-tool-figure figcaption { margin-top: 10px; color: var(--muted); font-size: 13px; }
+.home-tool-figure figcaption { margin-top: 10px; color: var(--text-warm); font-size: 13px; }
 .home-footer-layout { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 24px; }
 .home-footer { border-top: 1px solid var(--line); }
 .home-footer-layout { padding-top: 30px; padding-bottom: 30px; }

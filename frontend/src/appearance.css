@@ -48,6 +48,35 @@ body :is(.eyebrow, .cw-eyebrow, .stat-label) { color: var(--text-warm); }
 body .token[data-token-type="particle"] { color: var(--text-plum); }
 body .token[data-token-type="verb"] { color: var(--text-blue); }
 body .token[data-token-type="adjective"] { color: var(--text-warm); }
+@media screen {
+  :root {
+    --lookup-surface: color-mix(in srgb, var(--text-blue) 10%, var(--card));
+    --study-surface: color-mix(in srgb, var(--text-plum) 10%, var(--card));
+    --context-surface: color-mix(in srgb, var(--text-warm) 10%, var(--card));
+  }
+  body :is(.search-panel, .contact-form) { background: var(--lookup-surface); color: var(--ink); }
+  body :is(.search-label, .contact-form label, .faq summary) { color: var(--text-blue); }
+  body :is(.history-panel, .side-panel, .stat-box, .result-stat, .cw-status-bar) { background: var(--context-surface); color: var(--ink); }
+  body :is(.history-heading, .side-title, .stats-heading, .board-heading) h2,
+  body :is(.stat-value, .result-stat strong, .cw-clue-num) { color: var(--text-warm); }
+  body :is(.base-reading, .result-label, .board-heading h1, .cw-clue-group h3) { color: var(--text-plum); }
+  body :is(.cw-active-clue-bar, .board-panel, .panel.detail),
+  #workspace #roundBody { background: var(--study-surface); }
+  #workspace #roundBody { padding-inline: 1rem; }
+  #workspace dt, body #contactPrivacy { color: var(--text-plum); }
+  body main h1, body .study-intro-content > :is(h1, h2) { color: var(--accent-strong); }
+  body main :where(section, article) > h2 { color: var(--text-blue); }
+  body .settings-section {
+    background-color: color-mix(in srgb, var(--text-blue) 7%, var(--card));
+  }
+  body :is(.session-setup > details, details.puzzle-settings) > summary {
+    background-color: color-mix(in srgb, var(--text-blue) 13%, var(--card));
+    color: var(--text-blue);
+  }
+  body :is(.session-setup > .start-line, .replay-actions) {
+    background-color: color-mix(in srgb, var(--accent) 8%, var(--card));
+  }
+}
 body button, body [role="button"]:not(.study-setting-name), body input[type="submit"] {
   text-align: center !important;
   align-items: center !important;

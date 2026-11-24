@@ -71,9 +71,7 @@ export const karuta = {
     };
   },
   review(container, item) {
-    const notice = status(), word = el("p");
-    word.append(ja(item.word,item.kana), " — ", item.description);
-    container.append(word, ja(item.clue,item.reading), el("p",item.translation),
-      playButton("Replay description",item.reading,notice), notice);
+    const notice = status();
+    container.append(playButton("Replay description",item.reading,notice), notice);
   }
 };

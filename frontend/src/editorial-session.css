@@ -21,6 +21,23 @@ body { margin: 0; font: 1rem/1.6 system-ui, sans-serif; color: var(--ink); backg
 #roundFeedback h3 { font-size: 1.5rem; margin: .3rem 0 1rem; }
 #workspace dt { font-weight: 650; color: var(--muted); }
 #workspace dd { margin: 0 0 .65rem; white-space: pre-line; }
+#workspace .journey-leg { margin-block: 1.5rem; }
+#workspace .journey-leg h4 { margin: 0 0 .5rem; color: var(--accent-strong); }
+.game-answer { display: grid; gap: .4rem; margin: .5rem 0 1rem; }
+.game-answer > div {
+  --field-ink: var(--text-blue);
+  background: color-mix(in srgb, var(--field-ink) 10%, var(--card));
+  padding: .65rem 1rem;
+}
+.game-answer [data-field=response] { --field-ink: var(--text-plum); }
+.game-answer [data-field=answer] { --field-ink: var(--accent-strong); }
+.game-answer [data-field=explanation] { --field-ink: var(--text-warm); }
+#workspace .game-answer dt { color: var(--field-ink); }
+#workspace .game-answer dd { margin: .15rem 0 0; color: var(--ink); }
+@media (min-width: 40rem) {
+  .game-answer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .game-answer :is([data-field=prompt], [data-field=explanation]) { grid-column: 1 / -1; }
+}
 #reviewList > details { padding: .75rem 0; border-top: 1px solid var(--line); }
 #workspace .replay-actions { margin-block: 1rem; }
 #workspace #settingsPanel { max-inline-size: 54rem; }

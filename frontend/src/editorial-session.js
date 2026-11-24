@@ -98,14 +98,28 @@ function mountActivity(definition) {
     view.start();
     nextRound();
   }
-  function showAnswer(container, item, r) {
+  function answerFields(r) {
     const details = document.createElement("dl");
-    for (const [label, value] of [["Prompt", r.prompt], ["Your response", r.response], ["Accepted answer", r.answer], ["Explanation", r.explanation]]) {
-      const field = text("dd", value);
+    details.className = "game-answer";
+    for (const [name, label] of [["prompt", "Prompt"], ["response", "Your response"], ["answer", "Accepted answer"], ["explanation", "Explanation"]]) {
+      const field = text("dd", r[name]);
       field.dataset.i18nStudy = "";
-      details.append(text("dt", label), field);
+      const group = document.createElement("div");
+      group.append(text("dt", label), field);
+      group.dataset.field = name;
+      details.append(group);
     }
-    container.append(details);
+    return details;
+  }
+  function showAnswer(container, item, r) {
+    if (r.legs) {
+      for (const [index, leg] of r.legs.entries()) {
+        const section = document.createElement("section");
+        section.className = "journey-leg";
+        section.append(text("h4", `Leg ${index + 1} · ${assessment(leg)}`), answerFields(leg));
+        container.append(section);
+      }
+    } else container.append(answerFields(r));
     definition.review?.(container, item, r);
   }
   function nextRound() {

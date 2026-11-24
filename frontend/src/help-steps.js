@@ -75,7 +75,7 @@ export const helpSteps = {
   "kanji-anaume.html": [
     ["Check both sides of each gap: the missing kanji can come at the beginning or end of a word.", "Mira ambos lados del hueco: el kanji puede ir al principio o al final de la palabra.", "Observe os dois lados da lacuna: o kanji pode vir no início ou no fim da palavra."],
     ["Start a session and look for the same gap in three words.", "Inicia una sesión y busca el hueco en las tres palabras.", "Inicie uma sessão e encontre a lacuna nas três palavras."],
-    ["Type or choose the kanji that completes all three. Reveal a meaning if you need a hint.", "Escribe o elige el kanji que completa las tres. Revela un significado si necesitas una pista.", "Digite ou escolha o kanji que completa as três. Revele um significado se precisar de uma pista."]],
+    ["Choose the kanji that completes all three. Reveal a meaning first if you need a hint.", "Elige el kanji que completa las tres. Revela primero un significado si necesitas una pista.", "Escolha o kanji que completa as três. Revele primeiro um significado se precisar de uma pista."]],
   "shuden.html": [
     ["Check the line and its terminal first: the same station can serve trains going in opposite directions.", "Comprueba la línea y su terminal: por una estación pueden pasar trenes en sentidos opuestos.", "Confira a linha e o terminal: uma estação pode atender trens que seguem em sentidos opostos."],
     ["Start a journey. Find your station and direction on the map or list.", "Inicia un viaje. Localiza tu estación y dirección en el mapa o la lista.", "Comece uma viagem. Localize sua estação e direção no mapa ou na lista."],

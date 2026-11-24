@@ -58,6 +58,19 @@ body :is(details, .ui-panel) .settings-section > h3 { margin: 0 0 12px; font-siz
 body :is(details, .ui-panel) fieldset { min-width: 0; border-radius: 14px; }
 
 .chips-field { display: block; min-width: 0; }
+@media screen {
+  body :is(details, .ui-panel) .settings-section {
+    --group-ink: var(--text-blue);
+    background: color-mix(in srgb, var(--group-ink) 10%, var(--card));
+  }
+  body :is(details, .ui-panel) .settings-section:is(#questionSettings, :has(.chips), :has(.conjugation-filter-field)) {
+    --group-ink: var(--text-plum);
+  }
+  body :is(details, .ui-panel) .settings-section:is(#supportSettings, .help-section, :has(.help-pair)) {
+    --group-ink: var(--text-warm);
+  }
+  body :is(details, .ui-panel) .settings-section > :is(legend, h3) { color: var(--group-ink); }
+}
 
 /* Buttons and accents */
 body :is(details, .ui-panel) button:not(.primary):hover:not(:disabled) { border-color: var(--accent); }

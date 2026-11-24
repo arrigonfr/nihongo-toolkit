@@ -247,6 +247,21 @@ Every tool uses the same header, brand sizing, centered button content and study
 controls. The palette selector beside the light/dark toggle offers Matcha, Sakura,
 Ocean, Wisteria, Amber and Sumi, each with light and dark styles. Sumi combines a
 nearly-black dark palette with a paper-like light palette; Sakura has pinker accents.
+Within tools, blue identifies lookup and configuration, plum highlights study
+content, and warm tones distinguish help, history, and session statistics.
+The selected palette still identifies primary actions.
+Kikitori Karuta has 36 pictures and 40 Japanese clues. The original drawings
+are supplemented by locally bundled [Tabler Icons](https://tabler.io/icons)
+3.31.0 ([MIT license](frontend/public/karuta/tabler/LICENSE)). To add another
+sentence for an existing picture, give the clue a unique ID and keep its
+`pictureId` and five distractors in the [deck](backend/scripts/study-decks/karuta.js).
+Kikitori Karuta and Shuden use labeled, tinted feedback fields to compare your
+response with the accepted answer. Shuden groups feedback by numbered journey
+leg, including in the end-of-session review.
+The same tinted feedback fields appear in the counters, particles, handwriting,
+and missing-kanji tools. In Kanji Anaume, selecting a kanji submits the guess
+immediately. Onomatope Jiten keeps guide searches and comparisons out of the
+address bar; Back and Forward still restore guide views.
 Preferences are stored
 under `nihon:appearance-v1` and synchronized across tools and other open tabs on
 the same origin. New users default to Sumi in dark

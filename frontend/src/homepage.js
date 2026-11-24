@@ -70,6 +70,7 @@ export function mountHomepageShowcase() {
     section.id = `${category.toLowerCase()}-tools`;
     section.append(element("h3", "", category));
     const indexGroup = element("div", "home-tool-index-group");
+    indexGroup.dataset.category = section.id;
     indexGroup.append(element("h3", "", category));
     const indexLinks = element("ul", "home-tool-index-links");
     for (const tool of group.querySelectorAll(".helper-link[data-file]")) {

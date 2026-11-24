@@ -20,9 +20,17 @@ export const drawings = {
   fishing: `<circle cx="23" cy="25" r="7"/><path d="m17 34 12 1 5 13 10-5m-25-8-3 25 4 17m5-23 7 11-2 13M9 80l25-2 8-7M38 49Q58 7 80 16l-4 39m0 0q1 7-5 5M52 68q6 5 12 0m4 12q7 5 14 0"/>`
 };
 export function picture(card) {
+  const id = card.pictureId ?? card.id;
+  if (!Object.hasOwn(drawings,id)) {
+    const icon = document.createElement("span");
+    icon.className = "karuta-icon";
+    icon.setAttribute("aria-hidden","true");
+    icon.style.maskImage = `url("/karuta/tabler/${encodeURIComponent(id)}.svg")`;
+    return icon;
+  }
   const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
   for (const [attr,value] of Object.entries({ viewBox:"0 0 96 96", "aria-hidden":"true",
     fill:"none", stroke:"currentColor", "stroke-linecap":"round", "stroke-linejoin":"round", "stroke-width":"2.8" })) svg.setAttribute(attr,value);
-  svg.innerHTML = drawings[card.id] || "";
+  svg.innerHTML = drawings[id];
   return svg;
 }

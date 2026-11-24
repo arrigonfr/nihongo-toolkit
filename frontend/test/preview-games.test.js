@@ -60,7 +60,7 @@ test("every karuta deal has unique, illustrated and named cards, and retains the
     const cards = deal(item, pictures);
     assert.equal(new Set(cards.map(c => c.description)).size,6);
     assert.equal(cards.filter(c => karutaResult(item,c,"listening").correct).length,1);
-    assert.ok(cards.every(c => drawings[c.id]));
+    assert.ok(cards.every(c => drawings[c.id] || existsSync(new URL(`../public/karuta/tabler/${c.id}.svg`, import.meta.url))));
     assert.equal(karutaResult(item,item,"text").mode,"text");
     assert.match(item.reading,/^[ぁ-ゖー、。]+$/u);
     assert.throws(() => deal({...item,distractors:Array(5).fill("clock")}, pictures));

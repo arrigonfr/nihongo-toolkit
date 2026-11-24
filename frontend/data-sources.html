@@ -8,6 +8,12 @@
   <style>
     body { max-width: 780px; margin: 0 auto; padding: 0 12px; font: 17px/1.7 system-ui, sans-serif; color: var(--ink); background: var(--page); }
     a { color: var(--accent); } li { margin-block: 1rem; }
+    @media screen {
+      body > h1 { color: var(--accent-strong); }
+      body > ul > li::marker { color: var(--text-warm); }
+      body > ul a { color: var(--text-blue); }
+      body > ul a[href*="creativecommons.org"] { color: var(--text-plum); }
+    }
     .support-slot { float: right; }
     .support-slot button { display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 8px; padding: 9px 12px; background: #ffd140; color: #000; font-weight: 700; cursor: pointer; }
     .support-slot img { width: 20px; height: 20px; }
