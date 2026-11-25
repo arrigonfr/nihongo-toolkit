@@ -1,6 +1,7 @@
 import { distinct, requireDeck } from "./content.js";
 
 const number = ["","一","二","三","四"], kanaNumber = ["","ひと","ふた","みっ","よっ"];
+const aheadKana = ["","ひと","ふた","さん","よん"];
 
 export function solveLeg(net, leg) {
   const line = net.services[leg.service];
@@ -14,6 +15,9 @@ export function solveLeg(net, leg) {
   }
   let dest;
   if (leg.rule === "ordinal" && Number.isInteger(leg.arg) && number[leg.arg]) dest = start + leg.arg;
+  if (leg.rule === "stationsAhead" && Number.isInteger(leg.arg) && number[leg.arg]) dest = start + leg.arg;
+  if (leg.rule === "nextNext") dest = start + 2;
+  if (leg.rule === "terminal") dest = stops.length - 1;
   if (["before","after"].includes(leg.rule)) {
     const landmark = stops.indexOf(leg.arg);
     if (landmark < start) return [];
@@ -34,6 +38,18 @@ export function clueFor(net, leg) {
     clue = `${number[leg.arg]}つ目の駅で降りてください。`;
     reading = `${kanaNumber[leg.arg]}つめのえきでおりてください。`;
     translation = `Get off at stop ${leg.arg} ahead.`;
+  } else if (leg.rule === "stationsAhead") {
+    clue = `${number[leg.arg]}駅先で降りてください。`;
+    reading = `${aheadKana[leg.arg]}えきさきでおりてください。`;
+    translation = `Get off ${leg.arg} stop${leg.arg === 1 ? "" : "s"} ahead.`;
+  } else if (leg.rule === "nextNext") {
+    clue = "次の次の駅で降りてください。";
+    reading = "つぎのつぎのえきでおりてください。";
+    translation = "Get off at the stop after next (2 stops ahead).";
+  } else if (leg.rule === "terminal") {
+    clue = "終点で降りてください。";
+    reading = "しゅうてんでおりてください。";
+    translation = "Get off at the terminal (last stop).";
   } else {
     const [name, kana] = net.stations[leg.arg];
     const before = leg.rule === "before";

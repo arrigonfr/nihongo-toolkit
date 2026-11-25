@@ -273,8 +273,8 @@ Kikitori Karuta and Shuden use labeled, tinted feedback fields to compare your
 response with the accepted answer. Shuden groups feedback by numbered journey
 leg, including in the end-of-session review.
 The same tinted feedback fields appear in the counters, particles, handwriting,
-and missing-kanji tools. In Kanji Anaume, selecting a kanji submits the guess
-immediately. Onomatope Jiten keeps guide searches and comparisons out of the
+and missing-kanji tools. In Kanji Anaume, select a kanji and check your answer
+(on desktop, number keys, C, and R work as shortcuts). Onomatope Jiten keeps guide searches and comparisons out of the
 address bar; Back and Forward still restore guide views.
 Preferences are stored
 under `nihon:appearance-v1` and synchronized across tools and other open tabs on

@@ -39,6 +39,8 @@ body { margin: 0; font: 1rem/1.6 system-ui, sans-serif; color: var(--ink); backg
 .game-answer [data-field=explanation] { --field-ink: var(--text-warm); }
 #workspace .game-answer dt { color: var(--field-ink); }
 #workspace .game-answer dd { margin: .15rem 0 0; color: var(--ink); }
+#workspace .game-answer dd ul { margin: .25rem 0 0; padding-inline-start: 1.25rem; white-space: normal; }
+#workspace .game-answer dd li + li { margin-top: .25rem; }
 #workspace .game-answer [data-field=answer] .study-romaji { display: inline; }
 :root[data-study-romaji="false"] #workspace .game-answer [data-field=answer] .study-romaji { display: none; }
 @media (min-width: 40rem) {
@@ -55,8 +57,10 @@ body { margin: 0; font: 1rem/1.6 system-ui, sans-serif; color: var(--ink); backg
 #workspace #settingsPanel :is(.chips-title,.preview-practice-field > span), #workspace .pg-word { color: var(--text-blue); }
 #workspace :is(#roundLabel,.pg-list-title h2) { color: var(--text-plum); }
 #workspace #roundBody [lang=ja], #workspace #roundFeedback h3 { color: var(--text-warm); }
-#workspace:is([data-tool="particle"], [data-tool="counter"]) #roundBody { display: flex; flex-direction: column; align-items: center; text-align: center; }
-#workspace:is([data-tool="particle"], [data-tool="counter"]) #roundBody :is(.preview-practice-options, .preview-practice-answer) { justify-content: center; }
+#workspace:is([data-tool="particle"], [data-tool="counter"], [data-tool="crossroads"]) #roundBody { display: flex; flex-direction: column; align-items: center; text-align: center; }
+#workspace:is([data-tool="particle"], [data-tool="counter"], [data-tool="crossroads"]) #roundBody :is(.preview-practice-options, .preview-practice-answer, .pg-bank, .pg-actions) { justify-content: center; }
+#workspace[data-tool="crossroads"] #roundBody .pg-round { justify-items: center; width: 100%; }
+#workspace[data-tool="crossroads"] #roundBody .pg-frames { width: 100%; }
 #workspace[data-tool="counter"] #roundBody .preview-practice-field { justify-items: center; }
 .editorial-credits { margin-block: 1.5rem; color: var(--muted); }
 .editorial-credits summary { cursor: pointer; }

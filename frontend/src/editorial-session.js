@@ -43,7 +43,7 @@ const cancelSpeech = () => { window.speechSynthesis?.cancel(); cancelLocalSpeech
 const text = (tag, value) => Object.assign(document.createElement(tag), { textContent: value });
 
 function mountActivity(definition) {
-  const numericLength = ["particle","counter","draw"].includes(key);
+  const numericLength = ["particle","counter","draw","crossroads","train"].includes(key);
   workspace.innerHTML = `<details id="settingsPanel" class="settings" open><summary>Session settings</summary>
     <div class="settings-body"><div id="toolFilters"></div>
     <label><span>Session length</span><select id="editorialLength">${numericLength ? '<option value="short">5</option><option value="10">10</option><option value="extended">20</option><option value="50">50</option><option value="100">100</option>' : '<option value="short">Short · up to 5</option><option value="extended">Extended · up to 20</option>'}</select></label>
@@ -60,9 +60,13 @@ function mountActivity(definition) {
     return control.id;
   });
   rememberControls(`nihon:editorial:${preferenceNamespace}:v1`, ids, error => { $("prefError").textContent = error; });
-  for (const select of settings.querySelectorAll("#counter-mode, #draw-mode, #editorialLength")) {
+  for (const select of settings.querySelectorAll("#counter-mode, #draw-mode, #train-legs, #train-view, #editorialLength")) {
     if (numericLength && select.id === "editorialLength") select.dataset.noSettingHelp = "";
-    const title = select.id === "editorialLength" ? "Session length" : "Session mode";
+    const title = {
+      editorialLength: "Session length",
+      "train-legs": "Journey length",
+      "train-view": "Route display"
+    }[select.id] || "Session mode";
     mountChips(select, { presentation: "button", title });
   }
   const lengthField = $("editorialLength").closest(".chips-field");
@@ -99,6 +103,9 @@ function mountActivity(definition) {
       start.disabled = count < limit();
     } else if (key === "draw") {
       $("poolError").textContent = count ? "" : "No eligible characters. Enter at least one supported kanji or choose another collection.";
+      start.disabled = !count;
+    } else if (key === "crossroads" || key === "train") {
+      $("poolError").textContent = count ? "" : (key === "train" ? "No eligible journeys. Change the selection to start." : "No eligible items. Change the selection to start.");
       start.disabled = !count;
     } else {
       $("poolCount").textContent = count ? `${count} eligible · ${Math.min(count, limit())} in this session` : "No eligible items. Change the selection to start.";
