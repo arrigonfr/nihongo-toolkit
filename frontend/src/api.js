@@ -14,14 +14,16 @@ function sanitizeErrorMessage(message, fallback) {
   return text && !INTERNAL_DETAIL_RE.test(text) ? text : fallback;
 }
 
-export async function fetchItems(path, params) {
+export async function fetchItems(path, params, { signal } = {}) {
   const url = new URL(`${API_BASE}${path}`);
   for (const [key, value] of Object.entries(params)) {
     if (Array.isArray(value)) value.forEach((item) => url.searchParams.append(key, item));
     else url.searchParams.set(key, value);
   }
+  const timeout = AbortSignal.timeout(10000);
   const response = await fetch(url, {
-    signal: AbortSignal.timeout(10000), headers: { Accept: "application/json" }
+    signal: signal && typeof AbortSignal.any === "function" ? AbortSignal.any([timeout, signal]) : (signal || timeout),
+    headers: { Accept: "application/json" }
   });
   if (!response.ok) {
     let serverError = "";

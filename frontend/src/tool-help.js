@@ -51,7 +51,17 @@ const descriptions = {
   layoutDirSelect: "Choose whether the clue panel appears to the left or right of the grid.",
   inputStyleSelect: "Type in a clue popup, directly in grid cells, or in textboxes beside the clues. In-square Kanji answers accept native IME input or the whole word's romaji reading, including at locked crossings. You can also enter just the remaining kana. Pending text stays visible and editable; Enter submits it and Escape clears it. In-square clue cards stay below the grid.",
   kanjiFocusToggle: "Use kanji meanings and readings as study clues where available.",
-  timerToggle: "Show the puzzle timer. Relaxed mode does not use a timer."
+  timerToggle: "Show the puzzle timer. Relaxed mode does not use a timer.",
+  "draw-mode": "Trace highlights the next stroke on the pad; Copy shows the model beside a blank pad; Memory hides the model while you draw; Study lets you inspect stroke order without drawing.",
+  "draw-collection": "Choose a starter set, JLPT estimate, school grade, all supported kanji, or your own custom character list.",
+  "draw-grid": "Display dashed center crosshairs to help gauge stroke balance and placement.",
+  "draw-numbers": "Show stroke-order numbers beside each stroke's starting point.",
+  "draw-live-check": "Check each stroke as soon as you lift the pen in Trace mode so you can fix direction or placement right away.",
+  editorialLength: "Number of practice rounds in a session.",
+  guideCollection: "All expressions includes curated guides plus all JMdict on-mim entries. With examples limits results to entries that have an example sentence. Curated guides shows entries with hand-written notes and comparisons.",
+  guideScene: "Browse all expressions grouped by situation or sensation, such as Weather & nature, Food & texture, Voices & speech, or Manner & state.",
+  guideUsage: "Filter by how the expression is used grammatically in Japanese: as an adverb (often with と), a する verb, a な/の adjective, a noun, or an interjection.",
+  guideFrequency: "Filter by whether JMdict marks the entry as common. Many everyday onomatopoeia are not marked common in JMdict."
 };
 const modeHelp = {
   classic: "A standard crossword with clues and an optional timer.",

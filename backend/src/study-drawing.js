@@ -8,5 +8,18 @@ export async function studyDrawing(source, url) {
   const character = url.searchParams.get("character");
   if ([...character].length !== 1) return {items:[]};
   const row = await db.prepare("SELECT model FROM study_drawing WHERE character=?").get(character);
-  return {items:row ? [JSON.parse(row.model)] : []};
+  if (!row) return {items:[]};
+  let meta = null;
+  try {
+    const info = await db.prepare("SELECT meanings, on_readings, kun_readings FROM kanjis WHERE character=?").get(character);
+    if (info) {
+      const parse = value => { try { const parsed = JSON.parse(value || "[]"); return Array.isArray(parsed) ? parsed : []; } catch { return []; } };
+      meta = {
+        meanings: parse(info.meanings),
+        on_readings: parse(info.on_readings),
+        kun_readings: parse(info.kun_readings)
+      };
+    }
+  } catch { /* Minimal test databases may omit full kanji metadata columns. */ }
+  return meta ? {items:[JSON.parse(row.model)], meta} : {items:[JSON.parse(row.model)]};
 }

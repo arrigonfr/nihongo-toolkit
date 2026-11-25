@@ -94,7 +94,8 @@ test("localhost browse → comparison → example, dictionary, history and appro
     await page.route("**/api/study/guide?*",async r => r.fulfill({json:await studyGuide(guideDb,new URL(r.request().url()))}));
     page.on("pageerror",e => errors.push(e.message));
     await page.goto(origin+"/onomatope-jiten");
-    await page.getByRole("heading",{name:"Draft senses"}).waitFor();
+    await page.getByRole("heading",{name:"Expressions"}).waitFor();
+    assert.ok(await page.locator(".pg-index li .study-audio").count() > 0);
     page.on("request",r => {
       // The shared support button requests this image on reload; it is still
       // blocked by the route above. The guide API is served from the fixture.
@@ -102,11 +103,12 @@ test("localhost browse → comparison → example, dictionary, history and appro
       if (r.resourceType() === "image" && r.url() === "https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-mark-color.svg") return;
       if (new URL(r.url()).origin !== origin) upstream.push(r.url());
     });
-    await page.getByLabel("Scene",{exact:true}).selectOption("Rain");
+    await page.getByLabel("Scene",{exact:true}).selectOption("Weather & nature");
     await page.getByRole("link",{name:/Compare しとしと/}).click();
     const compare = page.url();
-    assert.equal(compare,origin+"/onomatope-jiten");
+    assert.match(compare,/#.*compare=quiet-rain%2Cdriving-rain/);
     await page.getByText("Rain is making a rushing sound on the roof.",{exact:true}).waitFor();
+    assert.equal(await page.locator(".preview-guide form").isVisible(),true);
     const cards = page.locator(".pg-parallel article");
     const bounds = async () => Promise.all([cards.nth(0).boundingBox(),cards.nth(1).boundingBox()]);
     let [a,b] = await bounds();
@@ -117,7 +119,7 @@ test("localhost browse → comparison → example, dictionary, history and appro
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth+1));
     await page.getByRole("link",{name:"JMdict entry 1058910"}).click();
     await page.getByText(/with white noise/).waitFor();
-    assert.equal(page.url(),compare);
+    assert.match(page.url(),/#.*entry=1058910/);
     await page.goBack();
     assert.equal(page.url(),compare);
     await page.reload();
@@ -125,11 +127,15 @@ test("localhost browse → comparison → example, dictionary, history and appro
     await page.getByLabel("Compare with",{exact:true}).selectOption("snow-steps");
     await page.getByText(/no draft contrast note/).waitFor();
     await page.getByRole("link",{name:"Back to results"}).click();
-    assert.equal(await page.getByLabel("Scene",{exact:true}).inputValue(),"Rain");
+    assert.equal(await page.getByLabel("Scene",{exact:true}).inputValue(),"Weather & nature");
     await page.getByLabel("Find an expression").fill("ｻﾞｰｻﾞｰ");
     await page.waitForFunction(() => document.querySelectorAll(".pg-index li").length === 1);
     assert.equal(await page.locator(".pg-index li").count(),1);
-    await page.getByLabel("Collection",{exact:true}).selectOption("approved");
+    await page.getByRole("button",{name:"Clear filters"}).click();
+    await page.waitForFunction(() => document.querySelectorAll(".pg-index li").length === 13);
+    await page.getByLabel("Collection",{exact:true}).selectOption("draft");
+    await page.getByRole("heading",{name:"Curated guides"}).waitFor();
+    await page.goto(origin+"/onomatope-jiten#collection=approved");
     await page.getByRole("heading",{name:"No approved senses yet"}).waitFor();
     assert.equal(await page.locator(".pg-index li,.pg-card").count(),0);
     assert.deepEqual(upstream,[]);

@@ -34,18 +34,20 @@ const root = $("editorialRoot");
 root.classList.add("shell");
 root.innerHTML = `<header><a class="brand" href="./" target="_top"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">${name}<span class="brand-note">NihongoToolkit</span></span></a><button id="themeButton" type="button" aria-label="Toggle theme"></button></header>
   <main><section class="intro tool-intro"><span class="eyebrow"><span lang="ja">${japanese}</span> · <span>${label}</span></span><h1>${firstLine}<br><span>${secondLine}</span></h1><p>${lead}</p></section>
-  <p class="editorial-notice" data-i18n-scope><small class="tool-preview-badge">Preview</small> Japanese content and English glosses await review.</p>
+  <p class="editorial-notice" data-i18n-scope><small class="tool-preview-badge">Preview</small> ${key === "draw" ? "KanjiVG stroke models · stroke feedback tolerances await calibration." : "Japanese content and English glosses await review."}</p>
   <section id="workspace" aria-busy="true" data-i18n-scope><p role="status">Loading preview…</p></section></main>`;
 root.querySelector(".brand-mark").append(document.querySelector(`.navigation [data-file="${slug}.html"] .helper-icon img`).cloneNode());
 const workspace = $("workspace");
+workspace.dataset.tool = key;
 const cancelSpeech = () => { window.speechSynthesis?.cancel(); cancelLocalSpeech(); };
 const text = (tag, value) => Object.assign(document.createElement(tag), { textContent: value });
 
 function mountActivity(definition) {
+  const numericLength = ["particle","counter","draw"].includes(key);
   workspace.innerHTML = `<details id="settingsPanel" class="settings" open><summary>Session settings</summary>
     <div class="settings-body"><div id="toolFilters"></div>
-    <label><span>Session length</span><select id="editorialLength">${["particle","counter"].includes(key) ? '<option value="short">5</option><option value="10">10</option><option value="extended">20</option><option value="50">50</option><option value="100">100</option>' : '<option value="short">Short · up to 5</option><option value="extended">Extended · up to 20</option>'}</select></label>
-    <p id="${["particle","counter"].includes(key) ? "poolError" : "poolCount"}" role="status"></p><p id="prefError" role="alert"></p></div></details>
+    <label><span>Session length</span><select id="editorialLength">${numericLength ? '<option value="short">5</option><option value="10">10</option><option value="extended">20</option><option value="50">50</option><option value="100">100</option>' : '<option value="short">Short · up to 5</option><option value="extended">Extended · up to 20</option>'}</select></label>
+    <p id="${numericLength ? "poolError" : "poolCount"}" role="status"></p><p id="prefError" role="alert"></p></div></details>
     <button type="button" class="primary" id="startButton">Start session</button>
     <section id="play" hidden><div class="session-heading"><h2 id="roundLabel" tabindex="-1"></h2><button id="stopSessionButton">Stop session</button></div>
     <div id="roundBody"></div><section id="roundFeedback" hidden></section><button class="primary" id="nextButton" hidden>Next</button></section>
@@ -59,9 +61,27 @@ function mountActivity(definition) {
   });
   rememberControls(`nihon:editorial:${preferenceNamespace}:v1`, ids, error => { $("prefError").textContent = error; });
   for (const select of settings.querySelectorAll("#counter-mode, #draw-mode, #editorialLength")) {
-    if (["particle","counter"].includes(key) && select.id === "editorialLength") select.dataset.noSettingHelp = "";
+    if (numericLength && select.id === "editorialLength") select.dataset.noSettingHelp = "";
     const title = select.id === "editorialLength" ? "Session length" : "Session mode";
     mountChips(select, { presentation: "button", title });
+  }
+  const lengthField = $("editorialLength").closest(".chips-field");
+  if (key === "counter" && lengthField) {
+    const modeField = $("counter-mode")?.closest(".chips-field");
+    if (modeField) {
+      const row = document.createElement("div");
+      row.className = "settings-row";
+      modeField.before(row);
+      row.append(modeField, lengthField);
+    }
+  } else if (key === "draw" && lengthField) {
+    const collectionField = $("draw-collection")?.closest("label");
+    if (collectionField) {
+      const row = document.createElement("div");
+      row.className = "settings-row";
+      collectionField.before(row);
+      row.append(collectionField, lengthField);
+    }
   }
   if (definition.credits) {
     const credits = document.createElement("details");
@@ -77,6 +97,9 @@ function mountActivity(definition) {
     if (["particle","counter"].includes(key)) {
       $("poolError").textContent = count < limit() ? "Not enough questions for this session length. Choose a shorter session or try again later." : "";
       start.disabled = count < limit();
+    } else if (key === "draw") {
+      $("poolError").textContent = count ? "" : "No eligible characters. Enter at least one supported kanji or choose another collection.";
+      start.disabled = !count;
     } else {
       $("poolCount").textContent = count ? `${count} eligible · ${Math.min(count, limit())} in this session` : "No eligible items. Change the selection to start.";
       start.disabled = !count;
@@ -210,5 +233,5 @@ async function load() {
     workspace.setAttribute("aria-busy", "false");
   }
 }
-mountStudyControls({ audio: key !== "draw", romaji: key !== "draw", furigana: key !== "draw", help: [name, `${purpose}. ${description}`] });
+mountStudyControls({ audio: true, romaji: true, furigana: key !== "draw", help: [name, `${purpose}. ${description}`] });
 void load();

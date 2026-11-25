@@ -7,7 +7,7 @@ import { studyDrawing } from "../../backend/src/study-drawing.js";
 import { counter,draw,particle } from "../src/preview-practice/index.js";
 import { gradeParticle } from "../src/preview-practice/particle.js";
 import { gradeCounter } from "../src/preview-practice/counter.js";
-import { compareDrawing,compareStroke,parseList,resample } from "../src/preview-practice/stroke-model.js";
+import { compareDrawing,compareDrawingDetail,compareStroke,isAccidentalTap,parseList,resample } from "../src/preview-practice/stroke-model.js";
 import { loadDeck } from "./support/study-decks.js";
 
 await Promise.all([particle.prepare(loadDeck), counter.prepare(loadDeck)]);
@@ -89,6 +89,7 @@ test("particle settings use the full pool and retain answer selection", async ()
     }
     await page.locator("#startButton").click();
     assert.equal(await page.locator("#roundLabel").innerText(), "Round 1 of 100");
+    assert.equal(await page.locator("#roundBody").evaluate(el => getComputedStyle(el).alignItems), "center");
     assert.ok(await page.locator(".particle-check").isDisabled());
     await page.keyboard.press("1");
     assert.equal(await page.locator(".preview-practice-options button").first().getAttribute("aria-pressed"), "true");
@@ -140,6 +141,15 @@ test("particle settings use the full pool and retain answer selection", async ()
     assert.equal(await counterPage.locator("#counter-family, #poolCount").count(), 0);
     assert.equal(await counterPage.locator("#counter-sound").count(), 0);
     assert.equal(await counterPage.locator("#counter-table").locator("..").locator("span").count(), 0);
+    const counterPositions = await counterPage.evaluate(() => {
+      const mode = document.querySelector("#counter-mode").closest(".chips-field").getBoundingClientRect();
+      const len = document.querySelector("#editorialLength").closest(".chips-field").getBoundingClientRect();
+      const table = document.querySelector("#toolFilters details").getBoundingClientRect();
+      return { mode, len, table };
+    });
+    assert.ok(Math.abs(counterPositions.mode.top - counterPositions.len.top) <= 4);
+    assert.ok(counterPositions.len.left > counterPositions.mode.left);
+    assert.ok(counterPositions.table.top > counterPositions.len.top);
     await counterPage.locator("summary").filter({hasText:"Browse counter readings"}).click();
     assert.equal(await counterPage.locator(".preview-practice-table tr").count(), 13);
     await counterPage.locator('#editorialLength + .chips [data-value="100"]').click();
@@ -237,6 +247,155 @@ test("known-target comparison preserves grid placement, order, direction and rel
   const dot=[[24,23],[27,25],[30,28]];
   assert.equal(compareStroke([[25,24],[30,29]],dot),"");assert.notEqual(compareStroke([[20,30],[25,36]],dot),"");
   assert.notEqual(compareStroke([dot[0],dot[0]],dot),"");
+  assert.equal(isAccidentalTap([[10,10],[10.4,10.3]]),true);
+  assert.equal(isAccidentalTap([[10,10],[14,10]]),false);
+  const shiftedDay = day.map(line => line.map(([x,y]) => [x+9, y-8]));
+  assert.equal(compareDrawing(shiftedDay, day, { allowOffset: true }), "");
+  const farShifted = day.map(line => line.map(([x,y]) => [x+30, y]));
+  assert.notEqual(compareDrawing(farShifted, day, { allowOffset: true }), "");
+  const detail = compareDrawingDetail([vertical, turn.toReversed(), middle, bottom], day);
+  assert.equal(detail.strokeIndex, 1);
+  assert.match(detail.message, /Stroke 2/);
+});
+
+test("kanji kaki returns metadata, shows memory cues, highlights mismatches, supports shortcuts and preserves saved collection", async (t) => {
+  const src = JSON.parse(readFileSync(new URL("../src/worksheet-strokes.json", import.meta.url)));
+  const db = new DatabaseSync(":memory:");
+  t.after(() => db.close());
+  db.exec(`CREATE TABLE kanjis(character TEXT, grade INTEGER, meanings TEXT, on_readings TEXT, kun_readings TEXT);
+    INSERT INTO kanjis VALUES('日', 1, '["day","sun","Japan"]', '["ニチ","ジツ"]', '["ひ","-び"]');`);
+  provision(db);
+  const payload = await studyDrawing(db, new URL("http://test/api/study/drawing?character=日"));
+  assert.deepEqual(payload.items, [src["日"]]);
+  assert.deepEqual(payload.meta, { meanings: ["day", "sun", "Japan"], on_readings: ["ニチ", "ジツ"], kun_readings: ["ひ", "-び"] });
+
+  const { createServer } = await import("vite");
+  const { chromium } = await import("playwright");
+  const root = new URL("../", import.meta.url).pathname;
+  const previous = process.env.EDITORIAL_PREVIEWS;
+  process.env.EDITORIAL_PREVIEWS = "1";
+  let server, browser;
+  try {
+    server = await createServer({ root, server: { host: "127.0.0.1", port: 17893, strictPort: false }, logLevel: "error" });
+    await server.listen();
+    const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
+    browser = await chromium.launch();
+    const page = await browser.newPage({ viewport: { width: 1200, height: 800 } });
+    const errors = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.route("**/*", route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+    await page.route("**/api/study/drawing*", async route => {
+      const url = new URL(route.request().url());
+      const res = await studyDrawing(db, url);
+      await route.fulfill({ json: res });
+    });
+    await page.addInitScript(() => {
+      if (!localStorage.getItem("nihon:editorial:kanji-draw:v1")) {
+        localStorage.setItem("nihon:editorial:kanji-draw:v1", JSON.stringify({ "draw-collection": "grade1" }));
+      }
+    });
+    await page.goto(`${origin}/kanji-kaki?kanji=${encodeURIComponent("日")}`);
+    await page.locator("#startButton").waitFor();
+    const setupWidths = await page.evaluate(() => [
+      document.querySelector(".session-setup").getBoundingClientRect().width,
+      document.querySelector("#workspace").getBoundingClientRect().width
+    ]);
+    assert.ok(Math.abs(setupWidths[0] - setupWidths[1]) <= 2);
+    assert.equal(await page.locator("#poolCount").count(), 0);
+    assert.equal(await page.locator('#draw-collection option[value="starter"]').count(), 0);
+    assert.equal(await page.locator("#draw-list").locator("..").locator("span").innerText(), "Custom characters");
+    assert.deepEqual(await page.locator("#editorialLength option").allInnerTexts(), ["5", "10", "20", "50", "100"]);
+    const drawRowPositions = await page.evaluate(() => {
+      const col = document.querySelector("#draw-collection").closest("label").getBoundingClientRect();
+      const len = document.querySelector("#editorialLength").closest(".chips-field").getBoundingClientRect();
+      return { col, len };
+    });
+    assert.ok(Math.abs(drawRowPositions.col.top - drawRowPositions.len.top) <= 4);
+    assert.ok(drawRowPositions.len.left > drawRowPositions.col.left);
+    assert.equal(await page.locator("#settingsPanel #draw-grid, #settingsPanel #draw-numbers, #settingsPanel #draw-live-check").count(), 0);
+    assert.ok(await page.locator("#draw-mode").locator("..").locator(".chips-title [data-study-help]").count() > 0);
+    // Deep-link should not overwrite saved draw-collection in localStorage.
+    const savedBefore = JSON.parse(await page.evaluate(() => localStorage.getItem("nihon:editorial:kanji-draw:v1")));
+    assert.equal(savedBefore["draw-collection"], "grade1");
+    await page.locator('#draw-mode + .chips [data-value="memory"]').click();
+    await page.locator("#startButton").click();
+    await page.locator(".draw-meta").waitFor();
+    assert.match(await page.locator(".draw-meanings").innerText(), /day · sun · Japan/);
+    assert.equal(await page.locator("#roundBody #draw-grid").count(), 1);
+    assert.equal(await page.locator("#roundBody #draw-numbers").count(), 1);
+    assert.equal(await page.locator("#roundBody #draw-live-check").count(), 0);
+    // Live grid & stroke number toggles update immediately during session.
+    await page.locator("#draw-grid").uncheck();
+    assert.equal(await page.locator(".draw-pane-model .draw-guides").isHidden(), true);
+    await page.locator("#draw-grid").check();
+    assert.equal(await page.locator(".draw-pane-model .draw-guides").isVisible(), true);
+    await page.locator("#draw-numbers").uncheck();
+    assert.equal(await page.locator(".draw-pane-model .draw-number").count(), 0);
+    await page.locator("#draw-numbers").check();
+    assert.ok(await page.locator(".draw-pane-model .draw-number").count() > 0);
+    // Keyboard ArrowRight / ArrowLeft step through strokes.
+    await page.keyboard.press("ArrowRight");
+    assert.match(await page.locator(".draw-status").innerText(), /Stroke 2 of 4/);
+    await page.keyboard.press("ArrowLeft");
+    assert.match(await page.locator(".draw-status").innerText(), /Stroke 1 of 4/);
+    // Hide model in Memory mode: meanings/readings stay visible as recall cue.
+    await page.getByRole("button", { name: "Hide model and draw" }).click();
+    assert.ok(await page.locator(".draw-pane-model").isHidden());
+    assert.ok(await page.locator(".draw-meta").isVisible());
+    // Accidental micro-tap should not add a stroke.
+    const pad = page.locator(".draw-pad");
+    const box = await pad.boundingBox();
+    await page.mouse.move(box.x + 20, box.y + 20);
+    await page.mouse.down();
+    await page.mouse.up();
+    assert.ok(await page.getByRole("button", { name: "Undo last stroke" }).isDisabled());
+    // Switch to Trace mode and verify live mismatch highlight + Hide model toggle + review snapshot.
+    await page.getByRole("button", { name: "Stop session" }).click();
+    await page.getByRole("button", { name: "Practice again" }).click();
+    await page.locator('#draw-mode + .chips [data-value="trace"]').click();
+    await page.locator("#startButton").click();
+    await page.locator(".draw-pad").waitFor();
+    assert.equal(await page.locator("#roundBody #draw-live-check").isChecked(), true);
+    const squareSizes = await page.locator(".draw-square").evaluateAll(els => els.map(el => el.getBoundingClientRect().width));
+    assert.ok(Math.abs(squareSizes[0] - squareSizes[1]) <= 1);
+    assert.equal(await page.locator(".draw-boards").evaluate(el => getComputedStyle(el).justifyContent), "center");
+    assert.equal(await page.locator(".draw-actions").evaluate(el => getComputedStyle(el).justifyContent), "center");
+    const toggle = page.getByRole("button", { name: "Hide model" });
+    await toggle.click();
+    assert.ok(await page.locator(".draw-pane-model").isHidden());
+    await page.getByRole("button", { name: "Show model" }).click();
+    assert.ok(await page.locator(".draw-pane-model").isVisible());
+    // Draw stroke 1 backwards to trigger live mismatch highlight.
+    await page.locator(".draw-pad").scrollIntoViewIfNeeded();
+    const pbox = await page.locator(".draw-pad").boundingBox();
+    await page.mouse.move(pbox.x + pbox.width * 0.3, pbox.y + pbox.height * 0.8);
+    await page.mouse.down();
+    await page.mouse.move(pbox.x + pbox.width * 0.3, pbox.y + pbox.height * 0.2, { steps: 6 });
+    await page.mouse.up();
+    assert.equal(await page.locator(".draw-stroke-mismatch").count(), 1);
+    assert.equal(await page.locator(".draw-template-target").count(), 1);
+    // Unchecking live check immediately clears live mismatch highlight.
+    await page.locator("#draw-live-check").uncheck();
+    assert.equal(await page.locator(".draw-stroke-mismatch").count(), 0);
+    await page.locator("#draw-live-check").check();
+    assert.equal(await page.locator(".draw-stroke-mismatch").count(), 1);
+    // Ctrl+Z undoes the mismatched stroke.
+    await page.keyboard.press("Control+z");
+    assert.equal(await page.locator(".draw-stroke-mismatch").count(), 0);
+    // Complete via self-review and verify visual snapshot in feedback.
+    await page.getByRole("button", { name: "Self-review", exact: true }).click();
+    await page.getByRole("button", { name: "Finish self-review" }).click();
+    assert.equal(await page.locator("#roundFeedback .draw-review-snapshot svg").count(), 1);
+    // Mobile layout has no horizontal overflow.
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    assert.deepEqual(errors, []);
+  } finally {
+    await browser?.close();
+    await server?.close();
+    if (previous === undefined) delete process.env.EDITORIAL_PREVIEWS;
+    else process.env.EDITORIAL_PREVIEWS = previous;
+  }
 });
 
 // Set PRACTICE_BROWSER_BASE to a running, local EDITORIAL_PREVIEWS=1 Vite server.

@@ -47,7 +47,7 @@ body { margin: 0; font: 1rem/1.6 system-ui, sans-serif; color: var(--ink); backg
 }
 #reviewList > details { padding: .75rem 0; border-top: 1px solid var(--line); }
 #workspace .replay-actions { margin-block: 1rem; }
-#workspace .session-setup { max-inline-size: 54rem; }
+#workspace .session-setup { width: 100%; }
 #workspace #settingsPanel :is(select,input:not([type=checkbox])) { inline-size: min(100%, 22rem); }
 #workspace #settingsPanel .chips { flex-wrap: wrap; }
 #workspace #settingsPanel .chip-option { min-height: 44px; }
@@ -55,10 +55,15 @@ body { margin: 0; font: 1rem/1.6 system-ui, sans-serif; color: var(--ink); backg
 #workspace #settingsPanel :is(.chips-title,.preview-practice-field > span), #workspace .pg-word { color: var(--text-blue); }
 #workspace :is(#roundLabel,.pg-list-title h2) { color: var(--text-plum); }
 #workspace #roundBody [lang=ja], #workspace #roundFeedback h3 { color: var(--text-warm); }
+#workspace:is([data-tool="particle"], [data-tool="counter"]) #roundBody { display: flex; flex-direction: column; align-items: center; text-align: center; }
+#workspace:is([data-tool="particle"], [data-tool="counter"]) #roundBody :is(.preview-practice-options, .preview-practice-answer) { justify-content: center; }
+#workspace[data-tool="counter"] #roundBody .preview-practice-field { justify-items: center; }
 .editorial-credits { margin-block: 1.5rem; color: var(--muted); }
 .editorial-credits summary { cursor: pointer; }
 .editorial-credits a { color: var(--text-blue); }
+#workspace .settings-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: .85rem 1.5rem; align-items: start; }
 @media (min-width: 52rem) {
-  #workspace #toolFilters:not(:empty) { grid-template-columns: repeat(2,minmax(0,22rem)); align-items: start; }
-  #toolFilters > :is(.chips-field,details,p) { grid-column: 1 / -1; }
+  #workspace #toolFilters:not(:empty) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); align-items: start; }
+  #toolFilters > :is(.chips-field,details,p,.settings-row) { grid-column: 1 / -1; }
+  #workspace .settings-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
