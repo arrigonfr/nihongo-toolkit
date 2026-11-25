@@ -200,6 +200,7 @@ export function mountToolHelp(pageHelp) {
   function enhance() {
     if (active && !active.isConnected) hide();
     for (const control of document.querySelectorAll("select, input[type='checkbox'], input[type='number']")) {
+      if (control.hasAttribute("data-no-setting-help")) continue;
       if (["sessionMode", "sessionType"].includes(control.id) && ["kana.html", "imi.html", "yomi.html", "goi.html"].includes(file)) continue;
       if (control.closest(".chips") || ["colorThemeSelect", "answerChoice"].includes(control.id) || mounted.get(control)?.every((node) => node.isConnected)) continue;
       const label = control.labels?.[0];

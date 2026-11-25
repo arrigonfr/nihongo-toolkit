@@ -1,5 +1,6 @@
 import { bind, toHiragana } from "wanakana";
 import { romanizeKana } from "../romanize.js";
+import { audioIcon } from "../audio-icon.js";
 
 export const draft = { source: "NihongoToolkit original practice material", license: "Unpublished draft", reviewStatus: "awaiting Japanese review", contentVersion: "draft-1" };
 export const kana = value => toHiragana(String(value).normalize("NFKC").replace(/\s+/gu, ""), { passRomaji: true });
@@ -47,5 +48,5 @@ export function answers(c, choices, label, submit) {
 export function reading(c, text) {
   el(c, "span", text, { lang: "ja" });
   el(c, "span", ` ${romanizeKana(text)} `, { class: "study-romaji" });
-  el(c, "button", "Listen", { type: "button", class: "study-audio", "data-study-speak": text, "aria-label": `Listen: ${text}` });
+  el(c, "button", audioIcon, { type: "button", class: "study-audio", "data-study-speak": text, "aria-label": `Listen: ${text}` });
 }

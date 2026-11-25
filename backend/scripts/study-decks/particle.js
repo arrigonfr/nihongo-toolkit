@@ -1,5 +1,6 @@
 import { practiceCredits as draft } from "./credits.js";
 import { moreContexts } from "./particle-contexts.js";
+import { expandedContexts } from "./particle-expansion.js";
 
 const groups = { topic: "Topic or subject", object: "Object", place: "Destination or location", time: "Time or range", list: "Company, listing or addition" };
 const data = [
@@ -22,7 +23,7 @@ const data = [
   ["companion","list",null,"You and a friend travel together. Mark your companion.","友達|旅行します。","ともだち|りょこうします。","と","I travel with a friend.","と marks a companion. も would instead add the friend as another traveler."]
 ];
 const choices = {topic:"はがも", object:"をにがも", place:"にへでを", time:"に から まで で", list:"とやもを"};
-export const items = [...data,...moreContexts].map(([id, role, partner, context, sentence, pronunciation, accepted, translation, explanation]) => ({
+export const items = [...data,...moreContexts,...expandedContexts].map(([id, role, partner, context, sentence, pronunciation, accepted, translation, explanation]) => ({
   ...draft, id, role, partner, context, sentence, pronunciation, accepted: accepted === "から" || accepted === "まで" ? [accepted] : [...accepted],
   roleLabel: groups[role], choices: role === "time" ? choices.time.split(" ") : [...choices[role]],
   nuances: id === "school-go" ? {"へ":"へ points toward the destination. ","に":"に marks the destination as an endpoint. "} : {},

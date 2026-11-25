@@ -1,5 +1,6 @@
 import { japaneseHTML, speakJapanese, study } from "../study-controls.js";
 import { cancelLocalSpeech } from "../local-speech.js";
+import { audioIcon } from "../audio-icon.js";
 import "./games.css";
 
 export function el(tag, text, className) {
@@ -38,7 +39,7 @@ export function silence() {
   cancelLocalSpeech();
 }
 export function playButton(text, spoken, notice) {
-  return button(text, () => {
+  const control = button(audioIcon, () => {
     if (!study.audio) {
       notice.textContent = "Audio is off. Turn on Audio to listen.";
       return;
@@ -46,4 +47,6 @@ export function playButton(text, spoken, notice) {
     silence();
     speakJapanese(spoken);
   });
+  control.setAttribute("aria-label", text);
+  return control;
 }

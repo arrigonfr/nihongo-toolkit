@@ -58,6 +58,7 @@
     "db:generate-examples": "node backend/scripts/generate-examples.js",
     "db:review-examples": "node backend/scripts/review-examples.js",
     "db:translations": "node --max-old-space-size=4096 --use-system-ca --env-file-if-exists=backend/.env backend/scripts/translations.js",
+    "test:translations:staging": "RUN_TRANSLATION_STAGING=1 node --use-system-ca --env-file-if-exists=backend/.env --test backend/test/translation-staging.integration.js",
     "db:sync-turso": "node --use-system-ca --env-file-if-exists=backend/.env backend/scripts/sync-enrichment.js",
     "db:sync-study-turso": "node --use-system-ca --env-file-if-exists=backend/.env backend/scripts/sync-study-turso.js",
     "test:examples": "node --test backend/test/examples.test.js backend/test/enrichment.test.js && node scripts/example-provenance-browser-test.mjs"

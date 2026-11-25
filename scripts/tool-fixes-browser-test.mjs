@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { createServer as createVite, preview } from "vite";
 import { chromium } from "playwright";
 import { createHandler } from "../backend/src/app.js";
-import { editorialPage } from "../frontend/editorial-tools.js";
+import { editorialPage, editorialTools } from "../frontend/editorial-tools.js";
 
 // Pages are linked by clean URL (/kana) but may also be served as /kana.html.
 const pagePath = (path) => decodeURIComponent(path).replace(/\.html$/, "");
@@ -234,7 +234,8 @@ try {
     assert.ok(locations.includes("/kanji/"));
     assert.ok(locations.includes("/kanji/食"));
     assert.deepEqual(locations.filter((path) => !path.startsWith("/kanji/")).sort(),
-      ["/", "/data-sources", "/kanji-of-the-day", ...files.map((file) => `/${file.slice(0, -5)}`)].sort());
+      ["/", "/data-sources", "/kanji-of-the-day", ...files.map((file) => `/${file.slice(0, -5)}`),
+        ...Object.keys(editorialTools).map((slug) => `/${slug}`)].sort());
     assert.match(await (await navigationPage.request.get(`${origin}/robots.txt`)).text(), /Sitemap: https:\/\/nihongotoolkit.pages.dev\/sitemap.xml/);
     await navigationPage.goto(`${origin}/index.html`);
     await navigationPage.waitForURL(`${origin}/`);

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { alignFuriganaRuby, formatFurigana } from "../src/furigana.js";
+import { particleFurigana } from "../src/preview-practice/particle-furigana.js";
 
 test("furigana aligns kanji runs without annotating okurigana", () => {
   assert.equal(alignFuriganaRuby("食べる", "たべる"), "<ruby>食<rt>た</rt></ruby>べる");
@@ -14,4 +15,13 @@ test("furigana aligns kanji runs without annotating okurigana", () => {
 
 test("sentence markup aligns readings and escapes HTML", () => {
   assert.equal(formatFurigana("{食べる|たべる}<script>"), "<ruby>食<rt>た</rt></ruby>べる&lt;script&gt;");
+});
+
+test("particle sentences align word readings without guessing ambiguous splits", () => {
+  assert.equal(particleFurigana("昨日行きました。", "きのういきました。"),
+    "<ruby>昨日<rt>きのう</rt></ruby><ruby>行<rt>い</rt></ruby>きました。");
+  assert.equal(particleFurigana("昨日友達と会いました。", "きのうともだちとあいました。"),
+    "<ruby>昨日<rt>きのう</rt></ruby><ruby>友達<rt>ともだち</rt></ruby>と<ruby>会<rt>あ</rt></ruby>いました。");
+  assert.equal(particleFurigana("漢と字", "かんとじとじ"), "漢と字");
+  assert.equal(particleFurigana("<漢>", "unmatched"), "&lt;漢&gt;");
 });

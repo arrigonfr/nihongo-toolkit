@@ -4,6 +4,7 @@ import { el, ja, button, root, setupNote, silence, status, playButton } from "./
 import { deal, karutaResult } from "./karuta-data.js";
 import { createCluePlayer } from "./clue-player.js";
 import { picture } from "./pictures.js";
+import { audioIcon } from "../audio-icon.js";
 
 export const karuta = {
   ...studyPool("karuta"),
@@ -22,10 +23,11 @@ export const karuta = {
         if (state === "heard") { mode = "listening"; unlock(); }
         notice.textContent = { loading: "Preparing Japanese audio. You can switch to text instead.",
           heard: "Choose the picture that matches the clue.", unavailable: "Audio unavailable. Retry playback or use the text clue." }[state];
-        hear.textContent = "Replay clue";
+        hear.setAttribute("aria-label", "Replay clue");
       }
     });
-    const hear = button("Play clue", () => { if (!ended) player.play(item.reading); });
+    const hear = button(audioIcon, () => { if (!ended) player.play(item.reading); });
+    hear.setAttribute("aria-label", "Play clue");
     const read = button("Use text clue", () => {
       if (ended) return;
       player.stop();

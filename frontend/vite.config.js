@@ -222,7 +222,7 @@ export default defineConfig(({ mode, command, isPreview }) => {
   const catalogue = kanjiCatalogue(site, disabled);
   const robots = `User-agent: *\nAllow: /\n${site ? `\nSitemap: ${site}sitemap.xml\n` : ""}`;
   const sitemap = () => {
-    const paths = ["", ...toolFiles.filter(file => !editorialPage(file)), "data-sources.html"].map(publicPath).concat(catalogue.paths);
+    const paths = ["", ...toolFiles, "data-sources.html"].map(publicPath).concat(catalogue.paths);
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${paths.map((path) =>
       `  <url><loc>${new URL(path, site).href}</loc></url>`).join("\n")}\n</urlset>\n`;
   };

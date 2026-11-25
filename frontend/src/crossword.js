@@ -1095,7 +1095,7 @@ import {
         return `<li class="cw-review-word ${answered ? "answered" : "unanswered"}" data-review-entry="${escapeHTML(entry.id)}">
           <div class="cw-review-heading"><strong lang="ja">${word}</strong><span>${answered ? "Answered" : entry.revealed ? "Revealed" : "Not answered"}</span></div>
           <p><span lang="ja">${escapeHTML(reading)}</span>${state.settings.romanization ? ` · ${escapeHTML(romanizeKana(reading))}` : ""}</p>
-          <p>${escapeHTML(item.meaning)}</p><button class="cw-btn" type="button" data-speak-ja="${escapeHTML(reading)}" aria-label="Pronounce ${escapeHTML(item.word)}">▶ Word</button>
+          <p>${escapeHTML(item.meaning)}</p><button class="cw-btn" type="button" data-speak-ja="${escapeHTML(reading)}" aria-label="Pronounce ${escapeHTML(item.word)}">▶</button>
         </li>`;
       }).join("")}</ul>`;
       return;
@@ -1148,7 +1148,7 @@ import {
                 · <span class="cw-badge">JLPT N${escapeHTML(item.level)}</span>
               </div>
             </div>
-            <button class="cw-btn" type="button" data-speak-ja="${escapeHTML(reading)}" aria-label="Pronounce word">▶ Word</button>
+            <button class="cw-btn" type="button" data-speak-ja="${escapeHTML(reading)}" aria-label="Pronounce word">▶</button>
           </div>
 
           <div><strong>Definition:</strong> ${escapeHTML(item.meaning)}</div>
@@ -1183,7 +1183,7 @@ import {
                   </div>
                 </div>
               </div>
-              <button class="cw-btn" type="button" data-speak-ja="${escapeHTML((kanjiData.kun_readings?.[0] || kanjiData.on_readings?.[0] || kanjiData.kanji).replace(/[.-]/g, ""))}">▶ Reading</button>
+              <button class="cw-btn" type="button" data-speak-ja="${escapeHTML((kanjiData.kun_readings?.[0] || kanjiData.on_readings?.[0] || kanjiData.kanji).replace(/[.-]/g, ""))}" aria-label="Pronounce reading">▶</button>
             </div>
 
             <div style="font-size:13px;line-height:1.6">

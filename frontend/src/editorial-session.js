@@ -44,8 +44,8 @@ const text = (tag, value) => Object.assign(document.createElement(tag), { textCo
 function mountActivity(definition) {
   workspace.innerHTML = `<details id="settingsPanel" class="settings" open><summary>Session settings</summary>
     <div class="settings-body"><div id="toolFilters"></div>
-    <label><span>Session length</span><select id="editorialLength"><option value="short">Short · up to 5</option><option value="extended">Extended · up to 20</option></select></label>
-    <p id="poolCount" role="status"></p><p id="prefError" role="alert"></p></div></details>
+    <label><span>Session length</span><select id="editorialLength">${["particle","counter"].includes(key) ? '<option value="short">5</option><option value="10">10</option><option value="extended">20</option><option value="50">50</option><option value="100">100</option>' : '<option value="short">Short · up to 5</option><option value="extended">Extended · up to 20</option>'}</select></label>
+    <p id="${["particle","counter"].includes(key) ? "poolError" : "poolCount"}" role="status"></p><p id="prefError" role="alert"></p></div></details>
     <button type="button" class="primary" id="startButton">Start session</button>
     <section id="play" hidden><div class="session-heading"><h2 id="roundLabel" tabindex="-1"></h2><button id="stopSessionButton">Stop session</button></div>
     <div id="roundBody"></div><section id="roundFeedback" hidden></section><button class="primary" id="nextButton" hidden>Next</button></section>
@@ -58,8 +58,10 @@ function mountActivity(definition) {
     return control.id;
   });
   rememberControls(`nihon:editorial:${preferenceNamespace}:v1`, ids, error => { $("prefError").textContent = error; });
-  for (const select of settings.querySelectorAll("#particle-task, #counter-mode, #draw-mode, #editorialLength")) {
-    mountChips(select, { presentation: "button", title: select.id === "editorialLength" ? "Session length" : "Session mode" });
+  for (const select of settings.querySelectorAll("#counter-mode, #draw-mode, #editorialLength")) {
+    if (["particle","counter"].includes(key) && select.id === "editorialLength") select.dataset.noSettingHelp = "";
+    const title = select.id === "editorialLength" ? "Session length" : "Session mode";
+    mountChips(select, { presentation: "button", title });
   }
   if (definition.credits) {
     const credits = document.createElement("details");
@@ -72,14 +74,19 @@ function mountActivity(definition) {
   const pool = () => definition.pool ? definition.pool(filters) : definition.items;
   function refresh() {
     const count = pool().length;
-    $("poolCount").textContent = count ? `${count} eligible · ${Math.min(count, limit())} in this session` : "No eligible items. Change the selection to start.";
-    start.disabled = !count;
+    if (["particle","counter"].includes(key)) {
+      $("poolError").textContent = count < limit() ? "Not enough questions for this session length. Choose a shorter session or try again later." : "";
+      start.disabled = count < limit();
+    } else {
+      $("poolCount").textContent = count ? `${count} eligible · ${Math.min(count, limit())} in this session` : "No eligible items. Change the selection to start.";
+      start.disabled = !count;
+    }
   }
-  function limit() { return $("editorialLength").value === "extended" ? 20 : 5; }
+  function limit() { const value = $("editorialLength").value; return value === "extended" ? 20 : value === "short" ? 5 : Number(value); }
   settings.addEventListener("input", refresh);
   settings.addEventListener("change", refresh);
   let deck = [], log = [], position = 0, token = 0, cleanup;
-  const assessment = r => r.correct === null ? "Self-review" : r.correct ? "Correct" : "Review this answer";
+  const assessment = r => r.assessment || (r.correct === null ? "Self-review" : r.correct ? "Correct" : "Review this answer");
   function leaveRound() {
     ++token;
     cleanup?.();

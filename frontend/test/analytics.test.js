@@ -55,7 +55,7 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     const kanjiUrls = locations.filter((url) => new URL(url).pathname.startsWith("/kanji/"));
     assert.equal(kanjiUrls.length, source.filter(({ kind }) => kind !== "radical-only").length + 1);
     assert.equal(new Set(kanjiUrls).size, kanjiUrls.length);
-    assert.equal(locations.length - kanjiUrls.length, 20);
+    assert.equal(new Set(locations).size, locations.length);
     assert.ok(locations.includes(new URL("/contact", site).href));
     assert.ok(locations.includes(new URL("/kanji-of-the-day", site).href));
     assert.ok(!locations.includes(new URL("/embed/kanji-of-the-day", site).href));
@@ -107,10 +107,6 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     assert.equal(readFileSync(join(directory, "robots.txt"), "utf8"), `User-agent: *\nAllow: /\n\nSitemap: ${site}sitemap.xml\n`);
     const root = new URL("../", import.meta.url);
     for (const file of readdirSync(root).filter((name) => name.endsWith(".html") && name !== "文字.html")) {
-      if (editorialPage(file)) {
-        assert.ok(!locations.includes(new URL(publicPath(file), site).href));
-        continue;
-      }
       const result = navigation.transformIndexHtml.handler(readFileSync(new URL(file, root), "utf8"), { filename: new URL(file, root).pathname });
       const canonical = result.tags.find((tag) => tag.attrs?.rel === "canonical").attrs.href;
       assert.equal(canonical, new URL(publicPath(file), site).href);

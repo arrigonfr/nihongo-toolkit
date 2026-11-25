@@ -2,14 +2,16 @@ import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { request as httpRequest } from "node:http";
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { parseArgs } from "node:util";
 import { databasePath } from "../src/database.js";
 import {
   LANGUAGES, KINDS, ensureTranslationSchema, translationItem, translationItems, translationStatus,
-  translationWriter, translateGemmaPrompt, pendingTranslationSync, syncTranslations, splitModelOutput, checkTranslation, parseTatoebaLinks, parseTatoebaSentences, pickTatoebaTranslation
+  translationWriter, translateGemmaPrompt, pendingTranslationSync, pendingTranslationDeletes,
+  pendingTranslationReviews, translationReviewCoverage, writeTranslationReview, translationValueHash,
+  auditTranslationContents, backupTranslationContents, planTranslationRepair, splitModelOutput, checkTranslation, parseTatoebaLinks, parseTatoebaSentences, pickTatoebaTranslation
 } from "./translation-lib.js";
 
 const usage = `Usage: npm run db:translations -- <command> [options]
@@ -21,24 +23,38 @@ const usage = `Usage: npm run db:translations -- <command> [options]
                                    Validate provider JSONL results (export rows plus "value": [...]) and store them
   translate --lang es --kind sense [--model translategemma:4b] [--concurrency 4] [--limit N]
                                    Machine-translate pending items one by one with a local Ollama model (free, resumable)
-  sync-turso [--apply]             Upsert translations changed since the last sync into TURSO_DATABASE_URL (dry run by default)
+  export-review --lang es --kind sense --out FILE [--limit 100]
+                                   Export machine translations with source context for human review
+  apply-review --reviewer NAME [--review-type human|ai] FILE...
+                                   Record approved/rejected/uncertain decisions bound to reviewed content
+  audit-turso [--out FILE]         Compare translations without database writes; optionally save all differing keys as JSON
+  backup-turso --out FILE          Save a read-only snapshot of Turso translations and compare it with local rows
+  plan-turso --backup FILE --out JSON
+                                   Build a no-write repair plan from an existing snapshot
+  sync-turso                       Preview local translation changes (writes temporarily disabled)
 Options: --db PATH (default DATABASE_PATH or backend/data/nihon.sqlite)`;
 
 const { values: options, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     db: { type: "string", default: databasePath }, lang: { type: "string" }, kind: { type: "string" },
-    out: { type: "string" }, "chunk-size": { type: "string", default: "500" }, limit: { type: "string" },
-    source: { type: "string" }, model: { type: "string", default: "translategemma:4b" },
+    out: { type: "string" }, backup: { type: "string" }, "chunk-size": { type: "string", default: "500" }, limit: { type: "string" },
+    source: { type: "string" }, reviewer: { type: "string" }, "review-type": { type: "string", default: "human" },
+    model: { type: "string", default: "translategemma:4b" },
     concurrency: { type: "string", default: "4" }, ollama: { type: "string", default: "http://127.0.0.1:11434" }, help: { type: "boolean" }, apply: { type: "boolean" }
   }
 });
 const [command, ...files] = positionals;
 if (options.help || !command) { console.log(usage); process.exit(command ? 0 : 1); }
+if (["audit-turso", "backup-turso", "plan-turso"].includes(command) && options.apply) throw new Error(`${command} is read-only and does not accept --apply`);
+if (command === "sync-turso" && options.apply) {
+  throw new Error("Translation sync writes are disabled until a reviewed production plan is approved; use plan-turso and export-review.");
+}
 if (!existsSync(options.db)) throw new Error(`Database not found: ${options.db}`);
-const db = new DatabaseSync(options.db);
+const db = new DatabaseSync(options.db, { readOnly: ["audit-turso", "backup-turso", "plan-turso"].includes(command) });
 db.exec("PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000");
-ensureTranslationSchema(db);
+if (["audit-turso", "backup-turso", "plan-turso"].includes(command)) db.exec("PRAGMA query_only = ON");
+else ensureTranslationSchema(db);
 
 function transaction(fn) {
   db.exec("BEGIN IMMEDIATE");
@@ -128,6 +144,51 @@ async function exportPending() {
     await writeFile(name, `${rows.slice(start, start + size).join("\n")}\n`);
   }
   console.log(`Exported ${rows.length} of ${pending.length} pending ${kind} items for ${lang} in ${Math.ceil(rows.length / size)} chunk(s).`);
+}
+
+async function exportReview() {
+  const lang = choice("lang", options.lang, LANGUAGES), kind = choice("kind", options.kind, KINDS);
+  if (!options.out) throw new Error("--out is required");
+  const limit = options.limit ? positiveInteger("limit", options.limit) : 100;
+  const rows = pendingTranslationReviews(db, kind, lang, limit);
+  const contents = rows.map((row) => JSON.stringify(row)).join("\n");
+  await writeFile(options.out, contents ? `${contents}\n` : "", { flag: "wx", mode: 0o600 });
+  console.log(`Exported ${rows.length} ${kind} ${lang} translations for review to ${options.out}.`);
+}
+
+async function applyReview() {
+  if (!options.reviewer?.trim()) throw new Error("--reviewer is required");
+  if (!files.length) throw new Error("At least one review JSONL file is required");
+  const rows = [];
+  for (const file of files) {
+    for (const [index, line] of (await readFile(file, "utf8")).split("\n").entries()) {
+      if (!line.trim()) continue;
+      let row;
+      try { row = JSON.parse(line); }
+      catch { throw new Error(`${file}:${index + 1}: invalid JSON`); }
+      if (!["approved", "rejected", "uncertain"].includes(row.decision)) {
+        throw new Error(`${file}:${index + 1}: decision must be approved, rejected or uncertain`);
+      }
+      if (!Array.isArray(row.translation)
+          || translationValueHash(JSON.stringify(row.translation)) !== row.value_hash) {
+        throw new Error(`${file}:${index + 1}: translation differs from review export`);
+      }
+      rows.push(row);
+    }
+  }
+  const keys = new Set();
+  for (const row of rows) {
+    const key = JSON.stringify([row.kind, row.item_id, row.lang]);
+    if (keys.has(key)) throw new Error(`Duplicate review row: ${key}`);
+    keys.add(key);
+  }
+  transaction(() => {
+    if (!["human", "ai"].includes(options["review-type"])) throw new Error("--review-type must be human or ai");
+    for (const row of rows) writeTranslationReview(db, {
+      ...row, status: row.decision, reviewer_type: options["review-type"], reviewer: options.reviewer.trim()
+    });
+  });
+  console.log(`Recorded ${rows.length} ${options["review-type"]} review decision(s) by ${options.reviewer.trim()}.`);
 }
 
 async function applyResults() {
@@ -240,33 +301,126 @@ async function syncTurso() {
   const url = process.env.TURSO_DATABASE_URL;
   if (!url) throw new Error("TURSO_DATABASE_URL is required (backend/.env or the environment)");
   const destination = createHash("sha256").update(new URL(url.replace(/^libsql:/, "https:")).origin).digest("hex");
-  if (!options.apply) {
-    const rows = pendingTranslationSync(db, destination);
-    const counts = {};
-    for (const row of rows) counts[`${row.kind} ${row.lang}`] = (counts[`${row.kind} ${row.lang}`] ?? 0) + 1;
-    console.log(`${rows.length} translations to upsert ${JSON.stringify(counts)}. Dry run; pass --apply to write to Turso.`);
-    return;
-  }
-  if (!process.env.TURSO_AUTH_TOKEN) throw new Error("TURSO_AUTH_TOKEN is required");
+  const rows = pendingTranslationSync(db, destination);
+  const counts = {};
+  for (const row of rows) counts[`${row.kind} ${row.lang}`] = (counts[`${row.kind} ${row.lang}`] ?? 0) + 1;
+  const deletions = pendingTranslationDeletes(db, destination);
+  const legacy = db.prepare("SELECT count(*) n FROM translation_sync_deletions").get().n;
+  const pendingReviews = Object.fromEntries(KINDS.flatMap((kind) => LANGUAGES.map((lang) => {
+    const review = translationReviewCoverage(db, kind, lang);
+    return [`${kind} ${lang}`, review.pending];
+  })).filter(([, count]) => count));
+  console.log(`${rows.length} approved translations pending ${JSON.stringify(counts)}; ${deletions.length} deletion events;`
+    + ` ${legacy} legacy deletions needing review; unreviewed machine rows ${JSON.stringify(pendingReviews)}.`
+    + " Preview only; sync writes are disabled.");
+}
+
+async function auditTurso() {
+  const url = process.env.TURSO_DATABASE_URL;
+  if (!url || !process.env.TURSO_AUTH_TOKEN) throw new Error("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required for the read-only audit");
   const { createClient } = await import("@libsql/client/web");
   const client = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN, intMode: "number" });
+  let tx;
+  db.exec("BEGIN");
   try {
-    const { synced, mismatches } = await syncTranslations(db, client, destination, {
-      onBatch: (done, total) => { if (done === total || done % 5000 < 200) console.log(`${done}/${total} upserted`); } });
-    console.log(`${synced} translations upserted.`);
-    if (mismatches.length) {
-      console.error(`Row counts differ from Turso for: ${mismatches.join(", ")}. Rerun; if it persists, delete this destination from translation_sync for a full resync.`);
+    tx = await client.transaction("read");
+    const result = await auditTranslationContents(db, tx);
+    if (options.out) {
+      const report = { generatedAt: new Date().toISOString(), matched: result.matched };
+      for (const name of ["contentMismatches", "localOnly", "remoteOnly", "protectedHumanKeys"]) {
+        report[name] = result[name].map((key) => JSON.parse(key));
+      }
+      await writeFile(options.out, `${JSON.stringify(report)}\n`, { flag: "wx", mode: 0o600 });
+      console.log(`Saved complete audit keys to ${options.out}.`);
+    }
+    console.log(`Exact matches: ${result.matched}; content mismatches: ${result.contentMismatches.length};`
+      + ` local-only: ${result.localOnly.length}; remote-only: ${result.remoteOnly.length};`
+      + ` remote human / local machine conflicts: ${result.protectedHuman}.`);
+    for (const name of ["contentMismatches", "localOnly", "remoteOnly", "protectedHumanKeys"]) {
+      if (result[name].length) console.log(`${name} sample (kind, item_id, lang): ${result[name].slice(0, 10).join(", ")}`);
+    }
+    if (result.contentMismatches.length || result.localOnly.length || result.remoteOnly.length || result.protectedHuman) {
       process.exitCode = 1;
-    } else console.log("Turso row counts match the local database.");
-  } finally { client.close(); }
+    }
+  } finally {
+    try { if (tx) await tx.rollback(); }
+    finally { tx?.close(); client.close(); db.exec("ROLLBACK"); }
+  }
+}
+
+async function backupTurso() {
+  if (!options.out) throw new Error("backup-turso requires --out FILE");
+  const url = process.env.TURSO_DATABASE_URL;
+  if (!url || !process.env.TURSO_AUTH_TOKEN) throw new Error("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are required for the backup");
+  const { createClient } = await import("@libsql/client/web");
+  const client = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN, intMode: "number" });
+  let tx;
+  try {
+    tx = await client.transaction("read");
+    const result = await backupTranslationContents(db, tx, options.out);
+    console.log(`Saved ${result.rowCount} remote translation rows to ${options.out}.`);
+    console.log(`Against local: ${result.matched} exact matches, ${result.contentMismatches.length} different rows,`
+      + ` ${result.localOnly.length} local-only, ${result.remoteOnly.length} remote-only,`
+      + ` ${result.protectedHuman} remote human/local machine conflicts.`);
+    const problems = ["contentMismatches", "localOnly", "remoteOnly", "protectedHumanKeys"]
+      .filter((name) => result[name].length);
+    if (problems.length) {
+      for (const name of problems) console.log(`${name} sample: ${result[name].slice(0, 10).join(", ")}`);
+      process.exitCode = 1;
+    }
+  } finally {
+    try { if (tx) await tx.rollback(); }
+    finally { tx?.close(); client.close(); }
+  }
+}
+
+function planTurso() {
+  if (!options.backup || !options.out) throw new Error("plan-turso requires --backup FILE and --out JSON");
+  if (!existsSync(options.backup)) throw new Error(`Translation backup not found: ${options.backup}`);
+  const remote = new DatabaseSync(options.backup, { readOnly: true });
+  try {
+    remote.exec("PRAGMA query_only = ON");
+    const metadata = new Map(remote.prepare("SELECT key, value FROM translation_backup_metadata").all()
+      .map((row) => [row.key, row.value]));
+    const rows = remote.prepare(`SELECT kind,item_id,lang,value,method,source,license,attribution,source_hash,updated_at
+      FROM content_translations ORDER BY kind,item_id,lang`).all();
+    const count = rows.length;
+    if (Number(metadata.get("remote_row_count")) !== count) throw new Error("Backup metadata row count does not match its contents");
+    const digest = createHash("sha256");
+    const columns = ["kind", "item_id", "lang", "value", "method", "source", "license", "attribution", "source_hash", "updated_at"];
+    for (const row of rows) digest.update(`${JSON.stringify(columns.map((column) => row[column]))}\n`);
+    if (digest.digest("hex") !== metadata.get("remote_rows_sha256")) throw new Error("Backup content checksum does not match its metadata");
+    const plan = planTranslationRepair(db, remote);
+    const output = {
+      generatedAt: new Date().toISOString(),
+      backupCreatedAt: metadata.get("created_at"),
+      remoteRowCount: count,
+      remoteRowsSha256: metadata.get("remote_rows_sha256"),
+      policy: {
+        machineTranslationsRequireReviewBeforePublication: true,
+        remoteOnlyRowsArePreserved: true,
+        remoteHumanTranslationsAreNeverOverwritten: true
+      },
+      reviewCoverage: Object.fromEntries(KINDS.flatMap((kind) => LANGUAGES.map((lang) =>
+        [`${kind} ${lang}`, translationReviewCoverage(db, kind, lang)]))),
+      summary: Object.fromEntries(Object.entries(plan).map(([name, rows]) => [name, rows.length])),
+      plan
+    };
+    writeFileSync(options.out, `${JSON.stringify(output, null, 2)}\n`, { flag: "wx", mode: 0o600 });
+    console.log(`Saved no-write repair plan to ${options.out}.`);
+    console.log(JSON.stringify(output.summary));
+  } finally { remote.close(); }
 }
 
 function report() {
   for (const kind of KINDS) for (const lang of LANGUAGES) {
     const { counts } = translationStatus(db, kind, lang);
+    const reviews = translationReviewCoverage(db, kind, lang);
     const done = counts.human + counts.machine;
     console.log(`${kind.padEnd(8)} ${lang}: ${done}/${counts.total} (${(100 * done / (counts.total || 1)).toFixed(1)}%)`
-      + ` · human ${counts.human} · machine ${counts.machine} · stale ${counts.stale} · missing ${counts.missing}`);
+      + ` · human ${counts.human} · machine ${counts.machine} · stale ${counts.stale} · missing ${counts.missing}`
+      + ` · reviewed machine ${reviews.approved}/${reviews.machine} (human ${reviews.humanApproved}, AI ${reviews.aiApproved})`
+      + ` · rejected ${reviews.rejected} · uncertain ${reviews.uncertain} · pending ${reviews.pending}`);
   }
 }
 
@@ -276,6 +430,11 @@ try {
   else if (command === "export") await exportPending();
   else if (command === "apply") await applyResults();
   else if (command === "translate") await translateLocal();
+  else if (command === "export-review") await exportReview();
+  else if (command === "apply-review") await applyReview();
+  else if (command === "audit-turso") await auditTurso();
+  else if (command === "backup-turso") await backupTurso();
+  else if (command === "plan-turso") planTurso();
   else if (command === "sync-turso") await syncTurso();
   else { console.error(usage); process.exitCode = 1; }
 } finally { db.close(); }

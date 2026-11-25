@@ -17,6 +17,11 @@ body { margin: 0; font: 1rem/1.6 system-ui, sans-serif; color: var(--ink); backg
 #workspace #toolFilters:empty, #prefError:empty { display: none; }
 #workspace .session-heading { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
 #poolCount { color: var(--muted); margin: 0; }
+#poolError:empty { display: none; }
+.particle-shortcut { font: 11px/1.4 monospace; opacity: .65; margin-inline-start: 6px; }
+.particle-check { margin-top: .75rem; }
+:root[data-study-furigana="false"] .particle-reading-fallback { display: none; }
+@media (max-width: 760px), (hover: none) { .particle-shortcut { display: none; } }
 #roundBody, #roundFeedback { padding-block: 1rem; border-block: 1px solid var(--line); margin-block: .8rem; }
 #roundFeedback h3 { font-size: 1.5rem; margin: .3rem 0 1rem; }
 #workspace dt { font-weight: 650; color: var(--muted); }
@@ -34,13 +39,15 @@ body { margin: 0; font: 1rem/1.6 system-ui, sans-serif; color: var(--ink); backg
 .game-answer [data-field=explanation] { --field-ink: var(--text-warm); }
 #workspace .game-answer dt { color: var(--field-ink); }
 #workspace .game-answer dd { margin: .15rem 0 0; color: var(--ink); }
+#workspace .game-answer [data-field=answer] .study-romaji { display: inline; }
+:root[data-study-romaji="false"] #workspace .game-answer [data-field=answer] .study-romaji { display: none; }
 @media (min-width: 40rem) {
   .game-answer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .game-answer :is([data-field=prompt], [data-field=explanation]) { grid-column: 1 / -1; }
 }
 #reviewList > details { padding: .75rem 0; border-top: 1px solid var(--line); }
 #workspace .replay-actions { margin-block: 1rem; }
-#workspace #settingsPanel { max-inline-size: 54rem; }
+#workspace .session-setup { max-inline-size: 54rem; }
 #workspace #settingsPanel :is(select,input:not([type=checkbox])) { inline-size: min(100%, 22rem); }
 #workspace #settingsPanel .chips { flex-wrap: wrap; }
 #workspace #settingsPanel .chip-option { min-height: 44px; }

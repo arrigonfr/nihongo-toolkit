@@ -13,6 +13,7 @@ import { mountLevelControls } from "./jlpt-levels.js";
 import { createSupportButton } from "./support.js";
 import { cancelLocalSpeech, speakLocalJapanese } from "./local-speech.js";
 import { japaneseVoice } from "./japanese-voice.js";
+import { audioIcon } from "./audio-icon.js";
 
 const key = "nihon:study-controls-v1";
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
@@ -28,7 +29,7 @@ export function japaneseHTML(word, reading = "", base = word) {
   return `<span class="study-japanese" lang="ja">${alignFuriganaRuby(word, reading, base)}</span>${reading ? `<span class="study-romaji">${escape(romanizeKana(reading))}</span>` : ""}`;
 }
 export function audioHTML(text) {
-  return `<button type="button" class="study-audio" data-study-speak="${escape(text)}" aria-label="Pronounce ${escape(text)}">▶</button>`;
+  return `<button type="button" class="study-audio" data-study-speak="${escape(text)}" aria-label="Pronounce ${escape(text)}">${audioIcon}</button>`;
 }
 export function readingsHTML(readings = []) {
   return readings.map((reading) => {

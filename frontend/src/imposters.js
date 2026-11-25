@@ -169,7 +169,7 @@ function renderQuestion() {
   $("prompt").classList.toggle("kanji-prompt", question.variant === "kanji-reading");
   if (!audioOnly) $("prompt").lang = "ja"; else $("prompt").removeAttribute("lang");
   $("promptAudio").innerHTML = question.variant === "reading-kanji"
-    ? audioOnly ? `<button type="button" class="study-audio" data-study-speak="${escape(question.prompt)}" aria-label="Replay question audio">Replay ▶</button>` : audioHTML(question.prompt)
+    ? audioOnly ? `<button type="button" class="study-audio" data-study-speak="${escape(question.prompt)}" aria-label="Replay question audio">▶</button>` : audioHTML(question.prompt)
     : "";
   $("secondary").textContent = "";
   $("choices").innerHTML = question.choices.map((choice, index) => {

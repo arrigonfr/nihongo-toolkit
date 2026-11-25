@@ -1,4 +1,5 @@
 import { practiceCredits as draft } from "./credits.js";
+import { counterContexts } from "./counter-contexts.js";
 
 // Explicit cells, not a pronunciation generator. Slashes separate supported readings.
 const rows = [
@@ -16,8 +17,30 @@ const rows = [
   ["つ","apples","items, using the native Japanese counting series","ひとつ ふたつ みっつ よっつ いつつ むっつ ななつ やっつ ここのつ とお"]
 ];
 const numbers = ["一","二","三","四","五","六","七","八","九","十","十一","二十"];
-export const items = rows.flatMap(([family, referent, sense, cells]) => cells.split(" ").map((cell,n) => ({
+const cells = rows.flatMap(([family, referent, sense, cells]) => cells.split(" ").map((cell,n) => ({
   ...draft,id:`counter-${family}-${n === 11 ? 20 : n+1}`,family,referent,sense,quantity:n === 11 ? 20 : n+1,
   written: numbers[n] + (family === "つ" && n === 9 ? "" : family), readings:cell.split("/"), audio:cell.split("/")[0],
   sound: family === "つ" || family === "人" && n < 2 ? "native" : cell.includes("っ") ? "small-tsu" : /[びぼば]/.test(cell) ? "voicing" : "regular"
 })));
+const irregular = {
+  die:"dice", mouse:"mice", goose:"geese", calf:"calves", wolf:"wolves", deer:"deer", elk:"elk", moose:"moose",
+  goldfish:"goldfish", carp:"carp", salmon:"salmon", trout:"trout", tuna:"tuna",
+  squid:"squid", shrimp:"shrimp", octopus:"octopuses", rhinoceros:"rhinoceroses",
+  "lump of clay":"lumps of clay", "piece of string":"pieces of string", "piece of rope":"pieces of rope"
+};
+function plural(noun) {
+  if (irregular[noun]) return irregular[noun];
+  if (/[^aeiou]y$/.test(noun)) return `${noun.slice(0,-1)}ies`;
+  if (/(s|sh|ch|x)$/.test(noun)) return `${noun}es`;
+  if (/(tomato|potato)$/.test(noun)) return `${noun}es`;
+  return `${noun}s`;
+}
+export const items = cells.flatMap(item => [
+  item,
+  ...counterContexts[item.family].split("|").map(noun => ({
+    ...item,
+    id: `${item.id}-${encodeURIComponent(noun)}`,
+    referent: item.family === "杯" ? `cupfuls of ${noun}` : plural(noun),
+    referentSingular: item.family === "杯" ? `cupful of ${noun}` : noun
+  }))
+]);

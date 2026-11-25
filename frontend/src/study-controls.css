@@ -7,6 +7,7 @@ header.study-header { display: grid; grid-template-columns: minmax(0, 1fr) auto;
 .study-embedded .brand, .study-embedded .cw-brand { max-width: 100%; }
 .study-toolbar { grid-row: 2; grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .study-toolbar button, .study-audio { border: 1px solid var(--line); border-radius: 10px; background: var(--card, #222923); color: var(--ink); padding: 9px 12px; font: 700 13px/1.4 system-ui, sans-serif; cursor: pointer; }
+.study-audio:is(button) { margin-inline-start: .35em; }
 .study-toolbar > button { display: inline-flex; flex: 0 1 auto; min-width: 0; width: auto; height: auto; min-height: 44px; padding: 4px 7px; white-space: normal; overflow-wrap: anywhere; }
 .study-toolbar button[aria-pressed="true"] { background: var(--accent-soft, #2e4033); }
 .study-toolbar [hidden] { display: none !important; }

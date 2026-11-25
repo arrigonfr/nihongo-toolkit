@@ -87,7 +87,7 @@ export const helpSteps = {
   "joshi-renshuu.html": [
     ["Look for the role of the missing word: for example, is a place a destination or where an action happens?", "Fíjate en la función: por ejemplo, ¿el lugar es un destino o el sitio donde ocurre una acción?", "Observe a função: por exemplo, o lugar é um destino ou o local onde uma ação acontece?"],
     ["Start a session and read the intended meaning before filling the gap.", "Inicia una sesión y lee el sentido buscado antes de rellenar el hueco.", "Inicie uma sessão e leia o sentido pretendido antes de preencher a lacuna."],
-    ["Type or choose a particle, then compare the completed sentences.", "Escribe o elige una partícula y compara las oraciones completas.", "Digite ou escolha uma partícula e compare as frases completas."]],
+    ["Select all correct particles, check your answer, then compare the completed sentences.", "Selecciona todas las partículas correctas, comprueba tu respuesta y compara las oraciones completas.", "Selecione todas as partículas corretas, confira sua resposta e compare as frases completas."]],
   "josushi-renshuu.html": [
     ["For reading questions, include the number and the counter together: 一本 is いっぽん.", "En las preguntas de lectura, incluye el número y el contador juntos: 一本 se lee いっぽん.", "Nas questões de leitura, inclua o número e o contador juntos: 一本 se lê いっぽん."],
     ["Choose a practice mode and look at the quantity and object.", "Elige un modo de práctica y observa la cantidad y el objeto.", "Escolha um modo de prática e observe a quantidade e o objeto."],

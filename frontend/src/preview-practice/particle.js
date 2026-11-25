@@ -1,38 +1,77 @@
 import { studyPool } from "../study-pool.js";
-import { answers, el, kana, reading, select, setting } from "./ui.js";
-import { alignFuriganaRuby } from "../furigana.js";
+import { el, kana, reading } from "./ui.js";
+import { particleFurigana, particleReadings } from "./particle-furigana.js";
 import { romanizeKana } from "../romanize.js";
 
 export function gradeParticle(item, value) {
-  const p = kana(value), correct = item.accepted.includes(p), key = correct ? p : item.accepted[0];
-  const nuance = item.nuances?.[key] || "";
-  return { correct, prompt: `${item.context} ${item.sentence.replace("|", "□")}`, response: value, answer: item.accepted.join(" / "),
-    explanation: `${item.sentence.replace("|",key)} (${item.pronunciation.replace("|",key)}) — ${item.translation} ${nuance}${item.explanation}`, mode: item.roleLabel };
+  const selected = [...new Set((Array.isArray(value) ? value : [value]).map(kana).filter(Boolean))];
+  const right = selected.filter(p => item.accepted.includes(p));
+  const wrong = selected.length - right.length;
+  const complete = right.length === item.accepted.length;
+  const correct = complete && !wrong;
+  const assessment = correct ? "Correct" : !right.length ? "Wrong"
+    : wrong ? (complete && item.accepted.length > 1 ? "Partially right" : "Partially wrong") : "Partially correct";
+  const examples = item.accepted.map(p =>
+    `${item.sentence.replace("|",p)} (${item.pronunciation.replace("|",p)})${item.nuances?.[p] ? ` — ${item.nuances[p].trim()}` : ""}`
+  ).join(" / ");
+  const missing = item.accepted.filter(p => !selected.includes(p));
+  const incorrect = selected.filter(p => !item.accepted.includes(p));
+  const details = [
+    right.length && `Correctly selected: ${right.join(" / ")}.`,
+    incorrect.length && `Incorrectly selected: ${incorrect.join(" / ")}.`,
+    missing.length && `Not selected: ${missing.join(" / ")}.`
+  ].filter(Boolean).join(" ");
+  return { correct, assessment, prompt: `${item.context} ${item.sentence.replace("|", "□")}`, response: selected.join(" / "), answer: item.accepted.join(" / "),
+    explanation: `${details} ${examples} — ${item.translation} ${item.explanation}`, mode: item.roleLabel };
 }
+const pool = studyPool("particle");
 export const particle = {
-  ...studyPool("particle"),
-  setup(c) {
-    select(c,"particle-role","Particle role",[["all","All roles"],...new Map(particle.items.map(i => [i.role, i.roleLabel]))]);
-    select(c,"particle-task","Practice", [["mixed","Mixed review"],["contrast","Contrast pairs"],["blank","Sentence blanks"]]);
-    select(c,"particle-input","Answer with",[["choice","Particle choices"],["typed","Typed particle"]]);
-  },
-  pool(c) {
-    const role = setting(c,"particle-role","all"), task = setting(c,"particle-task","mixed");
-    return particle.items.filter(i => (role === "all" || role === i.role) && (task === "mixed" || i.taskType === task))
-      .map(i => ({...i, input: setting(c,"particle-input","choice")}));
+  ...pool,
+  async prepare(load) {
+    await pool.prepare.call(this, load);
+    this.readings = particleReadings(this.items);
   },
   render(c,i,finish) {
     el(c,"p",i.context);
     const parts=i.sentence.split("|"), sounds=i.pronunciation.split("|");
     const h=el(c,"h2",null,{lang:"ja",class:"study-japanese"});
-    h.innerHTML=parts.map((part,j)=>alignFuriganaRuby(part,sounds[j])).join(" □ ");
+    h.innerHTML=parts.map((part,j)=>particleFurigana(part,sounds[j],this.readings)).join(" □ ");
+    const kanjiCount = text => [...text].filter(char => /[\p{Script=Han}々ヶヵ]/u.test(char)).length;
+    const annotated = [...h.querySelectorAll("ruby")].reduce((count,ruby)=>count + kanjiCount(ruby.firstChild.textContent),0);
+    if (annotated < kanjiCount(i.sentence)) {
+      el(c,"p",`Reading: ${sounds.join(" □ ")}`,{lang:"ja",class:"particle-reading-fallback"});
+    }
     el(c,"p",sounds.map(romanizeKana).join(" □ "),{class:"study-romaji"});
-    const options = i.choices;
-    answers(c,i.input === "typed" ? null : options,i.input === "typed" ? "Type the particle in kana" : "Your particle",v => finish(gradeParticle(i,v)));
+    el(c,"p","Select all correct particles.");
+    const group = el(c,"div",null,{class:"answer-actions preview-practice-options",role:"group","aria-label":"Select all correct particles"});
+    const selected = new Set();
+    const check = el(c,"button","Check answers ",{type:"button",class:"primary particle-check","aria-keyshortcuts":"C"});
+    check.disabled = true;
+    el(check,"kbd","C",{class:"particle-shortcut","aria-hidden":"true"});
+    const choices = i.choices.map((choice,index) => {
+      const option = el(group,"button",null,{type:"button","aria-pressed":"false","aria-keyshortcuts":String(index+1)});
+      el(option,"span",choice,{lang:"ja"});
+      el(option,"kbd",String(index+1),{class:"particle-shortcut","aria-hidden":"true"});
+      option.onclick = () => {
+        if (selected.has(choice)) selected.delete(choice); else selected.add(choice);
+        option.setAttribute("aria-pressed",String(selected.has(choice)));
+        check.disabled = !selected.size;
+      };
+      return option;
+    });
+    check.onclick = () => finish(gradeParticle(i,[...selected]));
+    const keydown = event => {
+      if (!matchMedia("(min-width: 761px) and (hover: hover)").matches || event.repeat || event.isComposing ||
+          event.ctrlKey || event.altKey || event.metaKey || event.target.closest("input, textarea, select, [contenteditable=true]") ||
+          document.querySelector("dialog[open]")) return;
+      const option = /^[1-9]$/.test(event.key) ? choices[Number(event.key)-1] : event.key.toLowerCase() === "c" ? check : null;
+      if (option && !option.disabled) { event.preventDefault(); option.click(); }
+    };
+    document.addEventListener("keydown",keydown);
+    return () => document.removeEventListener("keydown",keydown);
   },
   review(c,i,result) {
-    const p = result.correct ? kana(result.response) : i.accepted[0];
-    reading(c,i.pronunciation.replace("|",p));
+    for (const p of i.accepted) reading(c,i.pronunciation.replace("|",p));
     const partner = particle.items.find(x=>x.id === i.partner);
     if (partner) {
       const details = el(c,"details");

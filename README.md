@@ -30,8 +30,15 @@ separate states and should not use the keyboard-focus token.
 
 ### Seven-tool editorial preview
 
-In Joshi Renshuu and Josūshi Renshuu, typed particle and counter answers
-convert romaji to hiragana as you type. A Japanese keyboard is optional.
+In Joshi Renshuu, select all correct particles and check your answer. On
+desktop, number keys select choices and C checks them. In Josūshi Renshuu,
+typed counter answers convert romaji to hiragana as you type; desktop number
+keys select among six counter choices. Sessions offer 5, 10, 20, 50, or 100
+questions when enough are available.
+The counter deck combines explicitly authored readings with more than 10,000
+number-and-referent practice contexts; it does not generate new readings.
+When a particle sentence's furigana cannot be aligned confidently, its full
+reading is shown instead of guessing at the alignment.
 
 All study intros use Eawase’s layout: a Japanese and English tool label,
 a two-line headline with an accented second line, and a short introduction.
@@ -42,7 +49,7 @@ and the editorial frontend, then open
 open a [direct route](docs/SEVEN-TOOL-DEVELOPMENT-SPEC.md#completion-record).
 Normal development and production builds also include all seven tools. A small
 Preview badge identifies them in the homepage index, navigation and tool pages.
-They remain excluded from the sitemap while their content awaits review.
+They are included in the sitemap even though their content is still under review.
 
 The seven previews load learning content from the toolkit API, not bundled
 frontend decks. After importing the dictionary, provision local SQLite:
@@ -52,6 +59,11 @@ node backend/scripts/seed-study-decks.js
 node backend/scripts/provision-study-guide.mjs backend/data/nihon.sqlite
 node backend/scripts/provision-study-drawing.mjs backend/data/nihon.sqlite
 ```
+
+Re-run the seed command after updating the study decks to make new questions
+available locally. Joshi Renshuu currently has 5,150 draft questions across five
+particle-role groups, including vocabulary variations of shared sentence
+frames. Each session draws from the full pool.
 
 Before deploying, run `npm run db:sync-study-turso` to inspect the six local
 table counts without contacting Turso. Check `TURSO_DATABASE_URL` and supply a
@@ -230,7 +242,8 @@ Set `VITE_SITE_URL` to the public HTTPS origin at build time to generate canonic
 URLs, robots.txt and a sitemap containing the homepage, tools and data-source credits.
 The manually triggered Google Indexing workflow also submits this sitemap to the
 matching Search Console URL-prefix property; its service account must have access
-to that property.
+to that property. The workflow supplies `SITE_URL` explicitly; the submission
+script uses it to send the public `/sitemap.xml` URL, not a local file.
 The homepage's Open Graph and `WebSite` structured-data metadata identify the site's
 name in search results; keep them aligned with its page title.
 When adding a tool, update the dashboard menu; Vite discovers its HTML page for the
@@ -1220,16 +1233,86 @@ npm run db:translations -- import-human
 npm run db:translations -- export --lang es --kind sense --out translations/es --chunk-size 500
 npm run db:translations -- apply --source "provider/model" translations/es/*.results.jsonl
 npm run db:translations -- translate --lang pt --kind sense --limit 1000 --concurrency 4
-npm run db:translations -- sync-turso            # dry run: rows to upsert by kind and language
-npm run db:translations -- sync-turso --apply    # needs TURSO_DATABASE_URL and a write-capable TURSO_AUTH_TOKEN
+npm run db:translations -- export-review --lang es --kind sense --out review/es-sense.jsonl --limit 100
+npm run db:translations -- apply-review --reviewer "Reviewer name" review/es-sense.checked.jsonl
+npm run db:translations -- sync-turso             # local preview only
+npm run db:translations -- audit-turso            # read-only comparison; requires URL and a read-capable token
+npm run db:translations -- audit-turso --out /path/to/audit.json  # save every differing key
+npm run db:translations -- backup-turso --out /path/to/production-translations.sqlite
+npm run db:translations -- plan-turso --backup /path/to/production-translations.sqlite --out /path/to/repair-plan.json
 ```
 
-`sync-turso` creates `content_translations` in Turso if needed and upserts rows
-changed since the last sync to that database (tracked locally in `translation_sync`;
-the first run sends everything). The local database is the source of truth: a human
-translation replacing a machine one, or a retranslated stale row, overwrites the
-Turso copy. It ends by comparing row counts per kind and language. `db:sync-turso`
-does not include translations.
+`audit-turso` compares full translation rows from consistent local and remote read
+transactions, without changing either database. Set `TURSO_DATABASE_URL` and a
+read-capable `TURSO_AUTH_TOKEN` in `backend/.env` or the environment. It reports exact
+matches, different contents, local-only and remote-only rows, and remote-human versus
+local-machine conflicts, with sample keys; differences give a nonzero exit status.
+Missing remote tables or access errors fail the audit rather than implying a match.
+Use `--out` to save all differing keys (never translation values); it refuses to
+overwrite an existing report. Pagination uses the primary key to avoid repeatedly
+scanning the table, but the audit still reads the remote translations and consumes
+Turso quota. The audit does not assess linguistic quality.
+
+`backup-turso` makes an atomic, no-overwrite, owner-only SQLite snapshot of the
+remote `content_translations` table in one read-only transaction. It validates the
+backup and compares its rows with the local table in the same pass. Protect the file
+like a database backup. This reads each remote row once and consumes quota.
+`plan-turso` validates the snapshot checksum and writes a no-overwrite plan without
+translation text. It categorizes machine additions/updates, human updates and
+conflicts, protected remote human rows, and remote-only rows. The plan is not an
+approval to apply changes. Machine translations remain unapproved until reviewed.
+
+`export-review` writes a bounded JSONL queue containing each machine translation,
+its Japanese context, English source, provenance, and source/value hashes. A
+reviewer checks the translated meaning against both Japanese and English, then adds
+`"decision": "approved"`, `"rejected"` or `"uncertain"` and an optional `note` to
+each row. `apply-review` requires a reviewer name and rejects duplicate, modified,
+or stale rows; decisions are bound to both source and translation hashes. Use
+`--review-type ai` to record an AI assessment separately from a human decision.
+AI-approved rows remain in the human review queue and are not eligible for sync.
+Editing a translation invalidates its decision. Only human-sourced rows and machine
+rows with a current human approval are eligible for a future sync. No translation
+is auto-approved by a model or by passing structural checks.
+
+Example review loop:
+
+```sh
+npm run db:translations -- export-review --lang es --kind sense --out reviews/es-sense-001.jsonl --limit 100
+# Review each row's Japanese context, English source, and translation; add a decision and optional note.
+npm run db:translations -- apply-review --reviewer "Reviewer name" reviews/es-sense-001.checked.jsonl
+# AI assessments are recorded separately and still require human approval before sync.
+npm run db:translations -- apply-review --review-type ai --reviewer "AI model name" reviews/es-sense-001.assessed.jsonl
+npm run db:translations -- coverage
+```
+
+Human approval requires someone able to read Japanese and the target language.
+AI assessment can help find likely errors, but cannot establish full linguistic
+correctness; record uncertain cases as `uncertain` and leave them out of production
+sync. Review in small batches and record the reviewer/source carefully. If no
+qualified human reviewer is available, AI-approved rows remain pending for sync.
+
+**Translation sync writes are temporarily disabled**, including `sync-turso --apply`:
+the production additions and updates still need an explicit reviewed repair plan.
+`sync-turso` without `--apply` previews only currently approved local changes since
+the destination's watermark; it does not inspect Turso.
+
+The local deletion journal records the full deleted row, retains history for each
+destination, and skips deletion if that key was reinserted locally. A remote
+machine row is deleted only if it matches a recorded prior row; changed or human
+remote rows cause a conflict rather than being deleted. Remote human rows are also
+protected from upserts. Old deletion records without row contents block the sync
+until manually reviewed. Deletions made before journaling cannot be inferred, and
+remote-only rows are not pruned automatically. A sync holds a local write lock until
+it finishes; remote batches already committed before a failure are retried.
+
+To exercise the sync on Turso, create a **dedicated empty staging database** and
+set `TURSO_STAGING_DATABASE_URL` and `TURSO_STAGING_AUTH_TOKEN` in `backend/.env`,
+alongside the production `TURSO_DATABASE_URL`. Run
+`npm run test:translations:staging`: it rejects the production URL and databases
+containing unrelated tables, uses two test rows and removes them afterwards. This
+uses Turso quota. It tests a small fixture, not a production backup or full-scale
+repair. `db:sync-turso` is a separate enrichment command and does not include
+translations.
 
 `import-human` copies KANJIDIC2 meanings and direct Japanese→Spanish/Portuguese
 Tatoeba translations (lowest translation ID, translator credited); downloads are
@@ -1241,11 +1324,11 @@ whose English source changed after export. JMdict's Spanish glosses are not impo
 because they are not aligned with English senses and carry separate rights.
 
 The API attaches current translations to kanji details, word senses and examples
-(`translations_by_language`); stale kanji and sense rows are skipped. Example
-translations translate the Japanese and are served even when the English wording
-differs. Without the `content_translations` table (production today) everything
-stays English. Sentence items include Tatoeba examples that exist only in word
-records (`tatoeba:<id>`), not just the `sentences` table.
+(`translations_by_language`); stale kanji and sense rows are skipped. Human
+Tatoeba sentence translations are selected through direct Japanese-to-target
+language links; machine sentence translations are generated from the English
+source. Sentence items include Tatoeba examples that exist only in word records
+(`tatoeba:<id>`), not just the `sentences` table.
 
 `translate` is the free local path: it sends one item per request to Ollama
 (default `translategemma:4b`; `ollama pull translategemma:4b` first), commits each

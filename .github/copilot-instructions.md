@@ -133,6 +133,14 @@ exceptions instead of silently omitting them.
    constructing HTML. External calls and storage failures must not appear
    successful when they fail.
 
+Translation sync writes are disabled pending a reviewed repair plan and preflight
+protection for conflicting machine updates. Preserve remote human translations,
+keep per-destination deletion history, report remote-only rows rather than pruning
+them automatically, and compare full contents before planning production changes.
+Machine translations require a current hash-bound human approval before they are
+eligible for sync. Track AI assessments separately; they remain pending human
+review and must never be treated as production approval.
+
 ## Verification before finishing
 
 - Test the actual changed behavior, not just page rendering. For a new page,
