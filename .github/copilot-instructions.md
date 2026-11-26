@@ -116,9 +116,15 @@ exceptions instead of silently omitting them.
    operation, visible focus, appropriate `lang`, and accessible loading,
    status, and error messages. Setting-name help must work with keyboard,
    pointer, and touch without activating the underlying control.
-8. **Responsive layout:** Reuse `study-controls.css`, `settings-panel.css`,
-   `select-controls.css`, `ui-kit.css`, and existing page patterns instead of
-   independently restyling shared controls. Check usable layout at mobile and
+8. **Responsive layout and input consistency:** Reuse `study-controls.css`,
+   `settings-panel.css`, `select-controls.css`, `chips.css`, `ui-kit.css`, and
+   existing page patterns instead of independently restyling shared controls.
+   Keep a consistent visual standard for every input type (`<select>`,
+   text/search/number `<input>`, checkboxes/radios, chips, and buttons) across
+   all pages — matching `ui-kit.css` (`38px` control height, `10px` radius,
+   `1px solid var(--line)`, `var(--card)` background, `13px`/`500` control text,
+   `12.5px`/`650` plum labels, and the shared focus ring) even when controls
+   live outside `<details>` or `.ui-panel`. Check usable layout at mobile and
    desktop widths, including narrow screens, long labels, dialogs, menus,
    keyboard focus, touch targets, and horizontal overflow. Check light and dark
    modes and more than one palette; preserve contrast and the shared header and

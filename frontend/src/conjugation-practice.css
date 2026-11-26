@@ -20,6 +20,37 @@ h3 { font-size: 15px; margin-top: 20px; }
 .settings-grid label { align-content: start; }
 #quickSettings > label:first-child { grid-column: 1 / -1; }
 #quickSettings > fieldset { margin: 0; }
+#quickSettings > label:has(> #setting-questions) {
+  display: block;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--text-plum);
+  letter-spacing: .01em;
+}
+#setting-questions {
+  display: block;
+  margin-top: 6px;
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background-color: var(--card);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+#setting-questions:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
 #displaySettings { grid-template-columns: minmax(0, 1fr) 130px; }
 #displaySettings > .font-field { grid-column: auto; }
 @media (max-width: 760px) { #displaySettings { grid-template-columns: minmax(0, 1fr); } }

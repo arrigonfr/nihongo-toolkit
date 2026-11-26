@@ -1,21 +1,46 @@
 .daily-kanji {
-  padding: .75rem 1rem;
+  position: relative;
+  max-width: 34rem;
+  margin-inline: auto;
+  padding: 1.15rem 1.25rem;
   border: 1px solid var(--line);
   border-radius: .75rem;
   background: var(--card);
+  text-align: center;
   overflow-wrap: anywhere;
 }
 .daily-kanji :is(h2, p) { margin: 0; }
 .daily-kanji time, .daily-credits { color: var(--muted); font-size: .8rem; }
+.daily-badge {
+  position: absolute;
+  top: .75rem;
+  right: .75rem;
+  width: 56px;
+  height: 56px;
+  border-radius: .75rem;
+  border: 1px solid var(--line);
+  background: var(--card);
+  pointer-events: none;
+}
+.daily-badge[data-kind="mascot"] {
+  object-fit: cover;
+  object-position: 42% 16%;
+}
+.daily-badge[data-kind="logo"] {
+  object-fit: contain;
+  padding: 4px;
+  box-sizing: border-box;
+}
 .daily-kanji-details:not([hidden]) {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: .75rem;
-  margin-block: .5rem;
+  gap: .45rem;
+  margin-block: .75rem;
 }
 .daily-glyph { color: var(--accent); font-size: clamp(2.5rem, 18vw, 4rem); line-height: 1.1; }
 .daily-readings { font-weight: 700; }
+.daily-embed .daily-badge { width: 44px; height: 44px; top: .55rem; right: .55rem; }
 .daily-embed-controls { margin-block: 1rem; }
 .daily-embed-controls textarea {
   box-sizing: border-box;

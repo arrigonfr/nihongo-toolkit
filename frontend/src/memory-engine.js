@@ -4,11 +4,11 @@ import { selectedLevels, matchesLevel } from "./jlpt-levels.js";
 import { createSeededRandom } from "./crossword-engine.js";
 
 export const WORD_PAIRS = {
-  kh: "Kanji → Hiragana", kk: "Kanji → Katakana", ka: "Kanji → Any kana",
-  kr: "Kanji → Romaji", hr: "Hiragana → Romaji", tr: "Katakana → Romaji",
-  ar: "Any kana → Romaji", ht: "Hiragana → Katakana",
-  "same-katakana": "Katakana → Katakana", "same-hiragana": "Hiragana → Hiragana",
-  "same-kanji": "Kanji → Kanji", km: "Kanji → Meaning", vm: "Vocab (kanji or kana) → Meaning", mixed: "Mixed"
+  kh: "Kanji ↔ Hiragana", kk: "Kanji ↔ Katakana", ka: "Kanji ↔ Any kana",
+  kr: "Kanji ↔ Romaji", hr: "Hiragana ↔ Romaji", tr: "Katakana ↔ Romaji",
+  ar: "Any kana ↔ Romaji", ht: "Hiragana ↔ Katakana",
+  "same-katakana": "Katakana ↔ Katakana", "same-hiragana": "Hiragana ↔ Hiragana",
+  "same-kanji": "Kanji ↔ Kanji", km: "Kanji ↔ Meaning", vm: "Vocab (kanji or kana) ↔ Meaning", mixed: "Mixed"
 };
 export const KANA_PAIRS = Object.fromEntries(["ht", "hr", "tr", "ar", "same-katakana", "same-hiragana", "mixed"].map((key) => [key, WORD_PAIRS[key]]));
 export const MODES = {
@@ -22,7 +22,7 @@ export const GROUPS = {
 };
 export const DISPLAYS = {
   text: "Japanese text", furigana: "Japanese with furigana", romaji: "Japanese with romaji",
-  meaning: "Japanese with English", english: "English-only clue", audio: "Audio-only clue", picture: "Picture / emoji clue"
+  meaning: "Japanese with English", english: "English-only clue", audio: "Audio-only clue"
 };
 export const GRIDS = {
   "4x3": "Easy · 4 × 3", "4x4": "Easy · 4 × 4", "5x4": "Easy / Medium · 5 × 4",
@@ -92,7 +92,7 @@ export function validateSettings(value) {
   if (!isFontSetting(font)) throw new Error("Choose an available Japanese font.");
   const enums = { content: ["words", "kana"], pairing: Object.keys(WORD_PAIRS), mode: Object.keys(MODES),
     grid: Object.keys(GRIDS), back: Object.keys(BACKS),
-    timer: ["off", "up", "down"], display: Object.keys(DISPLAYS), shuffle: Object.keys(SHUFFLE_MODES),
+    timer: ["off", "up", "down"], display: [...Object.keys(DISPLAYS), "picture"], shuffle: Object.keys(SHUFFLE_MODES),
     hints: ["limited", "unlimited", "disabled"], reveals: ["limited", "unlimited", "disabled"] };
   for (const [key, options] of Object.entries(enums)) if (!options.includes(value[key])) throw new Error(`Invalid ${key} setting.`);
   if (value.content === "kana" && !(value.pairing in KANA_PAIRS)) throw new Error("Kanji pairings are only available for words.");

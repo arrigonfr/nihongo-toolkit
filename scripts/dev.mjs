@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
 
-const children = ["backend", "frontend"].map((workspace) =>
-  spawn("npm", ["run", "dev", "-w", workspace], { stdio: "inherit" }));
+const children = [
+  spawn("npm", ["run", "dev", "-w", "backend"], { stdio: "inherit" }),
+  spawn("npm", ["run", "dev", "-w", "frontend", "--", "--host", "0.0.0.0", "--port", "5173"], { stdio: "inherit" })
+];
 let stopping = false;
 function stop(code) {
   if (stopping) return;

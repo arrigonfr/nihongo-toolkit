@@ -75,7 +75,7 @@ export function cancelLocalSpeech() {
   if (status) showStatus("");
 }
 
-export async function speakLocalJapanese(text) {
+export async function speakLocalJapanese(text, { rate = 1, onStart, onEnd, onError } = {}) {
   const id = requestId;
   try {
     context ||= new AudioContext();
@@ -92,19 +92,23 @@ export async function speakLocalJapanese(text) {
     buffer.copyToChannel(audio.audio, 0);
     const source = context.createBufferSource();
     source.buffer = buffer;
+    if (Number.isFinite(rate) && rate > 0) source.playbackRate.value = rate;
     source.connect(context.destination);
     sources.add(source);
     source.onended = () => {
       source.disconnect();
       sources.delete(source);
+      if (id === requestId) onEnd?.();
     };
     const start = Math.max(context.currentTime, nextStart);
-    nextStart = start + buffer.duration;
+    nextStart = start + buffer.duration / (source.playbackRate.value || 1);
+    onStart?.();
     source.start(start);
     showStatus("");
   } catch (error) {
     if (id !== requestId) return;
     console.error("Local Japanese speech playback failed.", error);
     showStatus("Japanese audio could not be played. Please check your connection and try again.");
+    onError?.(error);
   }
 }

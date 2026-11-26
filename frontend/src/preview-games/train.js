@@ -22,10 +22,22 @@ function makeSelect(id, labelText, options) {
   for (const [value, text] of options) {
     const option = el("option", text);
     option.value = value;
+    option.dataset.baseLabel = text;
     select.append(option);
   }
   label.append(select);
   return label;
+}
+
+function matchesFilter(item, { network, rule, legs }) {
+  if (network !== "all" && item.network !== network) return false;
+  if (legs === "single" && item.legs.length !== 1) return false;
+  if (legs === "multi" && item.legs.length < 2) return false;
+  if (rule === "counting" && !item.legs.some(l => countingRules.has(l.rule))) return false;
+  if (rule === "relative" && !item.legs.some(l => relativeRules.has(l.rule))) return false;
+  if (rule === "transfer" && !item.legs.some(l => l.rule === "transfer")) return false;
+  if (rule === "terminal" && !item.legs.some(l => l.rule === "terminal")) return false;
+  return true;
 }
 
 function shortcutBadge(key) {
@@ -58,7 +70,7 @@ function connectedServices(net, stationId, currentCode) {
 export const train = {
   ...studyPool("train", validateJourney),
   setup(container) {
-    setupNote(container, "Count stops ahead, not your starting station. A transfer changes lines without moving.");
+    setupNote(container, `Count stops ahead, not your starting station. A transfer changes lines without moving. Explore ${train.items.length.toLocaleString()} journeys across 8 railway networks.`);
     container.append(
       makeSelect("train-network", "Railway network", [
         ["all", "All networks"],
@@ -93,16 +105,31 @@ export const train = {
     const network = filters.querySelector("#train-network")?.value || "all";
     const legs = filters.querySelector("#train-legs")?.value || "all";
     const rule = filters.querySelector("#train-rule")?.value || "all";
-    return train.items.filter(item => {
-      if (network !== "all" && item.network !== network) return false;
-      if (legs === "single" && item.legs.length !== 1) return false;
-      if (legs === "multi" && item.legs.length < 2) return false;
-      if (rule === "counting" && !item.legs.some(l => countingRules.has(l.rule))) return false;
-      if (rule === "relative" && !item.legs.some(l => relativeRules.has(l.rule))) return false;
-      if (rule === "transfer" && !item.legs.some(l => l.rule === "transfer")) return false;
-      if (rule === "terminal" && !item.legs.some(l => l.rule === "terminal")) return false;
-      return true;
-    });
+    return train.items.filter(item => matchesFilter(item, { network, rule, legs }));
+  },
+  onSettingsChange(filters) {
+    const active = {
+      network: filters.querySelector("#train-network")?.value || "all",
+      rule: filters.querySelector("#train-rule")?.value || "all",
+      legs: filters.querySelector("#train-legs")?.value || "all"
+    };
+    const controls = [
+      ["#train-network", "network"],
+      ["#train-rule", "rule"],
+      ["#train-legs", "legs"]
+    ];
+    for (const [selector, field] of controls) {
+      const select = filters.querySelector(selector);
+      if (!select) continue;
+      for (const option of select.options) {
+        const base = option.dataset.baseLabel || option.textContent;
+        const count = train.items.filter(item => matchesFilter(item, { ...active, [field]: option.value })).length;
+        const nextLabel = field === "legs" && option.value === "all" ? base : `${base} (${count})`;
+        option.textContent = nextLabel;
+        const chipLabel = select.chipsApi?.group?.querySelector(`.chip-option[data-value="${CSS.escape(option.value)}"] .chip-label`);
+        if (chipLabel) chipLabel.textContent = nextLabel;
+      }
+    }
   },
   render(container, item, finish) {
     const net = item.net, board = root(container), results = [];

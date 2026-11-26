@@ -68,6 +68,8 @@ const checkbox = (id, label) => `<label class="check-label"><input id="setting-$
 const options = (...values) => values.map((value) => [value, value[0].toUpperCase() + value.slice(1)]);
 $("quickSettings").innerHTML = select("mode", "Practice mode", Object.entries(modes))
   + select("questions", "Questions per session", Array.from({ length: 20 }, (_, i) => [(i + 1) * 5, `${(i + 1) * 5} questions`]));
+$("setting-mode").dataset.noSettingHelp = "";
+$("setting-questions").dataset.noSettingHelp = "";
 $("quickSettings").insertBefore($("levelSettings"), $("setting-questions").closest("label"));
 const syncModePills = pillSelect($("setting-mode"), {
   classic: "Conjugate words with your selected filters.", quick: "A short drill of five questions.",
@@ -83,7 +85,7 @@ $("questionSettings").innerHTML = [
   select("tense", "Tense", [["both", "All"], ["non-past", "Non-past"], ["past", "Past"]]),
   select("prompt", "Requested form shown as", [["name", "Form name"], ["description", "Usage description"], ["mixed", "Mixed"]]),
   select("reverseTask", "Reverse mode: identify", [["base", "Base word"], ["form", "Form name"], ["polarity", "Polarity"], ["tense", "Tense"], ["politeness", "Politeness"]], "Choose what you will be quizzed on"),
-  number("seconds", "Timed duration (s)", 10, 3600),
+  number("seconds", "Timed duration (s)", 10, 3600, "Specify duration in seconds"),
   plainNumber("mistakes", "Max. Marathon mistakes", 0, 100),
   checkbox("timer", "Show elapsed time in untimed modes")
 ].join("");

@@ -46,10 +46,20 @@ export async function studyGuide(source, url) {
     else w.push("status IN ('draft','dictionary')");
 
     for (const term of qTerms) { w.push("instr(search,?)>0"); a.push(term); }
-    if (exclude !== "scene" && active.scene) { w.push("scene=?"); a.push(active.scene); }
+    if (exclude !== "scene" && active.scene) {
+      if (active.scene === "Other") w.push("(scene IS NULL OR scene='' OR scene='Other')");
+      else { w.push("scene=?"); a.push(active.scene); }
+    }
     if (exclude !== "type" && active.type) { w.push("type=?"); a.push(active.type); }
     if (exclude !== "register" && active.register) { w.push("register=?"); a.push(active.register); }
-    if (exclude !== "usage" && active.usage) { w.push("instr(usage,?)>0"); a.push(`,${active.usage},`); }
+    if (exclude !== "usage" && active.usage) {
+      if (active.usage === "other") {
+        w.push("instr(usage,',adv,')=0 AND instr(usage,',vs,')=0 AND instr(usage,',adj,')=0 AND instr(usage,',n,')=0 AND instr(usage,',int,')=0");
+      } else {
+        w.push("instr(usage,?)>0");
+        a.push(`,${active.usage},`);
+      }
+    }
     if (exclude !== "frequency") {
       if (active.frequency === "marked") w.push("common=1");
       else if (active.frequency === "unmarked") w.push("common=0");
@@ -101,7 +111,15 @@ export async function studyGuide(source, url) {
     const sf = buildFilter("scene");
     const sceneRows = await db.prepare(`SELECT scene, COUNT(*) AS n FROM study_guide_cards WHERE ${sf.clause} GROUP BY scene`).all(...sf.args);
     const sceneCounts = Object.fromEntries((result.scene || []).map(s => [s, 0]));
-    for (const r of sceneRows) if (r.scene) sceneCounts[r.scene] = r.n;
+    let otherScene = 0;
+    for (const r of sceneRows) {
+      if (r.scene && r.scene !== "Other") sceneCounts[r.scene] = r.n;
+      else otherScene += r.n;
+    }
+    if (otherScene > 0 || active.scene === "Other") {
+      sceneCounts.Other = otherScene;
+      if (!result.scene.includes("Other")) result.scene = [...result.scene, "Other"];
+    }
     result.sceneCounts = sceneCounts;
 
     const uf = buildFilter("usage");
@@ -111,7 +129,8 @@ export async function studyGuide(source, url) {
         SUM(CASE WHEN instr(usage,',vs,')>0 THEN 1 ELSE 0 END) AS vs,
         SUM(CASE WHEN instr(usage,',adj,')>0 THEN 1 ELSE 0 END) AS adj,
         SUM(CASE WHEN instr(usage,',n,')>0 THEN 1 ELSE 0 END) AS n,
-        SUM(CASE WHEN instr(usage,',int,')>0 THEN 1 ELSE 0 END) AS int_c
+        SUM(CASE WHEN instr(usage,',int,')>0 THEN 1 ELSE 0 END) AS int_c,
+        SUM(CASE WHEN instr(usage,',adv,')=0 AND instr(usage,',vs,')=0 AND instr(usage,',adj,')=0 AND instr(usage,',n,')=0 AND instr(usage,',int,')=0 THEN 1 ELSE 0 END) AS other_c
       FROM study_guide_cards WHERE ${uf.clause}
     `).get(...uf.args);
     result.usageCounts = {
@@ -119,7 +138,8 @@ export async function studyGuide(source, url) {
       vs: uRow?.vs || 0,
       adj: uRow?.adj || 0,
       n: uRow?.n || 0,
-      int: uRow?.int_c || 0
+      int: uRow?.int_c || 0,
+      other: uRow?.other_c || 0
     };
 
     const ff = buildFilter("frequency");

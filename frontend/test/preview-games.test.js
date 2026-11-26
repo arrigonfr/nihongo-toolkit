@@ -12,6 +12,7 @@ import { drawings } from "../src/preview-games/pictures.js";
 import { createCluePlayer } from "../src/preview-games/clue-player.js";
 
 test("crossroads rejects broken banks; guesses and reveals have a fixed hint cost", () => {
+  assert.ok(puzzles.length >= 1000);
   puzzles.forEach(validatePuzzle);
   const p = puzzles[0];
   assert.deepEqual([0,1,2,3].map(h => crossResult(p,"曜",h).points), [3,2,1,1]);
@@ -61,7 +62,7 @@ test("each journey resolves uniquely and resumes from the last intended platform
   assert.match(clueFor(networks.river,{ rule:"stationsAhead", arg:3, service:"R", dir:1, start:"west" }).clue, /三駅先/);
   const netNames = Object.keys(networks);
   assert.ok(netNames.length >= 8);
-  assert.ok(journeys.length >= 400);
+  assert.ok(journeys.length >= 1000);
   for (const name of netNames) {
     const netJourneys = journeys.filter(x => x.network === name);
     assert.ok(netJourneys.filter(x => x.legs.length === 1).length >= 20, `${name} single-leg variety`);
@@ -241,15 +242,23 @@ test("shuden filters, persists view, confirms selections, recovers on multi-leg 
     await desktop.goto(`${origin}/shuden`);
     await desktop.locator("#startButton").waitFor();
     assert.deepEqual(await desktop.locator("#editorialLength option").allInnerTexts(), ["5", "10", "20", "50", "100"]);
+    assert.equal(await desktop.locator("#train-network + .chips .chip-option[data-study-help]").count(), 9);
+    assert.equal(await desktop.locator("#train-rule + .chips .chip-option[data-study-help]").count(), 5);
+    assert.equal(await desktop.locator('#train-network + .chips [data-value="all"] .chip-label').innerText(), "All networks (2)");
+    assert.equal(await desktop.locator('#train-rule + .chips [data-value="transfer"] .chip-label').innerText(), "Transfers (1)");
+    assert.equal(await desktop.locator('#train-legs + .chips [data-value="all"] .chip-label').innerText(), "All");
+    assert.equal(await desktop.locator('#train-legs + .chips [data-value="single"] .chip-label').innerText(), "Single-leg (1)");
 
-    // Incompatible filter combination disables Start with helpful message
-    await desktop.locator("#train-network").selectOption("lake");
-    await desktop.locator("#train-rule").selectOption("transfer");
+    // Incompatible filter combination disables Start with helpful message and updates faceted chip counts live
+    await desktop.locator('#train-network + .chips [data-value="lake"]').click();
+    assert.equal(await desktop.locator('#train-rule + .chips [data-value="transfer"] .chip-label').innerText(), "Transfers (0)");
+    assert.equal(await desktop.locator('#train-legs + .chips [data-value="multi"] .chip-label').innerText(), "Multi-leg (0)");
+    await desktop.locator('#train-rule + .chips [data-value="transfer"]').click();
     assert.equal(await desktop.locator("#startButton").isDisabled(), true);
     assert.match(await desktop.locator("#poolError").innerText(), /No eligible journeys/);
 
     // Single-leg journey goes directly to #roundFeedback on confirm
-    await desktop.locator("#train-rule").selectOption("terminal");
+    await desktop.locator('#train-rule + .chips [data-value="terminal"]').click();
     assert.equal(await desktop.locator("#startButton").isDisabled(), false);
     await desktop.locator("#startButton").click();
     await desktop.locator("#roundBody .pg-service.is-active").waitFor();
@@ -267,8 +276,8 @@ test("shuden filters, persists view, confirms selections, recovers on multi-leg 
     // Multi-leg transfer journey: wrong pick -> explicit recovery -> view toggle persistence -> transfer -> finish
     await desktop.locator("#stopSessionButton").click();
     await desktop.getByRole("button", { name: "Practice again" }).click();
-    await desktop.locator("#train-network").selectOption("coast");
-    await desktop.locator("#train-rule").selectOption("transfer");
+    await desktop.locator('#train-network + .chips [data-value="coast"]').click();
+    await desktop.locator('#train-rule + .chips [data-value="transfer"]').click();
     await desktop.locator("#startButton").click();
     await desktop.locator("#roundBody .pg-service.is-active").waitFor();
 
@@ -320,6 +329,114 @@ test("shuden filters, persists view, confirms selections, recovers on multi-leg 
     await mobile.goto(`${origin}/shuden`);
     await mobile.locator("#startButton").tap();
     await mobile.locator("#roundBody .pg-service.is-active").waitFor();
+    assert.equal(await mobile.locator("#roundBody kbd.particle-shortcut").first().isVisible(), false);
+    assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await mobileContext.close();
+
+    assert.deepEqual(errors, []);
+  } finally {
+    await browser?.close();
+    await server?.close();
+    if (previous === undefined) delete process.env.EDITORIAL_PREVIEWS;
+    else process.env.EDITORIAL_PREVIEWS = previous;
+  }
+});
+
+test("clue playback falls back immediately when loaded voices lack Japanese and emits playing before heard", () => {
+  const synth = new EventTarget(), states = [], fallbackCalls = [];
+  synth.getVoices = () => [{ lang: "en-US", name: "English" }];
+  synth.speak = () => { throw new Error("should not call synth.speak without Japanese voice"); };
+  const player = createCluePlayer({
+    synth, Utterance: class {}, silence() {}, enabled: () => true,
+    onState: s => states.push(s),
+    fallback: (text, opts) => {
+      fallbackCalls.push({ text, rate: opts.rate });
+      opts.onStart();
+      opts.onEnd();
+    }
+  });
+  player.play("あめのひ", { rate: 0.7 });
+  assert.deepEqual(fallbackCalls, [{ text: "あめのひ", rate: 0.7 }]);
+  assert.deepEqual(states, ["loading", "playing", "heard"]);
+});
+
+test("kikitori karuta supports numeric length, topic & caption chips, text clue with replay, shortcuts, and rich review", async () => {
+  const { createServer } = await import("vite");
+  const { chromium } = await import("playwright");
+  const root = new URL("../", import.meta.url).pathname;
+  const previous = process.env.EDITORIAL_PREVIEWS;
+  process.env.EDITORIAL_PREVIEWS = "1";
+  let server, browser;
+  try {
+    server = await createServer({ root, server: { host: "127.0.0.1", port: 0, strictPort: false, watch: null }, logLevel: "error" });
+    await server.listen();
+    const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
+    browser = await chromium.launch();
+    const errors = [];
+
+    const desktop = await browser.newPage({ viewport: { width: 1200, height: 840 } });
+    desktop.on("pageerror", error => errors.push(error.message));
+    await desktop.route("**/*", route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+    await desktop.route("**/api/study/deck/karuta*", route => route.fulfill({ json: { items: pictures } }));
+
+    await desktop.goto(`${origin}/kikitori-karuta`);
+    await desktop.locator("#startButton").waitFor();
+    assert.deepEqual(await desktop.locator("#editorialLength option").allInnerTexts(), ["5", "10", "20", "50", "100"]);
+    assert.equal(await desktop.locator("#poolCount").count(), 0);
+    assert.ok(pictures.length >= 5000);
+    assert.equal(new Set(pictures.map(p => p.pictureId ?? p.id)).size, 102);
+    assert.equal(await desktop.locator("#karuta-category + .chips .chip-option[data-study-help]").count(), 14);
+    assert.match(await desktop.locator('#karuta-category + .chips [data-value="all"]').innerText(), new RegExp(`All topics \\(${pictures.length}\\)`));
+    assert.match(await desktop.locator('#karuta-category + .chips [data-value="animals"]').innerText(), /Animals \(306\)/);
+    assert.equal(await desktop.locator("#karuta-labels + .chips .chip-option[data-study-help]").count(), 3);
+    await desktop.locator(".editorial-credits summary").click();
+    assert.match(await desktop.locator(".editorial-credits").innerText(), /Tabler Icons/);
+
+    // Filter to animals + captions-only mode, verify Japanese captions toggle live
+    await desktop.locator('#karuta-category + .chips [data-value="animals"]').click();
+    await desktop.locator('#karuta-labels + .chips [data-value="captions"]').click();
+    await desktop.locator("#startButton").click();
+    await desktop.locator("#roundBody .pg-hand button").first().waitFor();
+
+    const tiles = desktop.locator("#roundBody .pg-hand button");
+    assert.equal(await tiles.count(), 6);
+    assert.equal(await tiles.first().isDisabled(), true);
+    assert.equal(await tiles.first().locator("svg, .karuta-icon").count(), 0);
+    assert.equal(await tiles.first().locator(".karuta-caption").count(), 1);
+    assert.ok((await tiles.first().getAttribute("aria-label")).length > 0);
+    assert.equal(await tiles.first().locator("kbd.particle-shortcut").isVisible(), true);
+
+    // Toggle Japanese captions live with J shortcut
+    const beforeCaption = await tiles.first().locator(".karuta-caption").innerText();
+    await desktop.keyboard.press("j");
+    assert.equal(await desktop.locator("#roundBody .pg-actions").getByRole("button", { name: /Japanese captions/ }).getAttribute("aria-pressed"), "true");
+    assert.notEqual(await tiles.first().locator(".karuta-caption").innerText(), beforeCaption);
+    assert.equal(await tiles.first().locator('.karuta-caption [lang="ja"]').count(), 1);
+
+    // Switch to text clue with T shortcut: tiles unlock and Play clue remains enabled
+    await desktop.keyboard.press("t");
+    assert.equal(await desktop.locator("#roundBody .pg-instruction").isVisible(), true);
+    assert.equal(await tiles.first().isDisabled(), false);
+    assert.equal(await desktop.locator("#roundBody .pg-play-btn").isDisabled(), false);
+
+    // Pick first card with keyboard shortcut 1 and verify rich review
+    await desktop.keyboard.press("1");
+    await desktop.locator("#roundFeedback").waitFor({ state: "visible" });
+    assert.ok(await desktop.locator('#roundFeedback [data-field="prompt"] dd ruby').count() >= 1);
+    assert.match(await desktop.locator('#roundFeedback [data-field="answer"] dd a').getAttribute("href"), /^https:\/\/jisho\.org\/search\//);
+    assert.ok(await desktop.locator("#roundFeedback .pg-karuta-card").count() >= 1);
+    assert.equal(await desktop.locator('#roundFeedback button[aria-label="Replay description"]').count(), 1);
+    await desktop.close();
+
+    // Mobile check: no horizontal overflow and shortcuts hidden
+    const mobileContext = await browser.newContext({ viewport: { width: 360, height: 840 }, hasTouch: true });
+    await mobileContext.route("**/*", route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+    await mobileContext.route("**/api/study/deck/karuta*", route => route.fulfill({ json: { items: pictures } }));
+    const mobile = await mobileContext.newPage();
+    mobile.on("pageerror", error => errors.push(error.message));
+    await mobile.goto(`${origin}/kikitori-karuta`);
+    await mobile.locator("#startButton").tap();
+    await mobile.locator("#roundBody .pg-hand button").first().waitFor();
     assert.equal(await mobile.locator("#roundBody kbd.particle-shortcut").first().isVisible(), false);
     assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     await mobileContext.close();

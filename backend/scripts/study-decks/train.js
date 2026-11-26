@@ -186,7 +186,7 @@ function expandJourneys(existing) {
     }
 
     // 1. Single-leg variety across all rules
-    const singleTargets = { counting: 10, relative: 8, terminal: 6, transfer: 6 };
+    const singleTargets = { counting: 40, relative: 32, terminal: 20, transfer: 20 };
     for (const leg of rideLegs) {
       const b = ruleBucket(leg.rule);
       add([leg], singleCounts, b, singleTargets[b]);
@@ -204,10 +204,13 @@ function expandJourneys(existing) {
     }
     for (const first of rideLegs) {
       const nexts = byStart.get(`${first.service}:${first.dir}:${first.end}`) || [];
+      let used = 0;
       for (const second of nexts) {
         if (first.rule === second.rule) continue;
         const b2 = ruleBucket(second.rule);
-        if (add([first, second], multiCounts, b2, b2 === "terminal" ? 8 : 10)) break;
+        if (add([first, second], multiCounts, b2, b2 === "terminal" ? 24 : 36)) {
+          if (++used >= 3) break;
+        }
       }
     }
 
@@ -216,9 +219,12 @@ function expandJourneys(existing) {
       const arrivals = rideLegs.filter(l => l.service === from && l.end === st);
       const departures = rideLegs.filter(l => l.service === to && l.start === st);
       for (const first of arrivals) {
+        let used = 0;
         for (const third of departures) {
           const xfer = transfer(from, first.dir, st, to, third.dir);
-          if (add([first, xfer, third], multiCounts, "transfer", 12)) break;
+          if (add([first, xfer, third], multiCounts, "transfer", 60)) {
+            if (++used >= 4) break;
+          }
         }
       }
     }

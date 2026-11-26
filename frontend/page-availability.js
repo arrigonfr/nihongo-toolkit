@@ -44,7 +44,7 @@ export function pageAvailability(pages) {
       for (const output of Object.values(bundle)) {
         if (output.type !== "chunk") continue;
         for (const id of Object.keys(output.modules)) {
-          if (/\/src\/(?:resources\.js|cheatsheet-[^/]+|worksheet[^/]*|KanjiStrokeOrders[^/]*)$/.test(id)) {
+          if (/\/src\/(?:resources\.js|cheatsheet-data\.js|kanji-alive-radicals\.json|worksheet[^/]*|KanjiStrokeOrders[^/]*)$/.test(id)) {
             throw new Error(`Disabled Shiryō module included in build: ${id}`);
           }
         }

@@ -16,6 +16,7 @@
     "dev:backend": "npm run dev -w backend",
     "dev:frontend": "npm run dev -w frontend",
     "dev:editorial": "EDITORIAL_PREVIEWS=1 node scripts/dev.mjs",
+    "preview:disabled": "node scripts/preview-disabled.mjs",
     "test:editorial": "node --test frontend/test/preview-*.test.js && node scripts/editorial-browser-test.mjs",
     "db:init": "npm run db:init -w backend",
     "db:index-words": "node --use-system-ca --env-file-if-exists=backend/.env backend/scripts/index-word-forms.js",

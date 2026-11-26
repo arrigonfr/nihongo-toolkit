@@ -1,0 +1,66 @@
+// Additional single-ink SVG drawings for the expanded Kikitori Karuta deck (54 pictures).
+export const extraDrawings = {
+  // Everyday set 2
+  pencil: `<path d="M20 76 28 54 66 16l14 14-38 38zm8-22 14 14m16-44 14 14M20 76l8-2-6-6z"/>`,
+  toothbrush: `<path d="M16 64h64a4 4 0 0 1 0 8H16a4 4 0 0 1 0-8zm42 0V46m6 18V46m6 18V46m6 18V46M56 46h22"/>`,
+  mirror: `<ellipse cx="48" cy="38" rx="22" ry="26"/><path d="M40 62v20h16V62M36 28l10-10m-6 20 16-16"/>`,
+  candle: `<rect x="34" y="42" width="28" height="40" rx="3"/><path d="M48 42v-8m0-22q10 11 0 22-10-11 0-22zM26 82h44"/>`,
+  envelope: `<rect x="12" y="24" width="72" height="48" rx="5"/><path d="m14 26 34 26 34-26M14 70l24-20m44 20-24-20"/>`,
+  calendar: `<rect x="14" y="20" width="68" height="62" rx="6"/><path d="M14 38h68M32 12v14m32-14v14M28 52h10v10H28zm15 0h10v10H43zm15 0h10v10H58zM28 66h10v8H28zm15 0h10v8H43z"/>`,
+  // Animals
+  dog: `<path d="M24 50c-8-4-12-16-6-24l12 8h36l12-8c6 8 2 20-6 24v16c0 10-8 16-24 16S24 76 24 66z"/><circle cx="38" cy="48" r="2.5"/><circle cx="58" cy="48" r="2.5"/><path d="M44 58h8l-4 5zm4 5v6m-6 0q6 4 12 0"/>`,
+  cat: `<path d="M24 44 20 18l18 14h20l18-14-4 26c4 18-6 34-24 34S20 62 24 44Z"/><circle cx="38" cy="48" r="2.5"/><circle cx="58" cy="48" r="2.5"/><path d="M45 56h6l-3 4zm-29-2h14m-14 8h14m36-8h14m-14 8h14"/>`,
+  bird: `<path d="M20 58q14-32 42-28 12 2 16 10l8 2-8 6q-6 20-34 22-14 0-24-12Zm-8 6 12-6m20-16q10 10 22 4M44 70v12m10-12v12"/><circle cx="64" cy="40" r="2"/>`,
+  turtle: `<path d="M18 58q4-28 30-28t30 28zm58-4c6-8 12-6 12 2s-6 10-12 6M26 58l-4 14m16-14v14m20-14v14m12-14 4 14M18 58l-8 4M34 34l6 24m16-24-6 24m-26-10h48"/>`,
+  butterfly: `<path d="M48 24v48M48 44C34 20 12 22 14 42c1 10 14 14 22 10-10 4-14 16-6 22 8 6 18-6 18-18m0-12c14-24 36-22 34-2-1 10-14 14-22 10 10 4 14 16 6 22-8 6-18-6-18-18M44 24l-8-10m16 10 8-10"/>`,
+  elephant: `<path d="M18 68V42q0-20 26-20h18q16 0 18 18v16q0 12 8 12v8q-16 0-16-16v-8m-54 16h14v-14h24v14h14V54M30 28q-14 4-14 18t14 12"/><circle cx="62" cy="36" r="2"/>`,
+  // Kitchen & dining
+  spoon: `<ellipse cx="48" cy="28" rx="14" ry="18"/><path d="M48 46v38"/>`,
+  fork: `<path d="M36 14v24a12 12 0 0 0 24 0V14M44 14v22m8-22v22M48 50v34"/>`,
+  chopsticks: `<path d="M20 78 68 18M34 82 78 26"/>`,
+  pot: `<rect x="20" y="38" width="56" height="38" rx="6"/><path d="M12 46h8m56 0h8M20 38h56M40 38v-6h16v6M34 24q-4-5 0-10m14 10q-4-5 0-10m14 10q-4-5 0-10"/>`,
+  kettle: `<path d="M24 44h44l6 32H18zm8 0V32a16 16 0 0 1 32 0v12m4 6h10l6-12m-56 12-10-8"/>`,
+  riceball: `<path d="M48 18 16 70q-4 8 6 8h52q10 0 6-8z"/><path d="M34 54h28v24H34z"/>`,
+  // Home & furniture
+  bed: `<path d="M12 74V36m72 38V48M12 60h72M12 48h26v12M38 48h40a6 6 0 0 1 6 6v6"/><circle cx="24" cy="42" r="5"/>`,
+  chair: `<path d="M28 16v66m40-34v34M28 48h40M28 28h40v20"/>`,
+  table: `<path d="M12 34h72v10H12zm10 10v38m52-38v38"/>`,
+  door: `<rect x="24" y="14" width="48" height="68" rx="3"/><circle cx="62" cy="50" r="3"/><path d="M16 82h64"/>`,
+  window: `<rect x="18" y="18" width="60" height="60" rx="3"/><path d="M48 18v60M18 48h60M14 78h68"/>`,
+  bathtub: `<path d="M14 48h68v12a16 16 0 0 1-16 16H30a16 16 0 0 1-16-16zm8 0V26a8 8 0 0 1 16 0v4m-4 0h8M24 76l-4 8m52-8 4 8"/>`,
+  // Food set 2
+  strawberry: `<path d="M48 80C26 70 20 46 28 32q20-8 40 0c8 14 2 38-20 48ZM36 28l12-10 12 10m-12-10v-6"/><circle cx="40" cy="44" r="1.5"/><circle cx="56" cy="44" r="1.5"/><circle cx="48" cy="56" r="1.5"/><circle cx="42" cy="64" r="1.5"/><circle cx="54" cy="64" r="1.5"/>`,
+  watermelon: `<path d="M14 52a34 34 0 0 0 68 0zm6 0a28 28 0 0 0 56 0"/><circle cx="38" cy="62" r="2"/><circle cx="48" cy="66" r="2"/><circle cx="58" cy="62" r="2"/>`,
+  cake: `<path d="M18 46h60v30H18zm0 14h60M34 46V32m14 14V32m14 14V32M34 24q3 4 0 8-3-4 0-8zm14 0q3 4 0 8-3-4 0-8zm14 0q3 4 0 8-3-4 0-8z"/>`,
+  ramen: `<path d="M16 48h64a32 28 0 0 1-64 0zm18 26h28M26 32l48-12M28 40l46-12M36 48q4-6 8 0t8 0 8 0"/>`,
+  icecream: `<path d="M32 48h32L48 84z"/><path d="M30 48a18 18 0 1 1 36 0"/><circle cx="48" cy="22" r="5"/>`,
+  milk: `<path d="M30 34h36v48H30zm0 0 8-14h20l8 14M38 20v-6h20v6M30 54h36"/>`,
+  // Places set 2
+  hospital: `<rect x="18" y="22" width="60" height="60" rx="4"/><path d="M48 32v20M38 42h20M40 82V62h16v20M26 62h8v8h-8zm36 0h8v8h-8z"/>`,
+  school: `<path d="M14 42 48 20l34 22v40H14zm26 40V58h16v24M24 52h10v10H24zm38 0h10v10H62zM48 20v-8m0 0 12 4-12 4"/>`,
+  bridge: `<path d="M10 56h76M10 68h76M22 56V32m52 24V32M22 32q26 24 52 0M10 56q12-10 12-24m64 24q-12-10-12-24M36 44v12m12-6v6m12-12v12"/>`,
+  park: `<circle cx="32" cy="34" r="14"/><path d="M32 48v30M50 62h32M54 52h24v10H54zm4 10v16m16-16v16M14 78h68"/>`,
+  bakery: `<path d="M16 40h64v42H16zm-4 0 8-16h56l8 16M36 82V58h24v24M24 40a8 8 0 0 0 16 0 8 8 0 0 0 16 0 8 8 0 0 0 16 0"/>`,
+  lighthouse: `<path d="M36 82 42 36h12l6 46zm2-46 10-14 10 14zm-6 20h32M34 68h28M22 26l-10-4m10 10-10 4m52-10 10-4m-10 10 10 4"/>`,
+  // Music & hobbies
+  guitar: `<path d="M58 24 72 10l8 8-14 14M44 48l16-16M34 44a16 16 0 1 0 18 18 14 14 0 1 0-18-18Z"/><circle cx="38" cy="60" r="4"/>`,
+  drum: `<ellipse cx="48" cy="34" rx="30" ry="12"/><path d="M18 34v32a30 12 0 0 0 60 0V34M26 44l10 24m12-22v28m12-28 10 22M26 16l20 16m24-16-20 16"/>`,
+  violin: `<path d="M56 26 70 12l8 8-14 14M42 46c-12 2-18 14-12 24 6 10 20 12 28 4 8-8 6-20-2-26M48 34l-14 14m4 12 12-12"/>`,
+  paintbrush: `<path d="M68 14 78 24 44 58 34 48zM34 48q-14 4-16 20 16-2 26-10"/>`,
+  trophy: `<path d="M28 18h40v20a20 20 0 0 1-40 0zm0 6H16a10 10 0 0 0 12 14m40-14h12a10 10 0 0 1-12 14M48 58v16M34 74h28v8H34z"/>`,
+  kite: `<path d="M48 14 76 42 48 70 20 42zm0 0v56M20 42h56M48 70q12 8 4 16"/>`,
+  // Nature set 2
+  tree: `<circle cx="48" cy="36" r="22"/><path d="M48 58v24M38 82h20M48 48l-10-8m10 2 10-8"/>`,
+  flower: `<circle cx="48" cy="38" r="8"/><circle cx="48" cy="22" r="8"/><circle cx="62" cy="32" r="8"/><circle cx="56" cy="48" r="8"/><circle cx="40" cy="48" r="8"/><circle cx="34" cy="32" r="8"/><path d="M48 54v28m0-12 12-8m-12 2-12-8"/>`,
+  leaf: `<path d="M22 74Q24 22 76 20q-2 52-54 54Zm0 0 42-42m-24 24-2-14m14 2-14-2"/>`,
+  mushroom: `<path d="M16 50a32 28 0 0 1 64 0zm22 0v28h20V50"/><circle cx="34" cy="36" r="4"/><circle cx="56" cy="32" r="5"/><circle cx="64" cy="42" r="3"/>`,
+  mountain: `<path d="M10 78 38 24l18 32 10-16 20 38zm18-35 10 6 10-6"/>`,
+  moon: `<path d="M62 20a28 28 0 1 0 14 48 22 22 0 1 1-14-48Z"/>`,
+  // Sports & travel
+  soccer: `<circle cx="48" cy="48" r="32"/><polygon points="48,34 60,43 55,56 41,56 36,43"/><path d="M48 16v18m26 4-14 5m8 27-13-14m-29 14 15-14M22 38l14 5"/>`,
+  baseball: `<circle cx="48" cy="48" r="32"/><path d="M26 26q18 22 0 44m44-44q-18 22 0 44"/>`,
+  backpack: `<rect x="24" y="26" width="48" height="54" rx="12"/><path d="M36 26v-8a12 12 0 0 1 24 0v8M32 54h32v16H32zm-8-14h-6v24h6m48-24h6v24h-6"/>`,
+  compass: `<circle cx="48" cy="48" r="32"/><polygon points="48,26 56,48 48,70 40,48"/><circle cx="48" cy="48" r="3"/>`,
+  ticket: `<path d="M14 30h68v12a6 6 0 0 0 0 12v12H14V54a6 6 0 0 0 0-12zm42 0v36"/>`,
+  suitcase: `<rect x="22" y="28" width="52" height="50" rx="6"/><path d="M38 28V16h20v12M36 28v50m24-50v50M32 78v6m32-6v6"/>`
+};

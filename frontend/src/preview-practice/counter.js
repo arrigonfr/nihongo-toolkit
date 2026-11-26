@@ -19,6 +19,7 @@ export function gradeCounter(i,input) {
 export const counter = {
   ...studyPool("counter"),
   setup(c) {
+    el(c, "p", `Match objects to their counter or type full kana readings across ${counter.items.length.toLocaleString()} counting prompts.`);
     select(c,"counter-mode","Practice", [["mixed","Mixed session"],["family","Choose the counter"],["reading","Type the kana reading"]]);
     const table = el(c,"details");
     el(table,"summary","Browse counter readings");

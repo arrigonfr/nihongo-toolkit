@@ -208,7 +208,14 @@ import {
             </div>
 
             <div class="cw-quick-controls">
-              <div class="settings-row has-level">
+              <div class="settings-row cw-quick-row">
+                <label class="cw-field">
+                  <span>JLPT level / range</span>
+                  <select class="cw-select" id="levelSelect">
+                    ${LEVEL_OPTIONS.map((opt) => `<option value="${opt.value}">${escapeHTML(opt.label)}</option>`).join("")}
+                  </select>
+                </label>
+
                 <label class="cw-field">
                   <span>Answer mode</span>
                   <select class="cw-select" id="answerModeSelect">
@@ -218,27 +225,17 @@ import {
                   </select>
                 </label>
 
-                <label class="cw-field">
-                  <span>JLPT level / range</span>
-                  <select class="cw-select" id="levelSelect">
-                    ${LEVEL_OPTIONS.map((opt) => `<option value="${opt.value}">${escapeHTML(opt.label)}</option>`).join("")}
-                  </select>
-                </label>
-              </div>
-
-              <div class="settings-grid">
-                <label class="cw-field">
+                <label class="cw-field cw-size-field">
                   <span>Puzzle size</span>
                   <select class="cw-select" id="sizeSelect">
                     ${Object.entries(PUZZLE_SIZES).map(([key, val]) => `<option value="${key}">${escapeHTML(val.label)}</option>`).join("")}
                   </select>
                 </label>
 
-                <label class="cw-field" id="customWordsField" hidden>
+                <label class="cw-field cw-custom-field" id="customWordsField" hidden>
                   <span>Custom target words (4–18)</span>
                   <input class="cw-input" id="customWordsInput" type="number" min="4" max="18" value="10">
                 </label>
-
               </div>
             </div>
 

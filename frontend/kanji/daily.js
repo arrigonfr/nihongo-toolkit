@@ -9,6 +9,15 @@ if (document.body.classList.contains("daily-embed")) {
 
 const card = document.querySelector("[data-daily-kanji]");
 if (card) {
+  const mascotBadge = document.createElement("img");
+  const showMascot = Math.random() < 0.5;
+  mascotBadge.className = "daily-badge";
+  mascotBadge.dataset.kind = showMascot ? "mascot" : "logo";
+  mascotBadge.src = showMascot ? "/mascot.webp" : "/logo-mark.webp";
+  mascotBadge.alt = "";
+  mascotBadge.setAttribute("aria-hidden", "true");
+  card.append(mascotBadge);
+
   const entries = JSON.parse(card.querySelector("script[type='application/json']").textContent);
   const details = card.querySelector(".daily-kanji-details");
   const date = card.querySelector("time");

@@ -4,7 +4,7 @@ import { navigationPage } from "./routes.js";
 import { helpSteps } from "./help-steps.js";
 
 const tools = {
-  "eawase.html": ["Eawase", "Flip two cards to match representations of the same word or kana. Choose Words or Syllabaries, a matching direction, and a board size in Settings. Arrow keys move between cards; Enter or Space flips one. A correct match keeps the turn in local two-player games; a mismatch passes it. Hints and reveals do not earn points or unassisted accuracy. Listening needs Audio On and Japanese device voices. Kana meaning clues describe sounds, not vocabulary meanings. Script conversions are recognition exercises. Picture clues are disabled: no dictionary picture dataset is available. Mistake Review reloads saved word identities from the dictionary; imported clues are not question sources."],
+  "eawase.html": ["Eawase", "Flip two cards to match representations of the same word or kana. Choose Words or Syllabaries, a matching direction, and a board size in Settings. Arrow keys move between cards; Enter or Space flips one. A correct match keeps the turn in local two-player games; a mismatch passes it. Hints and reveals do not earn points or unassisted accuracy. Listening needs Audio On and Japanese device voices. Kana meaning clues describe sounds, not vocabulary meanings. Script conversions are recognition exercises. Mistake Review reloads saved word identities from the dictionary; imported clues are not question sources."],
   "kotoba-sagashi.html": ["Kotoba Sagashi", "Find Japanese words in straight lines. Drag from the first character to the last, or tap both endpoints. With a keyboard, use arrow keys to move, Enter or Space to set each endpoint, and Escape to cancel. Single-character words use the same cell twice. Settings apply to new puzzles; reading and appearance controls stay live. Quick uses 8×8 with five words. Marathon increases the grid and word count between rounds. Sudden Death ends after your chosen mistake limit. Hints and reveals follow your limits; missed and revealed words go to review. Japanese descriptions are disabled because the dictionary has no Japanese definitions. Review questions reload dictionary words, not imported clues. Kanji words retain necessary okurigana. JLPT levels are study estimates."],
   "katsuyo-renshuu.html": ["Katsuyō Renshuū", "Choose JLPT levels, word types and forms, then load a session from the JMdict database with linked JLPT vocabulary. Type kana, kanji, mixed spelling or romaji and press Enter to check. Only first, unassisted answers earn credit. Missed questions return for review. Comparison and Reverse accept valid ambiguous analyses. Dictionary access is required to start; no offline word bank is substituted. Sentence prompts and auxiliary-pattern vocabulary are unavailable without verified aligned sources."],
   "katsuyo.html": ["Katsuyō", "Enter a dictionary-form verb or adjective in Japanese or romaji. Choose an interpretation when a word is ambiguous. Explore plain and polite endings, open usage rules, filter forms and save words. Unknown words require a confirmed reading and class. Advanced forms are grammatical references, not guarantees of natural usage for every meaning. Form examples search the corpus and Tatoeba for that written form; matching text can have different grammatical interpretations. Word information also offers sourced base-word examples."],
@@ -52,8 +52,6 @@ const descriptions = {
   inputStyleSelect: "Type in a clue popup, directly in grid cells, or in textboxes beside the clues. In-square Kanji answers accept native IME input or the whole word's romaji reading, including at locked crossings. You can also enter just the remaining kana. Pending text stays visible and editable; Enter submits it and Escape clears it. In-square clue cards stay below the grid.",
   kanjiFocusToggle: "Use kanji meanings and readings as study clues where available.",
   timerToggle: "Show the puzzle timer. Relaxed mode does not use a timer.",
-  "draw-mode": "Trace highlights the next stroke on the pad; Copy shows the model beside a blank pad; Memory hides the model while you draw; Study lets you inspect stroke order without drawing.",
-  "draw-collection": "Choose a starter set, JLPT estimate, school grade, all supported kanji, or your own custom character list.",
   "draw-grid": "Display dashed center crosshairs to help gauge stroke balance and placement.",
   "draw-numbers": "Show stroke-order numbers beside each stroke's starting point.",
   "draw-live-check": "Check each stroke as soon as you lift the pen in Trace mode so you can fix direction or placement right away.",
@@ -77,6 +75,33 @@ const modeHelp = {
   reverse: "Read Japanese clues and enter English meanings."
 };
 
+const helpVisuals = {
+  "eawase.html": {
+    caption: "Example pair: match two cards representing the same word.",
+    svg: `<svg viewBox="0 0 260 66" role="img" aria-label="Card showing 山 paired with card showing やま"><rect x="14" y="8" width="84" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.8"/><text x="56" y="41" text-anchor="middle" font-size="22" font-weight="700" fill="currentColor">山</text><text x="130" y="39" text-anchor="middle" font-size="18" fill="var(--accent)">↔</text><rect x="162" y="8" width="84" height="50" rx="8" fill="none" stroke="var(--accent)" stroke-width="1.8"/><text x="204" y="40" text-anchor="middle" font-size="18" font-weight="700" fill="var(--accent)">やま</text></svg>`
+  },
+  "shuden.html": {
+    caption: "Example: “2 stops ahead” counts from the next stop, not Here.",
+    svg: `<svg viewBox="0 0 280 68" role="img" aria-label="Station line showing Here, stop 1, and stop 2 highlighted"><line x1="36" y1="30" x2="244" y2="30" stroke="currentColor" stroke-width="2.5" opacity=".4"/><circle cx="44" cy="30" r="10" fill="var(--card)" stroke="currentColor" stroke-width="2"/><text x="44" y="56" text-anchor="middle" font-size="11" fill="currentColor">Here</text><circle cx="140" cy="30" r="10" fill="var(--card)" stroke="currentColor" stroke-width="2"/><text x="140" y="34" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">1</text><text x="140" y="56" text-anchor="middle" font-size="11" fill="currentColor">Next</text><circle cx="236" cy="30" r="11" fill="var(--accent)"/><text x="236" y="34" text-anchor="middle" font-size="11" font-weight="700" fill="var(--page)">2</text><text x="236" y="56" text-anchor="middle" font-size="11" font-weight="700" fill="var(--accent)">Get off</text></svg>`
+  },
+  "kanji-anaume.html": {
+    caption: "Example: the same kanji (日) completes all three compounds.",
+    svg: `<svg viewBox="0 0 280 64" role="img" aria-label="Three compounds sharing the kanji 日"><text x="48" y="38" text-anchor="middle" font-size="18" fill="currentColor"><tspan fill="var(--accent)" font-weight="700">日</tspan>本</text><text x="140" y="38" text-anchor="middle" font-size="18" fill="currentColor">毎<tspan fill="var(--accent)" font-weight="700">日</tspan></text><text x="232" y="38" text-anchor="middle" font-size="18" fill="currentColor">休<tspan fill="var(--accent)" font-weight="700">日</tspan></text></svg>`
+  },
+  "shiritori.html": {
+    caption: "Example chain: each word starts with the previous word’s ending.",
+    svg: `<svg viewBox="0 0 280 60" role="img" aria-label="Word chain from りんご to ごりら to らくだ"><text x="48" y="35" text-anchor="middle" font-size="16" fill="currentColor">りん<tspan fill="var(--accent)" font-weight="700">ご</tspan></text><text x="95" y="35" text-anchor="middle" font-size="14" fill="var(--muted)">→</text><text x="140" y="35" text-anchor="middle" font-size="16" fill="currentColor"><tspan fill="var(--accent)" font-weight="700">ご</tspan>り<tspan fill="var(--accent)" font-weight="700">ら</tspan></text><text x="185" y="35" text-anchor="middle" font-size="14" fill="var(--muted)">→</text><text x="232" y="35" text-anchor="middle" font-size="16" fill="currentColor"><tspan fill="var(--accent)" font-weight="700">ら</tspan>くだ</text></svg>`
+  },
+  "kanji-kaki.html": {
+    caption: "Trace from the starting dot along the arrow for each stroke.",
+    svg: `<svg viewBox="0 0 180 64" role="img" aria-label="Drawing square with numbered stroke direction"><rect x="58" y="6" width="52" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".5"/><line x1="84" y1="6" x2="84" y2="58" stroke="currentColor" stroke-dasharray="3 3" opacity=".25"/><line x1="58" y1="32" x2="110" y2="32" stroke="currentColor" stroke-dasharray="3 3" opacity=".25"/><line x1="68" y1="24" x2="98" y2="24" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><circle cx="68" cy="24" r="3.5" fill="var(--accent)"/><polygon points="102,24 95,20 96,24 95,28" fill="var(--accent)"/></svg>`
+  },
+  "pazuru.html": {
+    caption: "Solved words share crossing characters to help unlock clues.",
+    svg: `<svg viewBox="0 0 220 72" role="img" aria-label="Crossing crossword cells sharing one kana"><rect x="88" y="8" width="26" height="26" rx="4" fill="none" stroke="currentColor" stroke-width="1.4"/><text x="101" y="26" text-anchor="middle" font-size="14" fill="currentColor">さ</text><rect x="62" y="34" width="26" height="26" rx="4" fill="none" stroke="currentColor" stroke-width="1.4"/><text x="75" y="52" text-anchor="middle" font-size="14" fill="currentColor">た</text><rect x="88" y="34" width="26" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.8"/><text x="101" y="52" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent)">か</text><rect x="114" y="34" width="26" height="26" rx="4" fill="none" stroke="currentColor" stroke-width="1.4"/><text x="127" y="52" text-anchor="middle" font-size="14" fill="currentColor">い</text></svg>`
+  }
+};
+
 export function mountHelpDialog(pageHelp, stepsKey = navigationPage(location.pathname)) {
   const file = navigationPage(location.pathname);
   const [name, description] = pageHelp || tools[file];
@@ -91,6 +116,13 @@ export function mountHelpDialog(pageHelp, stepsKey = navigationPage(location.pat
   const summary = document.createElement("summary");
   summary.textContent = "How to use this tool";
   details.append(summary, steps);
+  const visual = helpVisuals[stepsKey];
+  if (visual) {
+    const figure = document.createElement("figure");
+    figure.className = "help-visual";
+    figure.innerHTML = `${visual.svg}<figcaption>${visual.caption}</figcaption>`;
+    details.append(figure);
+  }
   const custom = document.querySelector("#helpDialog .dialog-body");
   if (custom) {
     const intro = document.createElement("p");

@@ -1,3 +1,5 @@
+import { extraDrawings } from "./pictures-extra.js";
+
 // Original single-ink drawings. Labels remain visible if inline SVG is unavailable.
 export const drawings = {
   umbrella: `<path d="M10 48Q15 19 48 18Q79 19 86 48Q75 39 67 48Q58 40 48 48Q37 40 28 48Q20 40 10 48ZM48 17v-4m0 35v24c0 14 16 14 16 1M28 46q3-19 20-28 16 10 19 28"/>`,
@@ -17,7 +19,20 @@ export const drawings = {
   post: `<path d="M10 71V22h76v49M10 74h76M16 65h64M23 32h20m-20 6h20m-10 0v14M51 42h27v17H51zm0 0 13.5 10L78 42"/>`,
   swimming: `<circle cx="66" cy="42" r="8"/><path d="m14 58 23-9 10-11-13-9-12 9-5-5 15-13 25 15q6 6 1 13l-5 7M9 65q7 8 14 0 7 8 14 0 7 8 14 0 7 8 14 0 7 8 15 0M16 77q7 7 14 0 7 7 14 0 7 7 14 0 7 7 14 0"/>`,
   skiing: `<circle cx="54" cy="21" r="7"/><path d="m48 29-13 17 18 12-7 13m-12-24-8 13-9 3m27-28 8 10 17-4M11 64l47 15q6 2 10-2M22 64l47 14q6 2 10-2M68 38l-8 29M11 77l64 15"/>`,
-  fishing: `<circle cx="23" cy="25" r="7"/><path d="m17 34 12 1 5 13 10-5m-25-8-3 25 4 17m5-23 7 11-2 13M9 80l25-2 8-7M38 49Q58 7 80 16l-4 39m0 0q1 7-5 5M52 68q6 5 12 0m4 12q7 5 14 0"/>`
+  fishing: `<circle cx="23" cy="25" r="7"/><path d="m17 34 12 1 5 13 10-5m-25-8-3 25 4 17m5-23 7 11-2 13M9 80l25-2 8-7M38 49Q58 7 80 16l-4 39m0 0q1 7-5 5M52 68q6 5 12 0m4 12q7 5 14 0"/>`,
+  sun: `<circle cx="48" cy="48" r="18"/><path d="M48 14v10m0 48v10M14 48h10m48 0h10M24 24l7 7m34 34 7 7M72 24l-7 7M31 65l-7 7"/>`,
+  cloud: `<path d="M26 68h44a14 14 0 0 0 2-28 19 19 0 0 0-36-5A14 14 0 0 0 26 68Z"/>`,
+  snowman: `<circle cx="48" cy="30" r="12"/><circle cx="48" cy="62" r="20"/><circle cx="44" cy="28" r="1.5"/><circle cx="52" cy="28" r="1.5"/><path d="M48 32l7 2-7 2m-18 18-14-8m50 8 14-8M36 42h24"/>`,
+  lightning: `<path d="M56 12 24 52h22l-8 32 34-42H50z"/>`,
+  rainbow: `<path d="M14 70a34 34 0 0 1 68 0M24 70a24 24 0 0 1 48 0M34 70a14 14 0 0 1 28 0"/>`,
+  wind: `<path d="M14 36h44a9 9 0 1 0-9-9M10 50h60a10 10 0 1 1-10 10M20 64h28a8 8 0 1 1-8 8"/>`,
+  hat: `<path d="M12 62h72M24 62l5-26q19-12 38 0l5 26M25 53h46"/>`,
+  glasses: `<circle cx="28" cy="50" r="14"/><circle cx="68" cy="50" r="14"/><path d="M42 50h12M14 48l-4-12m72 12 4-12"/>`,
+  shoe: `<path d="M16 66h64v-8q0-8-14-10l-16-6-10-16-24 8zm18-32 6 4m-3 5 6 4M16 66v6h64v-6"/>`,
+  bag: `<rect x="16" y="34" width="64" height="44" rx="7"/><path d="M34 34V24a14 14 0 0 1 28 0v10M16 50h64M44 50v8h8v-8"/>`,
+  shirt: `<path d="M32 18 14 30l8 16 10-6v38h32V40l10 6 8-16-18-12-16 10zM48 28v50"/>`,
+  watch: `<rect x="30" y="28" width="36" height="40" rx="8"/><path d="M38 28V12h20v16M38 68v16h20V68M48 48V38m0 10 8 5"/>`,
+  ...extraDrawings
 };
 export function picture(card) {
   const id = card.pictureId ?? card.id;

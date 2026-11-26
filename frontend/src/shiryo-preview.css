@@ -1,7 +1,17 @@
-.preview-stage { max-width: 836px; margin: 0 auto; }
-.preview-stage h2 { margin: 0 0 16px; font-size: 18px; }
 .preview-paper { aspect-ratio: 794 / 450; }
 .preview-paper img { display: block; width: 100%; height: auto; }
-.preview-credits { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.preview-notice {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--soft);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.preview-notice p { margin: 0; }
+.preview-notice .preview-free-note { margin-top: 8px; color: var(--muted); }
+.preview-credits { margin-top: 24px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .preview-credits a { color: var(--accent-strong); }
 #previewStatus:empty { display: none; }

@@ -619,6 +619,9 @@ or without `.html`, for example:
 DISABLED_PAGES=shiryo npm run build
 # Multiple pages:
 DISABLED_PAGES=shiryo,kana npm run build
+# Build and preview locally with the backend running (defaults to DISABLED_PAGES=shiryo):
+npm run preview:disabled
+DISABLED_PAGES=shiryo,kana npm run preview:disabled
 ```
 
 An empty/unset value preserves all functionality. Unknown names fail the build.

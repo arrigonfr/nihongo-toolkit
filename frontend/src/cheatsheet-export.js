@@ -1,4 +1,4 @@
-import { cellLabel, cellText } from "./cheatsheet-data.js";
+import { cellLabel, cellText } from "./kana-sheet-data.js";
 import { FONT_STACK, layoutSheet, PAGE } from "./cheatsheet-layout.js";
 
 const escapeXml = (value) => String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);

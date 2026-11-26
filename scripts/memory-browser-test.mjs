@@ -92,8 +92,8 @@ try {
     await page.locator("#results").waitFor({ state: "visible" });
   }
   await page.goto(url);
-  assert.equal(await page.locator('#setting-display option[value="picture"]').isDisabled(), true);
-  assert.equal(await page.locator('#setting-display').evaluate((select) => select.chipsApi.group.querySelector('[data-value="picture"]').disabled), true);
+  assert.equal(await page.locator('#setting-display option[value="picture"]').count(), 0);
+  assert.equal(await page.locator('#setting-display').evaluate((select) => select.chipsApi.group.querySelector('[data-value="picture"]')), null);
   assert.equal(await page.locator("[data-card]").count(), 0);
   await page.setViewportSize({ width: 1280, height: 1000 });
   assert.equal(await page.locator(".board-panel").isVisible(), false, "The board stays hidden until a session starts");

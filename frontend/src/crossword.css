@@ -1094,6 +1094,11 @@ body details .cw-toggle-group .cw-reset-setting legend + small { clear: both; }
 .cw-status-bar[hidden], .cw-workspace[hidden], .cw-empty[hidden] { display: none !important; }
 .cw-actions-row { display: flex; justify-content: flex-end; margin-top: 16px; }
 .cw-quick-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.cw-quick-row > .cw-size-field { flex: 0 1 240px; min-width: 200px; }
+.cw-quick-row > .cw-custom-field { flex: 0 1 200px; min-width: 170px; }
+@media (max-width: 900px) {
+  .cw-quick-row > .cw-size-field, .cw-quick-row > .cw-custom-field { flex: 1 1 100%; min-width: 0; }
+}
 .cw-empty { margin: 0 0 20px; padding: 44px 20px; text-align: center; border: 1px dashed var(--line); border-radius: 18px; background: linear-gradient(180deg, var(--accent-soft), var(--card)); }
 .cw-empty-mark { display: block; color: var(--accent); font-size: 34px; letter-spacing: .15em; }
 .cw-empty h2 { margin: 8px 0 6px; font-size: 18px; }

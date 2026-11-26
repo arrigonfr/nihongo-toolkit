@@ -42,3 +42,13 @@ label:has(> input[type="checkbox"]) > input[type="checkbox"] { flex: 0 0 auto; }
 label:has(> input[type="checkbox"]) > .study-setting-name:not(button) { align-self: center; text-align: left; }
 .help-steps { padding-inline-start: 1.5em; line-height: 1.6; }
 .help-steps li + li { margin-block-start: .5em; }
+.help-visual {
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--soft);
+  text-align: center;
+}
+.help-visual svg { display: block; width: min(100%, 280px); height: auto; margin: 0 auto; }
+.help-visual figcaption { margin-top: 6px; font-size: 12.5px; color: var(--muted); }

@@ -372,6 +372,7 @@ export const draw = {
   setup(c) {
     select(c,"draw-mode","Practice",modes);
     const collection=select(c,"draw-collection","Character collection",choices);
+    collection.dataset.noSettingHelp = "";
     const label=el(c,"label",null,{class:"preview-practice-field"});
     el(label,"span","Custom characters");
     const input=el(label,"input",null,{type:"text",id:"draw-list",lang:"ja",maxlength:"250",placeholder:"一日語",autocomplete:"off"});

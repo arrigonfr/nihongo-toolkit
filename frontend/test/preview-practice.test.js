@@ -313,7 +313,9 @@ test("kanji kaki returns metadata, shows memory cues, highlights mismatches, sup
     assert.ok(Math.abs(drawRowPositions.col.top - drawRowPositions.len.top) <= 4);
     assert.ok(drawRowPositions.len.left > drawRowPositions.col.left);
     assert.equal(await page.locator("#settingsPanel #draw-grid, #settingsPanel #draw-numbers, #settingsPanel #draw-live-check").count(), 0);
-    assert.ok(await page.locator("#draw-mode").locator("..").locator(".chips-title [data-study-help]").count() > 0);
+    assert.equal(await page.locator("#draw-mode").locator("..").locator(".chips-title [data-study-help]").count(), 0);
+    assert.equal(await page.locator("#draw-mode + .chips .chip-option[data-study-help]").count(), 4);
+    assert.equal(await page.locator("#draw-collection").locator("..").locator("[data-study-help]").count(), 0);
     // Deep-link should not overwrite saved draw-collection in localStorage.
     const savedBefore = JSON.parse(await page.evaluate(() => localStorage.getItem("nihon:editorial:kanji-draw:v1")));
     assert.equal(savedBefore["draw-collection"], "grade1");

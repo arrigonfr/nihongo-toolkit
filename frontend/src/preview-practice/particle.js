@@ -31,6 +31,9 @@ export const particle = {
     await pool.prepare.call(this, load);
     this.readings = particleReadings(this.items);
   },
+  setup(c) {
+    el(c, "p", `Choose all particles that fit each sentence across ${particle.items.length.toLocaleString()} context-based prompts. Comparisons appear after answering.`);
+  },
   render(c,i,finish) {
     el(c,"p",i.context);
     const parts=i.sentence.split("|"), sounds=i.pronunciation.split("|");

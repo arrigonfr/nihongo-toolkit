@@ -95,11 +95,11 @@ $("memoryRoot").innerHTML = `<div class="shell">
 
 $("settingsForm").innerHTML = `
     <fieldset><legend>What would you like to practice?</legend><div class="settings-grid">
-    ${select("content", "Content type", { words: "Japanese words", kana: "Japanese syllabaries" }, "Play with words or with japanese syllables")}
-    ${select("pairing", "Matching mode", WORD_PAIRS, "How do you want to match your cards")}
+    ${select("content", "Content type", { words: "Japanese words", kana: "Japanese syllabaries" }, null)}
+    ${select("pairing", "Matching mode", WORD_PAIRS, "Choose which two card sides form each matching pair.")}
     </div></fieldset><fieldset><legend>Game mode & card clues</legend><div class="settings-grid">
     ${select("mode", "Game mode", MODES, null)}
-    ${select("display", "Card content", DISPLAYS, "English and audio clues replace one side and use the natural written form on the other. Picture clues are unavailable because the dictionary has no picture metadata. Other displays follow the shared reading toggles.")}
+    ${select("display", "Card content", DISPLAYS, "English and audio clues replace one side and use the natural written form on the other. Other displays follow the shared reading toggles.")}
     </div></fieldset><fieldset><legend>Vocabulary & kana groups</legend><div class="settings-grid">
     <div data-words>${select("level", "JLPT study levels", levels, null)}</div>
     </div><div id="kanaGroups" hidden><label class="setting" data-setting-description="Choose one or more kana groups to practise. All kana includes every group."><span>Kana groups</span><select id="setting-groups">${options({ ...GROUPS })}</select></label></div></fieldset>
@@ -121,11 +121,7 @@ $("settingsForm").innerHTML = `
     </div>
     </div></fieldset><fieldset><legend>Special mode limits</legend><div class="settings-grid">
     ${number("mistakes", "Sudden Death mismatches", 1, 100)}${number("rounds", "Marathon boards", 2, 10)}
-    </div><ul class="mode-notes">
-    <li><strong>Timed</strong> always counts down.</li>
-    <li><strong>Move Challenge</strong> limits card flips (two flips normally make one move).</li>
-    <li><strong>Marathon</strong> adds two pairs per board, up to 48.</li>
-    </ul></fieldset>
+    </div></fieldset>
     <fieldset><legend>Learning support</legend><div class="challenge-settings">
     <fieldset class="challenge-setting-group"><legend>Hints</legend>
     ${plainSelect("hints", "Hints", availability)}${plainNumber("hintLimit", "Hint limit", 0, 100)}
@@ -143,10 +139,10 @@ $("settingsForm").innerHTML = `
     </div></fieldset><p id="settingsError" role="alert"></p>`;
 
 const MODE_HELP = {
-  classic: "Find every pair at your own pace.", timed: "Match every pair before the countdown ends.", moves: "Finish within a limited number of card flips.",
+  classic: "Find every pair at your own pace.", timed: "Match every pair before the countdown ends. Timed always counts down.", moves: "Finish within a limited number of card flips (two flips normally make one move).",
   sudden: "A set number of mismatches ends the round.", review: "Replay items saved in your notebook.",
   listening: "Match audio clues to their written forms (needs Audio On).", meaning: "Match Japanese with English meanings or sound descriptions.",
-  reverse: "Recall the Japanese from a prompt card first.", marathon: "Clear several boards in a row; each adds two pairs."
+  reverse: "Recall the Japanese from a prompt card first.", marathon: "Clear several boards in a row; each adds two pairs, up to 48."
 };
 const chipOptions = (values, help = {}) => Object.entries(values).map(([value, label]) => ({ value, label, ...(help[value] ? { description: help[value] } : {}) }));
 const groupHelp = {
@@ -159,11 +155,11 @@ const groupHelp = {
 };
 const chipApis = [];
 const mount = (id, config) => chipApis.push(mountChips($(id), { fieldClass: "memory-chips wide", ...config }));
+$("setting-content").dataset.noSettingHelp = "";
 mount("setting-content", { options: chipOptions({ words: "Japanese words", kana: "Japanese syllabaries" }) });
 mount("setting-pairing", { options: chipOptions(WORD_PAIRS) });
 mount("setting-mode", { options: chipOptions(MODES, MODE_HELP) });
-mount("setting-display", { options: chipOptions(DISPLAYS).map((option) => option.value === "picture"
-  ? { ...option, label: "Picture / emoji clue — unavailable (no dataset)", disabled: true, description: PICTURE_UNAVAILABLE } : option) });
+mount("setting-display", { options: chipOptions(DISPLAYS) });
 mount("setting-grid", { options: chipOptions(GRIDS) });
 mount("setting-back", { variant: "card", groupClass: "back-chips", options: Object.entries(BACKS).map(([value, back]) => ({ value, label: back.label, preview: `<span class="back-preview" data-back="${value}"><span>${back.symbol}</span></span>` })) });
 mount("setting-groups", { multiple: true, exclusive: "all", exclusiveLabel: GROUPS.all, options: Object.entries(GROUPS).map(([value, label]) => ({ value, label, description: groupHelp[value] })), descriptions: undefined });
@@ -194,10 +190,6 @@ function syncContent(content, pairing = $("setting-pairing").value) {
   for (const chip of $("setting-pairing").chipsApi.group.querySelectorAll(".chip-option")) chip.hidden = !(chip.dataset.value in allowed);
   document.querySelectorAll("[data-words]").forEach((node) => { node.hidden = content !== "words"; });
   $("kanaGroups").hidden = content !== "kana";
-  const picture = $("setting-display").querySelector('[value="picture"]');
-  picture.disabled = true;
-  picture.textContent = "Picture / emoji clue — unavailable (no dataset)";
-  picture.title = PICTURE_UNAVAILABLE;
 }
 function syncSettings() {
   syncContent(settings.content, settings.pairing);

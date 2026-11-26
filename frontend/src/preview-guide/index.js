@@ -9,7 +9,8 @@ const usageNames = [
   ["vs", "Suru verb (〜する)"],
   ["adj", "Adjective (〜な / 〜の)"],
   ["n", "Noun"],
-  ["int", "Interjection"]
+  ["int", "Interjection"],
+  ["other", "Other"]
 ];
 const usageLabel = Object.fromEntries(usageNames);
 import "./style.css";

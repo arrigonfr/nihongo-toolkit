@@ -1,7 +1,26 @@
 .preview-guide { width: 100%; line-height: 1.55; caret-color: var(--accent); }
 .preview-guide form { width: 100%; padding: clamp(.9rem, 2vw, 1.5rem); border: 1px solid var(--line); border-radius: .9rem; background: var(--card); }
-.preview-guide label { display: grid; gap: .3rem; min-width: 0; font-size: .85rem; font-weight: 650; }
-.preview-guide label :is(input,select) { min-width: 0; width: 100%; min-height: 44px; font-weight: 400; }
+.preview-guide label { display: grid; gap: 6px; min-width: 0; font-size: 12.5px; font-weight: 650; line-height: 1.4; color: var(--text-plum); letter-spacing: .01em; }
+.preview-guide label :is(input, select) {
+  min-width: 0;
+  width: 100%;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background-color: var(--card);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+.preview-guide label :is(input, select):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
 .pg-search, .pg-filters, .pg-parallel { display: grid; gap: .8rem; }
 .pg-search { grid-template-columns: minmax(0, 3fr) minmax(12rem, 1.2fr); }
 .pg-filters { margin-top: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }

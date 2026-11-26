@@ -43,7 +43,7 @@ const cancelSpeech = () => { window.speechSynthesis?.cancel(); cancelLocalSpeech
 const text = (tag, value) => Object.assign(document.createElement(tag), { textContent: value });
 
 function mountActivity(definition) {
-  const numericLength = ["particle","counter","draw","crossroads","train"].includes(key);
+  const numericLength = ["particle","counter","draw","crossroads","train","karuta"].includes(key);
   workspace.innerHTML = `<details id="settingsPanel" class="settings" open><summary>Session settings</summary>
     <div class="settings-body"><div id="toolFilters"></div>
     <label><span>Session length</span><select id="editorialLength">${numericLength ? '<option value="short">5</option><option value="10">10</option><option value="extended">20</option><option value="50">50</option><option value="100">100</option>' : '<option value="short">Short · up to 5</option><option value="extended">Extended · up to 20</option>'}</select></label>
@@ -60,14 +60,67 @@ function mountActivity(definition) {
     return control.id;
   });
   rememberControls(`nihon:editorial:${preferenceNamespace}:v1`, ids, error => { $("prefError").textContent = error; });
-  for (const select of settings.querySelectorAll("#counter-mode, #draw-mode, #train-legs, #train-view, #editorialLength")) {
-    if (numericLength && select.id === "editorialLength") select.dataset.noSettingHelp = "";
+  for (const select of settings.querySelectorAll("#counter-mode, #draw-mode, #train-network, #train-rule, #train-legs, #train-view, #karuta-category, #karuta-labels, #editorialLength")) {
+    if ((numericLength && select.id === "editorialLength") || select.id === "counter-mode" || select.id === "draw-mode") {
+      select.dataset.noSettingHelp = "";
+    }
     const title = {
       editorialLength: "Session length",
+      "train-network": "Railway network",
+      "train-rule": "Instruction focus",
       "train-legs": "Journey length",
-      "train-view": "Route display"
+      "train-view": "Route display",
+      "karuta-category": "Topic",
+      "karuta-labels": "Card display"
     }[select.id] || "Session mode";
-    mountChips(select, { presentation: "button", title });
+    const descriptions = {
+      "draw-mode": {
+        trace: "Follow the highlighted next stroke directly on the drawing pad.",
+        copy: "Draw on a blank pad with the reference model beside it.",
+        memory: "Study the character first, then draw it from memory with the model hidden.",
+        study: "Inspect the stroke order and step through strokes without drawing."
+      },
+      "train-network": {
+        all: "Mix journeys from every railway network.",
+        lake: "Single linear line with straightforward forward and reverse counting.",
+        mountain: "Branching railway with local and rapid services sharing stops.",
+        coast: "Interchange network with line transfers between harbour and city lines.",
+        river: "Double-interchange metro network with two transfer stations.",
+        valley: "Scenic transfer network connecting valley and foothill lines.",
+        capital: "Busy city interchange with crossing urban lines.",
+        oldtown: "Historic tramway network with town-center transfers.",
+        peninsula: "Coastal express network with transfer connections along the peninsula."
+      },
+      "train-rule": {
+        all: "Include every kind of station and transfer instruction.",
+        counting: "Practice counting stops ahead, such as next stop, next-next, or N stops ahead.",
+        relative: "Practice getting off one stop before or after a named landmark station.",
+        transfer: "Practice changing lines at an interchange station without leaving the station.",
+        terminal: "Practice riding all the way to the final terminal stop on the line."
+      },
+      "karuta-category": {
+        all: "Mix clues across every picture topic.",
+        everyday: "Everyday items such as umbrella, clock, cup, key, pencil, and mirror.",
+        animals: "Pets, birds, insects, and wildlife.",
+        nature: "Nature, plants, outdoor scenes, and classic items.",
+        places: "Everyday places, town landmarks, and outdoor activities.",
+        vehicles: "Land, sea, and air vehicles.",
+        food: "Fruits, meals, desserts, and drinks.",
+        kitchen: "Utensils, cookware, and dining staples.",
+        home: "Rooms, furniture, and household fixtures.",
+        tech: "Electronics and household devices.",
+        weather: "Sky, weather phenomena, and seasonal scenes.",
+        clothing: "Clothes, footwear, bags, and everyday accessories.",
+        music: "Musical instruments, art, awards, and play.",
+        sports: "Sports, hiking gear, and travel essentials."
+      },
+      "karuta-labels": {
+        show: "Show each picture together with its caption.",
+        hide: "Hide visible captions for a pure picture-and-listening challenge.",
+        captions: "Show text captions only, without pictures."
+      }
+    }[select.id];
+    mountChips(select, { presentation: "button", title, descriptions });
   }
   const lengthField = $("editorialLength").closest(".chips-field");
   if (key === "counter" && lengthField) {
@@ -97,6 +150,7 @@ function mountActivity(definition) {
   const view = createSessionView({ settings, play: [$("play")], results, start, footer: true });
   const pool = () => definition.pool ? definition.pool(filters) : definition.items;
   function refresh() {
+    definition.onSettingsChange?.(filters);
     const count = pool().length;
     if (["particle","counter"].includes(key)) {
       $("poolError").textContent = count < limit() ? "Not enough questions for this session length. Choose a shorter session or try again later." : "";
@@ -104,7 +158,7 @@ function mountActivity(definition) {
     } else if (key === "draw") {
       $("poolError").textContent = count ? "" : "No eligible characters. Enter at least one supported kanji or choose another collection.";
       start.disabled = !count;
-    } else if (key === "crossroads" || key === "train") {
+    } else if (key === "crossroads" || key === "train" || key === "karuta") {
       $("poolError").textContent = count ? "" : (key === "train" ? "No eligible journeys. Change the selection to start." : "No eligible items. Change the selection to start.");
       start.disabled = !count;
     } else {

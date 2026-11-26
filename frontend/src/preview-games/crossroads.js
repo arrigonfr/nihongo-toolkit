@@ -6,7 +6,7 @@ import { frame, crossResult, validatePuzzle } from "./crossroads-data.js";
 export const crossroads = {
   ...studyPool("crossroads", validatePuzzle),
   setup(container) {
-    setupNote(container, "Find the one missing kanji in three compounds. Readings appear after answering.");
+    setupNote(container, `Find the one missing kanji in three compounds across ${crossroads.items.length.toLocaleString()} puzzles. Readings appear after answering.`);
   },
   render(container, item, finish) {
     const board = root(container);

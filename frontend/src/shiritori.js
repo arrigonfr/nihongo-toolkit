@@ -79,14 +79,14 @@ function persist(key, value) {
   catch (error) { console.error("Could not save Shiritori data.", error); info("Your browser could not save settings and progress. Export your review list before leaving.", true); return false; }
 }
 const tip = (description) => description ? ` data-setting-description="${escape(description)}"` : "";
-function selectSetting(key, label, options, description) {
-  return `<div class="setting"><div class="setting-title"><label for="setting-${key}"${tip(description)}>${label}</label></div><select id="setting-${key}" data-setting="${key}">${Object.entries(options).map(([value, text]) => `<option value="${value}">${text}</option>`).join("")}</select></div>`;
+function selectSetting(key, label, options, description, noHelp = false) {
+  return `<div class="setting"><div class="setting-title"><label for="setting-${key}"${tip(description)}>${label}</label></div><select id="setting-${key}" data-setting="${key}"${noHelp ? " data-no-setting-help" : ""}>${Object.entries(options).map(([value, text]) => `<option value="${value}">${text}</option>`).join("")}</select></div>`;
 }
-function numberSetting(key, label, min, max, description) {
-  return `<div class="setting"><div class="setting-title"><label for="setting-${key}"${tip(description)}>${label}</label></div><input id="setting-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="1" required></div>`;
+function numberSetting(key, label, min, max, description, noHelp = false) {
+  return `<div class="setting"><div class="setting-title"><label for="setting-${key}"${tip(description)}>${label}</label></div><input id="setting-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="1" required${noHelp ? " data-no-setting-help" : ""}></div>`;
 }
-function checkboxSetting(key, label, description) {
-  return `<div class="setting check"><label class="check-label" for="setting-${key}"${tip(description)}><input id="setting-${key}" data-setting="${key}" type="checkbox">${label}</label></div>`;
+function checkboxSetting(key, label, description, noHelp = false) {
+  return `<div class="setting check"><label class="check-label" for="setting-${key}"${tip(description)}><input id="setting-${key}" data-setting="${key}" type="checkbox"${noHelp ? " data-no-setting-help" : ""}>${label}</label></div>`;
 }
 function settingsMarkup() {
   return `<p class="small">Valid settings save automatically and apply to your next game. The top reading, audio and appearance controls stay live.</p>
@@ -105,12 +105,12 @@ function settingsMarkup() {
   </div></fieldset>
   <fieldset class="settings-section help-section"><legend>Help during play</legend><div class="help-pair">
   <fieldset class="help-group" id="hintSettings"><legend>Hints</legend><div class="settings-grid">
-  ${selectSetting("hints", "Hint availability", { limited: "Limited per player", unlimited: "Unlimited", disabled: "Disabled" })}
-  ${numberSetting("hintLimit", "Hints per player", 0, 30)}
+  ${selectSetting("hints", "Hint availability", { limited: "Limited per player", unlimited: "Unlimited", disabled: "Disabled" }, "", true)}
+  ${numberSetting("hintLimit", "Hints per player", 0, 30, "", true)}
   </div></fieldset>
   <fieldset class="help-group" id="revealSettings"><legend>Reveal answer</legend><div class="settings-grid">
-  ${checkboxSetting("reveal", "Allow Reveal Answer")}
-  ${numberSetting("revealLimit", "Reveals per player", 0, 30)}
+  ${checkboxSetting("reveal", "Allow Reveal Answer", "", true)}
+  ${numberSetting("revealLimit", "Reveals per player", 0, 30, "", true)}
   </div></fieldset>
   </div></fieldset>
   <fieldset class="settings-section"><legend>Display and accessibility</legend><div class="settings-grid">

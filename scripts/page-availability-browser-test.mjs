@@ -54,8 +54,18 @@ try {
     await page.goto(`${origin}${path}`);
     await page.locator('#sheetPicker [data-sheet="worksheet"]').waitFor();
     assert.equal(await page.locator("#sheetPicker .sheet-tab").count(), 10);
-    assert.equal(await page.locator("#sheetPreview img").count(), 1);
-    assert.equal(await page.locator("#sheetPreview svg, #downloadList, .worksheet-controls, .download-panel").count(), 0);
+    if (path.endsWith("#worksheet")) {
+      assert.equal(await page.locator('#sheetPicker [aria-pressed="true"]').getAttribute("data-sheet"), "worksheet");
+      assert.equal(await page.locator("#sheetPreview img").count(), 1);
+      assert.equal(await page.locator("#sheetPreview svg").count(), 0);
+      assert.equal(await page.locator("#kanaDownloads").isVisible(), false);
+      assert.equal(await page.locator("#previewNotice").isVisible(), true);
+    } else {
+      assert.equal(await page.locator('#sheetPicker [aria-pressed="true"]').getAttribute("data-sheet"), "kana");
+      assert.equal(await page.locator("#sheetPreview svg").count(), 1);
+      assert.equal(await page.locator("#kanaDownloads").isVisible(), true);
+      assert.ok(await page.locator("#downloadList .download-button").count() >= 7);
+    }
     assert.equal(await page.locator("header .navigation").count(), 1);
     assert.equal(await page.locator("header .brand").count(), 1);
     assert.equal(await page.locator("header .study-appearance").count(), 1);
@@ -63,9 +73,8 @@ try {
     assert.match(await page.locator(".study-intro-content").textContent(), /Ko-fi/);
     await page.locator("#helpButton").click();
     await page.locator("#helpDialog summary").click();
-    assert.match(await page.locator("#helpDialog[open] .help-steps").innerText(), /Full sheets are not available in this edition/);
+    assert.match(await page.locator("#helpDialog[open] .help-steps").innerText(), /Kana|preview|sample/i);
     await page.keyboard.press("Escape");
-    if (path.endsWith("#worksheet")) assert.equal(await page.locator('#sheetPicker [aria-pressed="true"]').getAttribute("data-sheet"), "worksheet");
   }
   await page.locator("#menuButton").click();
   assert.equal(await page.locator("#menuButton").getAttribute("aria-expanded"), "true");
@@ -81,12 +90,19 @@ try {
     await button.click();
     assert.equal(await button.getAttribute("aria-pressed"), "true");
     assert.equal(await page.locator("#sheetPicker [aria-pressed=true]").count(), 1);
-    const image = page.locator("#sheetPreviewImage");
-    await image.evaluate((image) => image.decode());
-    imageURLs.add(await image.getAttribute("src"));
-    assert.equal(await page.locator("#sheetPreview").getAttribute("data-sheet"), await button.getAttribute("data-sheet"));
+    const id = await button.getAttribute("data-sheet");
+    assert.equal(await page.locator("#sheetPreview").getAttribute("data-sheet"), id);
+    if (id === "kana") {
+      assert.equal(await page.locator("#sheetPreview svg").count(), 1);
+      assert.equal(await page.locator("#kanaDownloads").isVisible(), true);
+    } else {
+      const image = page.locator("#sheetPreviewImage");
+      await image.evaluate((image) => image.decode());
+      imageURLs.add(await image.getAttribute("src"));
+      assert.equal(await page.locator("#kanaDownloads").isVisible(), false);
+    }
   }
-  assert.equal(imageURLs.size, 10);
+  assert.equal(imageURLs.size, 9);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   if (process.env.PREVIEW_SCREENSHOT) {

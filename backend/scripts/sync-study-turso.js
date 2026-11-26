@@ -12,13 +12,23 @@ export async function syncStudy(local, remote, log = console.log) {
       if (!n) throw new Error(`Empty ${table}; provision the local study database first.`);
       const { sql } = local.prepare("SELECT sql FROM sqlite_schema WHERE type='table' AND name=?").get(table);
       const columns = local.prepare(`PRAGMA table_info(${table})`).all();
-      return { table, n, sql, columns };
+      const indexes = local.prepare("SELECT sql FROM sqlite_schema WHERE type='index' AND tbl_name=? AND sql IS NOT NULL").all(table).map(r => r.sql);
+      return { table, n, sql, columns, indexes };
     });
-    for (const { table, n, sql, columns } of plan) {
+    for (const { table, n, sql, columns, indexes } of plan) {
       log(`${table}: ${n} local rows`);
       if (!remote) continue;
-      await remote.execute(sql.replace(/^CREATE TABLE /i, "CREATE TABLE IF NOT EXISTS "));
       const names = columns.map(c => c.name);
+      const remoteInfo = await remote.execute(`PRAGMA table_info(${table})`);
+      const remoteNames = (remoteInfo?.rows || []).map(row => row.name ?? row[1]);
+      if (remoteNames.length && (remoteNames.length !== names.length || remoteNames.some((name, i) => name !== names[i]))) {
+        log(`${table}: remote schema differs; recreating table`);
+        await remote.execute(`DROP TABLE IF EXISTS ${table}`);
+      }
+      await remote.execute(sql.replace(/^CREATE TABLE /i, "CREATE TABLE IF NOT EXISTS "));
+      for (const indexSql of indexes) {
+        await remote.execute(indexSql.replace(/^CREATE (UNIQUE )?INDEX /i, "CREATE $1INDEX IF NOT EXISTS "));
+      }
       const keys = columns.filter(c => c.pk).sort((a,b) => a.pk-b.pk).map(c => c.name);
       const updates = names.filter(name => !keys.includes(name)).map(name => `${name}=excluded.${name}`);
       const insert = `INSERT INTO ${table} (${names}) VALUES (${names.map(() => "?")})

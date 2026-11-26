@@ -1,4 +1,5 @@
 import { gameCredits as draft } from "./credits.js";
+import generated from "./crossroads-generated.json" with { type: "json" };
 
 // The free sense cue is part of the question, never a paid hint.
 function puzzle(id, accepted, theme, bank, triples, alternatives = [], difficulty = "Everyday") {
@@ -27,5 +28,6 @@ export const items = [
   puzzle("snow", "雪", "Winter weather", "白雪花霜",
     [["雪景色","ゆきげしき","snowy scenery"],["積雪","せきせつ","snow accumulated on the ground"],["初雪","はつゆき","first snow"]]),
   puzzle("sound", "音", "What reaches your ears", "音楽声耳",
-    [["音程","おんてい","musical interval"],["録音","ろくおん","sound recording"],["足音","あしおと","sound of footsteps"]], [], "Intermediate")
+    [["音程","おんてい","musical interval"],["録音","ろくおん","sound recording"],["足音","あしおと","sound of footsteps"]], [], "Intermediate"),
+  ...generated.map(args => puzzle(...args))
 ];
