@@ -1,3 +1,5 @@
+import { hasTables } from "./async-database.js";
+
 export function shuffleExamples(items, random = Math.random) {
   const result = [...items];
   for (let i = result.length - 1; i > 0; i--) {
@@ -29,8 +31,7 @@ export async function localExamples(db, { wordId, query, limit = 3, random = fal
     license: "CC BY 2.0 FR", source: "Tatoeba"
   }));
   if (!random && items.length >= limit) return items.slice(0, limit);
-  const tables = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('sentences','word_sentences')").all();
-  if (tables.filter((row) => row.name === "sentences" || row.name === "word_sentences").length === 2) {
+  if (await hasTables(db, ["sentences", "word_sentences"])) {
     const stored = prefetched?.stored ?? await db.prepare(`SELECT DISTINCT s.* FROM sentences s
       JOIN word_sentences ws ON ws.sentence_id=s.id
       WHERE ${wordId !== undefined ? "ws.word_id=?" : `ws.word_id IN (
@@ -64,8 +65,7 @@ export async function localExamplesMany(db, ids, limit = 3) {
     .all(JSON.stringify(unique));
   const groups = new Map(unique.map((id) => [id, { vocabulary: [], stored: [] }]));
   vocabulary.forEach((row) => groups.get(row.word_id)?.vocabulary.push(row));
-  const tables = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('sentences','word_sentences')").all();
-  if (tables.length === 2) {
+  if (await hasTables(db, ["sentences", "word_sentences"])) {
     const needed = unique.filter((id) => {
       const seen = new Set(groups.get(id).vocabulary.flatMap((row) => JSON.parse(row.examples))
         .filter((item) => item.ja && item.en).map((item) => item.ja));
@@ -94,22 +94,55 @@ export async function localExamplesMany(db, ids, limit = 3) {
     [wordId, await localExamples(db, { wordId, limit, prefetched: groups.get(wordId) })])));
 }
 
-export function createSentenceFallback({ fetchImpl = fetch, enabled = process.env.SENTENCE_API_FALLBACK !== "false" } = {}) {
-  const cache = new Map();
+const PERSISTENT_SENTENCE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export function createSentenceFallback({
+  fetchImpl = fetch,
+  enabled = process.env.SENTENCE_API_FALLBACK !== "false",
+  cache = null,
+  cooldownMs = 0,
+  now = Date.now
+} = {}) {
+  const memoryCache = new Map();
   const pending = new Map();
+  let cooldownUntil = 0;
+
   return async function fallback(query) {
     if (!enabled) return [];
-    const cached = cache.get(query);
-    if (cached && cached.expires > Date.now()) return cached.items;
+    const cached = memoryCache.get(query);
+    if (cached && cached.expires > now()) return cached.items;
     if (pending.has(query)) return pending.get(query);
+
+    const cacheKey = `tatoeba:${query}`;
+    if (cache?.get) {
+      const persisted = await cache.get(cacheKey);
+      if (Array.isArray(persisted)) {
+        if (memoryCache.size >= 200) memoryCache.delete(memoryCache.keys().next().value);
+        memoryCache.set(query, { items: persisted, expires: now() + 3600000 });
+        return persisted;
+      }
+    }
+
+    if (cooldownUntil > now()) {
+      throw new Error("Sentence provider is temporarily cooling down; try again shortly.");
+    }
     if (pending.size >= 4) throw new Error("Sentence provider is busy; try again shortly.");
+
     const request = (async () => {
       const url = new URL("https://api.tatoeba.org/unstable/sentences");
       url.search = new URLSearchParams({ lang: "jpn", q: query, limit: "20", sort: "random", "trans:lang": "eng" });
       const response = await fetchImpl(url, { signal: AbortSignal.timeout(6000), headers: { Accept: "application/json" } });
-      if (!response.ok) throw new Error(`Sentence provider returned HTTP ${response.status}`);
+      if (!response.ok) {
+        if (cooldownMs > 0 && (response.status === 429 || response.status >= 500)) {
+          cooldownUntil = now() + cooldownMs;
+        }
+        throw new Error(`Sentence provider returned HTTP ${response.status}`);
+      }
       const payload = await response.json();
-      if (!Array.isArray(payload.data)) throw new Error("Invalid sentence provider response");
+      if (!Array.isArray(payload.data)) {
+        if (cooldownMs > 0) cooldownUntil = now() + cooldownMs;
+        throw new Error("Invalid sentence provider response");
+      }
       const seen = new Set();
       const items = payload.data.flatMap((sentence) => {
         const translation = sentence.translations?.find((item) =>
@@ -124,8 +157,11 @@ export function createSentenceFallback({ fetchImpl = fetch, enabled = process.en
           translationId: translation.id, translationLicense: translation.license, license: sentence.license, source: "Tatoeba"
         }];
       });
-      if (cache.size >= 200) cache.delete(cache.keys().next().value);
-      cache.set(query, { items, expires: Date.now() + (items.length ? 3600000 : 60000) });
+      if (memoryCache.size >= 200) memoryCache.delete(memoryCache.keys().next().value);
+      memoryCache.set(query, { items, expires: now() + (items.length ? 3600000 : 60000) });
+      if (items.length && cache?.set) {
+        await cache.set(cacheKey, items, PERSISTENT_SENTENCE_TTL_MS);
+      }
       return items;
     })();
     pending.set(query, request);

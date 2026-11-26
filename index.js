@@ -1,37 +1,37 @@
-import { google } from 'googleapis';
+import { getGoogleAccessToken } from "./scripts/google-auth.js";
 
 async function runIndexing() {
   try {
-    const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
-    if (!serviceAccountKey?.trim()) {
-      throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY must not be null or empty.');
-    }
-
-    const auth = new google.auth.JWT({
-      scopes: ['https://www.googleapis.com/auth/indexing'],
-    });
-    auth.fromJSON(JSON.parse(serviceAccountKey));
-
-    const indexing = google.indexing({
-      version: 'v3',
-      auth,
-    });
+    const accessToken = await getGoogleAccessToken(
+      process.env.GOOGLE_SERVICE_ACCOUNT_KEY,
+      ["https://www.googleapis.com/auth/indexing"]
+    );
 
     // List the page or pages you want crawled automatically on deployment
-    const targetUrl = 'https://nihongotoolkit.pages.dev';
+    const targetUrl = "https://nihongotoolkit.pages.dev";
 
     console.log(`Sending indexing request for: ${targetUrl}...`);
 
-    const response = await indexing.urlNotifications.publish({
-      requestBody: {
-        url: targetUrl,
-        type: 'URL_UPDATED',
+    const response = await fetch("https://indexing.googleapis.com/v3/urlNotifications:publish", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
       },
+      body: JSON.stringify({
+        url: targetUrl,
+        type: "URL_UPDATED"
+      })
     });
 
-    console.log('Success! Google API Response:', response.data);
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(`Google Indexing API failed (${response.status}): ${text}`);
+    }
+
+    console.log("Success! Google API Response:", text ? JSON.parse(text) : {});
   } catch (error) {
-    console.error('Indexing Failed:', error.message);
+    console.error("Indexing Failed:", error.message);
     process.exitCode = 1;
   }
 }

@@ -167,3 +167,65 @@ test("corpus-only questions try the external provider instead of reviewed genera
     assert.equal(corpus.data[0].generated, false);
   } finally { server.close(); await once(server, "close"); db.close(); }
 });
+
+test("sentence fallback supports persistent cache and cooldown on upstream failures", async () => {
+  const store = new Map();
+  const cache = {
+    async get(key) { return store.get(key) ?? null; },
+    async set(key, value) { store.set(key, value); }
+  };
+  let calls = 0;
+  let nowMs = 50_000;
+  const makeFallback = (fetchImpl) => createSentenceFallback({
+    enabled: true,
+    cache,
+    cooldownMs: 60_000,
+    now: () => nowMs,
+    fetchImpl
+  });
+
+  const first = makeFallback(async () => {
+    calls++;
+    return { ok: true, json: async () => ({ data: [
+      { id: 10, text: "猫が好きです。", lang: "jpn", owner: "a", license: "CC",
+        translations: [{ id: 11, lang: "eng", text: "I like cats.", owner: "b" }] }
+    ] }) };
+  });
+  const items = await first("猫");
+  assert.equal(items.length, 1);
+  assert.equal(calls, 1);
+
+  // Fresh instance reads from persistent cache without calling fetch
+  const second = makeFallback(async () => assert.fail("Should read from persistent cache"));
+  assert.deepEqual(await second("猫"), items);
+
+  // Cooldown prevents hammering after 429
+  let failedCalls = 0;
+  const cooling = makeFallback(async () => {
+    failedCalls++;
+    return { ok: false, status: 429 };
+  });
+  await assert.rejects(cooling("犬"), /429/);
+  await assert.rejects(cooling("犬"), /cooling down/);
+  assert.equal(failedCalls, 1);
+});
+
+test("hasTables caches sqlite_master introspection across per-request asyncDatabase wrappers", async () => {
+  const { asyncDatabase, hasTables } = await import("../src/async-database.js");
+  let masterQueries = 0;
+  const source = {
+    async batch(statements) {
+      for (const { sql } of statements) {
+        if (sql.includes("sqlite_master")) masterQueries++;
+      }
+      return statements.map(() => ({
+        columns: ["name"],
+        rows: [{ name: "sentences" }, { name: "word_sentences" }]
+      }));
+    }
+  };
+  assert.equal(await hasTables(asyncDatabase(source), ["sentences", "word_sentences"]), true);
+  assert.equal(await hasTables(asyncDatabase(source), ["word_sentences", "sentences"]), true);
+  assert.equal(masterQueries, 1);
+});
+

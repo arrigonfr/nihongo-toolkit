@@ -1,5 +1,38 @@
 // One adapter per request: concurrent lookups share Turso batch round-trips and
 // identical lookups share their promise. SQLite continues to execute locally.
+const tableAvailabilityCache = new WeakMap();
+
+export async function hasTables(db, names) {
+  const uniqueNames = [...new Set(names)].sort();
+  if (!uniqueNames.length) return true;
+  const cacheKey = db.source ?? db;
+  let perDb = tableAvailabilityCache.get(cacheKey);
+  if (!perDb) {
+    perDb = new Map();
+    tableAvailabilityCache.set(cacheKey, perDb);
+  }
+  const namesKey = uniqueNames.join(",");
+  let pending = perDb.get(namesKey);
+  if (!pending) {
+    const placeholders = uniqueNames.map(() => "?").join(",");
+    pending = Promise.resolve(
+      db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (${placeholders})`)
+        .all(...uniqueNames)
+    ).then(
+      (rows) => {
+        const found = new Set(rows.map((row) => row.name));
+        return uniqueNames.every((name) => found.has(name));
+      },
+      (error) => {
+        if (perDb.get(namesKey) === pending) perDb.delete(namesKey);
+        throw error;
+      }
+    );
+    perDb.set(namesKey, pending);
+  }
+  return pending;
+}
+
 export function asyncDatabase(source) {
   if (source.async) return source;
   const cache = new Map();
@@ -32,6 +65,7 @@ export function asyncDatabase(source) {
   return {
     async: true,
     remote: Boolean(source.batch),
+    source,
     prepare(sql) {
       return {
         all: (...args) => query(sql, args),

@@ -1,0 +1,175 @@
+import { localExamples, localExamplesMany } from "../examples.js";
+import { isPracticeKanji, practiceMeanings } from "../practice-kanji.js";
+import { shiritoriWords } from "../shiritori.js";
+import { findConjugationEntries } from "../conjugator.js";
+import { findPracticeEntries } from "../conjugation-practice.js";
+import { CACHE_DYNAMIC, CACHE_STATIC, HttpError, integer, levelFilter, searchTerm } from "../http.js";
+import { practiceRecords, vocabularyExample, vocabularyRecord } from "../serializers.js";
+
+const parse = JSON.parse;
+const unique = (items) => [...new Set(items)];
+
+export async function handlePracticeRoutes({
+  path, params, db, tags, send, toKanji, lookupKanjiDetail, wordFallback, segment
+}) {
+  if (path === "/api/health") {
+    const counts = Object.fromEntries(await Promise.all(["kanjis", "words", "kanji_words", "vocabulary", "strokes"]
+      .map(async (table) => [table, (await db.prepare(`SELECT count(*) AS n FROM ${table}`).get()).n])));
+    const ready = Object.values(counts).every((n) => n > 0);
+    await send(ready ? 200 : 503, { ready, counts });
+    return true;
+  }
+  if (path === "/api/conjugation-practice") {
+    const level = params.get("level") ?? "all";
+    if (!/^(all|none|unrated|[1-5](?:,(?:[1-5]|unrated))*)$/.test(level)) throw new HttpError(400, "Invalid practice level.");
+    await send(200, await findPracticeEntries(db, { level }), CACHE_STATIC);
+    return true;
+  }
+  if (path === "/api/conjugator") {
+    const random = params.get("random") === "true";
+    const query = random ? "" : searchTerm(params);
+    const exclude = params.getAll("exclude");
+    if (exclude.length > 100 || exclude.some((word) => word.length > 100)) throw new HttpError(400, "Too many excluded words.");
+    const level = params.get("level") ?? "all";
+    const category = params.get("category") ?? "all";
+    if (!/^(all|none|unrated|[1-5](?:,(?:[1-5]|unrated))*)$/.test(level)
+      || !["all", "verb", "adjective"].includes(category)) throw new HttpError(400, "Invalid conjugator filter.");
+    const items = await findConjugationEntries(db, { query, random, level, category, exclude });
+    const examples = await localExamplesMany(db, items.map((entry) => entry.wordId));
+    await send(200, { items: await Promise.all(items.map(async (entry) => ({
+      ...entry,
+      examples: examples.get(entry.wordId) ?? [],
+      kanjiDetails: (await Promise.all(unique([...entry.word].filter((ch) => /\p{Script=Han}/u.test(ch)))
+        .map(lookupKanjiDetail))).filter(Boolean)
+    }))) }, random ? undefined : CACHE_STATIC);
+    return true;
+  }
+  if (path === "/api/shiritori/words") {
+    try {
+      const isRandom = params.get("random") === "1";
+      await send(200, await shiritoriWords(db, params, tags, wordFallback, segment), isRandom ? undefined : CACHE_DYNAMIC);
+      return true;
+    }
+    catch (error) {
+      if (error.status === 502) throw new HttpError(502, error.message);
+      if (error instanceof SyntaxError || /Invalid|Minimum morae|Choose a category|Kanji chains/.test(error.message)) {
+        throw new HttpError(400, error.message);
+      }
+      throw error;
+    }
+  }
+  if (path === "/api/word-search/vocabulary") {
+    const filter = levelFilter(params, "v");
+    const rows = await db.prepare(`SELECT v.id, v.word, v.reading, v.jlpt, v.meanings, v.parts_of_speech FROM vocabulary v WHERE v.jlpt BETWEEN 1 AND 5${filter.sql} ORDER BY v.id`).all(...filter.args);
+    await send(200, { items: rows.map((row) => ({
+      id: row.id, word: row.word, reading: row.reading, level: row.jlpt,
+      meaning: parse(row.meanings).join("; "),
+      partOfSpeech: parse(row.parts_of_speech).map((tag) => tags[tag] ?? tag).join(", "),
+      posTags: parse(row.parts_of_speech)
+    })) }, CACHE_STATIC);
+    return true;
+  }
+  if (path === "/api/kanji/batch" || path === "/api/words/batch") {
+    const kanji = path === "/api/kanji/batch";
+    const lightweight = params.get("projection") === "practice";
+    const limit = integer(params.get("limit"), 40, 1, !kanji && lightweight ? 200 : 100);
+    const filter = levelFilter(params, kanji ? "" : "v");
+    let sql = kanji
+      ? `SELECT * FROM kanjis WHERE 1=1${filter.sql}`
+      : `SELECT v.*, w.senses AS word_senses, w.kanji_forms AS word_kanji_forms, w.kana_forms AS word_kana_forms
+        FROM vocabulary v LEFT JOIN words w ON v.word_id = w.id WHERE 1=1${filter.sql}`;
+    const args = [...filter.args];
+    if (kanji) {
+      if (!db.remote) sql += " AND is_practice_kanji(character, on_readings, kun_readings, meanings) = 1";
+      const mode = params.get("mode") ?? "meaning";
+      if (!["meaning", "reading", "both"].includes(mode)) throw new HttpError(400, "Invalid kanji mode");
+      if (mode !== "reading") sql += " AND json_array_length(meanings) > 0";
+      if (mode !== "meaning") sql += " AND (json_array_length(on_readings) + json_array_length(kun_readings)) > 0";
+      const reading = params.get("reading") ?? "both";
+      if (!["on", "kun", "both"].includes(reading)) throw new HttpError(400, "Invalid reading type");
+      if (reading !== "both") sql += ` AND json_array_length(${reading}_readings) > 0`;
+    }
+    const excluded = params.getAll("exclude");
+    if (excluded.length > 100 || excluded.some((id) => id.length > 30)) throw new HttpError(400, "Too many excluded IDs");
+    if (excluded.length) {
+      sql += ` AND ${kanji ? "id" : "v.id"} NOT IN (SELECT value FROM json_each(?))`;
+      args.push(JSON.stringify(excluded));
+    }
+    const enrichKanji = !lightweight && (params.get("kanji") === "1" || params.get("kanji") === "true");
+    const expandJMdict = !kanji && (params.get("expand") === "1" || params.get("expand") === "true");
+    let rows;
+    if (kanji && db.remote) {
+      rows = [];
+      // A stable randomized order lets us filter pages without skipping valid kanji.
+      const seed = Math.floor(Math.random() * 2147483647);
+      const pageSize = Math.max(100, limit * 2);
+      for (let offset = 0; rows.length < limit; offset += pageSize) {
+        const page = await db.prepare(`${sql} ORDER BY ((id * 1103515245 + ${seed}) & 2147483647), id LIMIT ${pageSize} OFFSET ?`).all(...args, offset);
+        rows.push(...page.filter((row) => isPracticeKanji(row.character,
+          parse(row.on_readings), parse(row.kun_readings), parse(row.meanings))));
+        if (page.length < pageSize) break;
+      }
+      rows = rows.slice(0, limit);
+    } else {
+      rows = await db.prepare(`${sql} ORDER BY random() LIMIT ?`).all(...args, limit);
+    }
+    let items = kanji && lightweight
+      ? (await practiceRecords(db, rows)).map((item) => ({ ...item, meanings: practiceMeanings(item.meanings) }))
+      : await Promise.all(rows
+      .map(kanji ? async (row) => ({ ...await toKanji(row), meanings: practiceMeanings(parse(row.meanings)) }) : (row) => vocabularyRecord(row, {
+        db: lightweight ? undefined : db, tags, sensesJson: row.word_senses,
+        lookupKanji: enrichKanji ? lookupKanjiDetail : undefined
+      })));
+    if (expandJMdict) {
+      const extraLimit = Math.max(15, Math.floor(limit * 0.35));
+      const extraRows = await db.prepare(`SELECT * FROM words WHERE id IN (
+        SELECT id FROM words WHERE is_common = 1 AND length(word) BETWEEN 2 AND 8 ORDER BY random() LIMIT ?
+      )`).all(extraLimit);
+      const levelCharacters = lightweight ? unique(extraRows.flatMap((row) => [...row.word].filter((ch) => /\p{Script=Han}/u.test(ch)))) : [];
+      const kanjiLevels = new Map(levelCharacters.length ? (await db.prepare(
+        "SELECT character, jlpt FROM kanjis WHERE character IN (SELECT value FROM json_each(?))"
+      ).all(JSON.stringify(levelCharacters))).map((row) => [row.character, row.jlpt || 3]) : []);
+      const seenWords = new Set(items.map((i) => i.word));
+      await Promise.all(extraRows.map(async (wRow) => {
+        if (seenWords.has(wRow.word)) return;
+        seenWords.add(wRow.word);
+        const senses = parse(wRow.senses);
+        const meaningsList = parse(wRow.meanings);
+        if (!meaningsList.length) return;
+        const posList = unique(senses.flatMap((s) => s.partOfSpeech || []));
+        const examples = lightweight ? [] : (await localExamples(db, { wordId: wRow.id })).map(vocabularyExample);
+        const kanjiChars = unique([...wRow.word].filter((ch) => /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u.test(ch)));
+        const kanjiDetails = enrichKanji ? (await Promise.all(kanjiChars.map((ch) => lookupKanjiDetail(ch)))).filter(Boolean) : undefined;
+        const levels = lightweight ? kanjiChars.filter((ch) => kanjiLevels.has(ch)).map((ch) => kanjiLevels.get(ch))
+          : kanjiDetails?.map((k) => k.jlpt || 3);
+        const jlptEst = levels?.length
+          ? Math.min(...levels)
+          : 3;
+        items.push({
+          id: `jm-${wRow.id}`,
+          word: wRow.word,
+          furigana: wRow.reading || wRow.word,
+          romaji: "",
+          meaning: meaningsList.slice(0, 4).join("; "),
+          meanings: meaningsList,
+          level: jlptEst,
+          partOfSpeech: posList.map((tag) => tags[tag] ?? tag).join(", "),
+          posTags: posList,
+          example: examples[0]?.ja ?? "",
+          exampleFurigana: examples[0]?.furigana ?? "",
+          exampleMeaning: examples[0]?.en ?? "",
+          examples,
+          synonyms: unique(senses.flatMap((s) => (s.related || []).map((r) => r[0]))).slice(0, 4),
+          antonyms: unique(senses.flatMap((s) => (s.antonym || []).map((a) => a[0]))).slice(0, 4),
+          fields: unique(senses.flatMap((s) => (s.field || []).map((f) => tags[f] ?? f))).slice(0, 4),
+          usageNotes: unique(senses.flatMap((s) => s.info || [])).slice(0, 2),
+          ...(kanjiDetails ? { kanjiDetails } : {})
+        });
+      }));
+    }
+    if (!items.length) throw new HttpError(503, "No practice items are available for this selection right now.");
+    await send(200, { items });
+    return true;
+  }
+  return false;
+}

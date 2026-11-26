@@ -1,4 +1,4 @@
-import { validateContact } from "../../frontend/src/contact-fields.js";
+import { validateContact } from "@nihon/shared/contact-fields";
 import { scheduleContactDelivery } from "./contact-delivery.js";
 import { gmailConfigured } from "./contact-gmail.js";
 

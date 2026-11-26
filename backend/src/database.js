@@ -11,6 +11,7 @@ export function createDatabase(path = databasePath) {
   const db = new DatabaseSync(path);
   db.exec(readFileSync(new URL("./schema.sql", import.meta.url), "utf8"));
   db.exec(readFileSync(new URL("./word-search-index.sql", import.meta.url), "utf8"));
+  db.exec(readFileSync(new URL("./search-indexes.sql", import.meta.url), "utf8"));
   return db;
 }
 

@@ -26,7 +26,7 @@ test("local speech queues every clip without overlap and Audio Off cancels pendi
     resume() { return Promise.resolve(); }
     createBuffer() { return { duration: 2, copyToChannel() {} }; }
     createBufferSource() {
-      const source = { connect() {}, disconnect() {}, start(time) { this.time = time; }, stop() { this.stopped = true; } };
+      const source = { playbackRate: { value: 1 }, connect() {}, disconnect() {}, start(time) { this.time = time; }, stop() { this.stopped = true; } };
       sources.push(source);
       return source;
     }

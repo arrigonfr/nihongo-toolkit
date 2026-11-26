@@ -7,6 +7,7 @@
     "npm": ">=10.0.0"
   },
   "workspaces": [
+    "shared",
     "backend",
     "frontend"
   ],
@@ -24,7 +25,7 @@
     "build:kanji-data": "node scripts/build-kanji-catalogue.mjs",
     "build": "npm run build -w frontend",
     "build:redirect": "node -e \"require('fs').mkdirSync('redirect',{recursive:true});require('fs').writeFileSync('redirect/_redirects','/* https://nihongotoolkit.pages.dev/:splat 301\\\\n')\"",
-    "build:cloudflare": "VITE_API_BASE_URL= npm run build && node backend/scripts/build-tokenizer.js",
+    "build:cloudflare": "node backend/scripts/build-tokenizer.js",
     "dev:cloudflare": "npm run build:cloudflare && wrangler dev",
     "deploy:cloudflare": "npm run build:cloudflare && wrangler deploy",
     "check:cloudflare": "npm run build:cloudflare && wrangler deploy --dry-run",
@@ -33,6 +34,7 @@
     "test:contact": "node --test backend/test/contact.test.js && node scripts/contact-browser-test.mjs",
     "test:loading": "node scripts/loading-browser-test.mjs",
     "test": "node --test backend/test/*.test.js frontend/test/*.test.js",
+    "test:ci": "node --test backend/test/analyze.test.js backend/test/compounds.test.js backend/test/conjugation-practice.test.js backend/test/conjugator.test.js backend/test/contact.test.js backend/test/database.test.js backend/test/enrichment.test.js backend/test/examples.test.js backend/test/google-auth.test.js backend/test/jlpt-enrichment.test.js backend/test/page-views.test.js backend/test/proper-nouns.test.js backend/test/shiritori.test.js backend/test/study-guide.test.js backend/test/translations.test.js backend/test/transport.test.js backend/test/turso.test.js backend/test/vocabulary-answers.test.js backend/test/vocabulary-seed.test.js backend/test/word-search-index.test.js frontend/test/*.test.js",
     "test:conjugator": "node --test backend/test/conjugator.test.js frontend/test/conjugation.test.js && node scripts/conjugator-browser-test.mjs",
     "test:conjugation-practice": "node --test frontend/test/conjugation-practice.test.js frontend/test/conjugation.test.js && node scripts/conjugation-practice-browser-test.mjs",
     "test:e2e": "node scripts/browser-test.mjs && node scripts/shared-ui-browser-test.mjs",

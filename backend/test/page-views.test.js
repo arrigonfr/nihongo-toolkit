@@ -15,7 +15,7 @@ test("TRACK_VISITS requires the exact string true and disabled reporting never t
     const tasks = [];
     const storage = { prepare() { return { bind() { return { run: async () => {} }; } }; } };
     assert.equal((await pageViews(new Request("https://worker.test/api/page-views", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: '{"page":"/"}'
+      method: "POST", headers: { Origin: "https://worker.test", "Content-Type": "application/json" }, body: '{"page":"/"}'
     }), { PAGE_VIEWS_DB: storage }, { waitUntil: (task) => tasks.push(task) })).status, 202, "Node-compatible process.env flag is supported");
     await Promise.all(tasks);
     const env = { TRACK_VISITS: "false", get PAGE_VIEWS_DB() { throw new Error("Worker false overrides Node flag"); } };
@@ -33,7 +33,7 @@ test("UTC dates roll over without time components; failed writes stay off the re
     prepare() { return { bind(date) { dates.push(date); return { run: async () => {} }; } }; }
   } };
   const request = () => new Request("https://worker.test/api/page-views", {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: '{"page":"/"}'
+    method: "POST", headers: { Origin: "https://worker.test", "Content-Type": "application/json" }, body: '{"page":"/"}'
   });
   await pageViews(request(), env, { waitUntil: (task) => tasks.push(task) });
   await Promise.all(tasks);
@@ -73,23 +73,24 @@ test("counter schedules server UTC aggregate writes without awaiting D1", async 
 test("counter failures are explicit and payload/CORS are narrowly constrained", async () => {
   const env = { TRACK_VISITS: "true", PAGE_VIEWS_DB: {} };
   const request = (body, extra = {}) => new Request("https://worker.test/api/page-views", {
-    method: "POST", headers: { "Content-Type": "application/json" }, body, ...extra
+    method: "POST", headers: { Origin: "https://worker.test", "Content-Type": "application/json" }, body, ...extra
   });
   for (const body of ['{}', '{"page":"/unknown"}', '{"page":"/index.html"}', '{"page":"/?q=private"}', '{"page":"/","id":"secret"}', 'null', '{']) {
     assert.equal((await pageViews(request(body), env, {})).status, 400);
   }
   assert.equal((await pageViews(request("x".repeat(257)), env, {})).status, 413);
-  assert.equal((await pageViews(request('{"page":"/"}', { headers: { "Content-Type": "text/plain" } }), env, {})).status, 415);
+  assert.equal((await pageViews(request('{"page":"/"}', { headers: { Origin: "https://worker.test", "Content-Type": "text/plain" } }), env, {})).status, 415);
   assert.equal((await pageViews(request('{"page":"/"}', { headers: { Origin: "https://evil.test" } }), env, {})).status, 403);
+  assert.equal((await pageViews(request('{"page":"/"}', { headers: { "Content-Type": "application/json" } }), env, {})).status, 403, "missing Origin must be rejected on POST");
   assert.equal((await pageViews(request('{"page":"/"}'), {}, {})).status, 503);
   assert.equal((await pageViews(request('{"page":"/"}'), { TRACK_VISITS: "true" }, {})).status, 503);
   assert.equal((await pageViews(new Request("https://worker.test/api/page-views", { method: "DELETE" }), env, {})).status, 405);
 });
 
-test("daily counts default to UTC today and remain readable with tracking disabled", async (t) => {
+test("daily counts require bearer auth, default to UTC today and remain readable with tracking disabled", async (t) => {
   t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-11-06T00:30:00Z") });
   const dates = [];
-  const env = { TRACK_VISITS: "false", PAGE_VIEWS_DB: {
+  const env = { TRACK_VISITS: "false", PAGE_VIEWS_ADMIN_TOKEN: "secret-analytics-token", PAGE_VIEWS_DB: {
     prepare(sql) {
       assert.match(sql, /WHERE date = \? ORDER BY page/);
       return { bind(date) {
@@ -99,7 +100,11 @@ test("daily counts default to UTC today and remain readable with tracking disabl
       } };
     }
   } };
-  const get = (query = "") => pageViews(new Request(`https://worker.test/api/page-views${query}`), env, {});
+  const authHeaders = { Authorization: "Bearer secret-analytics-token" };
+  const get = (query = "", headers = authHeaders) => pageViews(new Request(`https://worker.test/api/page-views${query}`, { headers }), env, {});
+  assert.equal((await get("", {})).status, 401);
+  assert.equal((await get("", { Authorization: "Bearer wrong-token" })).status, 401);
+  assert.equal((await pageViews(new Request("https://worker.test/api/page-views", { headers: authHeaders }), { PAGE_VIEWS_DB: env.PAGE_VIEWS_DB }, {})).status, 503);
   assert.deepEqual(await (await get()).json(), {
     date: "2026-11-06", pages: [{ page: "/", views: 2 }, { page: "/fumitoki.html", views: 3 }], total: 5
   });
@@ -109,9 +114,52 @@ test("daily counts default to UTC today and remain readable with tracking disabl
   }
   assert.equal((await get("?date=2026-11-06&date=2026-11-05")).status, 400);
   assert.deepEqual(dates, ["2026-11-06", "2024-02-29"]);
-  assert.equal((await pageViews(new Request("https://worker.test/api/page-views"), {}, {})).status, 503);
+  assert.equal((await pageViews(new Request("https://worker.test/api/page-views", { headers: authHeaders }), { PAGE_VIEWS_ADMIN_TOKEN: "secret-analytics-token" }, {})).status, 503);
   t.mock.method(console, "error", () => {});
   env.PAGE_VIEWS_DB.prepare = () => { throw new Error("Unavailable"); };
   assert.equal((await get()).status, 503);
   assert.equal(console.error.mock.callCount(), 1);
 });
+
+test("Node app handler bridges /api/page-views and /api/contact with local SQLite D1 shim", async (t) => {
+  const { createServer } = await import("node:http");
+  const { createHandler } = await import("../src/app.js");
+  const pending = [];
+  const server = createServer(createHandler({
+    localD1Path: ":memory:",
+    env: {
+      TRACK_VISITS: "true",
+      PAGE_VIEWS_ADMIN_TOKEN: "local-dev-token",
+      ALLOWED_ORIGINS: "http://localhost:5173",
+      CONTACT_ENABLED: "false"
+    },
+    ctx: { waitUntil: (promise) => pending.push(promise) }
+  }));
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  const post = await fetch(`${base}/api/page-views`, {
+    method: "POST",
+    headers: { Origin: "http://localhost:5173", "Content-Type": "application/json" },
+    body: JSON.stringify({ page: "/fumitoki.html" })
+  });
+  assert.equal(post.status, 202);
+  await Promise.all(pending);
+
+  const get = await fetch(`${base}/api/page-views`, {
+    headers: { Authorization: "Bearer local-dev-token" }
+  });
+  assert.equal(get.status, 200);
+  const summary = await get.json();
+  assert.equal(summary.total, 1);
+  assert.deepEqual(summary.pages, [{ page: "/fumitoki.html", views: 1 }]);
+
+  const contact = await fetch(`${base}/api/contact`, {
+    method: "POST",
+    headers: { Origin: "http://localhost:5173", "Content-Type": "application/json" },
+    body: JSON.stringify({})
+  });
+  assert.equal(contact.status, 503);
+});
+

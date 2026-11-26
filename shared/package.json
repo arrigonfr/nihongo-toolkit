@@ -1,0 +1,10 @@
+{
+  "name": "@nihon/shared",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./jlpt-levels": "./src/jlpt-levels.js",
+    "./contact-fields": "./src/contact-fields.js",
+    "./page-paths": "./src/page-paths.js"
+  }
+}

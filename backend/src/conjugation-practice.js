@@ -1,6 +1,6 @@
 import { conjugationEntries } from "./conjugator.js";
 import { rowsByWordIds } from "./async-database.js";
-import { selectedLevels } from "../../frontend/src/jlpt-levels.js";
+import { selectedLevels } from "@nihon/shared/jlpt-levels";
 
 export async function findPracticeEntries(db, { level = "all" } = {}) {
   const levels = selectedLevels(level).filter(Number.isInteger);

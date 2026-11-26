@@ -20,7 +20,7 @@ test("real Worker/D1 migration, concurrent UPSERTs, CORS and isolation from Turs
       modules: true, script: output.outputFiles[0].text,
       compatibilityDate: "2026-08-06", compatibilityFlags: ["nodejs_compat"],
       defaultPersistRoot: directory, d1Databases: ["PAGE_VIEWS_DB"],
-      bindings: { TRACK_VISITS: "true", ALLOWED_ORIGINS: "https://nihongotoolkit.pages.dev" },
+      bindings: { TRACK_VISITS: "true", ALLOWED_ORIGINS: "https://nihongotoolkit.pages.dev", PAGE_VIEWS_ADMIN_TOKEN: "test-admin-token" },
       outboundService: () => { throw new Error("No external requests are permitted"); }
     });
     const db = await mf.getD1Database("PAGE_VIEWS_DB");
@@ -50,17 +50,19 @@ test("real Worker/D1 migration, concurrent UPSERTs, CORS and isolation from Turs
     assert.equal(rejected.status, 403);
     assert.equal(rejected.headers.get("access-control-allow-origin"), null);
     // No Turso credentials are present: success above proves storage independence.
-    const counts = await mf.dispatchFetch(`${url}?date=${rows[0].date}`, { headers: { Origin: headers.Origin } });
+    const authHeaders = { Authorization: "Bearer test-admin-token" };
+    assert.equal((await mf.dispatchFetch(`${url}?date=${rows[0].date}`)).status, 401);
+    const counts = await mf.dispatchFetch(`${url}?date=${rows[0].date}`, { headers: { Origin: headers.Origin, ...authHeaders } });
     assert.equal(counts.status, 200);
     assert.equal(counts.headers.get("access-control-allow-origin"), headers.Origin);
     assert.deepEqual(await counts.json(), {
       date: rows[0].date, pages: [{ page: "/", views: 10 }, { page: "/fumitoki.html", views: 30 }], total: 40
     });
-    assert.equal((await (await mf.dispatchFetch(url)).json()).total, 40);
-    assert.deepEqual(await (await mf.dispatchFetch(`${url}?date=2000-01-01`)).json(),
+    assert.equal((await (await mf.dispatchFetch(url, { headers: authHeaders })).json()).total, 40);
+    assert.deepEqual(await (await mf.dispatchFetch(`${url}?date=2000-01-01`, { headers: authHeaders })).json(),
       { date: "2000-01-01", pages: [], total: 0 });
-    assert.equal((await mf.dispatchFetch(`${url}?date=2026-02-30`)).status, 400);
-    assert.equal((await mf.dispatchFetch(url, { headers: { Origin: "https://evil.test" } })).status, 403);
+    assert.equal((await mf.dispatchFetch(`${url}?date=2026-02-30`, { headers: authHeaders })).status, 400);
+    assert.equal((await mf.dispatchFetch(url, { headers: { Origin: "https://evil.test", ...authHeaders } })).status, 403);
     await mf.setOptions({
       modules: true, script: output.outputFiles[0].text,
       compatibilityDate: "2026-08-06", compatibilityFlags: ["nodejs_compat"],

@@ -2,7 +2,7 @@ import { kana, connects, eligibility, parseRules, startOptions } from "./shirito
 import { localExamples } from "./examples.js";
 import { findConjugationEntries } from "./conjugator.js";
 import { segmentText } from "./tokenizer.js";
-import { selectedLevels } from "../../frontend/src/jlpt-levels.js";
+import { selectedLevels } from "@nihon/shared/jlpt-levels";
 
 const unique = (values) => [...new Set(values)];
 export function dictionaryForms(row, tags, levels = []) {

@@ -1,4 +1,4 @@
-import { selectedLevels, matchesLevel } from "../../frontend/src/jlpt-levels.js";
+import { selectedLevels, matchesLevel } from "@nihon/shared/jlpt-levels";
 import { rowsByWordIds } from "./async-database.js";
 
 const parse = JSON.parse;

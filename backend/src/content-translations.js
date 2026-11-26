@@ -1,3 +1,5 @@
+import { hasTables } from "./async-database.js";
+
 // Spanish/Portuguese study-content translations (translations.sql). Without the table, content stays English.
 const encoder = new TextEncoder();
 
@@ -18,8 +20,7 @@ export async function contentTranslations(db, kind, items) {
   const result = new Map();
   const wanted = new Map(items.filter((item) => item.id != null).map((item) => [String(item.id), item.english]));
   if (!wanted.size) return result;
-  const table = await db.prepare("SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = 'content_translations'").get();
-  if (!table) return result;
+  if (!(await hasTables(db, ["content_translations"]))) return result;
   const rows = await db.prepare(`SELECT item_id, lang, value, method, source_hash, attribution FROM content_translations
     WHERE kind = ? AND item_id IN (SELECT value FROM json_each(?))`).all(kind, JSON.stringify([...wanted.keys()]));
   const hashes = new Map();

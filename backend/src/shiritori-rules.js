@@ -1,4 +1,4 @@
-import { matchesLevel } from "../../frontend/src/jlpt-levels.js";
+import { matchesLevel } from "@nihon/shared/jlpt-levels";
 
 export const DEFAULT_RULES = {
   mode: "classic", level: "all",

@@ -1,8 +1,17 @@
-import { PAGE_PATHS } from "../../frontend/src/page-paths.js";
+import { PAGE_PATHS } from "@nihon/shared/page-paths";
+
+function constantTimeEqual(a, b) {
+  const left = new TextEncoder().encode(a);
+  const right = new TextEncoder().encode(b);
+  if (left.length !== right.length) return false;
+  let diff = 0;
+  for (let i = 0; i < left.length; i++) diff |= left[i] ^ right[i];
+  return diff === 0;
+}
 
 export async function pageViews(request, env, ctx) {
   const origin = request.headers.get("Origin");
-  const allowed = [new URL(request.url).origin, ...(env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim())];
+  const allowed = [new URL(request.url).origin, ...(env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean)];
   const headers = { "Cache-Control": "no-store", Vary: "Origin" };
   if (origin && !allowed.includes(origin)) return new Response(null, { status: 403, headers });
   if (origin) headers["Access-Control-Allow-Origin"] = origin;
@@ -11,10 +20,18 @@ export async function pageViews(request, env, ctx) {
     : new Response(null, { status, headers });
   if (request.method === "OPTIONS") {
     headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS";
-    headers["Access-Control-Allow-Headers"] = "Content-Type";
+    headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type";
     return reply(204);
   }
   if (request.method === "GET") {
+    const adminToken = env.PAGE_VIEWS_ADMIN_TOKEN ?? process.env.PAGE_VIEWS_ADMIN_TOKEN;
+    if (!adminToken) return reply(503, "Page view analytics are not configured");
+    const auth = request.headers.get("Authorization") || "";
+    const match = /^Bearer\s+(.+)$/i.exec(auth);
+    if (!match || !constantTimeEqual(match[1], adminToken)) {
+      headers["WWW-Authenticate"] = 'Bearer realm="page-views"';
+      return reply(401, "Authentication required");
+    }
     const params = new URL(request.url).searchParams;
     const date = params.get("date") ?? new Date().toISOString().slice(0, 10);
     if (params.getAll("date").length > 1 || !/^\d{4}-\d{2}-\d{2}$/.test(date)
@@ -40,6 +57,7 @@ export async function pageViews(request, env, ctx) {
     return reply(405, "Method not allowed");
   }
   if ((env.TRACK_VISITS ?? process.env.TRACK_VISITS) !== "true") return reply(503, "Page view reporting is disabled");
+  if (!origin) return new Response(null, { status: 403, headers });
   if (!env.PAGE_VIEWS_DB) return reply(503, "Page view storage is not configured");
   if (!/^application\/json(?:;|$)/i.test(request.headers.get("Content-Type") || "")) return reply(415, "Expected JSON");
   // Bound the stream as well as Content-Length, which is optional and untrusted.

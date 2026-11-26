@@ -283,6 +283,15 @@ test("API serves SQLite batches, search, relations and strokes with validation a
     assert.equal((await get("/api/words/batch?level=1")).status, 503);
     assert.equal((await get("/api/health", { headers: { Origin: "https://untrusted.example" } })).status, 403);
     assert.equal((await get("/api/health", { method: "OPTIONS", headers: { Origin: "http://localhost:5173" } })).status, 204);
+    const headHealth = await get("/api/health", { method: "HEAD" });
+    assert.equal(headHealth.status, 200);
+    assert.equal(await headHealth.text(), "");
+    const headKanji = await get("/api/kanji/candidates?reading=にち", { method: "HEAD" });
+    assert.equal(headKanji.status, 200);
+    assert.equal(await headKanji.text(), "");
+    const headMissing = await get("/api/missing", { method: "HEAD" });
+    assert.equal(headMissing.status, 404);
+    assert.equal(await headMissing.text(), "");
     assert.equal((await get("/api/health", { method: "POST" })).status, 405);
     assert.equal((await get("/api/missing")).status, 404);
     assert.equal((await (await get("/api/words?keyword=%27%20OR%201%3D1--")).json()).data.length, 0);

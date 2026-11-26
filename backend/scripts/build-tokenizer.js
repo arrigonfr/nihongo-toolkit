@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 
 const require = createRequire(import.meta.url);
 const root = dirname(require.resolve("kuromoji/package.json"));
-const output = resolve("frontend/dist/_dictionary");
+const output = resolve("backend/.worker-assets/_dictionary");
 await mkdir(output, { recursive: true });
 const read = async (name) => gunzipSync(await readFile(join(root, "dict", `${name}.dat.gz`)));
 const save = async (name, data) => writeFile(join(output, `${name}.gz`), gzipSync(data));
