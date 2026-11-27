@@ -33,7 +33,25 @@ try {
   }
   if (!result["あ"] || !result["大"]) throw new Error("Stroke data is incomplete");
   writeFileSync(new URL("../frontend/src/worksheet-strokes.json", import.meta.url), JSON.stringify(result));
-  console.log(`Generated stroke data for ${Object.keys(result).length} characters.`);
+  const kana = [..."あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ"];
+  const levels = JSON.parse(readFileSync(new URL("../frontend/src/worksheet-kanji.json", import.meta.url), "utf8"));
+  const pick = (chars) => Object.fromEntries(chars.filter((ch) => result[ch]).map((ch) => [ch, result[ch]]));
+  const rated = new Set(Object.values(levels).flatMap((chars) => [...chars]));
+  const unrated = Object.keys(result).filter((ch) => /^\p{Script=Han}$/u.test(ch) && /^\p{Ideographic}$/u.test(ch) && !rated.has(ch));
+  const chunks = {
+    "worksheet-unrated.json": unrated.join(""),
+    "worksheet-strokes-kana.json": pick(kana),
+    "worksheet-strokes-n5.json": pick([...levels[5]]),
+    "worksheet-strokes-n4.json": pick([...levels[4]]),
+    "worksheet-strokes-n3.json": pick([...levels[3]]),
+    "worksheet-strokes-n2.json": pick([...levels[2]]),
+    "worksheet-strokes-n1.json": pick([...levels[1]]),
+    "worksheet-strokes-unrated.json": pick(unrated)
+  };
+  for (const [name, data] of Object.entries(chunks)) {
+    writeFileSync(new URL(`../frontend/src/${name}`, import.meta.url), JSON.stringify(data));
+  }
+  console.log(`Generated stroke data for ${Object.keys(result).length} characters and ${Object.keys(chunks).length} split chunks.`);
 } finally {
   rmSync(directory, { recursive: true, force: true });
 }

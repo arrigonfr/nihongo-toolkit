@@ -1,6 +1,5 @@
 import "./game-export.css";
-
-const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+import { escapeHTML as escape } from "./html.js";
 
 function wrapText(text, width, size) {
   const context = document.createElement("canvas").getContext("2d");

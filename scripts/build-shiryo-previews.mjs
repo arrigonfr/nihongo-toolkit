@@ -18,7 +18,8 @@ try {
     const { SHEETS, buildSheet } = await import("/src/cheatsheet-data.js");
     const { toSVG } = await import("/src/cheatsheet-export.js");
     const { PAGE, paginateReference } = await import("/src/cheatsheet-layout.js");
-    const { worksheetSVG } = await import("/src/worksheet.js");
+    const { worksheetSVG, loadWorksheetStrokes } = await import("/src/worksheet.js");
+    await loadWorksheetStrokes(["n5"]);
     const samples = SHEETS.map(({ id }) => {
       const sheet = buildSheet(id);
       const rows = ["ambiguities", "grammar-contrasts"].includes(id) ? 4 : id === "radicals" ? 18 : 12;

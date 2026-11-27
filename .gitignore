@@ -11,6 +11,7 @@ backend/data/dev-page-views.sqlite
 kanjidb.sqlite
 .env.local
 backend/.env
+frontend/.env
 .env.*.local
 .DS_Store
 DEPLOYMENT.md

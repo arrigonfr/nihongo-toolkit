@@ -1,8 +1,9 @@
 import { alignFuriganaRuby } from "../furigana.js";
 
+import { escapeHTML as escape } from "../html.js";
+
 const han = /[\p{Script=Han}々ヶヵ]/u;
 const normalize = text => text.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 96));
-const escape = text => text.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const common = new Map([
   ["昨日", "きのう"], ["今日", "きょう"], ["明日", "あした"],
   ["毎日", "まいにち"], ["毎朝", "まいあさ"], ["友達", "ともだち"]

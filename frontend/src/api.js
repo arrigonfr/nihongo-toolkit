@@ -14,29 +14,59 @@ function sanitizeErrorMessage(message, fallback) {
   return text && !INTERNAL_DETAIL_RE.test(text) ? text : fallback;
 }
 
-export async function fetchItems(path, params, { signal } = {}) {
-  const url = new URL(`${API_BASE}${path}`);
-  for (const [key, value] of Object.entries(params)) {
-    if (Array.isArray(value)) value.forEach((item) => url.searchParams.append(key, item));
-    else url.searchParams.set(key, value);
+function buildRequestUrl(pathOrUrl, params) {
+  const url = /^https?:\/\//i.test(pathOrUrl) ? new URL(pathOrUrl) : new URL(`${API_BASE}${pathOrUrl}`);
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value === undefined || value === null) continue;
+      if (Array.isArray(value)) value.forEach((item) => url.searchParams.append(key, String(item)));
+      else url.searchParams.set(key, String(value));
+    }
   }
-  const timeout = AbortSignal.timeout(10000);
+  return url;
+}
+
+export async function fetchJSON(pathOrUrl, {
+  params,
+  signal,
+  timeoutMs = 10000,
+  fallbackError = "We couldn’t complete this request right now. Please try again in a moment.",
+  notFoundError,
+  useServerError = true
+} = {}) {
+  const url = buildRequestUrl(pathOrUrl, params);
+  const timeout = typeof AbortSignal?.timeout === "function" ? AbortSignal.timeout(timeoutMs) : undefined;
+  const combinedSignal = signal && timeout && typeof AbortSignal.any === "function"
+    ? AbortSignal.any([timeout, signal])
+    : (signal || timeout);
   const response = await fetch(url, {
-    signal: signal && typeof AbortSignal.any === "function" ? AbortSignal.any([timeout, signal]) : (signal || timeout),
+    signal: combinedSignal,
     headers: { Accept: "application/json" }
   });
   if (!response.ok) {
     let serverError = "";
-    try {
-      const payload = await response.json();
-      serverError = payload?.error || "";
-    } catch {}
-    throw new Error(sanitizeErrorMessage(
-      serverError,
-      "We couldn’t load the next set of practice items right now. Please try again in a moment."
-    ));
+    if (useServerError) {
+      try {
+        const payload = await response.json();
+        serverError = payload?.error || "";
+      } catch {}
+    }
+    const message = response.status === 404 && notFoundError
+      ? notFoundError
+      : sanitizeErrorMessage(serverError, fallbackError);
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
-  const payload = await response.json();
+  return response.json();
+}
+
+export async function fetchItems(path, params, { signal } = {}) {
+  const payload = await fetchJSON(path, {
+    params,
+    signal,
+    fallbackError: "We couldn’t load the next set of practice items right now. Please try again in a moment."
+  });
   if (!Array.isArray(payload.items) || !payload.items.length) {
     throw new Error("No practice items were found for this selection.");
   }

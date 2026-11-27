@@ -4,10 +4,12 @@ import { createSupportButton } from "./support.js";
 import { legacyRoutes, navigationPage, pageFile } from "./routes.js";
 import { initializeInterfaceLocalization } from "./interface-i18n.js";
 import { mountHomepageShowcase } from "./homepage.js";
+import { mountAnalyticsConsent } from "./analytics-consent.js";
 import { editorialPage } from "../editorial-tools.js";
 
 initializeAppearance();
 initializeInterfaceLocalization();
+mountAnalyticsConsent();
 const siteHeader = document.querySelector("[data-site-header]");
 if (siteHeader) mountAppearance(siteHeader, siteHeader.querySelector("#themeButton"));
 for (const link of document.querySelectorAll(".helper-link, .dashboard-link")) {

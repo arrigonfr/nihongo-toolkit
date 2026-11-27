@@ -1,28 +1,35 @@
 import { createSessionView } from "./session-view.js";
+import { escapeHTML } from "./html.js";
 import "./crossword.css";
 import { mountGameExport } from "./game-export.js";
-import { mountChips } from "./chips.js";
-import { groupSettings, setSettingAvailability } from "./settings-panel.js";
+import { setSettingAvailability } from "./settings-panel.js";
 import { mountStudyControls, study, speakJapanese } from "./study-controls.js";
 import { alignFuriganaRuby } from "./furigana.js";
-import { API_BASE, fetchItems } from "./api.js";
 import { beginLoading } from "./request-loading.js";
 import { romanizeKana } from "./romanize.js";
 import { convertTypedRomaji, hasLatin, matchExpectedAnswer, romajiToKana, toHiragana, toKatakana } from "./kana-input.js";
-import { mountSentenceExamples } from "./examples.js";
 import {
   PUZZLE_SIZES,
   hasKanji,
   generateCrossword
 } from "./crossword-engine.js";
+import {
+  STORAGE_KEYS,
+  GAME_MODES,
+  defaultSettings,
+  defaultStats,
+  loadCrosswordJSON,
+  saveCrosswordJSON,
+  effectiveAnswerMode as resolveAnswerMode,
+  formatTime
+} from "./crossword-storage.js";
+import { loadVocabularyPool as fetchVocabularyPool, ensureKanjiDetail as fetchKanjiDetail } from "./crossword-api.js";
+import { renderCrosswordShell } from "./crossword-shell.js";
+import { renderStudyInspector as renderInspector } from "./crossword-inspector.js";
 
 (() => {
   "use strict";
 
-  const STORAGE_KEYS = {
-    settings: "nihon:crossword-settings-v1",
-    stats: "nihon:crossword-stats-v1"
-  };
   let storageWarning = "";
 
   function reportStorageError(message, error) {
@@ -35,86 +42,9 @@ import {
     }
   }
 
-  const GAME_MODES = {
-    classic: { label: "Classic Mode", desc: "Standard crossword with clues and a timer." },
-    relaxed: { label: "Relaxed Mode", desc: "No timer, unlimited hints, and no pressure." },
-    timed: { label: "Timed Challenge", desc: "Complete the puzzle before the countdown runs out." },
-    suddenDeath: { label: "Sudden Death", desc: "Any incorrect character or submitted answer ends the round immediately." },
-    kanjiChallenge: { label: "Kanji Challenge", desc: "Use words containing kanji, including their kana endings, rather than kana-only answers." },
-    kanaChallenge: { label: "Kana Challenge", desc: "Answers are entered in kana, one character per square." },
-    reverse: { label: "Reverse Mode", desc: "Clues show Japanese words; enter English meanings in the grid." }
-  };
+  const loadJSON = (key, fallbackFn) => loadCrosswordJSON(key, fallbackFn, reportStorageError);
+  const saveJSON = (key, value) => saveCrosswordJSON(key, value, reportStorageError);
 
-  const LEVEL_OPTIONS = [
-    { value: "5", label: "N5 (Beginner)" },
-    { value: "4", label: "N4 (Elementary)" },
-    { value: "3", label: "N3 (Intermediate)" },
-    { value: "2", label: "N2 (Pre-Advanced)" },
-    { value: "1", label: "N1 (Advanced)" },
-    { value: "5-4", label: "N5–N4 Range" },
-    { value: "4-3", label: "N4–N3 Range" },
-    { value: "3-2", label: "N3–N2 Range" },
-    { value: "3-1", label: "N3–N1 Range" },
-    { value: "all", label: "All JLPT (N5–N1)" }
-  ];
-
-  const defaultSettings = () => ({
-    gameMode: "classic",
-    answerMode: "kana", // "kana" | "kanji" | "both"
-    level: "5",
-    size: "medium", // "small" | "medium" | "large" | "custom"
-    customGridSize: 11,
-    customWords: 10,
-    fontScale: "medium", // "small" | "medium" | "large" | "xlarge"
-    furigana: true,
-    romanization: false,
-    audio: true,
-    kanjiFocus: false,
-    checkAvailability: "unlimited", // "unlimited" | "limited" | "disabled"
-    revealAvailability: "unlimited", // "unlimited" | "limited" | "disabled"
-    hintLimit: 5,
-    timedLimitMinutes: 5,
-    layoutDirection: "ltr", // "ltr" | "rtl"
-    inputStyle: "popup" // "popup" | "cell" | "clues"
-  });
-
-  const defaultStats = () => ({
-    puzzlesCompleted: 0,
-    wordsCorrect: 0,
-    wordsRevealed: 0,
-    recentWordIds: [] // recently used word IDs / words to avoid repeating crosswords
-  });
-
-  function loadJSON(key, fallbackFn) {
-    try {
-      const raw = localStorage.getItem(key);
-      const merged = raw ? { ...fallbackFn(), ...JSON.parse(raw) } : fallbackFn();
-      if (merged.inputStyle && !["popup", "cell", "clues"].includes(merged.inputStyle)) {
-        merged.inputStyle = "popup";
-      }
-      if (merged.gameMode && !GAME_MODES[merged.gameMode]) {
-        merged.gameMode = "classic";
-      }
-      return merged;
-    } catch (error) {
-      reportStorageError("Saved crossword settings or progress could not be restored. Defaults are in use.", error);
-      return fallbackFn();
-    }
-  }
-
-  function saveJSON(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-      reportStorageError("Your browser could not save crossword settings or progress. Changes may be lost when you leave.", error);
-    }
-  }
-
-  function escapeHTML(value) {
-    return String(value ?? "").replace(/[&<>"']/g, (ch) => (
-      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]
-    ));
-  }
 
   const state = {
     settings: loadJSON(STORAGE_KEYS.settings, defaultSettings),
@@ -152,14 +82,10 @@ import {
 
   const root = document.getElementById("crosswordRoot");
   const pendingSettings = { ...state.settings };
-
-  function effectiveAnswerMode(settings = state.settings) {
-    const gm = settings.gameMode;
-    if (gm === "kanjiChallenge") return "kanji";
-    if (gm === "kanaChallenge") return "kana";
-    if (gm === "reverse") return "reverse";
-    return settings.answerMode;
-  }
+  const effectiveAnswerMode = (settings = state.settings) => resolveAnswerMode(settings);
+  const loadVocabularyPool = (level) => fetchVocabularyPool(state, level);
+  const ensureKanjiDetail = (char) => fetchKanjiDetail(state, char);
+  const renderStudyInspector = () => renderInspector(state);
 
   function isTimerActive() {
     const gm = state.settings.gameMode;
@@ -172,235 +98,8 @@ import {
     document.getElementById("cwWorkspace").dataset.layout = state.settings.layoutDirection;
   }
 
-
-  function formatTime(seconds) {
-    const s = Math.max(0, Math.floor(seconds));
-    const mins = String(Math.floor(s / 60)).padStart(2, "0");
-    const secs = String(s % 60).padStart(2, "0");
-    return `${mins}:${secs}`;
-  }
-
   function renderShell() {
-    root.innerHTML = `
-      <div class="cw-shell">
-        <header class="cw-header">
-          <a class="cw-brand" href="#top" id="brandLink" aria-label="Pazuru Japanese Crossword">
-            <span class="cw-brand-mark" aria-hidden="true"><img src="/tool-icons/pazuru.webp" alt=""></span>
-            <span class="cw-brand-name">Pazuru<span class="cw-brand-note">NihongoToolkit</span></span>
-          </a>
-            <button class="cw-icon-btn" id="themeCycleBtn" type="button" aria-label="Switch appearance theme">◐</button>
-        </header>
-
-        <main>
-          <section class="cw-intro"><span class="eyebrow"><span lang="ja">パズル</span> · <span>Japanese crossword</span></span>
-        <h1>Cross paths <br><span>with Japanese words.</span></h1>
-            <p id="modeDescriptionText"></p>
-          </section>
-
-          <section class="cw-top-card ui-panel" aria-label="Game mode and puzzle configuration">
-            <p class="study-settings-note">Settings save automatically and apply to your next puzzle. The top reading, audio and appearance controls stay live.</p>
-            <div class="cw-mode-pills" id="modePills" role="group" aria-label="Game modes">
-              ${Object.entries(GAME_MODES).map(([key, info]) => `
-                <button class="cw-mode-pill" type="button" data-mode="${key}" aria-pressed="${state.settings.gameMode === key}">
-                  ${escapeHTML(info.label)}
-                </button>
-              `).join("")}
-            </div>
-
-            <div class="cw-quick-controls">
-              <div class="settings-row cw-quick-row">
-                <label class="cw-field">
-                  <span>JLPT level / range</span>
-                  <select class="cw-select" id="levelSelect">
-                    ${LEVEL_OPTIONS.map((opt) => `<option value="${opt.value}">${escapeHTML(opt.label)}</option>`).join("")}
-                  </select>
-                </label>
-
-                <label class="cw-field">
-                  <span>Answer mode</span>
-                  <select class="cw-select" id="answerModeSelect">
-                    <option value="kana">Kana</option>
-                    <option value="kanji">Kanji</option>
-                    <option value="both">Both</option>
-                  </select>
-                </label>
-
-                <label class="cw-field cw-size-field">
-                  <span>Puzzle size</span>
-                  <select class="cw-select" id="sizeSelect">
-                    ${Object.entries(PUZZLE_SIZES).map(([key, val]) => `<option value="${key}">${escapeHTML(val.label)}</option>`).join("")}
-                  </select>
-                </label>
-
-                <label class="cw-field cw-custom-field" id="customWordsField" hidden>
-                  <span>Custom target words (4–18)</span>
-                  <input class="cw-input" id="customWordsInput" type="number" min="4" max="18" value="10">
-                </label>
-              </div>
-            </div>
-
-            <div class="cw-feedback-banner error" id="settingsStorageError" role="alert"${storageWarning ? "" : " hidden"}>${escapeHTML(storageWarning)}</div>
-            <details class="cw-settings" id="settingsDrawer">
-              <summary>Settings & study customization</summary>
-              <div class="cw-settings-grid settings-grid">
-                <label class="cw-field">
-                  <span>Character & grid size</span>
-                  <select class="cw-select" id="fontScaleSelect">
-                    <option value="small">Compact · 38px cells</option>
-                    <option value="medium">Standard · 46px cells</option>
-                    <option value="large">Large · 54px cells</option>
-                    <option value="xlarge">Extra large · 62px cells</option>
-                  </select>
-                </label>
-
-                <label class="cw-field">
-                  <span>Check Answer availability</span>
-                  <select class="cw-select" id="checkAvailSelect">
-                    <option value="unlimited">Unlimited checks</option>
-                    <option value="limited">Limited checks</option>
-                    <option value="disabled">Disabled (Challenge)</option>
-                  </select>
-                </label>
-
-                <label class="cw-field">
-                  <span>Reveal Answer availability</span>
-                  <select class="cw-select" id="revealAvailSelect">
-                    <option value="unlimited">Unlimited reveals</option>
-                    <option value="limited">Limited reveals</option>
-                    <option value="disabled">Disabled (Challenge)</option>
-                  </select>
-                </label>
-
-                <label class="cw-field">
-                  <span>Hint limit (when limited)</span>
-                  <input class="cw-input" id="hintLimitInput" type="number" min="1" max="50" value="5">
-                </label>
-
-                <label class="cw-field">
-                  <span>Timed challenge minutes</span>
-                  <input class="cw-input" id="timedMinutesInput" type="number" min="1" max="60" value="5">
-                </label>
-
-                <label class="cw-field">
-                  <span>Clue panel layout</span>
-                  <select class="cw-select" id="layoutDirSelect">
-                    <option value="ltr">Left-to-right (Grid left, Clues right)</option>
-                    <option value="rtl">Right-to-left (Clues left, Grid right)</option>
-                  </select>
-                </label>
-
-                <label class="cw-field">
-                  <span>Grid input style</span>
-                  <select class="cw-select" id="inputStyleSelect">
-                    <option value="popup">Clue popup</option>
-                    <option value="cell">In-square</option>
-                    <option value="clues">Clue list textboxes</option>
-                  </select>
-                </label>
-
-                <div class="cw-toggle-group">
-                  <label class="cw-switch"><input type="checkbox" id="kanjiFocusToggle"><span><strong>Use Kanji meanings &amp; readings as clues</strong></span></label>
-                  <fieldset class="cw-reset-setting"><legend>Fresh start</legend><small>Clear this puzzle’s stats</small><div class="cw-reset-actions"><button class="cw-btn" id="resetProgressBtn" type="button">Reset stats</button><span class="cw-reset-slot" data-reset-slot></span></div></fieldset>
-                </div>
-              </div>
-            </details>
-            <div class="cw-feedback-banner error" id="startError" role="alert" hidden></div>
-          </section>
-
-          <section class="cw-empty" id="cwEmpty"><span class="cw-empty-mark" lang="ja" aria-hidden="true">パズル</span><h2>Ready when you are</h2><p>Pick your settings above, then start a game to see your crossword, clues and progress here.</p><button class="cw-btn primary" id="newPuzzleBtn" type="button">New puzzle</button></section>
-
-          <section class="cw-status-bar" hidden aria-label="Puzzle status and assistance">
-            <div class="cw-metrics">
-              <div class="cw-metric"><strong id="progressMetric">0 / 0</strong><span>words solved</span></div>
-              <div class="cw-metric" id="timerMetricWrap"><strong id="timerMetric">00:00</strong><span id="timerLabel">elapsed</span></div>
-              <div class="cw-metric"><strong id="hintsMetric">0</strong><span id="hintsLabel">hints used</span></div>
-              <div class="cw-metric"><strong id="statPuzzlesCompleted">0</strong><span>puzzles completed</span></div>
-              <div class="cw-metric"><strong id="statWordsCorrect">0</strong><span>words answered</span></div>
-              <div class="cw-metric"><strong id="statWordsRevealed">0</strong><span>words revealed</span></div>
-            </div>
-
-            <div class="cw-assist-actions">
-              <button class="cw-btn" id="revealPuzzleBtn" type="button">End and Reveal puzzle</button>
-              <button class="cw-btn" id="endPuzzleBtn" type="button" hidden>End puzzle</button>
-              <button class="cw-btn primary" id="nextPuzzleBtn" type="button" hidden>New puzzle</button>
-            </div>
-          </section>
-
-          <div class="cw-workspace" id="cwWorkspace" data-layout="ltr" hidden>
-            <section class="cw-board-panel" aria-label="Crossword grid">
-              <div class="cw-active-clue-bar" id="activeClueBar">
-                <div class="cw-active-clue-main">
-                  <div>
-                    <span class="cw-active-clue-id" id="activeClueBadge">—</span>
-                    <span class="cw-active-clue-text" id="activeClueText">Generating crossword…</span>
-                  </div>
-                  <div class="cw-active-clue-sub" id="activeClueSub"></div>
-                </div>
-                <button class="cw-btn" id="flipDirBtn" type="button" title="Switch Across / Down direction (Tab or Space)">⇄ Direction</button>
-              </div>
-
-              <div class="cw-grid-scroll" id="gridScrollWrap">
-                <div class="cw-grid-stage" id="gridStage">
-                  <div class="cw-grid" id="crosswordGrid" role="grid" aria-label="Japanese vocabulary crossword grid"></div>
-                  <div class="cw-cell-popover" id="gridCluePopover" role="dialog" aria-label="Active word clue and answer box" hidden></div>
-                </div>
-              </div>
-
-              <div class="cw-feedback-banner" id="feedbackBanner" role="status" aria-live="polite" hidden></div>
-            </section>
-
-            <section class="cw-clues-panel" aria-label="Crossword clues">
-              <div class="cw-clues-columns">
-                <div class="cw-clue-group">
-                  <h2>Across · ヨコ</h2>
-                  <ol class="cw-clue-list" id="acrossClueList"></ol>
-                </div>
-                <div class="cw-clue-group">
-                  <h2>Down · タテ</h2>
-                  <ol class="cw-clue-list" id="downClueList"></ol>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <section class="cw-study-panel" id="studyInspector" aria-label="Completed word and kanji study details">
-            <div class="cw-study-header">
-              <h2>Word & Kanji Study Inspector · 学習カード</h2>
-              <span class="cw-badge" id="studyHintLabel">Hover, tap, or complete any word to inspect definitions, examples & kanji</span>
-            </div>
-            <div id="studyInspectorBody"></div>
-          </section>
-
-        </main>
-
-        <footer class="cw-footer">
-          <a href="data-sources.html">Data sources and licenses</a>
-        </footer>
-      </div>
-    `;
-    groupSettings(document.querySelector(".cw-settings-grid"), [
-      ["Answer checks & reveals", ["checkAvailSelect", "revealAvailSelect", "hintLimitInput", "timedMinutesInput"]],
-      ["Input & study", ["inputStyleSelect", "kanjiFocusToggle"]],
-      ["Display & layout", ["fontScaleSelect", "layoutDirSelect"]]
-    ]);
-    document.querySelector(".cw-settings-grid").append(document.querySelector(".cw-toggle-group"));
-    const sketch = (body) => `<svg viewBox="0 0 64 38" width="64" height="38" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="30" height="30" rx="3" opacity=".55"/><path d="M12 2v30M22 2v30M2 12h30M2 22h30" opacity=".3"/>${body}</svg>`;
-    document.querySelector(".cw-top-card").addEventListener("change", () => { document.getElementById("startError").hidden = true; });
-    mountChips(document.getElementById("answerModeSelect"), {
-      multiple: true,
-      allValue: "both",
-      options: [{ value: "kana", label: "Kana かな" }, { value: "kanji", label: "Kanji 漢字" }],
-      titleDescription: "Choose the answer script. Select both to accept kana or kanji answers."
-    });
-    mountChips(document.getElementById("inputStyleSelect"), {
-      variant: "card",
-      fieldClass: "cw-input-style-field",
-      options: [
-        { value: "popup", label: "Clue popup", preview: sketch('<rect x="16" y="14" width="46" height="20" rx="4" fill="currentColor" fill-opacity=".15"/><path d="M21 24h24" stroke-linecap="round"/>') },
-        { value: "cell", label: "In-square", preview: sketch('<rect x="12" y="12" width="10" height="10" fill="currentColor" fill-opacity=".25"/><path d="M17 14v6" stroke-linecap="round"/>') },
-        { value: "clues", label: "Clue list", preview: sketch('<path d="M38 8h24M38 20h24M38 32h24" stroke-linecap="round"/><rect x="38" y="11" width="24" height="5" rx="2" fill="currentColor" fill-opacity=".25"/>') }
-      ]
-    });
+    renderCrosswordShell(root, { gameMode: state.settings.gameMode, storageWarning });
   }
 
   function syncControlsFromSettings() {
@@ -503,66 +202,6 @@ import {
     banner.hidden = false;
     banner.textContent = text;
     banner.className = `cw-feedback-banner${tone ? ` ${tone}` : ""}`;
-  }
-
-  async function loadVocabularyPool(level) {
-    const cacheKey = `${level}`;
-    let existing = state.poolCache.get(cacheKey) || [];
-    const recentIds = Array.isArray(state.stats.recentWordIds) ? state.stats.recentWordIds : [];
-
-    // A single larger startup batch keeps the notebook enrichment on demand.
-    const rounds = 1;
-    for (let round = 0; round < rounds; round++) {
-      const exclude = [...new Set([...recentIds.slice(-60), ...existing.slice(-50).map((item) => item.id)])]
-        .filter((id) => typeof id === "string" && id.length <= 28)
-        .slice(0, 95);
-      try {
-        const batch = await fetchItems("/api/words/batch", {
-          level,
-          limit: existing.length < 100 ? 200 : 100,
-          projection: "practice",
-          expand: 1,
-          ...(exclude.length ? { exclude } : {})
-        });
-        const seen = new Set(existing.map((i) => i.id));
-        const freshItems = [];
-        for (const item of batch) {
-          if (!seen.has(item.id)) {
-            seen.add(item.id);
-            freshItems.push(item);
-            for (const kd of item.kanjiDetails || []) {
-              if (kd?.kanji) state.kanjiCache.set(kd.kanji, kd);
-            }
-          }
-        }
-        // Prepend fresh items and cap total in-memory cache at 450 so new words rotate in continuously
-        existing = [...freshItems, ...existing].slice(0, 450);
-        if (batch.length < 60) break;
-      } catch (err) {
-        if (!existing.length) throw err;
-        break;
-      }
-    }
-
-    state.poolCache.set(cacheKey, existing);
-    return existing;
-  }
-
-  async function ensureKanjiDetail(char) {
-    if (state.kanjiCache.has(char)) return state.kanjiCache.get(char);
-    const doneLoading = beginLoading([], document.getElementById("studyInspector"));
-    try {
-      const res = await fetch(`${API_BASE}/api/kanji/${encodeURIComponent(char)}`, {
-        headers: { Accept: "application/json" }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        state.kanjiCache.set(char, data);
-        return data;
-      }
-    } catch {}
-    finally { await doneLoading(); }
-    return null;
   }
 
   function resetPuzzleStats() {
@@ -1040,8 +679,8 @@ import {
               </div>
               <div>${formatClueDisplayHTML(entry.clue)}</div>
               <div class="cw-clue-meta">
-                <span class="cw-badge">${escapeHTML(entry.clue.badge)}</span>
-                <span>Length: ${entry.length}</span>
+                <span class="cw-badge" data-i18n>${escapeHTML(entry.clue.badge)}</span>
+                <span data-i18n>Length: ${entry.length}</span>
                 <span>N${entry.item.level}</span>
                 ${entry.clue.hint ? `<span>${escapeHTML(entry.clue.hint)}</span>` : ""}
               </div>
@@ -1074,154 +713,6 @@ import {
     };
     renderList(state.puzzle.across, "acrossClueList");
     renderList(state.puzzle.down, "downClueList");
-  }
-
-  function renderStudyInspector() {
-    const body = document.getElementById("studyInspectorBody");
-    if (!state.puzzle) {
-      body.innerHTML = "";
-      return;
-    }
-
-    if (state.roundEnded) {
-      body.innerHTML = `<ul class="cw-review-list">${state.puzzle.entries.map((entry) => {
-        const answered = entry.completed && !entry.revealed;
-        const item = entry.item;
-        const reading = item.furigana || item.word;
-        const word = state.settings.furigana ? alignFuriganaRuby(item.word, reading) : escapeHTML(item.word);
-        return `<li class="cw-review-word ${answered ? "answered" : "unanswered"}" data-review-entry="${escapeHTML(entry.id)}">
-          <div class="cw-review-heading"><strong lang="ja">${word}</strong><span>${answered ? "Answered" : entry.revealed ? "Revealed" : "Not answered"}</span></div>
-          <p><span lang="ja">${escapeHTML(reading)}</span>${state.settings.romanization ? ` · ${escapeHTML(romanizeKana(reading))}` : ""}</p>
-          <p>${escapeHTML(item.meaning)}</p><button class="cw-btn" type="button" data-speak-ja="${escapeHTML(reading)}" aria-label="Pronounce ${escapeHTML(item.word)}">▶</button>
-        </li>`;
-      }).join("")}</ul>`;
-      return;
-    }
-
-    const entry = state.puzzle.entries.find((e) => e.id === state.inspectedEntryId && e.completed)
-      || state.puzzle.entries.find((e) => e.completed);
-
-    if (!entry) {
-      body.innerHTML = `
-        <div class="cw-word-card" style="color:var(--muted);text-align:center;padding:22px">
-          Complete any word in the crossword (or hover/tap a completed answer) to unlock its full vocabulary card, random example sentence, audio pronunciation, and individual kanji breakdown.
-        </div>
-      `;
-      return;
-    }
-
-    const item = entry.item;
-    const word = item.word;
-    const reading = item.furigana || word;
-    const romaji = item.romaji || romanizeKana(reading);
-    const examples = item.examples?.length
-      ? item.examples
-      : item.example
-        ? [{ ja: item.example, furigana: item.exampleFurigana, en: item.exampleMeaning, tatoeba_id: item.exampleSourceId }]
-        : [];
-
-    const wordDisplayHTML = state.settings.furigana && hasKanji(word) && reading
-      ? alignFuriganaRuby(word, reading)
-      : escapeHTML(word);
-
-    const kanjiChars = [...new Set([...word].filter((ch) => hasKanji(ch)))];
-    const activeKanji = state.inspectedKanjiChar && kanjiChars.includes(state.inspectedKanjiChar)
-      ? state.inspectedKanjiChar
-      : kanjiChars[0] || null;
-
-    const kanjiData = activeKanji
-      ? (state.kanjiCache.get(activeKanji) || (item.kanjiDetails || []).find((k) => k.kanji === activeKanji))
-      : null;
-
-    body.innerHTML = `
-      <div class="cw-study-grid">
-        <div class="cw-word-card" id="completedWordCard">
-          <div class="cw-word-head">
-            <div>
-              <div class="cw-word-title" lang="ja">${wordDisplayHTML}</div>
-              <div class="cw-word-reading">
-                <span class="cw-reading-label">Reading:</span> <strong lang="ja">${escapeHTML(reading)}</strong>
-                ${state.settings.romanization ? ` · <span>${escapeHTML(romaji)}</span>` : ""}
-                · <span class="cw-badge">JLPT N${escapeHTML(item.level)}</span>
-              </div>
-            </div>
-            <button class="cw-btn" type="button" data-speak-ja="${escapeHTML(reading)}" aria-label="Pronounce word">▶</button>
-          </div>
-
-          <div><strong>Definition:</strong> ${escapeHTML(item.meaning)}</div>
-          ${item.partOfSpeech ? `<div class="cw-part-of-speech" style="margin-top:4px;font-size:12px;color:var(--muted)">Part of speech: ${escapeHTML(item.partOfSpeech)}</div>` : ""}
-
-          <div class="cw-example-box"><strong>Example sentences</strong><div id="cwSentenceExamples"></div></div>
-
-          ${kanjiChars.length ? `
-            <div style="margin-top:10px">
-              <span class="cw-kanji-heading" style="font-size:11px;font-weight:700;color:var(--muted)">KANJI IN THIS WORD (Hover or tap to inspect):</span>
-              <div class="cw-kanji-Chips">
-                ${kanjiChars.map((ch) => `
-                  <button class="cw-kanji-chip${ch === activeKanji ? " active" : ""}" type="button" data-inspect-kanji="${escapeHTML(ch)}" lang="ja">
-                    ${escapeHTML(ch)}
-                  </button>
-                `).join("")}
-              </div>
-            </div>
-          ` : ""}
-        </div>
-
-        <div class="cw-kanji-card" id="completedKanjiCard">
-          ${kanjiData ? `
-            <div class="cw-kanji-head">
-              <div style="display:flex;align-items:center;gap:12px">
-                <span class="cw-kanji-glyph" lang="ja">${escapeHTML(kanjiData.kanji)}</span>
-                <div>
-                  <div style="font-weight:800;font-size:15px">${escapeHTML((kanjiData.meanings || []).join(", ") || "Kanji")}</div>
-                  <div style="font-size:12px;color:var(--muted)">
-                    ${kanjiData.jlpt ? `JLPT N${kanjiData.jlpt}` : '<span class="cw-unrated">Unrated</span>'}
-                    ${kanjiData.stroke_count ? ` · ${kanjiData.stroke_count} strokes` : ""}
-                  </div>
-                </div>
-              </div>
-              <button class="cw-btn" type="button" data-speak-ja="${escapeHTML((kanjiData.kun_readings?.[0] || kanjiData.on_readings?.[0] || kanjiData.kanji).replace(/[.-]/g, ""))}" aria-label="Pronounce reading">▶</button>
-            </div>
-
-            <div style="font-size:13px;line-height:1.6">
-              <div><strong>On’yomi (音読み):</strong> <span lang="ja">${escapeHTML((kanjiData.on_readings || []).join("、") || "Unlisted")}</span>
-                ${state.settings.romanization && kanjiData.on_readings?.length ? ` (${escapeHTML(kanjiData.on_readings.map(romanizeKana).join(", "))})` : ""}
-              </div>
-              <div><strong>Kun’yomi (訓読み):</strong> <span lang="ja">${escapeHTML((kanjiData.kun_readings || []).join("、") || "Unlisted")}</span>
-                ${state.settings.romanization && kanjiData.kun_readings?.length ? ` (${escapeHTML(kanjiData.kun_readings.map((r) => romanizeKana(r.replace(/[.-]/g, ""))).join(", "))})` : ""}
-              </div>
-            </div>
-
-            <div style="margin-top:8px">
-              <strong style="font-size:12px">Example words containing ${escapeHTML(kanjiData.kanji)}:</strong>
-              ${kanjiData.examples?.length ? `
-                <ul class="cw-compound-list">
-                  ${kanjiData.examples.slice(0, 5).map((cw) => {
-                    const wDisp = state.settings.furigana && hasKanji(cw.word) && cw.reading
-                      ? alignFuriganaRuby(cw.word, cw.reading)
-                      : escapeHTML(cw.word);
-                    const rom = state.settings.romanization ? ` · ${escapeHTML(romanizeKana(cw.reading))}` : "";
-                    return `<li><strong lang="ja">${wDisp}</strong> (${escapeHTML(cw.reading)}${rom}) — ${escapeHTML((cw.meanings || []).join("; "))}</li>`;
-                  }).join("")}
-                </ul>
-              ` : `<div class="cw-no-compounds" style="font-size:12px;color:var(--muted);margin-top:4px">No compound examples listed.</div>`}
-            </div>
-          ` : `
-            <div style="color:var(--muted);padding:16px;text-align:center">
-              ${kanjiChars.length ? "Loading kanji details…" : "This completed word is written in kana without kanji."}
-            </div>
-          `}
-        </div>
-      </div>
-    `;
-    mountSentenceExamples(document.getElementById("cwSentenceExamples"), word, examples.map((example) => ({
-      ...example,
-      id: example.tatoeba_id || example.id,
-      japanese: example.ja || example.japanese,
-      english: example.en || example.english,
-      furigana: example.furigana,
-      license: example.license || "CC BY 2.0 FR"
-    })));
   }
 
   function renderLifetimeStats() {

@@ -1,4 +1,4 @@
-import { API_BASE } from "./api.js";
+import { API_BASE, fetchJSON } from "./api.js";
 import { beginLoading } from "./request-loading.js";
 import { rememberControls } from "./settings-storage.js";
 import { mountStudyControls, japaneseHTML, audioHTML } from "./study-controls.js";
@@ -167,12 +167,10 @@ import "./analysis-stats.css";
     const currentParse = ++parseRequestId;
     const doneLoading = beginLoading($("#parseButton"), parsedText);
     try {
-      const response = await fetch(ANALYZE_URL + encodeURIComponent(value), {
-        signal: AbortSignal.timeout(20000),
-        headers: { Accept: "application/json" }
+      const payload = await fetchJSON(ANALYZE_URL + encodeURIComponent(value), {
+        timeoutMs: 20000,
+        fallbackError: "Sentence analysis is unavailable. Please try again."
       });
-      if (!response.ok) throw new Error("Sentence analysis is unavailable. Please try again.");
-      const payload = await response.json();
       if (currentParse !== parseRequestId) return;
       analysisKanji = Array.isArray(payload.kanji) ? payload.kanji : [];
       if (!Array.isArray(payload.tokens) || !payload.tokens.length) throw new Error("No sentence analysis returned.");
@@ -345,12 +343,11 @@ import "./analysis-stats.css";
     const currentRequest = ++requestId;
     const doneLoading = beginLoading([$("#lookupForm button"), ...document.querySelectorAll(".token[aria-pressed=true]")], detailContent);
     try {
-      const response = await fetch(API_URL + encodeURIComponent(term), {
+      const payload = await fetchJSON(API_URL + encodeURIComponent(term), {
         signal: controller.signal,
-        headers: { Accept: "application/json" }
+        timeoutMs: 10000,
+        fallbackError: "We couldn’t look up that word right now."
       });
-      if (!response.ok) throw new Error("We couldn’t look up that word right now.");
-      const payload = await response.json();
       if (currentRequest !== requestId) return;
       const results = Array.isArray(payload.data) ? payload.data : [];
       renderEntry(term, results);

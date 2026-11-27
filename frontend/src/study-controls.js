@@ -1,4 +1,5 @@
 import "./study-controls.css";
+import { escapeHTML as escape } from "./html.js";
 import "./tool-intro.css";
 import "./settings-panel.css";
 import "./select-controls.css";
@@ -16,8 +17,6 @@ import { japaneseVoice } from "./japanese-voice.js";
 import { audioIcon } from "./audio-icon.js";
 
 const key = "nihon:study-controls-v1";
-const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
-  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 export const study = { audio: true, furigana: true, romaji: false };
 let speechGeneration = 0;
 try {

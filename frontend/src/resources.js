@@ -12,7 +12,6 @@ import { FORMATS, buildPdf, fileName, textExporters, toSVG } from "./cheatsheet-
 import { PDFDocument } from "pdf-lib";
 import { strToU8, zipSync } from "fflate";
 import { PAGE, paginateReference } from "./cheatsheet-layout.js";
-import { mountWorksheet } from "./worksheet.js";
 
 const META = {
   kana: { label: "Kana", icon: "あ", hue: 340, summary: "Hiragana and katakana charts with dakuten, handakuten, combinations and notes." },
@@ -39,13 +38,54 @@ const preview = document.getElementById("sheetPreview");
 const list = document.getElementById("downloadList");
 const status = document.getElementById("downloadStatus");
 const grayscale = document.getElementById("sheetGrayscale");
-const worksheet = mountWorksheet({ picker, preview, panel: document.querySelector(".download-panel"), grayscale });
+const panel = document.querySelector(".download-panel");
+const worksheetButton = document.createElement("button");
+worksheetButton.type = "button";
+worksheetButton.className = "sheet-tab";
+worksheetButton.dataset.sheet = "worksheet";
+worksheetButton.style.setProperty("--tab-hue", "195");
+worksheetButton.innerHTML = '<span class="sheet-tab-icon" aria-hidden="true">書</span><span>Worksheet</span>';
+picker.append(worksheetButton);
+
+let worksheetInstance = null;
+let worksheetLoading = null;
+let worksheetWanted = false;
+const loadWorksheet = () => worksheetLoading ??= import("./worksheet.js")
+  .then(({ mountWorksheet }) => {
+    worksheetInstance = mountWorksheet({ picker, preview, panel, grayscale, button: worksheetButton });
+    return worksheetInstance;
+  })
+  .catch((error) => {
+    worksheetLoading = null;
+    throw error;
+  });
+const worksheet = {
+  button: worksheetButton,
+  isActive: () => Boolean(worksheetInstance?.isActive()),
+  deactivate() {
+    worksheetWanted = false;
+    worksheetInstance?.deactivate();
+  },
+  async activate() {
+    worksheetWanted = true;
+    controls.hidden = true;
+    for (const tab of picker.querySelectorAll(".sheet-tab")) tab.setAttribute("aria-pressed", String(tab === worksheetButton));
+    try {
+      const instance = await loadWorksheet();
+      if (worksheetWanted) instance.activate();
+    } catch (error) {
+      if (worksheetWanted) status.textContent = `Could not load worksheet: ${error.message}`;
+    }
+  },
+  async download(format, progress) { return (await loadWorksheet()).download(format, progress); },
+  async preparePrint() { return (await loadWorksheet()).preparePrint(); }
+};
 const controls = document.createElement("section");
 controls.className = "worksheet-controls reference-controls";
 controls.hidden = true;
 controls.innerHTML = '<label>Page layout <select data-reference="orientation"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></label><label>Paper size <select data-reference="paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="legal">US Legal</option></select></label><div class="worksheet-pages"><button type="button" data-reference-action="previous" aria-label="Previous page">←</button><span data-reference-page></span><button type="button" data-reference-action="next" aria-label="Next page">→</button></div>';
-document.querySelector(".download-panel").insertBefore(controls, list);
-worksheet.button.addEventListener("click", () => { controls.hidden = true; });
+panel.insertBefore(controls, list);
+worksheet.button.addEventListener("click", () => { worksheet.activate(); });
 let sheet = null, page = 0;
 const paginated = () => !["kana", "verb", "adjective"].includes(sheet?.id);
 const pageLayout = () => {

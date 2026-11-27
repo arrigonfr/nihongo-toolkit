@@ -24,6 +24,8 @@
     "db:import": "npm run db:import -w backend",
     "build:kanji-data": "node scripts/build-kanji-catalogue.mjs",
     "build": "npm run build -w frontend",
+    "lint": "biome lint frontend/src backend/src shared",
+    "typecheck": "tsc -p jsconfig.json --noEmit",
     "build:redirect": "node -e \"require('fs').mkdirSync('redirect',{recursive:true});require('fs').writeFileSync('redirect/_redirects','/* https://nihongotoolkit.pages.dev/:splat 301\\\\n')\"",
     "build:cloudflare": "node backend/scripts/build-tokenizer.js",
     "dev:cloudflare": "npm run build:cloudflare && wrangler dev",
@@ -73,9 +75,11 @@
     }
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.6.9",
     "esbuild": "^0.25.0",
     "miniflare": "^4.0.0",
     "playwright": "^1.58.2",
+    "typescript": "^7.0.2",
     "wrangler": "^4.0.0"
   }
 }

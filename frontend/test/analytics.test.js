@@ -183,26 +183,55 @@ test("all graph identities and image URLs follow a configured production domain"
   }
 });
 
-test("every page configures host-only analytics cookies before loading Google tags", () => {
-  const { plugins } = config({ mode: "test" });
-  const navigation = plugins.find((plugin) => plugin.name === "tool-navigation");
+test("analytics tags are env-gated, omitted in dev, and configure Consent Mode v2 before loading Google tags", () => {
+  const prevGa = process.env.VITE_GA_ID;
+  const prevGtm = process.env.VITE_GTM_ID;
+  const prevDev = process.env.VITE_ANALYTICS_DEV;
   const root = new URL("../", import.meta.url);
-  for (const file of readdirSync(root).filter((name) => name.endsWith(".html") && !editorialPage(name))) {
-    const result = navigation.transformIndexHtml.handler(
-      readFileSync(new URL(file, root), "utf8"),
-      { filename: new URL(file, root).pathname }
-    );
-    const html = typeof result === "string" ? result : result.html;
-    const bootstrap = html.match(/<script>(window\.dataLayer[\s\S]*?)<\/script>/);
-    assert.ok(bootstrap, file);
-    const window = {};
-    runInNewContext(bootstrap[1], { window, dataLayer: window.dataLayer = [] });
-    const commands = window.dataLayer.map((args) => Array.from(args));
-    assert.deepEqual(commands[0], ["set", "cookie_domain", "none"], file);
-    assert.equal(commands[2][0], "config", file);
-    assert.equal(commands[2][1], "G-LL2V1JZBER", file);
-    assert.equal(commands[2][2].cookie_domain, "none", file);
-    assert.ok(html.indexOf(bootstrap[0]) < html.indexOf('src="https://www.googletagmanager.com/gtag/js'), file);
-    assert.ok(html.indexOf(bootstrap[0]) < html.indexOf("'gtm.start'"), file);
+  try {
+    process.env.VITE_GA_ID = "";
+    process.env.VITE_GTM_ID = "";
+    process.env.VITE_ANALYTICS_DEV = "";
+    const withoutIds = config({ mode: "production", command: "build" }).plugins.find((plugin) => plugin.name === "tool-navigation");
+    const kanaSource = readFileSync(new URL("kana.html", root), "utf8");
+    const kanaNoAnalytics = withoutIds.transformIndexHtml.handler(kanaSource, { filename: new URL("kana.html", root).pathname });
+    assert.doesNotMatch(kanaNoAnalytics.html, /googletagmanager\.com|gtag\(/);
+    assert.ok(!kanaNoAnalytics.tags.some((tag) => String(tag.children || "").includes("loading-styles")), "Production build must not inject render-blocking loading-styles");
+    assert.ok(kanaNoAnalytics.tags.some((tag) => String(tag.children || "").includes("nihon:appearance-v1")), "Production build injects synchronous theme pre-init");
+
+    process.env.VITE_GA_ID = "G-LL2V1JZBER";
+    process.env.VITE_GTM_ID = "GTM-T7N85X93";
+    const devNav = config({ mode: "development", command: "serve", isPreview: false }).plugins.find((plugin) => plugin.name === "tool-navigation");
+    const kanaDev = devNav.transformIndexHtml.handler(kanaSource, { filename: new URL("kana.html", root).pathname });
+    assert.doesNotMatch(kanaDev.html, /googletagmanager\.com|gtag\(/, "Dev server must not inject analytics by default");
+
+    const { plugins } = config({ mode: "production", command: "build" });
+    const navigation = plugins.find((plugin) => plugin.name === "tool-navigation");
+    for (const file of readdirSync(root).filter((name) => name.endsWith(".html") && !editorialPage(name))) {
+      const result = navigation.transformIndexHtml.handler(
+        readFileSync(new URL(file, root), "utf8"),
+        { filename: new URL(file, root).pathname }
+      );
+      const html = typeof result === "string" ? result : result.html;
+      const bootstrap = html.match(/<script>(window\.dataLayer[\s\S]*?)<\/script>/);
+      assert.ok(bootstrap, file);
+      const window = {};
+      runInNewContext(bootstrap[1], { window, dataLayer: window.dataLayer = [], localStorage: { getItem: () => null } });
+      const commands = window.dataLayer.map((args) => Array.from(args));
+      assert.deepEqual(commands[0], ["set", "cookie_domain", "none"], file);
+      assert.equal(commands[1][0], "consent", file);
+      assert.equal(commands[1][1], "default", file);
+      assert.equal(commands[1][2].analytics_storage, "denied", file);
+      assert.equal(commands[1][2].ad_storage, "denied", file);
+      assert.equal(commands[3][0], "config", file);
+      assert.equal(commands[3][1], "G-LL2V1JZBER", file);
+      assert.equal(commands[3][2].cookie_domain, "none", file);
+      assert.ok(html.indexOf(bootstrap[0]) < html.indexOf('src="https://www.googletagmanager.com/gtag/js'), file);
+      assert.ok(html.indexOf(bootstrap[0]) < html.indexOf("'gtm.start'"), file);
+    }
+  } finally {
+    if (prevGa === undefined) delete process.env.VITE_GA_ID; else process.env.VITE_GA_ID = prevGa;
+    if (prevGtm === undefined) delete process.env.VITE_GTM_ID; else process.env.VITE_GTM_ID = prevGtm;
+    if (prevDev === undefined) delete process.env.VITE_ANALYTICS_DEV; else process.env.VITE_ANALYTICS_DEV = prevDev;
   }
 });

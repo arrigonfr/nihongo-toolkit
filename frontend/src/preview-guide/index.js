@@ -14,8 +14,8 @@ const usageNames = [
 ];
 const usageLabel = Object.fromEntries(usageNames);
 import "./style.css";
+import { escapeHTML as esc } from "../html.js";
 
-const esc = v => String(v).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
 const plain = markup => markup.replace(/\{([^{}|]+)\|[^{}]+\}/g,"$1");
 const options = (values, all) => `<option value="">${esc(all)}</option>${values.map(([value,label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join("")}`;
 const filters = ["q","scene","usage","frequency"];

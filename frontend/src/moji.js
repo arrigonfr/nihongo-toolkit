@@ -1,4 +1,5 @@
 import { createSessionView } from "./session-view.js";
+import { escapeHTML } from "./html.js";
 import { fetchItems } from "./api.js";
 import { beginLoading } from "./request-loading.js";
 import { BatchQueue } from "./batch-queue.js";
@@ -12,21 +13,20 @@ import { mountChips } from "./chips.js";
 import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
 import { setSettingAvailability } from "./settings-panel.js";
 import { readingType, selectedReadings, matchesReading } from "./reading-answers.js";
+import {
+  KANA_DIRECTIONS,
+  kanaDirections,
+  kanaEntries,
+  normalizeMojiText as normalize,
+  romanizeReading as romanize,
+  formatElapsed
+} from "./moji-helpers.js";
 (() => {
   "use strict";
 
   const $ = (selector) => document.querySelector(selector);
   const tool = document.body.dataset.practiceTool;
   renderPractice(tool);
-  const KANA_DIRECTIONS = ["hiragana-romaji", "katakana-romaji", "romaji-hiragana", "romaji-katakana"];
-  // Saved values from the old single-choice select map onto the multi-select; "random" is the exclusive Randomize chip.
-  function kanaDirections(value) {
-    if (value === "to-romaji") return ["hiragana-romaji", "katakana-romaji"];
-    if (value === "to-kana") return ["romaji-hiragana", "romaji-katakana"];
-    if (value === "romaji-any") return ["romaji-hiragana", "romaji-katakana"];
-    const list = String(value ?? "").split(",").filter((item) => KANA_DIRECTIONS.includes(item));
-    return list.length ? list.filter((item) => item.startsWith("romaji-") === list.at(-1).startsWith("romaji-")) : ["hiragana-romaji", "katakana-romaji"];
-  }
   if (tool === "kana") {
     mountChips($("#kanaDirection"), {
       multiple: true, fieldClass: "direction-field", groupClass: "direction-chips",
@@ -63,46 +63,6 @@ import { readingType, selectedReadings, matchesReading } from "./reading-answers
     { onError: () => showWarning("We’re having trouble loading more kanji right now. You can keep practicing with the questions already loaded while we retry.") }
   );
   const FONTS = ["Noto Sans JP", "Sawarabi Mincho", "M PLUS Rounded 1c", "Zen Kurenaido"];
-  const kanaEntries = [];
-  const addKanaRow = (type, hira, kata, sounds) => {
-    [...hira].forEach((char, index) => kanaEntries.push({ type: "hiragana", display: char, answer: sounds[index] }));
-    [...kata].forEach((char, index) => kanaEntries.push({ type: "katakana", display: char, answer: sounds[index] }));
-  };
-  addKanaRow("kana", "あいうえお", "アイウエオ", ["a","i","u","e","o"]);
-  addKanaRow("kana", "かきくけこ", "カキクケコ", ["ka","ki","ku","ke","ko"]);
-  addKanaRow("kana", "さしすせそ", "サシスセソ", ["sa","shi","su","se","so"]);
-  addKanaRow("kana", "たちつてと", "タチツテト", ["ta","chi","tsu","te","to"]);
-  addKanaRow("kana", "なにぬねの", "ナニヌネノ", ["na","ni","nu","ne","no"]);
-  addKanaRow("kana", "はひふへほ", "ハヒフヘホ", ["ha","hi","fu","he","ho"]);
-  addKanaRow("kana", "まみむめも", "マミムメモ", ["ma","mi","mu","me","mo"]);
-  addKanaRow("kana", "やゆよ", "ヤユヨ", ["ya","yu","yo"]);
-  addKanaRow("kana", "らりるれろ", "ラリルレロ", ["ra","ri","ru","re","ro"]);
-  addKanaRow("kana", "わを", "ワヲ", ["wa","wo"]);
-  kanaEntries.push({ type: "hiragana", display: "ん", answer: "n" }, { type: "katakana", display: "ン", answer: "n" });
-  addKanaRow("kana", "がぎぐげご", "ガギグゲゴ", ["ga","gi","gu","ge","go"]);
-  addKanaRow("kana", "ざじずぜぞ", "ザジズゼゾ", ["za","ji","zu","ze","zo"]);
-  addKanaRow("kana", "だぢづでど", "ダヂヅデド", ["da","ji","zu","de","do"]);
-  addKanaRow("kana", "ばびぶべぼ", "バビブベボ", ["ba","bi","bu","be","bo"]);
-  addKanaRow("kana", "ぱぴぷぺぽ", "パピプペポ", ["pa","pi","pu","pe","po"]);
-  const yoonRows = [
-    ["き","キ","ky",["ゃ","ゅ","ょ"],["ャ","ュ","ョ"]],
-    ["し","シ","sh",["ゃ","ゅ","ょ"],["ャ","ュ","ョ"]],
-    ["ち","チ","ch",["ゃ","ゅ","ょ"],["ャ","ュ","ョ"]],
-    ["に","ニ","ny",["ゃ","ゅ","ょ"],["ャ","ュ","ョ"]],
-    ["ひ","ヒ","hy",["ゃ","ゅ","ょ"],["ャ","ュ","ョ"]],
-    ["み","ミ","my",["ゃ","ゅ","ょ"],["ャ","ュ","ョ"]],
-    ["り","リ","ry",["ゃ","ゅ","ょ"],["ャ","ュ","ョ"]],
-    ["ぎ","ギ","gy",["ゃ","ゅ","ょ"],["ャ","ュ","ョ"]],
-    ["じ","ジ","j",["ゃ","ゅ","ょ"],["ャ","ュ","ョ"]],
-    ["び","ビ","by",["ゃ","ゅ","ょ"],["ャ","ュ","ョ"]],
-    ["ぴ","ピ","py",["ゃ","ゅ","ょ"],["ャ","ュ","ョ"]]
-  ];
-  yoonRows.forEach(([hira, kata, consonant, smallH, smallK]) => {
-    [["a","ゃ","ャ"],["u","ゅ","ュ"],["o","ょ","ョ"]].forEach(([vowel, , ], index) => {
-      kanaEntries.push({ type: "hiragana", display: hira + smallH[index], answer: consonant + vowel });
-      kanaEntries.push({ type: "katakana", display: kata + smallK[index], answer: consonant + vowel });
-    });
-  });
   const stats = { total: 0, correct: 0, hiragana: { total:0, correct:0 }, katakana: { total:0, correct:0 }, kanji: { total:0, correct:0 } };
   let totalAnswerTimeMs = 0;
   let questionStartedAt = performance.now();
@@ -151,38 +111,6 @@ import { readingType, selectedReadings, matchesReading } from "./reading-answers
     }));
   }
   function randomItem(list) { return list[Math.floor(Math.random() * list.length)]; }
-  function escapeHTML(value) {
-    return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" })[c]);
-  }
-  function normalize(text) {
-    return String(text ?? "").normalize("NFKC").toLocaleLowerCase().normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "").replace(/[’']/g, "").replace(/[.,!?;:()[\]{}]/g, " ")
-      .replace(/\s+/g, " ").trim();
-  }
-  function katakanaToHiragana(text) {
-    return [...text].map((char) => {
-      const code = char.codePointAt(0);
-      return code >= 0x30a1 && code <= 0x30f6 ? String.fromCodePoint(code - 0x60) : char;
-    }).join("");
-  }
-  const romajiMap = new Map(kanaEntries.map((entry) => [entry.display, entry.answer]));
-  function romanize(reading) {
-    let input = katakanaToHiragana(String(reading ?? "")).replace(/[\s・.\-]/g, "");
-    let output = "";
-    while (input) {
-      if (input[0] === "っ") {
-        const next = [...romajiMap.keys()].sort((a,b) => b.length-a.length).find((key) => input.slice(1).startsWith(key));
-        output += next ? (romajiMap.get(next)[0] || "") : "";
-        input = input.slice(1);
-        continue;
-      }
-      if (input[0] === "ー") { output += output.match(/[aeiou](?!.*[aeiou])/i)?.[0] || ""; input = input.slice(1); continue; }
-      const key = [...romajiMap.keys()].sort((a,b) => b.length-a.length).find((candidate) => input.startsWith(candidate));
-      if (key) { output += romajiMap.get(key); input = input.slice(key.length); }
-      else { output += input[0]; input = input.slice(1); }
-    }
-    return output;
-  }
   function showWarning(message) {
     const warning = $("#apiWarning");
     warning.textContent = message;
@@ -192,15 +120,6 @@ import { readingType, selectedReadings, matchesReading } from "./reading-answers
     fontChoice = sessionSettings?.fontChoice ?? $("#fontChoice").value;
     randomFont = randomItem(fontList(fontChoice));
     document.documentElement.style.setProperty("--jp-font", `"${randomFont}"`);
-  }
-  function formatElapsed(milliseconds) {
-    const elapsed = Math.max(0, Math.floor(milliseconds));
-    const hours = Math.floor(elapsed / 3600000);
-    const minutes = Math.floor(elapsed / 60000) % 60;
-    const seconds = Math.floor(elapsed / 1000) % 60;
-    const millis = String(elapsed % 1000).padStart(3, "0");
-    const mm = String(hours ? minutes : Math.floor(elapsed / 60000)).padStart(2, "0");
-    return `${hours ? `${String(hours).padStart(2, "0")}:` : ""}${mm}:${String(seconds).padStart(2, "0")}.${millis}`;
   }
   function refreshTotalTime() {
     if (!sessionClockStarted) return;
@@ -316,8 +235,8 @@ import { readingType, selectedReadings, matchesReading } from "./reading-answers
     const skippedText = skipped ? ` · ${skipped} skipped` : "";
     const missed = wrongQuestions.length
       ? `<ul class="missed-terms">${wrongQuestions.map(({ term, type, answer }) => `<li><strong>${escapeHTML(term)}</strong> <span>(${escapeHTML(type)})</span>${answer ? ` → ${escapeHTML(answer)}` : ""}</li>`).join("")}</ul>`
-      : "<div>No incorrect answers.</div>";
-    $("#sessionResults").innerHTML = `<strong>${escapeHTML(message)}</strong><span>${stats.correct} / ${stats.total} correct · ${accuracy} accuracy${skippedText} · ${escapeHTML(formatElapsed(elapsed))} total</span><div><strong>Incorrect terms</strong>${missed}</div>`;
+      : "<div data-i18n>No incorrect answers.</div>";
+    $("#sessionResults").innerHTML = `<strong data-i18n>${escapeHTML(message)}</strong><span data-i18n>${stats.correct} / ${stats.total} correct · ${accuracy} accuracy${skippedText} · ${escapeHTML(formatElapsed(elapsed))} total</span><div><strong data-i18n>Incorrect terms</strong>${missed}</div>`;
     $("#sessionResults").hidden = false;
     sessionView.finish();
   }

@@ -1,5 +1,5 @@
 import { bind, toHiragana } from "wanakana";
-import { API_BASE } from "./api.js";
+import { fetchJSON } from "./api.js";
 import { beginLoading } from "./request-loading.js";
 import { conjugate, filterForms, groups, typeNames, copyTable } from "./conjugation.js";
 import { mountStudyControls, study, japaneseHTML, audioHTML } from "./study-controls.js";
@@ -192,7 +192,7 @@ function renderInformation() {
     <p><strong>Related words / collocations:</strong> ${word.related?.length ? word.related.map(escape).join(" · ") : "None provided for this entry."}</p>
     ${settings.examples ? '<h3>Base-word examples</h3><p class="muted">Dictionary examples may contain inflected forms. Availability varies.</p><div id="baseExamples"></div>' : ""}
     ${settings.kanji ? `<h3>Kanji · tap or open a character</h3><div class="kanji-list">${word.kanjiDetails?.length ? word.kanjiDetails.map((kanji) => `<details class="kanji-card"><summary lang="ja">${escape(kanji.kanji)}</summary>
-      <p>${kanji.meanings.map(escape).join("; ")}</p><p>On’yomi: ${kanji.on_readings.map(escape).join("・") || "Not listed"}</p><p>Kun’yomi: ${kanji.kun_readings.map(escape).join("・") || "Not listed"}</p>${wordsHTML(kanji.examples || [])}</details>`).join("") : '<p class="muted">No kanji information available for this entry.</p>'}</div>` : ""}`;
+      <p>${kanji.meanings.map(escape).join("; ")}</p><p data-i18n>On’yomi: ${kanji.on_readings.map(escape).join("・") || "Not listed"}</p><p data-i18n>Kun’yomi: ${kanji.kun_readings.map(escape).join("・") || "Not listed"}</p>${wordsHTML(kanji.examples || [])}</details>`).join("") : '<p class="muted">No kanji information available for this entry.</p>'}</div>` : ""}`;
   if (settings.examples && $("wordInfo").open) mountBaseExamples();
 }
 function mountBaseExamples() {
@@ -213,14 +213,11 @@ function showEntry(entry) {
   } catch (error) { status(error.message, true); manualEntry(entry.word, entry.reading); }
 }
 async function load(params) {
-  const query = new URLSearchParams();
-  for (const [name, value] of Object.entries(params)) {
-    if (Array.isArray(value)) for (const item of value) query.append(name, item);
-    else query.set(name, value);
-  }
-  const response = await fetch(`${API_BASE}/api/conjugator?${query}`, { signal: AbortSignal.timeout(15000) });
-  if (!response.ok) throw new Error("Word lookup is unavailable right now. Please retry, or confirm the reading and word type yourself.");
-  const payload = await response.json();
+  const payload = await fetchJSON("/api/conjugator", {
+    params,
+    timeoutMs: 15000,
+    fallbackError: "Word lookup is unavailable right now. Please retry, or confirm the reading and word type yourself."
+  });
   if (!Array.isArray(payload.items)) throw new Error("The dictionary returned an unreadable response. Please retry.");
   return payload.items;
 }

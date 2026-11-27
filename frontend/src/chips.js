@@ -1,5 +1,6 @@
 
 import { interfaceSourceText } from "./interface-i18n.js";
+import { escapeHTML } from "./html.js";
 
 // One configurable chip group used for level filters, font pickers, mode pills and any other
 // small choice list. The source of truth stays a hidden <select> (or any value holder), so
@@ -68,8 +69,6 @@ function optionsFromSelect(select, config) {
   return [...select.options].filter((option) => !hidden.has(option.value) && !option.hidden && !(config.multiple && option.value.includes(",")))
     .map((option) => ({ value: option.value, label: interfaceSourceText(option).trim(), disabled: option.disabled }));
 }
-
-const escapeHTML = (text) => String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 function wrapField(select, config) {
   const label = select.closest("label");

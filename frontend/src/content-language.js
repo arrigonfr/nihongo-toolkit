@@ -1,6 +1,6 @@
+import { escapeHTML as escape } from "./html.js";
+
 // Study content (definitions, sentence translations) follows the interface language, with labeled fallbacks.
-const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
-  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 export const contentLanguage = () => document.documentElement.dataset.interfaceLanguage || "en";
 

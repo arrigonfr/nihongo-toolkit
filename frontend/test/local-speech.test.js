@@ -99,3 +99,22 @@ test("worker warms Japanese synthesis and skips cancelled queued words", async (
   assert.ok(replies[1].cancelled && replies[2].cancelled);
   assert.ok(replies.slice(3).every((reply) => reply.audio?.length === 1));
 });
+
+test("preloadLocalSpeech does not start worker before user opt-in", async () => {
+  const originals = { Worker: globalThis.Worker, localStorage: globalThis.localStorage };
+  let workerCreated = false;
+  globalThis.Worker = class {
+    constructor() { workerCreated = true; }
+    postMessage() {}
+  };
+  globalThis.localStorage = { getItem: () => null, setItem() {} };
+  try {
+    const speech = await import(`../src/local-speech.js?optin=${Date.now()}`);
+    speech.preloadLocalSpeech();
+    assert.equal(workerCreated, false, "preload must not download model without opt-in");
+  } finally {
+    for (const [key, value] of Object.entries(originals)) {
+      if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
+    }
+  }
+});

@@ -1,6 +1,7 @@
+import { escapeHTML } from "./html.js";
+
 // Controls without a tooltip. The shared tool-help binds a tooltip to every <label> of a
 // select / checkbox / number input, so these fields use a plain element labelled by aria-labelledby.
-const escapeHTML = (text) => String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const attrs = (extra) => Object.entries(extra).map(([name, value]) => ` ${name}="${escapeHTML(value)}"`).join("");
 
 export function plainSelect(id, label, entries, extra = {}) {

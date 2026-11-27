@@ -1,5 +1,5 @@
 import { bind } from "wanakana";
-import { API_BASE } from "./api.js";
+import { fetchJSON } from "./api.js";
 import { PracticeSession, cleanSettings, defaults, modes, createPool, loadPracticeEntries, reviewLabel, ruleFor, normalizeAnswer, sampleChoices, answerHint } from "./conjugation-practice-engine.js";
 import { wordCategories, formCatalog } from "./conjugation-practice-data.js";
 import { mountStudyControls, study, japaneseHTML, audioHTML } from "./study-controls.js";
@@ -386,9 +386,12 @@ async function start() {
   try {
     const levels = [5, 4, 3, 2, 1].filter((level) => level >= Math.min(...settings.levels)).join(",");
     if (loadedVocabularyLevels !== levels) {
-      const response = await fetch(`${API_BASE}/api/conjugation-practice?level=${encodeURIComponent(levels)}`, { signal: AbortSignal.timeout(30000) });
-      if (!response.ok) throw new Error("The dictionary practice source is unavailable. Check the backend and retry; no fallback word bank is used.");
-      const data = await response.json();
+      const data = await fetchJSON("/api/conjugation-practice", {
+        params: { level: levels },
+        timeoutMs: 30000,
+        useServerError: false,
+        fallbackError: "The dictionary practice source is unavailable. Check the backend and retry; no fallback word bank is used."
+      });
       loadPracticeEntries(data.entries);
     }
     session = new PracticeSession(settings, progress, Date.now(), Math.random, previousSessionWords);
@@ -427,7 +430,7 @@ function finish() {
     [summary.correct, "Correct"], [summary.incorrect, "Incorrect / assisted"], [`${summary.accuracy}%`, "Accuracy"],
     [`${Math.floor(summary.seconds / 60)}:${String(summary.seconds % 60).padStart(2, "0")}`, "Time spent"]
   ].map(([value, label]) => `<div class="result-stat"><strong>${value}</strong>${label}</div>`).join("")}</div>
-    <p>${summary.total} questions counted. Repeated review questions do not count toward the session total.</p>
+    <p data-i18n>${summary.total} questions counted. Repeated review questions do not count toward the session total.</p>
     <h3>Forms practiced</h3><p>${summary.forms.map((family) => escape(formCatalog[family].en)).join(" · ") || "No answers yet."}</p>
     <h3>Words to revisit</h3><p class="review-words" lang="ja">${summary.review.map(escape).join(" · ") || "—"}</p>
     <p class="muted small">${summary.review.length ? "These patterns will appear more often in future practice." : "Every focused session builds recall."}</p>`;
@@ -540,10 +543,12 @@ document.addEventListener("click", async (event) => {
   $("kanjiDialog").showModal();
   const doneLoading = beginLoading(button, $("kanjiContent"), "Looking up kanji…", { captureTrigger: false });
   try {
-    const url = `${API_BASE}/api/kanji/${encodeURIComponent(character)}`;
-    const responses = await Promise.all([url, `${url}/words?limit=5`].map((target) => fetch(target, { signal: AbortSignal.timeout(10000) })));
-    if (responses.some((response) => !response.ok)) throw new Error("Kanji information is unavailable. Check your dictionary connection and try again.");
-    const [data, words] = await Promise.all(responses.map((response) => response.json()));
+    const path = `/api/kanji/${encodeURIComponent(character)}`;
+    const fallbackError = "Kanji information is unavailable. Check your dictionary connection and try again.";
+    const [data, words] = await Promise.all([
+      fetchJSON(path, { timeoutMs: 10000, fallbackError }),
+      fetchJSON(`${path}/words`, { params: { limit: 5 }, timeoutMs: 10000, fallbackError })
+    ]);
     if (!Array.isArray(data.meanings) || !Array.isArray(data.on_readings) || !Array.isArray(data.kun_readings)) throw new Error("The dictionary returned unreadable kanji information.");
     if (!Array.isArray(words.items)) throw new Error("The dictionary returned unreadable example words.");
     if (token !== kanjiRequest) return;

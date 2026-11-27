@@ -9,8 +9,12 @@ import { chromium } from "playwright";
 const root = fileURLToPath(new URL("../frontend", import.meta.url));
 const outDir = await mkdtemp(join(tmpdir(), "nihon-availability-"));
 const previous = process.env.DISABLED_PAGES;
+const prevGa = process.env.VITE_GA_ID;
+const prevGtm = process.env.VITE_GTM_ID;
 let server, browser;
 try {
+  process.env.VITE_GA_ID = "G-LL2V1JZBER";
+  process.env.VITE_GTM_ID = "GTM-T7N85X93";
   process.env.DISABLED_PAGES = "";
   const enabled = await build({ root, logLevel: "error", build: { outDir } });
   const fullChunk = enabled.output.find((output) => output.type === "chunk" && Object.keys(output.modules).some((id) => id.endsWith("/src/resources.js")));
@@ -127,6 +131,10 @@ try {
 } finally {
   if (previous === undefined) delete process.env.DISABLED_PAGES;
   else process.env.DISABLED_PAGES = previous;
+  if (prevGa === undefined) delete process.env.VITE_GA_ID;
+  else process.env.VITE_GA_ID = prevGa;
+  if (prevGtm === undefined) delete process.env.VITE_GTM_ID;
+  else process.env.VITE_GTM_ID = prevGtm;
   await browser?.close();
   if (server) await new Promise((resolve, reject) => server.httpServer.close((error) => error ? reject(error) : resolve()));
   await rm(outDir, { recursive: true, force: true });

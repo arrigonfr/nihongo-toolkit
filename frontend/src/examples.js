@@ -1,10 +1,10 @@
-import { API_BASE } from "./api.js";
+import { fetchJSON } from "./api.js";
 import "./feedback.css";
 import { japaneseHTML, sentenceHTML, audioHTML } from "./study-controls.js";
 import { sentenceTranslationHTML } from "./content-language.js";
+import { escapeHTML as escape } from "./html.js";
 
-export const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
-  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+export { escape };
 
 export function sentencesHTML(examples, query = "") {
   const offset = Math.floor(Math.random() * examples.length);
@@ -26,17 +26,18 @@ export function sentencesHTML(examples, query = "") {
 }
 
 async function loadSentenceResult(query, signal, { random = false, exclude = [], corpusOnly = false } = {}) {
-  const params = new URLSearchParams({ q: query });
-  if (corpusOnly) params.set("corpus", "1");
+  const params = { q: query };
+  if (corpusOnly) params.corpus = "1";
   if (random) {
-    params.set("random", "1");
-    params.set("exclude", JSON.stringify(exclude.slice(0, 10)));
+    params.random = "1";
+    params.exclude = JSON.stringify(exclude.slice(0, 10));
   }
-  const response = await fetch(`${API_BASE}/api/sentences?${params}`, {
-    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10000)]) : AbortSignal.timeout(10000)
+  const payload = await fetchJSON("/api/sentences", {
+    params,
+    signal,
+    timeoutMs: 10000,
+    fallbackError: "Example sentences are temporarily unavailable. Please try again in a moment."
   });
-  if (!response.ok) throw new Error("Example sentences are temporarily unavailable. Please try again in a moment.");
-  const payload = await response.json();
   if (!Array.isArray(payload.data)) throw new Error("Example sentences could not be read. Please retry.");
   const examples = payload.data.map((item) => {
     const translation = item.translations?.find((t) => t.lang === "eng");

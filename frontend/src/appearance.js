@@ -18,6 +18,30 @@ const defaultPreference = { palette: "sumi", mode: "dark" };
 let preference = { ...defaultPreference };
 let language = "en";
 let initialized = false;
+let storageNoticeTimer;
+
+function showStorageNotice(message) {
+  let banner = document.querySelector(".study-storage-notice");
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.className = "study-storage-notice";
+    banner.setAttribute("role", "status");
+    banner.setAttribute("aria-live", "polite");
+    const text = document.createElement("span");
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "study-storage-notice-close";
+    close.setAttribute("aria-label", "Dismiss notice");
+    close.textContent = "×";
+    close.addEventListener("click", () => { banner.hidden = true; });
+    banner.append(text, close);
+    document.body.append(banner);
+  }
+  banner.firstElementChild.textContent = message;
+  banner.hidden = false;
+  clearTimeout(storageNoticeTimer);
+  storageNoticeTimer = setTimeout(() => { banner.hidden = true; }, 8000);
+}
 
 function browserLanguage() {
   if (!languageSelectionEnabled) return "en";
@@ -60,7 +84,7 @@ export function setInterfaceLanguage(value) {
   try { localStorage.setItem(languageKey, language); }
   catch (error) {
     console.warn("Could not save interface language preference.", error);
-    window.alert(translateInterface("This language preference could not be saved. It may not carry over to your other tools."));
+    showStorageNotice(translateInterface("This language preference could not be saved. It may not carry over to your other tools."));
   }
 }
 
@@ -99,7 +123,7 @@ export function setAppearance(update) {
   try { localStorage.setItem(key, JSON.stringify(preference)); }
   catch (error) {
     console.warn("Could not save appearance preferences.", error);
-    window.alert(translateInterface("This appearance could not be saved. It may not carry over to your other tools."));
+    showStorageNotice(translateInterface("This appearance could not be saved. It may not carry over to your other tools."));
   }
 }
 

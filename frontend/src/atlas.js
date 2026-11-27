@@ -1,4 +1,5 @@
-import { API_BASE } from "./api.js";
+import { API_BASE, fetchJSON } from "./api.js";
+import { escapeHTML as escapeHtml } from "./html.js";
 import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML } from "./study-controls.js";
 import { wordsHTML, mountSentenceExamples } from "./examples.js";
 import { kanjiReportPath } from "./contact-fields.js";
@@ -68,15 +69,10 @@ import { interfaceSourceText } from "./interface-i18n.js";
       console.warn("Could not read cached Kanji API data.", error);
     }
     try {
-      const response = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!response.ok) {
-        const error = new Error(response.status === 404
-          ? "We couldn’t find that character in our dictionary."
-          : "We couldn’t load the dictionary data right now. Please try again in a moment.");
-        error.status = response.status;
-        throw error;
-      }
-      const data = await response.json();
+      const data = await fetchJSON(url, {
+        notFoundError: "We couldn’t find that character in our dictionary.",
+        fallbackError: "We couldn’t load the dictionary data right now. Please try again in a moment."
+      });
       window.dispatchEvent(new CustomEvent("kanji-network", { detail: { online: true } }));
       if (persist) {
         const serialized = JSON.stringify(data);
@@ -108,11 +104,6 @@ import { interfaceSourceText } from "./interface-i18n.js";
     return characters.length === 1 && /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u{20000}-\u{3134f}]/u.test(value);
   }
 
-  function escapeHtml(value) {
-    return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    })[character]);
-  }
 
   function readings(values) {
     return Array.isArray(values) && values.length ? values.join("、") : "Not listed in KANJIDIC2";

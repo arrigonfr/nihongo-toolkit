@@ -1,7 +1,6 @@
 import { cellLabel, cellText } from "./kana-sheet-data.js";
 import { FONT_STACK, layoutSheet, PAGE } from "./cheatsheet-layout.js";
-
-const escapeXml = (value) => String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
+import { escapeXML as escapeXml } from "./html.js";
 
 export function toSVG(sheet, { standalone = true, grayscale = false, page = PAGE } = {}) {
   const { width, height, prims } = layoutSheet(sheet, page);

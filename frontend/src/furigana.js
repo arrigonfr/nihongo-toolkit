@@ -1,5 +1,4 @@
-const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
-  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+import { escapeHTML as escape } from "./html.js";
 const kanji = /[\p{Script=Han}々ヶヵ]/u;
 const hira = (text) => text.replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 96));
 

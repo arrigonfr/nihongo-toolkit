@@ -1,15 +1,15 @@
 import "./imposters.css";
+import { escapeHTML as escape } from "./html.js";
 import "./chips.css";
 import { createSessionView } from "./session-view.js";
 import { setSettingAvailability } from "./settings-panel.js";
 import { rememberControls } from "./settings-storage.js";
-import { API_BASE } from "./api.js";
+import { fetchJSON } from "./api.js";
 import { mountChips } from "./chips.js";
 import { mountStudyControls, study, japaneseHTML, readingsHTML, audioHTML, speakJapanese } from "./study-controls.js";
 import { makeQuestion, meanings, readings, shuffle } from "./imposters-engine.js";
 
 const root = document.getElementById("impostersRoot");
-const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 const options = (values) => values.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
 const modes = [["practice", "Practice"], ["timed", "Timed Challenge"], ["high", "High Score"], ["sudden", "Sudden Death"], ["review", "Mistake Review"]];
 const variants = [["kanji-reading", "Kanji → Readings"], ["reading-kanji", "Reading → Kanji"]];
@@ -109,7 +109,9 @@ function showReview(items, heading) {
 }
 $("reviewList").addEventListener("click", () => { if (!session) showReview(Object.values(review), "Mistake review list"); });
 $("results").addEventListener("click", (event) => { const key = event.target.dataset.remove; if (!key) return; delete review[key]; save(reviewKey, review); status(); event.target.closest("li").remove(); });
-async function getJSON(path) { const response = await fetch(`${API_BASE}${path}`, { signal: AbortSignal.timeout(20000) }); if (!response.ok) throw new Error("Could not load kanji. Please try again."); return response.json(); }
+async function getJSON(path) {
+  return fetchJSON(path, { timeoutMs: 20000, useServerError: false, fallbackError: "Could not load kanji. Please try again." });
+}
 async function loadPool(level) {
   return (await getJSON(`/api/kanji/batch?mode=both&limit=100&projection=practice&level=${encodeURIComponent(level)}`)).items;
 }

@@ -1,5 +1,26 @@
-import { interfaceMessages } from "./interface-messages.js";
 import { navigationPage } from "./routes.js";
+
+const languageSelectionEnabled = typeof import.meta.env !== "undefined" && import.meta.env.VITE_LANGUAGE_SELECTION === "true";
+let interfaceMessages = Object.create(null);
+let messagesLoaded = false;
+let messagesPromise = null;
+
+export function loadInterfaceMessages() {
+  if (!languageSelectionEnabled) return Promise.resolve(interfaceMessages);
+  if (messagesLoaded) return Promise.resolve(interfaceMessages);
+  if (!messagesPromise) {
+    messagesPromise = import("./interface-messages.js").then((mod) => {
+      interfaceMessages = mod.interfaceMessages || Object.create(null);
+      messagesLoaded = true;
+      return interfaceMessages;
+    }).catch((error) => {
+      messagesPromise = null;
+      console.warn("Could not load interface translations.", error);
+      return interfaceMessages;
+    });
+  }
+  return messagesPromise;
+}
 
 const commonScopes = [
   ".navigation", ".dashboard", ".intro", ".cw-intro", ".brand-name", ".cw-brand-name",
@@ -9,7 +30,7 @@ const commonScopes = [
   "details#settingsPanel", "details#settingsDrawer", "#settings",
   ".session-stats", ".replay-actions", ".sentence-actions", ".sentence-status",
   ".sentence-results:not(:has(.sentence-list))", ".request-loading-status", ".start-error",
-  ".translation-note", "footer", "[data-i18n-scope]"
+  ".translation-note", "footer", "[data-i18n-scope]", "[data-i18n]"
 ];
 const attributeScopes = [
   ".brand", ".cw-brand", ".quiz-card", ".history-panel", ".main-column",
@@ -21,7 +42,7 @@ const attributeScopes = [
   "#wordDetails [data-kanji]", "#chain [data-word-index]", "#results [data-kanji]",
   "#historyList [data-kanji]", "#detail [data-kanji]", "#strokeOrderButton",
   "#strokeOrderButton svg[role=img]", "#parsedText .token", "#detailPanel", "#closePanel",
-  "#result", "#tables [data-copy]", "#savedWords [data-remove]"
+  "#result", "#tables [data-copy]", "#savedWords [data-remove]", "[data-i18n-attr]"
 ].join(", ");
 const controlScopes = [
   "startButton", "startSessionButton", "stopSessionButton", "checkButton", "nextButton",
@@ -30,9 +51,7 @@ const controlScopes = [
   "searchButton", "parseButton", "correctCaption", "startError", "apiWarning", "settingsStorageError"
 ].map((id) => `#${id}`);
 const practiceScopes = [
-  "#questionCount", "#promptText", "#answerForm", "#sessionStatus",
-  "#sessionResults > strong", "#sessionResults > span", "#sessionResults > div > strong",
-  "#sessionResults > div > div"
+  "#questionCount", "#promptText", "#answerForm", "#sessionStatus"
 ];
 const pageScopes = {
   "kana.html": practiceScopes,
@@ -60,7 +79,7 @@ const pageScopes = {
     "#clearHistory", "#exportWords", "label.file-button", "#status",
     "#saveWord", "#copyTable", "#exportConjugations", "#wordInfo > summary",
     "#wordInfoContent > p > strong", "#wordInfoContent > h3", "#wordInfoContent > p.muted",
-    "#wordInfoContent .kanji-list > .muted", "#wordInfoContent .kanji-card p:not(:first-of-type)",
+    "#wordInfoContent .kanji-list > .muted",
     "#formCount", "#tables .table-panel > h3", "#tables thead th", "#tables tbody th",
     "#tables .form-tools > button[data-copy]", "#tables .form-note > summary",
     "#tables [data-example]", "#tables .form-examples:not(:has(.sentence-list))",
@@ -70,7 +89,7 @@ const pageScopes = {
     "#setup", "#practice > .session-bar", "#answerLabel", "#inputHelp",
     "#answerNotice", ".practice-shortcut", "#hintText", "#feedback", "#notice",
     "#questionBody .badge", "#resultContent .result-stats", "#resultContent > h3",
-    "#resultContent > .result-stats + p", "#resultContent > p.muted", "#ruleCard > summary",
+    "#resultContent > p.muted", "#ruleCard > summary",
     "#kanjiDialog form", "#kanjiContent h3", "#kanjiContent strong", "#kanjiContent:not(:has(*))",
     "#results > .eyebrow", "#resultsTitle", ".progress-panel > .eyebrow", ".progress-panel > h3",
     ".progress-panel > details > summary", "#lifetime", "#weakForms > .muted",
@@ -89,15 +108,14 @@ const pageScopes = {
   ],
   "pazuru.html": [
     ".cw-top-card", ".cw-empty", ".cw-status-bar", "#flipDirBtn", "#feedbackBanner",
-    ".cw-clue-group > h2", ".cw-clue-state", ".cw-clue-meta > span:nth-child(-n+2)",
+    ".cw-clue-group > h2", ".cw-clue-state",
     ".cw-clue-entry-box", "#activeClueBadge", "#activeClueSub",
     ".cw-popover-meta .cw-active-clue-id", ".cw-popover-meta .cw-badge",
     ".cw-popover-top-btns", ".cw-popover-clue > strong", ".cw-popover-length-row",
     ".cw-popover-btn-bar", ".cw-popover-error", ".cw-square-draft", ".cw-study-header",
-    "#studyInspectorBody > .cw-word-card", ".cw-reading-label", ".cw-part-of-speech", ".cw-kanji-heading",
-    "#completedWordCard > div > strong", "#completedWordCard .cw-example-box > strong",
+    ".cw-reading-label", ".cw-part-of-speech", ".cw-kanji-heading",
     "#completedWordCard button[data-speak-ja]", "#completedKanjiCard strong:not([lang=ja])",
-    "#completedKanjiCard .cw-kanji-head > button", "#completedKanjiCard > div[style*='text-align:center']",
+    "#completedKanjiCard .cw-kanji-head > button",
     ".cw-unrated", ".cw-no-compounds",
     ".cw-review-heading > span", ".cw-review-word > button", "#puzzleResults > h2", "#puzzleResults > p"
   ],
@@ -125,10 +143,10 @@ const pageScopes = {
     "#reviewNotice", "#reviewList > p", "#reviewList [data-remove]"
   ],
   "shiritori.html": [
-    ".toolbar", ".turn-strip", ".prompt .eyebrow", "#wordForm", "#wordForm + .actions",
+    ".toolbar", ".turn-strip", ".prompt .eyebrow", "#wordForm",
     "#previousReading", "#feedback", "#hintPanel", "#choices > p", ".card-heading", "#chainEmpty",
     ".chain-meta", "#scores > .score-row > span", "#scores .score-row .small", "#stats", "#bonusLabel", ".rule-note", "#helpDialog",
-    "#detailBody:not(:has(*))", "#detailBody .detail-tags > :nth-child(-n+2)",
+    "#detailBody:not(:has(*))",
     "#detailBody #saveWord", "#detailBody a", "#results > .eyebrow", "#results > h2",
     "#results > h3", "#results > p", "#reviewDialog .dialog-head", "#reviewBody > p",
     "#reviewBody [data-remove-review]", "#kanjiDialog .dialog-head", "#kanjiBody h3",
@@ -548,7 +566,8 @@ function localizeText(node, language) {
   if (parent.closest("[lang]")?.getAttribute("lang").toLowerCase().split("-")[0] === "ja") return;
   if (parent.tagName === "OPTION" && !parent.hasAttribute("value")) return;
   const previous = textSources.get(node);
-  const source = previous && node.data === previous.rendered ? previous.source : node.data;
+  const explicitKey = parent.hasAttribute("data-i18n") && parent.dataset.i18n?.trim();
+  const source = explicitKey || (previous && node.data === previous.rendered ? previous.source : node.data);
   const rendered = localizeValue(source, language);
   textSources.set(node, { source, rendered });
   if (node.data !== rendered) node.data = rendered;
@@ -560,7 +579,9 @@ function localizeAttributes(element, language) {
   if (element.closest("svg") && !element.matches("svg[role=img]")) return;
   let saved = attributeSources.get(element);
   if (!saved) { saved = new Map(); attributeSources.set(element, saved); }
-  for (const name of attributes) {
+  const customAttrs = element.dataset?.i18nAttr?.split(",").map((name) => name.trim()).filter(Boolean);
+  const attrList = customAttrs?.length ? customAttrs : attributes;
+  for (const name of attrList) {
     const value = element.getAttribute(name);
     if (value === null) { saved.delete(name); continue; }
     const previous = saved.get(name);
@@ -591,24 +612,37 @@ function localizeAttributeRoots(root, language) {
 }
 
 export function initializeInterfaceLocalization() {
-  if (initialized) return;
+  if (initialized || !languageSelectionEnabled) return;
   initialized = true;
+  loadInterfaceMessages();
   const file = navigationPage(location.pathname);
   const scopes = [...commonScopes, ...controlScopes, ...(pageScopes[file] || [])].join(", ");
   let started = false;
-  const render = () => {
-    if (!started) return;
+  const applyTranslations = () => {
     const language = currentLanguage();
     const title = document.querySelector("title");
     if (title) localizeTree(title, language);
     for (const root of document.querySelectorAll(scopes)) localizeTree(root, language);
     for (const element of document.querySelectorAll(attributeScopes)) localizeAttributes(element, language);
   };
+  const render = () => {
+    if (!started) return;
+    const language = currentLanguage();
+    if (language !== "en" && !messagesLoaded) {
+      loadInterfaceMessages().then(() => { if (started) applyTranslations(); });
+      return;
+    }
+    applyTranslations();
+  };
   const start = () => {
     started = true;
     render();
     new MutationObserver((mutations) => {
       const language = currentLanguage();
+      if (language !== "en" && !messagesLoaded) {
+        loadInterfaceMessages().then(() => { if (started) applyTranslations(); });
+        return;
+      }
       for (const mutation of mutations) {
         const element = mutation.target.nodeType === Node.ELEMENT_NODE ? mutation.target : mutation.target.parentElement;
         if (mutation.type === "attributes" && element?.matches(attributeScopes)) localizeAttributes(element, language);
