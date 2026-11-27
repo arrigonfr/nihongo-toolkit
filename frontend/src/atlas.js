@@ -1,10 +1,11 @@
-import { API_BASE } from "./api.js";
-import { mountStudyControls, japaneseHTML, audioHTML, readingsHTML } from "./study-controls.js";
-import { wordsHTML, mountSentenceExamples } from "./examples.js";
+import { API_BASE, fetchJSON } from "./api.js";
 import { kanjiReportPath } from "./contact-fields.js";
+import { mountSentenceExamples, wordsHTML } from "./examples.js";
+import { escapeHTML as escapeHtml, setHTML } from "./html.js";
 import { interfaceSourceText } from "./interface-i18n.js";
+import { audioHTML, japaneseHTML, mountStudyControls, readingsHTML } from "./study-controls.js";
+
 (() => {
-  "use strict";
   const API = API_BASE;
   const HISTORY_KEY = "nihon:kanji-atlas:history";
   const CACHE_PREFIX = "nihon:kanji-atlas:cache:v2:";
@@ -21,7 +22,7 @@ import { interfaceSourceText } from "./interface-i18n.js";
     results: document.getElementById("results"),
     detail: document.getElementById("detail"),
     historyList: document.getElementById("historyList"),
-    clearHistory: document.getElementById("clearHistory")
+    clearHistory: document.getElementById("clearHistory"),
   };
   let requestNumber = 0;
 
@@ -68,15 +69,10 @@ import { interfaceSourceText } from "./interface-i18n.js";
       console.warn("Could not read cached Kanji API data.", error);
     }
     try {
-      const response = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!response.ok) {
-        const error = new Error(response.status === 404
-          ? "We couldn’t find that character in our dictionary."
-          : "We couldn’t load the dictionary data right now. Please try again in a moment.");
-        error.status = response.status;
-        throw error;
-      }
-      const data = await response.json();
+      const data = await fetchJSON(url, {
+        notFoundError: "We couldn’t find that character in our dictionary.",
+        fallbackError: "We couldn’t load the dictionary data right now. Please try again in a moment.",
+      });
       window.dispatchEvent(new CustomEvent("kanji-network", { detail: { online: true } }));
       if (persist) {
         const serialized = JSON.stringify(data);
@@ -108,56 +104,67 @@ import { interfaceSourceText } from "./interface-i18n.js";
     return characters.length === 1 && /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u{20000}-\u{3134f}]/u.test(value);
   }
 
-  function escapeHtml(value) {
-    return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    })[character]);
-  }
-
-  function readings(values) {
-    return Array.isArray(values) && values.length ? values.join("、") : "Not listed in KANJIDIC2";
-  }
-
   function meanings(record) {
     return Array.isArray(record?.meanings) ? record.meanings.join(", ") : "";
   }
 
   function radicalContent(record) {
     const radicals = record?.radicals ?? record?.radical;
-    if (!radicals) return '<span class="radical-note">Radical data is not included in this dictionary record.</span>';
+    if (!radicals)
+      return '<span class="radical-note" data-i18n-scope>Radical data is not included in this dictionary record.</span>';
     const items = Array.isArray(radicals) ? radicals : [radicals];
-    const chips = items.map((item) => {
-      if (typeof item === "string") return `<span class="atlas-chip">${escapeHtml(item)}</span>`;
-      const glyph = item.character ?? item.kanji ?? item.radical ?? (
-        Number.isInteger(item.value) && item.value >= 1 && item.value <= 214
-          ? String.fromCodePoint(0x2f00 + item.value - 1).normalize("NFKC") : ""
-      );
-      const system = item.type === "classical" ? `Radical #${item.value}` : item.type === "nelson_c" ? `Nelson #${item.value}` : `${item.type} #${item.value}`;
-      const meaning = Array.isArray(item.meanings) ? item.meanings.join(", ") : (item.meaning ?? "");
-      const details = [item.name, meaning, system].filter(Boolean).map(escapeHtml).join(" · ");
-      return `<span class="atlas-chip">${glyph ? `<strong lang="ja">${escapeHtml(glyph)}</strong>` : ""}${glyph && details ? " · " : ""}${details}</span>`;
-    }).join("");
+    const chips = items
+      .map((item) => {
+        if (typeof item === "string") return `<span class="atlas-chip">${escapeHtml(item)}</span>`;
+        const glyph =
+          item.character ??
+          item.kanji ??
+          item.radical ??
+          (Number.isInteger(item.value) && item.value >= 1 && item.value <= 214
+            ? String.fromCodePoint(0x2f00 + item.value - 1).normalize("NFKC")
+            : "");
+        const system =
+          item.type === "classical"
+            ? `Radical #${item.value}`
+            : item.type === "nelson_c"
+              ? `Nelson #${item.value}`
+              : `${item.type} #${item.value}`;
+        const meaning = Array.isArray(item.meanings) ? item.meanings.join(", ") : (item.meaning ?? "");
+        const details = [item.name, meaning, system].filter(Boolean).map(escapeHtml).join(" · ");
+        return `<span class="atlas-chip">${glyph ? `<strong lang="ja">${escapeHtml(glyph)}</strong>` : ""}${glyph && details ? " · " : ""}${details}</span>`;
+      })
+      .join("");
     const names = record?.radical_names?.length
-      ? `<span class="radical-note">Radical readings: ${record.radical_names.map(escapeHtml).join(" · ")}</span>` : "";
-    return `<div class="chip-list">${chips}</div>${names}<span class="radical-note">These are dictionary indexing forms, not a tracing of the character. For example, 肉 (#130) can appear as a 月-like component. Nelson’s lookup radical is shown when available.</span>`;
+      ? `<span class="radical-note" data-i18n-scope>Radical readings: ${record.radical_names.map(escapeHtml).join(" · ")}</span>`
+      : "";
+    return `<div class="chip-list">${chips}</div>${names}<span class="radical-note" data-i18n-scope>These are dictionary indexing forms, not a tracing of the character. For example, 肉 (#130) can appear as a 月-like component. Nelson’s lookup radical is shown when available.</span>`;
   }
 
   function componentsContent(record) {
     const radicalChars = new Set((record?.radicals || []).map((item) => item?.character).filter(Boolean));
     const list = (record?.components || []).filter((item) => item?.character);
     if (!list.length) return "";
-    const chips = list.map(({ character, original, name, meaning }) => {
-      const details = [original ? `from ${original}` : "", name && !radicalChars.has(character) ? name : "", meaning]
-        .filter(Boolean).map(escapeHtml).join(" · ");
-      return `<button class="atlas-chip" type="button" data-kanji="${escapeHtml(character)}" title="Inspect ${escapeHtml(character)}"><strong lang="ja">${escapeHtml(character)}</strong>${details ? ` · ${details}` : ""}</button>`;
-    }).join("");
-    return textBlock("Components · 構成要素", `<div class="chip-list">${chips}</div><span class="radical-note">All visual building blocks that make up this character (click any component to inspect it).</span>`, "compounds");
+    const chips = list
+      .map(({ character, original, name, meaning }) => {
+        const details = [original ? `from ${original}` : "", name && !radicalChars.has(character) ? name : "", meaning]
+          .filter(Boolean)
+          .map(escapeHtml)
+          .join(" · ");
+        return `<button class="atlas-chip" type="button" data-kanji="${escapeHtml(character)}" title="Inspect ${escapeHtml(character)}"><strong lang="ja">${escapeHtml(character)}</strong>${details ? ` · ${details}` : ""}</button>`;
+      })
+      .join("");
+    return textBlock(
+      "Components · 構成要素",
+      `<div class="chip-list">${chips}</div><span class="radical-note" data-i18n-scope>All visual building blocks that make up this character (click any component to inspect it).</span>`,
+      "compounds",
+    );
   }
 
   function renderResults(title, records, total = records.length) {
     elements.detail.replaceChildren();
     const heading = document.createElement("h2");
     heading.className = "result-heading";
+    heading.dataset.i18nScope = "";
     const label = document.createElement("span");
     label.textContent = title;
     const count = document.createElement("span");
@@ -189,7 +196,7 @@ import { interfaceSourceText } from "./interface-i18n.js";
   }
 
   function textBlock(label, value, className = "") {
-    return `<section class="data-block ${className}"><h3 class="data-label">${escapeHtml(label)}</h3><div class="data-value">${value}</div></section>`;
+    return `<section class="data-block ${className}"><h3 class="data-label" data-i18n-scope>${escapeHtml(label)}</h3><div class="data-value">${value}</div></section>`;
   }
 
   function renderDetail(record, words) {
@@ -201,30 +208,42 @@ import { interfaceSourceText } from "./interface-i18n.js";
       if (!selected || seen.has(selected.word)) return;
       seen.add(selected.word);
       const glosses = (entry.senses || []).flatMap((sense) => sense.english_definitions || []);
-      compounds.push({ written: selected.word, reading: selected.reading || "—", gloss: glosses.slice(0, 3).join("; ") });
+      compounds.push({
+        written: selected.word,
+        reading: selected.reading || "—",
+        gloss: glosses.slice(0, 3).join("; "),
+      });
     });
     const compoundMarkup = compounds.length
-      ? `<div class="compound-list">${compounds.slice(0, 10).map((item) => `<div class="compound"><span class="compound-word">${japaneseHTML(item.written, item.reading)}</span>${audioHTML(item.reading)}<span class="compound-meaning"${item.gloss ? "" : " data-i18n-scope"}>${escapeHtml(item.gloss || "Meaning unavailable")}</span></div>`).join("")}</div>`
-      : '<span class="radical-note">No example compounds were found for this character.</span>';
+      ? `<div class="compound-list">${compounds
+          .slice(0, 10)
+          .map(
+            (item) =>
+              `<div class="compound"><span class="compound-word">${japaneseHTML(item.written, item.reading)}</span>${audioHTML(item.reading)}<span class="compound-meaning"${item.gloss ? "" : " data-i18n-scope"}>${escapeHtml(item.gloss || "Meaning unavailable")}</span></div>`,
+          )
+          .join("")}</div>`
+      : '<span class="radical-note" data-i18n-scope>No example compounds were found for this character.</span>';
     const jlpt = record.jlpt ? `JLPT N${record.jlpt}` : "No JLPT level";
     const frequency = record.freq_mainichi_shinbun ? `#${record.freq_mainichi_shinbun}` : "Not ranked";
     const radicalValue = radicalContent(record);
-    const incomplete = !record.meanings?.length ||
-      !(record.on_readings?.length || record.kun_readings?.length || record.nanori?.length);
+    const incomplete =
+      !record.meanings?.length || !(record.on_readings?.length || record.kun_readings?.length || record.nanori?.length);
     const detail = document.createElement("div");
     detail.className = "detail-inner";
-    detail.innerHTML = `
+    setHTML(
+      detail,
+      `
       <div class="detail-top">
         <button class="hero-kanji" id="strokeOrderButton" type="button" aria-label="Show stroke order for ${escapeHtml(character)}" title="Click to see stroke order">
           <span class="hero-kanji-character">${escapeHtml(character)}</span>
-          <span class="stroke-caption" aria-live="polite">Click to see stroke order</span>
+          <span class="stroke-caption" aria-live="polite" data-i18n-scope>Click to see stroke order</span>
         </button>
         <div class="hero-info">
-          <div class="hero-title"><h2>${escapeHtml(character)}</h2><span class="tag">${escapeHtml(jlpt)}</span></div>
-          <p class="meanings">${meanings(record) ? escapeHtml(meanings(record)) : '<span data-i18n-scope>No English meanings listed.</span>'}</p>
-          ${incomplete ? `<p><a href="${kanjiReportPath(character)}">Suggest a missing Japanese reading or English meaning</a></p>` : ""}
-          <button class="button copy-button" id="copyKanji" type="button" data-kanji="${escapeHtml(character)}">Copy kanji</button>
-          ${import.meta.env.EDITORIAL_PREVIEWS_ENABLED ? `<a href="/kanji-kaki?kanji=${encodeURIComponent(character)}" target="_blank" rel="noopener">Practice writing ${escapeHtml(character)}</a>` : ""}
+          <div class="hero-title"><h2>${escapeHtml(character)}</h2><span class="tag" data-i18n-scope>${escapeHtml(jlpt)}</span></div>
+          <p class="meanings">${meanings(record) ? escapeHtml(meanings(record)) : "<span data-i18n-scope>No English meanings listed.</span>"}</p>
+          ${incomplete ? `<p><a href="${kanjiReportPath(character)}" data-i18n-scope>Suggest a missing Japanese reading or English meaning</a></p>` : ""}
+          <button class="button copy-button" id="copyKanji" type="button" data-kanji="${escapeHtml(character)}" data-i18n-scope>Copy kanji</button>
+          ${import.meta.env.EDITORIAL_PREVIEWS_ENABLED ? `<a href="/kanji-kaki?kanji=${encodeURIComponent(character)}" target="_blank" rel="noopener" data-i18n-scope>Practice writing ${escapeHtml(character)}</a>` : ""}
         </div>
       </div>
       <div class="detail-grid">
@@ -239,7 +258,8 @@ import { interfaceSourceText } from "./interface-i18n.js";
         ${textBlock("Example words", record.examples?.length ? wordsHTML(record.examples) : "<span data-i18n-scope>No example words listed.</span>", "compounds")}
         ${textBlock("Example compounds", compoundMarkup, "compounds")}
         ${textBlock("Example sentences", `<div id="kanjiSentences"></div>`, "compounds")}
-      </div>`;
+      </div>`,
+    );
     elements.detail.replaceChildren(detail);
     mountSentenceExamples(document.getElementById("kanjiSentences"), character, record.sentences);
     document.getElementById("strokeOrderButton").addEventListener("click", (event) => {
@@ -249,8 +269,10 @@ import { interfaceSourceText } from "./interface-i18n.js";
       try {
         await navigator.clipboard.writeText(character);
         event.currentTarget.textContent = "Copied";
-        window.setTimeout(() => { event.currentTarget.textContent = "Copy kanji"; }, 1400);
-      } catch (error) {
+        window.setTimeout(() => {
+          event.currentTarget.textContent = "Copy kanji";
+        }, 1400);
+      } catch {
         setNotice("Clipboard access is unavailable. Select and copy the kanji directly.", true);
       }
     });
@@ -288,7 +310,7 @@ import { interfaceSourceText } from "./interface-i18n.js";
     if (source.querySelector("parsererror") || source.documentElement.localName !== "svg") {
       throw new Error("The SVG could not be read.");
     }
-    const paths = [...source.querySelectorAll('path[id]')]
+    const paths = [...source.querySelectorAll("path[id]")]
       .map((path) => ({ id: path.id, d: path.getAttribute("d") }))
       .filter((path) => /-s\d+$/.test(path.id) && path.d)
       .sort((a, b) => Number(a.id.match(/-s(\d+)$/)[1]) - Number(b.id.match(/-s(\d+)$/)[1]));
@@ -298,7 +320,7 @@ import { interfaceSourceText } from "./interface-i18n.js";
   async function getStrokeData(character) {
     const svgText = await getStrokeSvg(
       `${API}/api/kanji/${encode(character)}/strokes`,
-      STROKE_CACHE_PREFIX + API + character
+      STROKE_CACHE_PREFIX + API + character,
     );
     const data = parseStrokeData(svgText);
     if (!data.paths.length) throw new Error("No local stroke paths for this kanji.");
@@ -350,20 +372,24 @@ import { interfaceSourceText } from "./interface-i18n.js";
         path.style.strokeDashoffset = String(length);
         path.style.visibility = "";
         caption.textContent = `Stroke ${index + 1} of ${paths.length}`;
-        const animation = path.animate(
-          [{ strokeDashoffset: length }, { strokeDashoffset: 0 }],
-          { duration: 420, fill: "forwards", easing: "ease-in-out" }
-        );
+        const animation = path.animate([{ strokeDashoffset: length }, { strokeDashoffset: 0 }], {
+          duration: 420,
+          fill: "forwards",
+          easing: "ease-in-out",
+        });
         await animation.finished;
         await new Promise((resolve) => window.setTimeout(resolve, 90));
       }
       if (button.isConnected) caption.textContent = `${paths.length} strokes · click to replay`;
-    } catch (error) {
+    } catch {
       if (button.isConnected) {
         button.querySelector(".hero-strokes")?.remove();
         originalGlyph.hidden = false;
         caption.textContent = "Stroke order unavailable";
-        setNotice(`We couldn’t load the stroke order diagram for ${character} right now. Please try again in a moment.`, true);
+        setNotice(
+          `We couldn’t load the stroke order diagram for ${character} right now. Please try again in a moment.`,
+          true,
+        );
       }
     } finally {
       button.removeAttribute("aria-busy");
@@ -388,8 +414,10 @@ import { interfaceSourceText } from "./interface-i18n.js";
   function saveHistory(record) {
     const storedHistory = readStorage(HISTORY_KEY, []);
     const history = Array.isArray(storedHistory) ? storedHistory : [];
-    const updated = [{ kanji: record.kanji, meaning: meanings(record), viewedAt: Date.now() },
-      ...history.filter((item) => item.kanji !== record.kanji)].slice(0, 20);
+    const updated = [
+      { kanji: record.kanji, meaning: meanings(record), viewedAt: Date.now() },
+      ...history.filter((item) => item.kanji !== record.kanji),
+    ].slice(0, 20);
     writeStorage(HISTORY_KEY, updated);
     renderHistory();
   }
@@ -401,6 +429,7 @@ import { interfaceSourceText } from "./interface-i18n.js";
     if (!history.length) {
       const empty = document.createElement("span");
       empty.className = "history-empty";
+      empty.dataset.i18nScope = "";
       empty.textContent = "Kanji you view will appear here.";
       elements.historyList.append(empty);
       return;
@@ -449,7 +478,7 @@ import { interfaceSourceText } from "./interface-i18n.js";
         error.status === 404
           ? `We couldn’t find details for “${character}”. Try searching for another character.`
           : `We couldn’t load details for “${character}” right now. Please check your connection and try again.`,
-        true
+        true,
       );
     } finally {
       await doneLoading();
@@ -495,7 +524,10 @@ import { interfaceSourceText } from "./interface-i18n.js";
           setNotice(`No kanji were found for ${term.toUpperCase()}.`, true);
           return;
         }
-        renderResults(`${term.toUpperCase()} kanji`, records.map((item) => typeof item === "string" ? item : item.kanji).filter(Boolean));
+        renderResults(
+          `${term.toUpperCase()} kanji`,
+          records.map((item) => (typeof item === "string" ? item : item.kanji)).filter(Boolean),
+        );
       } else {
         const response = await searchMeaning(term);
         if (token !== requestNumber) return;
@@ -507,7 +539,7 @@ import { interfaceSourceText } from "./interface-i18n.js";
         }
         renderResults(`Matches for “${term}”`, matches.slice(0, 100), matches.length);
       }
-    } catch (error) {
+    } catch {
       if (token !== requestNumber) return;
       setNotice("We couldn’t complete your search right now. Please check your connection and try again.", true);
     } finally {
@@ -527,7 +559,7 @@ import { interfaceSourceText } from "./interface-i18n.js";
       const character = await getRandomKanji();
       if (!character) throw new Error("No random kanji available.");
       await showKanji(character, token);
-    } catch (error) {
+    } catch {
       if (token !== requestNumber) return;
       setNotice("We couldn’t load a random kanji right now. Please check your connection and try again.", true);
       setLoading(false);
@@ -536,7 +568,6 @@ import { interfaceSourceText } from "./interface-i18n.js";
       if (token === requestNumber) setLoading(false);
     }
   }
-
 
   elements.form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -563,9 +594,9 @@ import { interfaceSourceText } from "./interface-i18n.js";
     renderHistory();
   });
   document.addEventListener("keydown", (event) => {
-    const editable = event.target instanceof HTMLElement && (
-      event.target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName)
-    );
+    const editable =
+      event.target instanceof HTMLElement &&
+      (event.target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName));
     if (event.key.toLowerCase() === "r" && !editable && !event.metaKey && !event.ctrlKey && !event.altKey) {
       event.preventDefault();
       showRandom();
@@ -595,4 +626,5 @@ import { interfaceSourceText } from "./interface-i18n.js";
   }
 })();
 mountStudyControls();
+
 import { beginLoading } from "./request-loading.js";

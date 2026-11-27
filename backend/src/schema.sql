@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS vocabulary (
 );
 CREATE INDEX IF NOT EXISTS vocabulary_jlpt ON vocabulary(jlpt);
 CREATE INDEX IF NOT EXISTS vocabulary_word_id ON vocabulary(word_id);
+CREATE INDEX IF NOT EXISTS vocabulary_romaji ON vocabulary(romaji);
 CREATE TABLE IF NOT EXISTS strokes (
   character TEXT PRIMARY KEY REFERENCES kanjis(character),
   svg TEXT NOT NULL

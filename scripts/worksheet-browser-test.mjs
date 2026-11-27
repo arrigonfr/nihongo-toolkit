@@ -78,6 +78,26 @@ try {
   await page.locator('[data-field="mode"][value="kanji"]').locator("..").click();
   await page.locator('[data-field="level"][value="4"]').locator("..").click();
   assert.equal(await page.locator('[data-field="level"]:checked').count(), 2);
+  // Selecting Unrated should only fetch the first sub-chunk for page 1, never all 13 chunks.
+  await page.locator('[data-field="mode"][value="kana"]').locator("..").click();
+  await page.locator('[data-field="level"][value="5"]').locator("..").click();
+  await page.locator('[data-field="level"][value="4"]').locator("..").click();
+  const requestedStrokeChunks = [];
+  const onRequest = (req) => {
+    const match = req.url().match(/\/worksheet-strokes\/([^/?#]+)\.json/);
+    if (match) requestedStrokeChunks.push(match[1]);
+  };
+  page.on("request", onRequest);
+  await page.locator('[data-field="level"][value="unrated"]').locator("..").click();
+  await page.waitForFunction(() => document.querySelectorAll("#sheetPreview > svg svg path").length > 0);
+  page.off("request", onRequest);
+  assert.deepEqual(requestedStrokeChunks, ["unrated-0"]);
+  // Restore Kana + N5 + N4 selection for the rest of the test.
+  await page.locator('[data-field="level"][value="unrated"]').locator("..").click();
+  await page.locator('[data-field="mode"][value="kana"]').locator("..").click();
+  await page.locator('[data-field="level"][value="5"]').locator("..").click();
+  await page.locator('[data-field="level"][value="4"]').locator("..").click();
+  await page.waitForFunction(() => !document.querySelector(".worksheet-notice")?.textContent.trim());
   assert.equal(await page.locator('[data-field="opacity"]').inputValue(), "100");
   await page.locator('[data-field="paper"]').selectOption("legal");
   assert.equal(await page.locator('#sheetPreview > svg').getAttribute("viewBox"), "0 0 816 1344");

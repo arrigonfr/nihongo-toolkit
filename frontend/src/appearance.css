@@ -127,3 +127,37 @@ body .study-theme[data-mode="dark"] { border-color: #244b60; background: #103449
 /* Illustrated tool icons carry their own shading, so they replace the accent tile */
 html :is(.brand-mark, .cw-brand-mark)[aria-hidden]:has(> img) { background: none; border-radius: 0; }
 html :is(.brand-mark, .cw-brand-mark) > img { display: block; width: 100%; height: 100%; object-fit: contain; }
+
+.study-storage-notice {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 950;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line, #c8ccc9);
+  border-radius: 10px;
+  background: var(--card, #fff);
+  color: var(--ink, #252b28);
+  box-shadow: var(--shadow, 0 10px 28px rgb(0 0 0 / 18%));
+  font: 500 0.875rem/1.4 system-ui, -apple-system, sans-serif;
+}
+.study-storage-notice[hidden] { display: none; }
+.study-storage-notice-close {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line, #c8ccc9);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink, #252b28);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}

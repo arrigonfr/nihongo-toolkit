@@ -1,4 +1,4 @@
-
+import { escapeHTML, setHTML } from "./html.js";
 import { interfaceSourceText } from "./interface-i18n.js";
 
 // One configurable chip group used for level filters, font pickers, mode pills and any other
@@ -34,7 +34,9 @@ export function chipCodec(config) {
       if (config.emptyValue != null && value === config.emptyValue) return [];
       if (config.exclusive != null && value === config.exclusive) return [config.exclusive];
       if (all != null && value === all) return config.exclusive != null ? [config.exclusive] : [...regular];
-      return String(value).split(",").filter((item) => regular.includes(item));
+      return String(value)
+        .split(",")
+        .filter((item) => regular.includes(item));
     },
     encode(selected) {
       if (!config.multiple) return selected[0];
@@ -43,7 +45,7 @@ export function chipCodec(config) {
       if (!list.length) return config.emptyValue ?? null;
       if (all != null && list.length === regular.length) return all;
       return list.join(",");
-    }
+    },
   };
 }
 
@@ -51,8 +53,16 @@ export function chipCodec(config) {
 function ensureOptions(select, config, codec) {
   if (!select.options) return;
   const known = new Set([...select.options].map((option) => option.value));
-  const add = (value) => { if (value != null && !known.has(value)) { select.add(new Option(value, value)); known.add(value); } };
-  if (!config.multiple) { for (const option of config.options) add(option.value); return; }
+  const add = (value) => {
+    if (value != null && !known.has(value)) {
+      select.add(new Option(value, value));
+      known.add(value);
+    }
+  };
+  if (!config.multiple) {
+    for (const option of config.options) add(option.value);
+    return;
+  }
   const { regular } = codec;
   if (regular.length <= 8) {
     for (let mask = 1; mask < 2 ** regular.length; mask++) add(codec.encode(regular.filter((_, i) => mask & (1 << i))));
@@ -63,13 +73,18 @@ function ensureOptions(select, config, codec) {
 }
 
 function optionsFromSelect(select, config) {
-  if (select.type === "checkbox") return [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }];
-  const hidden = new Set([config.allValue, config.emptyValue].filter((value) => value != null && value !== config.exclusive));
-  return [...select.options].filter((option) => !hidden.has(option.value) && !option.hidden && !(config.multiple && option.value.includes(",")))
+  if (select.type === "checkbox")
+    return [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+    ];
+  const hidden = new Set(
+    [config.allValue, config.emptyValue].filter((value) => value != null && value !== config.exclusive),
+  );
+  return [...select.options]
+    .filter((option) => !hidden.has(option.value) && !option.hidden && !(config.multiple && option.value.includes(",")))
     .map((option) => ({ value: option.value, label: interfaceSourceText(option).trim(), disabled: option.disabled }));
 }
-
-const escapeHTML = (text) => String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 function wrapField(select, config) {
   const label = select.closest("label");
@@ -85,7 +100,12 @@ function wrapField(select, config) {
     const parts = [];
     for (const node of [...container.childNodes]) {
       if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) parts.push(node);
-      else if (node.nodeType === Node.ELEMENT_NODE && node.matches("span:not(.setting-availability):not(.font-preview)") && node.textContent.trim()) parts.push(node);
+      else if (
+        node.nodeType === Node.ELEMENT_NODE &&
+        node.matches("span:not(.setting-availability):not(.font-preview)") &&
+        node.textContent.trim()
+      )
+        parts.push(node);
     }
     if (titleText === undefined) titleText = parts.map((node) => interfaceSourceText(node).trim()).join(" ");
     for (const node of parts) node.remove();
@@ -116,7 +136,14 @@ function wrapField(select, config) {
 export function mountChips(select, config = {}) {
   if (select.dataset.chips) return select.chipsApi;
   select.dataset.chips = "true";
-  config = { presentation: config.multiple ? "checkbox" : "button", orientation: "horizontal", variant: "chip", actionsPlacement: "inline", wrap: true, ...config };
+  config = {
+    presentation: config.multiple ? "checkbox" : "button",
+    orientation: "horizontal",
+    variant: "chip",
+    actionsPlacement: "inline",
+    wrap: true,
+    ...config,
+  };
   config.options ||= optionsFromSelect(select, config);
   if (config.exclusive != null && !config.options.some((option) => option.value === config.exclusive)) {
     config.options.push({ value: config.exclusive, label: config.exclusiveLabel || "Random" });
@@ -126,22 +153,39 @@ export function mountChips(select, config = {}) {
   if (config.encode) codec.encode = (values) => config.encode(values, codec);
   ensureOptions(select, config, codec);
   const isCheckbox = select.type === "checkbox";
-  const read = () => isCheckbox ? (select.checked ? "yes" : "no") : select.value;
-  const write = (value) => { if (isCheckbox) select.checked = value === "yes"; else select.value = value; };
+  const read = () => (isCheckbox ? (select.checked ? "yes" : "no") : select.value);
+  const write = (value) => {
+    if (isCheckbox) select.checked = value === "yes";
+    else select.value = value;
+  };
 
   const { host } = config.wrap ? wrapField(select, config) : { host: select.parentElement };
   select.hidden = true;
   const id = `chips-${++counter}`;
   const group = document.createElement("div");
-  group.className = ["chips", `chips-${config.orientation}`, `chips-${config.variant}`, `chips-${config.presentation}`, config.groupClass].filter(Boolean).join(" ");
+  group.className = [
+    "chips",
+    `chips-${config.orientation}`,
+    `chips-${config.variant}`,
+    `chips-${config.presentation}`,
+    config.groupClass,
+  ]
+    .filter(Boolean)
+    .join(" ");
   group.setAttribute("role", config.presentation === "radio" ? "radiogroup" : "group");
   const titleNode = config.wrap && host.querySelector(":scope > .chips-title");
-  if (titleNode) { titleNode.id ||= `${id}-title`; group.setAttribute("aria-labelledby", titleNode.id); }
-  else {
+  if (titleNode) {
+    titleNode.id ||= `${id}-title`;
+    group.setAttribute("aria-labelledby", titleNode.id);
+  } else {
     const label = select.labels?.[0];
-    const labelText = label && [...label.childNodes]
-      .filter((node) => node !== select && !node.contains(select))
-      .map(interfaceSourceText).join(" ").trim();
+    const labelText =
+      label &&
+      [...label.childNodes]
+        .filter((node) => node !== select && !node.contains(select))
+        .map(interfaceSourceText)
+        .join(" ")
+        .trim();
     group.setAttribute("aria-label", config.label || labelText || "Options");
   }
 
@@ -149,11 +193,15 @@ export function mountChips(select, config = {}) {
   for (const option of config.options) {
     const button = config.presentation === "button";
     const element = document.createElement(button ? "button" : "label");
-    element.className = ["chip-option", config.optionClass, option.value === config.exclusive ? "chip-exclusive" : ""].filter(Boolean).join(" ");
+    element.className = ["chip-option", config.optionClass, option.value === config.exclusive ? "chip-exclusive" : ""]
+      .filter(Boolean)
+      .join(" ");
     element.dataset.value = option.value;
     let input = null;
-    if (button) { element.type = "button"; element.setAttribute("aria-pressed", "false"); }
-    else {
+    if (button) {
+      element.type = "button";
+      element.setAttribute("aria-pressed", "false");
+    } else {
       input = document.createElement("input");
       input.type = config.presentation === "radio" && !config.multiple ? "radio" : "checkbox";
       input.value = option.value;
@@ -164,7 +212,10 @@ export function mountChips(select, config = {}) {
     if (description) element.dataset.settingDescription = description;
     const content = document.createElement("span");
     content.className = "chip-body";
-    content.innerHTML = `${option.preview ? `<span class="chip-preview" aria-hidden="true">${option.preview}</span>` : ""}<span class="chip-label">${option.labelHTML ?? escapeHTML(option.label ?? option.value)}</span>`;
+    setHTML(
+      content,
+      `${option.preview ? `<span class="chip-preview" aria-hidden="true">${option.preview}</span>` : ""}<span class="chip-label">${option.labelHTML ?? escapeHTML(option.label ?? option.value)}</span>`,
+    );
     element.append(content);
     items.set(option.value, { element, input, option });
     group.append(element);
@@ -183,7 +234,13 @@ export function mountChips(select, config = {}) {
       if (action.description) button.dataset.settingDescription = action.description;
       button.addEventListener("click", () => {
         if (typeof action.run === "function") return action.run(api);
-        commit(action.run === "all" ? (config.exclusive != null && config.allValue === config.exclusive ? [config.exclusive] : codec.regular) : []);
+        commit(
+          action.run === "all"
+            ? config.exclusive != null && config.allValue === config.exclusive
+              ? [config.exclusive]
+              : codec.regular
+            : [],
+        );
       });
       actionBox.append(button);
     }
@@ -194,12 +251,20 @@ export function mountChips(select, config = {}) {
   if (actionBox && config.actionsPlacement === "below") group.after(actionBox);
 
   function current() {
-    try { return codec.decode(read()); } catch { return []; }
+    try {
+      return codec.decode(read());
+    } catch {
+      return [];
+    }
   }
   function commit(selected) {
     const value = codec.encode(selected);
-    if (value == null || read() === value) { sync(); return; }
-    if (select.options && ![...select.options].some((option) => option.value === value)) select.add(new Option(value, value));
+    if (value == null || read() === value) {
+      sync();
+      return;
+    }
+    if (select.options && ![...select.options].some((option) => option.value === value))
+      select.add(new Option(value, value));
     write(value);
     select.dispatchEvent(new Event("change", { bubbles: true }));
     sync();
@@ -210,7 +275,8 @@ export function mountChips(select, config = {}) {
     if (value === config.exclusive) return commit(selected.includes(value) && config.emptyValue != null ? [] : [value]);
     const next = selected.filter((item) => item !== config.exclusive);
     const index = next.indexOf(value);
-    if (index >= 0) next.splice(index, 1); else next.push(value);
+    if (index >= 0) next.splice(index, 1);
+    else next.push(value);
     commit(next.length || config.emptyValue != null ? next : [value]);
   }
   function sync() {
@@ -222,8 +288,13 @@ export function mountChips(select, config = {}) {
       const off = blocked || Boolean(option.disabled || native?.disabled);
       element.classList.toggle("is-active", on);
       element.classList.toggle("is-disabled", off);
-      if (input) { input.checked = on; input.disabled = off; }
-      else { element.setAttribute("aria-pressed", String(on)); element.disabled = off; }
+      if (input) {
+        input.checked = on;
+        input.disabled = off;
+      } else {
+        element.setAttribute("aria-pressed", String(on));
+        element.disabled = off;
+      }
     }
     for (const button of group.querySelectorAll(".chip-action")) button.disabled = blocked;
     actionBox?.classList.toggle("is-disabled", blocked);
@@ -244,7 +315,12 @@ export function mountChips(select, config = {}) {
     else sync();
   });
   select.addEventListener("change", sync);
-  new MutationObserver(sync).observe(select, { attributes: true, attributeFilter: ["disabled"], childList: true, subtree: true });
+  new MutationObserver(sync).observe(select, {
+    attributes: true,
+    attributeFilter: ["disabled"],
+    childList: true,
+    subtree: true,
+  });
   queueMicrotask(sync);
   sync();
   api.sync = sync;

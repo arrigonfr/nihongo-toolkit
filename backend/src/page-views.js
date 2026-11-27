@@ -1,35 +1,67 @@
-import { PAGE_PATHS } from "../../frontend/src/page-paths.js";
+import { PAGE_PATHS } from "@nihon/shared/page-paths";
+
+function constantTimeEqual(a, b) {
+  const left = new TextEncoder().encode(a);
+  const right = new TextEncoder().encode(b);
+  if (left.length !== right.length) return false;
+  let diff = 0;
+  for (let i = 0; i < left.length; i++) diff |= left[i] ^ right[i];
+  return diff === 0;
+}
 
 export async function pageViews(request, env, ctx) {
   const origin = request.headers.get("Origin");
-  const allowed = [new URL(request.url).origin, ...(env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim())];
+  const allowed = [
+    new URL(request.url).origin,
+    ...(env.ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  ];
   const headers = { "Cache-Control": "no-store", Vary: "Origin" };
   if (origin && !allowed.includes(origin)) return new Response(null, { status: 403, headers });
   if (origin) headers["Access-Control-Allow-Origin"] = origin;
-  const reply = (status, error) => error
-    ? Response.json({ error }, { status, headers })
-    : new Response(null, { status, headers });
+  const reply = (status, error) =>
+    error ? Response.json({ error }, { status, headers }) : new Response(null, { status, headers });
   if (request.method === "OPTIONS") {
     headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS";
-    headers["Access-Control-Allow-Headers"] = "Content-Type";
+    headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type";
     return reply(204);
   }
   if (request.method === "GET") {
+    const adminToken = env.PAGE_VIEWS_ADMIN_TOKEN ?? process.env.PAGE_VIEWS_ADMIN_TOKEN;
+    if (!adminToken) return reply(503, "Page view analytics are not configured");
+    const auth = request.headers.get("Authorization") || "";
+    const match = /^Bearer\s+(.+)$/i.exec(auth);
+    if (!match || !constantTimeEqual(match[1], adminToken)) {
+      headers["WWW-Authenticate"] = 'Bearer realm="page-views"';
+      return reply(401, "Authentication required");
+    }
     const params = new URL(request.url).searchParams;
     const date = params.get("date") ?? new Date().toISOString().slice(0, 10);
-    if (params.getAll("date").length > 1 || !/^\d{4}-\d{2}-\d{2}$/.test(date)
-        || !Number.isFinite(Date.parse(`${date}T00:00:00.000Z`))
-        || new Date(`${date}T00:00:00.000Z`).toISOString().slice(0, 10) !== date) {
+    if (
+      params.getAll("date").length > 1 ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !Number.isFinite(Date.parse(`${date}T00:00:00.000Z`)) ||
+      new Date(`${date}T00:00:00.000Z`).toISOString().slice(0, 10) !== date
+    ) {
       return reply(400, "Expected a valid date in YYYY-MM-DD format");
     }
     if (!env.PAGE_VIEWS_DB) return reply(503, "Page view storage is not configured");
     try {
       const { results } = await env.PAGE_VIEWS_DB.prepare(
-        "SELECT page, views FROM daily_page_views WHERE date = ? ORDER BY page"
-      ).bind(date).all();
-      return Response.json({
-        date, pages: results, total: results.reduce((total, row) => total + row.views, 0)
-      }, { headers });
+        "SELECT page, views FROM daily_page_views WHERE date = ? ORDER BY page",
+      )
+        .bind(date)
+        .all();
+      return Response.json(
+        {
+          date,
+          pages: results,
+          total: results.reduce((total, row) => total + row.views, 0),
+        },
+        { headers },
+      );
     } catch (error) {
       console.error("Page view read failed; check the D1 binding and migrations.", error);
       return reply(503, "Page view counts are unavailable");
@@ -40,6 +72,7 @@ export async function pageViews(request, env, ctx) {
     return reply(405, "Method not allowed");
   }
   if ((env.TRACK_VISITS ?? process.env.TRACK_VISITS) !== "true") return reply(503, "Page view reporting is disabled");
+  if (!origin) return new Response(null, { status: 403, headers });
   if (!env.PAGE_VIEWS_DB) return reply(503, "Page view storage is not configured");
   if (!/^application\/json(?:;|$)/i.test(request.headers.get("Content-Type") || "")) return reply(415, "Expected JSON");
   // Bound the stream as well as Content-Length, which is optional and untrusted.
@@ -51,23 +84,40 @@ export async function pageViews(request, env, ctx) {
     const { value, done } = await reader.read();
     if (done) break;
     length += value.byteLength;
-    if (length > 256) { await reader.cancel(); return reply(413, "Payload too large"); }
+    if (length > 256) {
+      await reader.cancel();
+      return reply(413, "Payload too large");
+    }
     chunks.push(value);
   }
   let payload;
   try {
     const bytes = new Uint8Array(length);
     let offset = 0;
-    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.length;
+    }
     payload = JSON.parse(new TextDecoder().decode(bytes));
-  } catch { return reply(400, "Invalid JSON"); }
-  if (!payload || Object.keys(payload).length !== 1 || !PAGE_PATHS.includes(payload.page)) return reply(400, "Invalid canonical page");
+  } catch {
+    return reply(400, "Invalid JSON");
+  }
+  if (!payload || Object.keys(payload).length !== 1 || !PAGE_PATHS.includes(payload.page))
+    return reply(400, "Invalid canonical page");
   const now = new Date().toISOString();
-  ctx.waitUntil(Promise.resolve().then(() => env.PAGE_VIEWS_DB.prepare(`
+  ctx.waitUntil(
+    Promise.resolve()
+      .then(() =>
+        env.PAGE_VIEWS_DB.prepare(`
     INSERT INTO daily_page_views (date, page, views, updated_at) VALUES (?, ?, 1, ?)
     ON CONFLICT(date, page) DO UPDATE SET views = views + 1, updated_at = MAX(updated_at, excluded.updated_at)
-  `).bind(now.slice(0, 10), payload.page, now).run()).catch(() => {
-    console.error("Page view write failed; check the D1 binding and migrations.");
-  }));
+  `)
+          .bind(now.slice(0, 10), payload.page, now)
+          .run(),
+      )
+      .catch(() => {
+        console.error("Page view write failed; check the D1 binding and migrations.");
+      }),
+  );
   return reply(202);
 }

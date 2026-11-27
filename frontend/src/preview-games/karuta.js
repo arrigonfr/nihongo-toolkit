@@ -1,11 +1,12 @@
-import { studyPool } from "../study-pool.js";
-import { study } from "../study-controls.js";
-import { speakLocalJapanese } from "../local-speech.js";
-import { el, ja, button, root, setupNote, silence, status, playButton } from "./dom.js";
-import { deal, karutaCategory, karutaResult, validateKaruta } from "./karuta-data.js";
-import { createCluePlayer } from "./clue-player.js";
-import { picture } from "./pictures.js";
 import { audioIcon } from "../audio-icon.js";
+import { setHTML } from "../html.js";
+import { speakLocalJapanese } from "../local-speech.js";
+import { study } from "../study-controls.js";
+import { studyPool } from "../study-pool.js";
+import { createCluePlayer } from "./clue-player.js";
+import { button, el, ja, playButton, root, setupNote, silence, status } from "./dom.js";
+import { deal, karutaCategory, karutaResult, validateKaruta } from "./karuta-data.js";
+import { picture } from "./pictures.js";
 
 function makeSelect(id, labelText, options) {
   const label = el("label");
@@ -36,7 +37,10 @@ function reviewFigure(card, heading) {
 export const karuta = {
   ...studyPool("karuta", validateKaruta),
   setup(container) {
-    setupNote(container, `Listen to a description and pick one of six cards across ${karuta.items.length.toLocaleString()} clues and 102 pictures. Replay freely, slow down playback, or switch to a text clue at any time.`);
+    setupNote(
+      container,
+      `Listen to a description and pick one of six cards across ${karuta.items.length.toLocaleString()} clues and 102 pictures. Replay freely, slow down playback, or switch to a text clue at any time.`,
+    );
     const counts = {};
     for (const item of karuta.items) {
       const group = karutaCategory(item);
@@ -58,28 +62,36 @@ export const karuta = {
         ["weather", labelWithCount("Weather & sky", counts.weather || 0)],
         ["clothing", labelWithCount("Clothing & wear", counts.clothing || 0)],
         ["music", labelWithCount("Music & hobbies", counts.music || 0)],
-        ["sports", labelWithCount("Sports & travel", counts.sports || 0)]
+        ["sports", labelWithCount("Sports & travel", counts.sports || 0)],
       ]),
       makeSelect("karuta-labels", "Card display", [
         ["show", "Pictures with captions"],
         ["hide", "Pictures only"],
-        ["captions", "Captions only"]
-      ])
+        ["captions", "Captions only"],
+      ]),
     );
   },
   pool(filters) {
     const category = filters.querySelector("#karuta-category")?.value || "all";
-    return category === "all" ? karuta.items : karuta.items.filter(item => karutaCategory(item) === category);
+    return category === "all" ? karuta.items : karuta.items.filter((item) => karutaCategory(item) === category);
   },
   render(container, item, finish) {
-    const board = root(container), controls = el("div", undefined, "pg-actions"), notice = status();
-    const grid = el("div", undefined, "pg-hand"), transcript = el("p", undefined, "pg-instruction");
+    const board = root(container),
+      controls = el("div", undefined, "pg-actions"),
+      notice = status();
+    const grid = el("div", undefined, "pg-hand"),
+      transcript = el("p", undefined, "pg-instruction");
     const displayMode = document.getElementById("karuta-labels")?.value || "show";
     const showPictures = displayMode !== "captions";
     const showCaptions = displayMode !== "hide";
     if (!showPictures) grid.classList.add("is-captions-only");
-    let mode = "", ended = false, slow = false, japaneseCaptions = false;
-    const unlock = () => { for (const tile of grid.children) tile.disabled = false; };
+    let mode = "",
+      ended = false,
+      slow = false,
+      japaneseCaptions = false;
+    const unlock = () => {
+      for (const tile of grid.children) tile.disabled = false;
+    };
     const hearLabel = el("span", "Play clue");
     const player = createCluePlayer({
       synth: window.speechSynthesis,
@@ -98,14 +110,14 @@ export const karuta = {
             loading: "Preparing Japanese audio. You can switch to text instead.",
             playing: "Listening… pick the matching card at any time.",
             heard: "Choose the card that matches the clue.",
-            unavailable: "Audio unavailable. Retry playback or use the text clue."
+            unavailable: "Audio unavailable. Retry playback or use the text clue.",
           }[state];
         }
         if (state === "playing" || state === "heard") {
           hearLabel.textContent = "Replay clue";
           hear.setAttribute("aria-label", "Replay clue");
         }
-      }
+      },
     });
     const currentRate = () => (slow ? 0.6 : 1);
     const hear = button("", () => {
@@ -148,12 +160,14 @@ export const karuta = {
         else caption.textContent = card.description;
       }
     }
-    const langToggle = showCaptions ? button("Japanese captions ", () => {
-      if (ended) return;
-      japaneseCaptions = !japaneseCaptions;
-      langToggle.setAttribute("aria-pressed", String(japaneseCaptions));
-      renderCaptions();
-    }) : null;
+    const langToggle = showCaptions
+      ? button("Japanese captions ", () => {
+          if (ended) return;
+          japaneseCaptions = !japaneseCaptions;
+          langToggle.setAttribute("aria-pressed", String(japaneseCaptions));
+          renderCaptions();
+        })
+      : null;
     if (langToggle) {
       langToggle.setAttribute("aria-pressed", "false");
       langToggle.setAttribute("aria-keyshortcuts", "J");
@@ -183,7 +197,13 @@ export const karuta = {
     });
     transcript.hidden = true;
     controls.append(hear, speed, read, ...(langToggle ? [langToggle] : []));
-    board.append(el("h3", showPictures ? "Which picture fits the clue?" : "Which card fits the clue?"), controls, transcript, notice, grid);
+    board.append(
+      el("h3", showPictures ? "Which picture fits the clue?" : "Which card fits the clue?"),
+      controls,
+      transcript,
+      notice,
+      grid,
+    );
     function syncAudio() {
       if (ended) return;
       hear.disabled = !study.audio;
@@ -196,18 +216,34 @@ export const karuta = {
     const audioObserver = new MutationObserver(syncAudio);
     audioObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-study-audio"] });
     syncAudio();
-    const keydown = event => {
-      if (!matchMedia("(min-width: 761px) and (hover: hover)").matches || event.repeat || event.isComposing ||
-          event.ctrlKey || event.altKey || event.metaKey || event.target.closest("input, textarea, select, [contenteditable=true]") ||
-          document.querySelector("dialog[open]")) return;
+    const keydown = (event) => {
+      if (
+        !matchMedia("(min-width: 761px) and (hover: hover)").matches ||
+        event.repeat ||
+        event.isComposing ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey ||
+        event.target.closest("input, textarea, select, [contenteditable=true]") ||
+        document.querySelector("dialog[open]")
+      )
+        return;
       const key = event.key.toLowerCase();
-      const target = /^[1-6]$/.test(event.key) ? tiles[Number(event.key) - 1]
-        : key === "p" ? hear
-        : key === "s" ? speed
-        : key === "t" ? read
-        : key === "j" ? langToggle
-        : null;
-      if (target && !target.disabled) { event.preventDefault(); target.click(); }
+      const target = /^[1-6]$/.test(event.key)
+        ? tiles[Number(event.key) - 1]
+        : key === "p"
+          ? hear
+          : key === "s"
+            ? speed
+            : key === "t"
+              ? read
+              : key === "j"
+                ? langToggle
+                : null;
+      if (target && !target.disabled) {
+        event.preventDefault();
+        target.click();
+      }
     };
     document.addEventListener("keydown", keydown);
     window.addEventListener("pagehide", player.stop);
@@ -232,10 +268,10 @@ export const karuta = {
       answerField.replaceChildren(link);
     }
     const visuals = el("div", undefined, "pg-karuta-review");
-    const targetCard = karuta.items.find(pic => pic.id === (item.pictureId ?? item.id)) || item;
+    const targetCard = karuta.items.find((pic) => pic.id === (item.pictureId ?? item.id)) || item;
     visuals.append(reviewFigure(targetCard, "Matching picture"));
     if (result && !result.correct && result.chosenId) {
-      const chosenCard = karuta.items.find(pic => pic.id === result.chosenId);
+      const chosenCard = karuta.items.find((pic) => pic.id === result.chosenId);
       if (chosenCard) visuals.append(reviewFigure(chosenCard, "Your pick"));
     }
     const audioRow = el("div", undefined, "pg-review-audio");
@@ -245,7 +281,10 @@ export const karuta = {
   },
   credits(container) {
     const p = el("p");
-    p.innerHTML = 'Original line drawings and draft clues by NihongoToolkit. Additional object icons from <a href="https://tabler.io/icons" target="_blank" rel="noopener noreferrer">Tabler Icons</a> (MIT License).';
+    setHTML(
+      p,
+      'Original line drawings and draft clues by NihongoToolkit. Additional object icons from <a href="https://tabler.io/icons" target="_blank" rel="noopener noreferrer">Tabler Icons</a> (MIT License).',
+    );
     container.append(p);
-  }
+  },
 };

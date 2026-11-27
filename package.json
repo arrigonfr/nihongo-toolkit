@@ -7,6 +7,7 @@
     "npm": ">=10.0.0"
   },
   "workspaces": [
+    "shared",
     "backend",
     "frontend"
   ],
@@ -23,8 +24,12 @@
     "db:import": "npm run db:import -w backend",
     "build:kanji-data": "node scripts/build-kanji-catalogue.mjs",
     "build": "npm run build -w frontend",
+    "lint": "biome check frontend/src backend/src shared",
+    "format": "biome format --write frontend/src backend/src shared",
+    "format:check": "biome format frontend/src backend/src shared",
+    "typecheck": "tsc -p jsconfig.json --noEmit && tsc -p backend/jsconfig.json --noEmit",
     "build:redirect": "node -e \"require('fs').mkdirSync('redirect',{recursive:true});require('fs').writeFileSync('redirect/_redirects','/* https://nihongotoolkit.pages.dev/:splat 301\\\\n')\"",
-    "build:cloudflare": "VITE_API_BASE_URL= npm run build && node backend/scripts/build-tokenizer.js",
+    "build:cloudflare": "node backend/scripts/build-tokenizer.js",
     "dev:cloudflare": "npm run build:cloudflare && wrangler dev",
     "deploy:cloudflare": "npm run build:cloudflare && wrangler deploy",
     "check:cloudflare": "npm run build:cloudflare && wrangler deploy --dry-run",
@@ -33,6 +38,8 @@
     "test:contact": "node --test backend/test/contact.test.js && node scripts/contact-browser-test.mjs",
     "test:loading": "node scripts/loading-browser-test.mjs",
     "test": "node --test backend/test/*.test.js frontend/test/*.test.js",
+    "test:ci": "npm test && node --test backend/test/page-views.integration.js && npm run test:cloudflare",
+    "test:e2e:ci": "node scripts/language-browser-test.mjs && node scripts/page-availability-browser-test.mjs && node scripts/worksheet-browser-test.mjs && node scripts/crossword-browser-test.mjs && node scripts/settings-availability-browser-test.mjs && node scripts/contact-browser-test.mjs",
     "test:conjugator": "node --test backend/test/conjugator.test.js frontend/test/conjugation.test.js && node scripts/conjugator-browser-test.mjs",
     "test:conjugation-practice": "node --test frontend/test/conjugation-practice.test.js frontend/test/conjugation.test.js && node scripts/conjugation-practice-browser-test.mjs",
     "test:e2e": "node scripts/browser-test.mjs && node scripts/shared-ui-browser-test.mjs",
@@ -71,9 +78,11 @@
     }
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.6.9",
     "esbuild": "^0.25.0",
     "miniflare": "^4.0.0",
     "playwright": "^1.58.2",
+    "typescript": "^7.0.2",
     "wrangler": "^4.0.0"
   }
 }

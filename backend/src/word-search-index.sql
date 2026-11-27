@@ -31,3 +31,4 @@ INSERT OR IGNORE INTO word_forms
   SELECT 1, json_extract(f.value, '$.text'), w.id FROM words w, json_each(w.kana_forms) f
   WHERE NOT EXISTS (SELECT 1 FROM metadata WHERE key = 'word_forms_version' AND value = '1');
 INSERT OR REPLACE INTO metadata(key, value) VALUES ('word_forms_version', '1');
+CREATE INDEX IF NOT EXISTS words_common_expand ON words(id) WHERE is_common = 1 AND length(word) BETWEEN 2 AND 8;

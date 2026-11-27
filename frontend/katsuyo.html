@@ -20,7 +20,7 @@
         <p><a href="./#helper=katsuyo-renshuu.html" target="_top">Put the patterns into practice →</a></p>
       </section>
       <section class="panel search-panel" aria-label="Word search">
-        <form id="searchForm">
+        <form id="searchForm" data-i18n-scope>
           <label for="wordInput">Japanese word <span class="muted">· kana, kanji, or romaji</span></label>
           <div class="search-line">
             <input id="wordInput" name="word" lang="ja" maxlength="100" placeholder="食べる · たべる · taberu" autocomplete="off" spellcheck="false" aria-controls="suggestions">
@@ -28,9 +28,9 @@
             <button id="randomButton" type="button"><span class="random-icon" aria-hidden="true">🎲</span> Random word</button>
           </div>
         </form>
-        <div id="status" role="status" aria-live="polite"></div>
+        <div id="status" role="status" aria-live="polite" data-i18n-scope></div>
         <div id="suggestions" aria-label="Word suggestions"></div>
-        <details id="manualPanel" hidden>
+        <details id="manualPanel" data-i18n-scope hidden>
           <summary>Word not found? Confirm its dictionary form and word type</summary>
           <p>Only verbs and adjectives conjugate. Nouns may take だ / です, but are not automatically na-adjectives. Enter dictionary form, not an already conjugated phrase. Unlisted words need a confirmed reading and class; meaning and JLPT level will remain unknown.</p>
           <form id="manualForm" class="settings-grid">
@@ -48,29 +48,29 @@
       <section id="result" hidden aria-label="Conjugation results">
         <div class="panel word-heading">
           <div><h2 id="baseWord"></h2><p id="wordSummary"></p></div>
-          <div class="actions"><button id="saveWord" type="button">Save word</button><button id="copyTable" type="button">Copy table</button><button id="exportConjugations" type="button">Export cheatsheet</button></div>
+          <div class="actions" data-i18n-scope><button id="saveWord" type="button">Save word</button><button id="copyTable" type="button">Copy table</button><button id="exportConjugations" type="button">Export cheatsheet</button></div>
         </div>
         <details class="panel" id="wordInfo">
-          <summary>Word information, related words & examples</summary>
+          <summary data-i18n-scope>Word information, related words & examples</summary>
           <div id="wordInfoContent"></div>
         </details>
-        <p id="formCount" class="muted" role="status" aria-live="polite"></p>
+        <p id="formCount" class="muted" role="status" aria-live="polite" data-i18n-scope></p>
         <div id="tables"></div>
       </section>
       <section class="panel" id="emptyState">
-        <h2>Start with a word you know</h2>
-        <p>Try an everyday verb or an adjective. Readings and conjugation rules are included.</p>
+        <h2 data-i18n-scope>Start with a word you know</h2>
+        <p data-i18n-scope>Try an everyday verb or an adjective. Readings and conjugation rules are included.</p>
         <div class="actions" id="starterWords"><button data-query="食べる">食べる · eat</button><button data-query="行く">行く · go</button><button data-query="する">する · do</button><button data-query="いい">いい · good</button><button data-query="静か">静か · quiet</button></div>
       </section>
       <details class="panel" open>
-        <summary>Recent words</summary>
+        <summary data-i18n-scope>Recent words</summary>
         <div class="actions word-list" id="history"></div>
-        <button id="clearHistory" type="button">Clear history</button>
+        <button id="clearHistory" type="button" data-i18n-scope>Clear history</button>
       </details>
       <details class="panel">
-        <summary>Saved words</summary>
+        <summary data-i18n-scope>Saved words</summary>
         <div class="word-list" id="savedWords"></div>
-        <div class="actions"><button id="exportWords" type="button">Export saved words</button><label class="file-button">Import saved words<input id="importWords" type="file" accept=".json,application/json"></label></div>
+        <div class="actions" data-i18n-scope><button id="exportWords" type="button">Export saved words</button><label class="file-button">Import saved words<input id="importWords" type="file" accept=".json,application/json"></label></div>
       </details>
       <footer>Dictionary: JMdict. JLPT levels are study-list estimates, not official assignments. <a href="./data-sources.html">Data sources & licenses</a>. Conjugations follow modern standard Japanese; grammatical forms are not equally natural for every meaning.</footer>
     </main>

@@ -7,6 +7,6 @@ export function openTursoDatabase(env) {
   return createClient({
     url: env.TURSO_DATABASE_URL,
     authToken: env.TURSO_AUTH_TOKEN,
-    intMode: "number"
+    intMode: "number",
   });
 }

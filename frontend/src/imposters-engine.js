@@ -1,8 +1,10 @@
 import { toHiragana } from "wanakana";
 
 const character = (item) => item.kanji || item.character;
-const normalize = (value) => toHiragana(String(value).replace(/[.\-]/g, "")).toLowerCase().trim();
-export const readings = (item) => [...new Set([...(item.on_readings || []), ...(item.kun_readings || [])].map(normalize).filter(Boolean))];
+const normalize = (value) => toHiragana(String(value).replace(/[.-]/g, "")).toLowerCase().trim();
+export const readings = (item) => [
+  ...new Set([...(item.on_readings || []), ...(item.kun_readings || [])].map(normalize).filter(Boolean)),
+];
 export const meanings = (item) => (item.meanings || []).filter(Boolean);
 export function shuffle(items, random = Math.random) {
   const result = [...items];
@@ -13,26 +15,59 @@ export function shuffle(items, random = Math.random) {
   return result;
 }
 export function makeQuestion(target, pool, variant, random = Math.random) {
-  const targetChar = character(target), targetReadings = readings(target);
+  const targetChar = character(target),
+    targetReadings = readings(target);
   if (!targetChar || !targetReadings.length) return null;
-  const uniquePool = [...new Map(pool.filter((item) => character(item)).map((item) => [character(item), item])).values()];
+  const uniquePool = [
+    ...new Map(pool.filter((item) => character(item)).map((item) => [character(item), item])).values(),
+  ];
   const targetReadingSet = new Set(targetReadings);
   if (variant === "kanji-reading") {
     if (targetReadings.length < 2) return null;
     const correct = shuffle(targetReadings, random).slice(0, Math.min(3, targetReadings.length));
-    const wrong = shuffle([...new Set(uniquePool.flatMap(readings).filter((value) => !targetReadingSet.has(value)))], random).slice(0, 5 - correct.length);
+    const wrong = shuffle(
+      [...new Set(uniquePool.flatMap(readings).filter((value) => !targetReadingSet.has(value)))],
+      random,
+    ).slice(0, 5 - correct.length);
     if (correct.length + wrong.length !== 5) return null;
-    return { target, variant, prompt: targetChar, choices: shuffle([...correct.map((value) => ({ value, correct: true })), ...wrong.map((value) => ({ value, correct: false }))], random) };
+    return {
+      target,
+      variant,
+      prompt: targetChar,
+      choices: shuffle(
+        [...correct.map((value) => ({ value, correct: true })), ...wrong.map((value) => ({ value, correct: false }))],
+        random,
+      ),
+    };
   }
   if (variant !== "reading-kanji") return null;
-  const eligible = targetReadings.filter((reading) => uniquePool.filter((item) => readings(item).includes(reading)).length >= 2);
+  const eligible = targetReadings.filter(
+    (reading) => uniquePool.filter((item) => readings(item).includes(reading)).length >= 2,
+  );
   for (const prompt of shuffle(eligible, random)) {
-    const matches = shuffle(uniquePool.filter((item) => character(item) !== targetChar && readings(item).includes(prompt)), random);
-    const distractors = shuffle(uniquePool.filter((item) => !readings(item).includes(prompt) && readings(item).length), random);
+    const matches = shuffle(
+      uniquePool.filter((item) => character(item) !== targetChar && readings(item).includes(prompt)),
+      random,
+    );
+    const distractors = shuffle(
+      uniquePool.filter((item) => !readings(item).includes(prompt) && readings(item).length),
+      random,
+    );
     const correct = [target, ...matches.slice(0, 2)];
     const wrong = distractors.slice(0, 5 - correct.length);
     if (correct.length + wrong.length !== 5) continue;
-    return { target, variant, prompt, choices: shuffle([...correct.map((item) => ({ item, value: character(item), correct: true })), ...wrong.map((item) => ({ item, value: character(item), correct: false }))], random) };
+    return {
+      target,
+      variant,
+      prompt,
+      choices: shuffle(
+        [
+          ...correct.map((item) => ({ item, value: character(item), correct: true })),
+          ...wrong.map((item) => ({ item, value: character(item), correct: false })),
+        ],
+        random,
+      ),
+    };
   }
   return null;
 }

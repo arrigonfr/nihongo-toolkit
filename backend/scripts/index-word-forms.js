@@ -13,7 +13,8 @@ if (values.turso) {
   });
   try {
     await client.executeMultiple(readFileSync(new URL("../src/word-search-index.sql", import.meta.url), "utf8"));
-    console.log("Turso spelling/reading indexes are ready.");
+    await client.executeMultiple(readFileSync(new URL("../src/search-indexes.sql", import.meta.url), "utf8"));
+    console.log("Turso spelling/reading and FTS search indexes are ready.");
   } finally { client.close(); }
 } else {
   const db = createDatabase();

@@ -3,12 +3,18 @@ export function meaningAnswers(meanings) {
   for (const meaning of meanings) {
     if (typeof meaning !== "string" || !meaning.trim()) continue;
     answers.add(meaning.trim());
-    let depth = 0, part = "";
+    let depth = 0,
+      part = "";
     const add = () => {
       const text = part.trim();
       if (text) {
         answers.add(text);
-        answers.add(text.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim());
+        answers.add(
+          text
+            .replace(/\([^)]*\)/g, "")
+            .replace(/\s+/g, " ")
+            .trim(),
+        );
         answers.add(text.replace(/[()]/g, "").replace(/\s+/g, " ").trim());
       }
       part = "";

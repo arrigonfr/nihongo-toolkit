@@ -34,6 +34,7 @@ if (listing) {
       const details = document.createElement("details");
       details.open = terms.length > 0;
       const summary = document.createElement("summary");
+      summary.dataset.i18nScope = "";
       summary.textContent = `${catalogueGroupLabel(field, key, radicals)} (${entries.length})`;
       const list = document.createElement("ul");
       list.className = "characters";

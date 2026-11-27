@@ -21,7 +21,7 @@
         <h1>Tell us what works. <br><span>Show us what could improve.</span></h1>
         <p>Share feedback, suggest a feature or tell us about something that needs fixing.</p>
       </section>
-      <form id="contactForm" class="contact-form" aria-describedby="contactPrivacy">
+      <form id="contactForm" class="contact-form" aria-describedby="contactPrivacy" data-i18n-scope>
         <fieldset id="contactFields">
           <legend>Your message</legend>
           <label>Full name <input name="name" autocomplete="name" maxlength="120" required></label>
@@ -35,7 +35,7 @@
         <button id="contactSend" type="submit" disabled>Send message</button>
         <p id="contactStatus" role="status" aria-live="polite"></p>
       </form>
-      <dialog id="contactSuccess" class="contact-dialog" aria-labelledby="contactSuccessTitle" aria-describedby="contactSuccessText">
+      <dialog id="contactSuccess" class="contact-dialog" aria-labelledby="contactSuccessTitle" aria-describedby="contactSuccessText" data-i18n-scope>
         <h2 id="contactSuccessTitle">Message received</h2>
         <p id="contactSuccessText">Thank you! If we reply, it will arrive by email at the address you entered.</p>
         <div class="contact-dialog-note">

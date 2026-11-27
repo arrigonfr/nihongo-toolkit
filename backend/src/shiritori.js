@@ -1,34 +1,47 @@
-import { kana, connects, eligibility, parseRules, startOptions } from "./shiritori-rules.js";
-import { localExamples } from "./examples.js";
+import { selectedLevels } from "@nihon/shared/jlpt-levels";
 import { findConjugationEntries } from "./conjugator.js";
+import { localExamples } from "./examples.js";
+import { connects, eligibility, kana, parseRules, startOptions } from "./shiritori-rules.js";
 import { segmentText } from "./tokenizer.js";
-import { selectedLevels } from "../../frontend/src/jlpt-levels.js";
 
 const unique = (values) => [...new Set(values)];
 export function dictionaryForms(row, tags, levels = []) {
   const spellings = JSON.parse(row.kanji_forms);
   return JSON.parse(row.kana_forms).flatMap((reading) => {
-    const forms = spellings.filter((form) => reading.appliesToKanji.includes("*") || reading.appliesToKanji.includes(form.text));
-    const kanaForms = levels.filter((level) => /^[ぁ-ゖァ-ヶー]+$/.test(level.word)
-      && kana(level.word) === kana(reading.text) && kana(level.reading) === kana(reading.text))
+    const forms = spellings.filter(
+      (form) => reading.appliesToKanji.includes("*") || reading.appliesToKanji.includes(form.text),
+    );
+    const kanaForms = levels
+      .filter(
+        (level) =>
+          /^[ぁ-ゖァ-ヶー]+$/.test(level.word) &&
+          kana(level.word) === kana(reading.text) &&
+          kana(level.reading) === kana(reading.text),
+      )
       .map((level) => ({ text: level.word, kanaOnly: true }));
     const candidates = forms.length ? [...forms] : [{ text: reading.text }];
     candidates.push(...kanaForms.filter((form) => !candidates.some((item) => item.text === form.text)));
     return candidates.map((form) => {
-      const senses = JSON.parse(row.senses).filter((sense) =>
-        (sense.appliesToKanji.includes("*") || sense.appliesToKanji.includes(form.text)
-          || form.kanaOnly && forms.some((spelling) => sense.appliesToKanji.includes(spelling.text)))
-        && (sense.appliesToKana.includes("*") || sense.appliesToKana.includes(reading.text)));
+      const senses = JSON.parse(row.senses).filter(
+        (sense) =>
+          (sense.appliesToKanji.includes("*") ||
+            sense.appliesToKanji.includes(form.text) ||
+            (form.kanaOnly && forms.some((spelling) => sense.appliesToKanji.includes(spelling.text)))) &&
+          (sense.appliesToKana.includes("*") || sense.appliesToKana.includes(reading.text)),
+      );
       const pos = unique(senses.flatMap((s) => s.partOfSpeech));
       const misc = senses.flatMap((s) => s.misc || []);
       const named = misc.some((p) => ["place", "person", "given", "surname"].includes(p));
       return {
-        id: `jm-${row.id}`, word: form.text, reading: reading.text,
+        id: `jm-${row.id}`,
+        word: form.text,
+        reading: reading.text,
         meaning: unique(senses.flatMap((s) => s.gloss.filter((g) => g.lang === "eng").map((g) => g.text))).join("; "),
         partOfSpeech: pos.map((p) => tags[p] || p).join(", "),
         level: levels.find((v) => v.word === form.text && kana(v.reading) === kana(reading.text))?.jlpt ?? null,
-        proper: pos.includes("n-pr") || named, nameAllowed: pos.includes("n-pr") || named,
-        source: "JMdict"
+        proper: pos.includes("n-pr") || named,
+        nameAllowed: pos.includes("n-pr") || named,
+        source: "JMdict",
       };
     });
   });
@@ -40,29 +53,44 @@ const sameWord = (query, ...forms) => forms.some((form) => form && (form === que
 async function jishoLookup(fetchImpl, query) {
   const url = new URL("https://jisho.org/api/v1/search/words");
   url.searchParams.set("keyword", query);
-  const response = await fetchImpl(url, { signal: AbortSignal.timeout(6000), headers: { Accept: "application/json", "User-Agent": USER_AGENT } });
+  const response = await fetchImpl(url, {
+    signal: AbortSignal.timeout(6000),
+    headers: { Accept: "application/json", "User-Agent": USER_AGENT },
+  });
   if (!response.ok) throw new Error(`Word provider returned HTTP ${response.status}`);
   const payload = await response.json();
   if (!Array.isArray(payload.data)) throw new Error("Invalid word provider response");
-  return payload.data.flatMap((entry) => (entry.japanese || []).flatMap((form) => {
-    if (!form.reading || !sameWord(query, form.word, form.reading)) return [];
-    const senses = (entry.senses || []).filter((s) => !s.restrictions?.length || s.restrictions.includes(form.word) || s.restrictions.includes(form.reading));
-    const pos = unique(senses.flatMap((s) => s.parts_of_speech || [])).join(", ");
-    return [{
-      id: `jisho-${entry.slug}`, word: form.word || form.reading, reading: form.reading,
-      meaning: unique(senses.flatMap((s) => s.english_definitions || [])).join("; "),
-      partOfSpeech: pos, level: null, source: "Jisho · unrated spelling",
-      proper: /proper noun|place|name/i.test(pos),
-      nameAllowed: /place|person|given name|surname/i.test(pos), examples: []
-    }];
-  }));
+  return payload.data.flatMap((entry) =>
+    (entry.japanese || []).flatMap((form) => {
+      if (!form.reading || !sameWord(query, form.word, form.reading)) return [];
+      const senses = (entry.senses || []).filter(
+        (s) => !s.restrictions?.length || s.restrictions.includes(form.word) || s.restrictions.includes(form.reading),
+      );
+      const pos = unique(senses.flatMap((s) => s.parts_of_speech || [])).join(", ");
+      return [
+        {
+          id: `jisho-${entry.slug}`,
+          word: form.word || form.reading,
+          reading: form.reading,
+          meaning: unique(senses.flatMap((s) => s.english_definitions || [])).join("; "),
+          partOfSpeech: pos,
+          level: null,
+          source: "Jisho · unrated spelling",
+          proper: /proper noun|place|name/i.test(pos),
+          nameAllowed: /place|person|given name|surname/i.test(pos),
+          examples: [],
+        },
+      ];
+    }),
+  );
 }
 
 async function jotobaLookup(fetchImpl, query) {
   const response = await fetchImpl("https://jotoba.de/api/search/words", {
-    method: "POST", signal: AbortSignal.timeout(6000),
+    method: "POST",
+    signal: AbortSignal.timeout(6000),
     headers: { Accept: "application/json", "Content-Type": "application/json", "User-Agent": USER_AGENT },
-    body: JSON.stringify({ query, language: "English", no_english: false })
+    body: JSON.stringify({ query, language: "English", no_english: false }),
   });
   if (!response.ok) throw new Error(`Word provider returned HTTP ${response.status}`);
   const payload = await response.json();
@@ -71,14 +99,23 @@ async function jotobaLookup(fetchImpl, query) {
     const { kana: reading, kanji } = entry.reading || {};
     if (!reading || !sameWord(query, kanji, reading)) return [];
     const senses = entry.senses || [];
-    const pos = unique(senses.flatMap((s) => (s.pos || []).map((p) => typeof p === "string" ? p : Object.keys(p)[0]))).join(", ");
-    return [{
-      id: `jotoba-${kanji || reading}-${reading}-${index}`, word: kanji || reading, reading,
-      meaning: unique(senses.flatMap((s) => s.glosses || [])).join("; "),
-      partOfSpeech: pos, level: null, source: "Jotoba · unrated spelling",
-      proper: /proper|name/i.test(pos),
-      nameAllowed: /place|person|given|surname/i.test(pos), examples: []
-    }];
+    const pos = unique(
+      senses.flatMap((s) => (s.pos || []).map((p) => (typeof p === "string" ? p : Object.keys(p)[0]))),
+    ).join(", ");
+    return [
+      {
+        id: `jotoba-${kanji || reading}-${reading}-${index}`,
+        word: kanji || reading,
+        reading,
+        meaning: unique(senses.flatMap((s) => s.glosses || [])).join("; "),
+        partOfSpeech: pos,
+        level: null,
+        source: "Jotoba · unrated spelling",
+        proper: /proper|name/i.test(pos),
+        nameAllowed: /place|person|given|surname/i.test(pos),
+        examples: [],
+      },
+    ];
   });
 }
 
@@ -98,24 +135,39 @@ export function createWordFallback({ fetchImpl = fetch, enabled = process.env.WO
       let items = [];
       let failure;
       for (const lookup of [jishoLookup, jotobaLookup]) {
-        try { items = await lookup(fetchImpl, query); }
-        catch (error) { failure ??= error; console.error("Shiritori word provider failed:", error.message); }
+        try {
+          items = await lookup(fetchImpl, query);
+        } catch (error) {
+          failure ??= error;
+          console.error("Shiritori word provider failed:", error.message);
+        }
         if (items.length) break;
       }
-      if (!items.length && failure) { failures.set(query, { error: failure, until: Date.now() + 30000 }); throw failure; }
+      if (!items.length && failure) {
+        failures.set(query, { error: failure, until: Date.now() + 30000 });
+        throw failure;
+      }
       failures.delete(query);
       if (cache.size >= 200) cache.delete(cache.keys().next().value);
       cache.set(query, items);
       return items;
     })();
     pending.set(query, work);
-    try { return await work; } finally { pending.delete(query); }
+    try {
+      return await work;
+    } finally {
+      pending.delete(query);
+    }
   };
 }
 
 const katakanaOf = (text) => text.replace(/[ぁ-ゖ]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
 const wordPattern = /^[\p{Script=Han}ぁ-ゖァ-ヶー]+$/u;
-const unvoice = (text) => text.normalize("NFD").replace(/[\u3099\u309a]/g, "").normalize("NFC");
+const unvoice = (text) =>
+  text
+    .normalize("NFD")
+    .replace(/[\u3099\u309a]/g, "")
+    .normalize("NFC");
 const prefixEnd = (text) => {
   const chars = [...text];
   return chars.slice(0, -1).join("") + String.fromCodePoint(chars.at(-1).codePointAt(0) + 1);
@@ -124,8 +176,12 @@ const prefixEnd = (text) => {
 // Conjugated verbs and adjectives are not dictionary headwords: analyse the surface form and look up its base.
 async function inflectedForms(db, tags, query, segment = segmentText) {
   let tokens;
-  try { tokens = (await segment(query)).filter((token) => token.type !== "space"); }
-  catch (error) { console.error("Shiritori inflection analysis failed:", error); return []; }
+  try {
+    tokens = (await segment(query)).filter((token) => token.type !== "space");
+  } catch (error) {
+    console.error("Shiritori inflection analysis failed:", error);
+    return [];
+  }
   if (!tokens.length || tokens.length > 2 || tokens.some((token) => token.type !== "word" || !token.reading)) return [];
   const base = tokens.length === 1 ? tokens[0].base : tokens[1].base === "する" ? `${tokens[0].text}する` : "";
   if (!base || base === query) return [];
@@ -133,13 +189,18 @@ async function inflectedForms(db, tags, query, segment = segmentText) {
   const byEntry = new Map();
   for (const entry of await findConjugationEntries(db, { query: base })) {
     if (entry.word !== base && kana(entry.reading) !== kana(base)) continue;
-    if (!byEntry.has(entry.wordId)) byEntry.set(entry.wordId, {
-      id: `jm-${entry.wordId}`, word: query, reading,
-      meaning: `${entry.meanings.join("; ")} (conjugated form of ${entry.word})`,
-      partOfSpeech: `${tags[entry.tag] || entry.tag}, conjugated form`,
-      level: entry.level,
-      proper: false, nameAllowed: false, source: "JMdict · conjugated form"
-    });
+    if (!byEntry.has(entry.wordId))
+      byEntry.set(entry.wordId, {
+        id: `jm-${entry.wordId}`,
+        word: query,
+        reading,
+        meaning: `${entry.meanings.join("; ")} (conjugated form of ${entry.word})`,
+        partOfSpeech: `${tags[entry.tag] || entry.tag}, conjugated form`,
+        level: entry.level,
+        proper: false,
+        nameAllowed: false,
+        source: "JMdict · conjugated form",
+      });
   }
   return [...byEntry.values()];
 }
@@ -151,10 +212,17 @@ export async function shiritoriWords(db, params, tags, fallback, segment = segme
   const previous = params.get("prev") ? JSON.parse(params.get("prev")) : null;
   const randomOpening = !query && !previous && params.get("random") === "1";
   const used = JSON.parse(params.get("used") || "[]");
-  if (query.length > 60 || !Array.isArray(used) || used.length > 5000
-      || used.some((id) => typeof id !== "string" || id.length > 100)
-      || query && !wordPattern.test(query)
-      || previous && (typeof previous !== "object" || [previous.word, previous.reading].some((v) => typeof v !== "string" || v.length > 60 || !wordPattern.test(v)))) throw new Error("Invalid word search.");
+  if (
+    query.length > 60 ||
+    !Array.isArray(used) ||
+    used.length > 5000 ||
+    used.some((id) => typeof id !== "string" || id.length > 100) ||
+    (query && !wordPattern.test(query)) ||
+    (previous &&
+      (typeof previous !== "object" ||
+        [previous.word, previous.reading].some((v) => typeof v !== "string" || v.length > 60 || !wordPattern.test(v))))
+  )
+    throw new Error("Invalid word search.");
   const args = [];
   let where = "1=1";
   if (query) {
@@ -167,15 +235,18 @@ export async function shiritoriWords(db, params, tags, fallback, segment = segme
     const options = startOptions(previous, rules);
     const clauses = [];
     if (options.kana.length) {
-      const prefixes = unique(options.kana.flatMap(({ text }) => {
-        const hira = kana(text);
-        // A first-character superset avoids exponential voicing combinations.
-        const variants = rules.voicing
-          ? Array.from({ length: 86 }, (_, i) => String.fromCodePoint(0x3041 + i))
-            .filter((c) => unvoice(c) === unvoice([...hira][0]))
-          : [hira];
-        return variants.flatMap((prefix) => [prefix, katakanaOf(prefix)]);
-      }));
+      const prefixes = unique(
+        options.kana.flatMap(({ text }) => {
+          const hira = kana(text);
+          // A first-character superset avoids exponential voicing combinations.
+          const variants = rules.voicing
+            ? Array.from({ length: 86 }, (_, i) => String.fromCodePoint(0x3041 + i)).filter(
+                (c) => unvoice(c) === unvoice([...hira][0]),
+              )
+            : [hira];
+          return variants.flatMap((prefix) => [prefix, katakanaOf(prefix)]);
+        }),
+      );
       for (const prefix of prefixes) {
         clauses.push("(kind = 1 AND form >= ? AND form < ?)");
         args.push(prefix, prefixEnd(prefix));
@@ -187,8 +258,9 @@ export async function shiritoriWords(db, params, tags, fallback, segment = segme
         args.push(text, prefixEnd(text));
       }
     }
-    where = clauses.length ? `id IN (${clauses.map((clause) =>
-      `SELECT word_id FROM word_forms WHERE ${clause}`).join(" UNION ALL ")})` : "0=1";
+    where = clauses.length
+      ? `id IN (${clauses.map((clause) => `SELECT word_id FROM word_forms WHERE ${clause}`).join(" UNION ALL ")})`
+      : "0=1";
   }
   if (!query) {
     const selected = selectedLevels(rules.level);
@@ -205,48 +277,64 @@ export async function shiritoriWords(db, params, tags, fallback, segment = segme
   pages: for (let page = 0; ; page++) {
     if (db.remote && page >= 12) {
       if (items.length) break;
-      const error = new Error("This selection is too broad to search right now. Try a different starting word.");
-      error.status = 502;
-      throw error;
+      throw Object.assign(
+        new Error("This selection is too broad to search right now. Try a different starting word."),
+        { status: 502 },
+      );
     }
-    const rows = await db.prepare(`WITH selected AS MATERIALIZED (
+    const rows = await db
+      .prepare(`WITH selected AS MATERIALIZED (
       SELECT id FROM words WHERE ${where} ORDER BY ${order} LIMIT 500 OFFSET ?
     ) SELECT words.*, (
       SELECT json_group_array(json_object('word', v.word, 'reading', v.reading, 'jlpt', v.jlpt))
       FROM vocabulary v WHERE v.word_id = words.id
-    ) AS levels FROM words WHERE id IN (SELECT id FROM selected) ORDER BY ${order}`).all(...args, page * 500);
+    ) AS levels FROM words WHERE id IN (SELECT id FROM selected) ORDER BY ${order}`)
+      .all(...args, page * 500);
     if (!rows.length) break;
     for (const row of rows) {
-    if (!query && excluded.has(`jm-${row.id}`)) continue;
-    for (const word of dictionaryForms(row, tags, JSON.parse(row.levels))) {
-      const key = `${word.word}:${word.reading}`;
-      if (seen.has(key)) continue;
-      if (query) {
-        if (word.word !== query && kana(word.reading) !== kana(query)) continue;
-      } else if (eligibility(word, rules) || !connects(word, previous, rules) || kana(word.reading).endsWith("ん")) continue;
-      seen.add(key);
-      items.push(word);
-    }
-    if (items.length >= (query ? 40 : 60)) break pages;
+      if (!query && excluded.has(`jm-${row.id}`)) continue;
+      for (const word of dictionaryForms(row, tags, JSON.parse(row.levels))) {
+        const key = `${word.word}:${word.reading}`;
+        if (seen.has(key)) continue;
+        if (query) {
+          if (word.word !== query && kana(word.reading) !== kana(query)) continue;
+        } else if (eligibility(word, rules) || !connects(word, previous, rules) || kana(word.reading).endsWith("ん"))
+          continue;
+        seen.add(key);
+        items.push(word);
+      }
+      if (items.length >= (query ? 40 : 60)) break pages;
     }
     if (rows.length < 500) break;
   }
   if (query && !items.length) {
-    items.push(...await inflectedForms(db, tags, query, segment));
+    items.push(...(await inflectedForms(db, tags, query, segment)));
     if (items.length) {
-      if (includeExamples) await Promise.all(items.map(async (item) => { item.examples = await localExamples(db, { wordId: Number(item.id.slice(3)) }); }));
+      if (includeExamples)
+        await Promise.all(
+          items.map(async (item) => {
+            item.examples = await localExamples(db, { wordId: Number(item.id.slice(3)) });
+          }),
+        );
       return { items, fallback: false };
     }
   }
   if (query && !items.length) {
-    try { return { items: await fallback(query), fallback: true }; }
-    catch (error) {
+    try {
+      return { items: await fallback(query), fallback: true };
+    } catch (error) {
       console.error("Shiritori word fallback failed:", error);
-      const failure = new Error("The fallback dictionary could not be reached. Please retry; your word has not been rejected.");
-      failure.status = 502;
-      throw failure;
+      throw Object.assign(
+        new Error("The fallback dictionary could not be reached. Please retry; your word has not been rejected."),
+        { status: 502 },
+      );
     }
   }
-  if (query && includeExamples) await Promise.all(items.map(async (item) => { item.examples = await localExamples(db, { wordId: Number(item.id.slice(3)) }); }));
+  if (query && includeExamples)
+    await Promise.all(
+      items.map(async (item) => {
+        item.examples = await localExamples(db, { wordId: Number(item.id.slice(3)) });
+      }),
+    );
   return { items, fallback: false };
 }

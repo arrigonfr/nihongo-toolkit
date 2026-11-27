@@ -5,13 +5,22 @@ const used = new Set();
 const store = globalThis.localStorage;
 if (store) {
   const { getItem, setItem } = Storage.prototype;
-  const track = (key) => { if (KEY.test(String(key))) used.add(String(key)); };
-  Storage.prototype.getItem = function (key) { if (this === store) track(key); return getItem.call(this, key); };
-  Storage.prototype.setItem = function (key, value) { if (this === store) track(key); return setItem.call(this, key, value); };
+  const track = (key) => {
+    if (KEY.test(String(key))) used.add(String(key));
+  };
+  Storage.prototype.getItem = function (key) {
+    if (this === store) track(key);
+    return getItem.call(this, key);
+  };
+  Storage.prototype.setItem = function (key, value) {
+    if (this === store) track(key);
+    return setItem.call(this, key, value);
+  };
 }
 
 async function reset() {
-  if (!(await confirmAction("Reset every setting on this page to its default value?", { confirmLabel: "Reset" }))) return;
+  if (!(await confirmAction("Reset every setting on this page to its default value?", { confirmLabel: "Reset" })))
+    return;
   for (const key of used) store.removeItem(key);
   location.reload();
 }
@@ -21,7 +30,12 @@ function attach(panel) {
   const slot = panel.querySelector("[data-reset-slot]");
   if (slot) {
     const inline = document.createElement("button");
-    inline.type = "button"; inline.className = slot.dataset.resetSlot === "button" ? "button reset-defaults-button" : "button reset-defaults reset-defaults-button reset-defaults-inline"; inline.textContent = "Reset to defaults";
+    inline.type = "button";
+    inline.className =
+      slot.dataset.resetSlot === "button"
+        ? "button reset-defaults-button"
+        : "button reset-defaults reset-defaults-button reset-defaults-inline";
+    inline.textContent = "Reset to defaults";
     inline.addEventListener("click", reset);
     slot.append(inline);
     return;
@@ -29,7 +43,9 @@ function attach(panel) {
   const row = document.createElement("div");
   row.className = "reset-defaults";
   const button = document.createElement("button");
-  button.type = "button"; button.className = "button reset-defaults-button"; button.textContent = "Reset to defaults";
+  button.type = "button";
+  button.className = "button reset-defaults-button";
+  button.textContent = "Reset to defaults";
   button.addEventListener("click", reset);
   row.append(button);
   panel.append(row);

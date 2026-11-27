@@ -1,33 +1,73 @@
+import { setHTML } from "./html.js";
 import "./practice.css";
 import "./study-controls.css";
 import "./ui-kit.css";
 import "./resources.css";
 import "./chips.css";
 import "./navigation.js";
+import { strToU8, zipSync } from "fflate";
+import { PDFDocument } from "pdf-lib";
 import { mountAppearance } from "./appearance.js";
+import { buildSheet, SHEETS } from "./cheatsheet-data.js";
+import { buildPdf, FORMATS, fileName, textExporters, toSVG } from "./cheatsheet-export.js";
+import { PAGE, paginateReference } from "./cheatsheet-layout.js";
 import { mountSupport } from "./study-controls.js";
 import { mountHelpDialog } from "./tool-help.js";
-import { SHEETS, buildSheet } from "./cheatsheet-data.js";
-import { FORMATS, buildPdf, fileName, textExporters, toSVG } from "./cheatsheet-export.js";
-import { PDFDocument } from "pdf-lib";
-import { strToU8, zipSync } from "fflate";
-import { PAGE, paginateReference } from "./cheatsheet-layout.js";
-import { mountWorksheet } from "./worksheet.js";
 
 const META = {
-  kana: { label: "Kana", icon: "あ", hue: 340, summary: "Hiragana and katakana charts with dakuten, handakuten, combinations and notes." },
-  verb: { label: "Verbs", icon: "動", hue: 150, summary: "Godan, ichidan, する and 来る across 19 forms, plus godan endings." },
-  adjective: { label: "Adjectives", icon: "形", hue: 205, summary: "い-adjectives, な-adjectives and いい, plain and polite, 18 forms." },
-  particles: { label: "Particles", icon: "助", hue: 175, summary: "Particle roles, connections and nuances with examples." },
+  kana: {
+    label: "Kana",
+    icon: "あ",
+    hue: 340,
+    summary: "Hiragana and katakana charts with dakuten, handakuten, combinations and notes.",
+  },
+  verb: {
+    label: "Verbs",
+    icon: "動",
+    hue: 150,
+    summary: "Godan, ichidan, する and 来る across 19 forms, plus godan endings.",
+  },
+  adjective: {
+    label: "Adjectives",
+    icon: "形",
+    hue: 205,
+    summary: "い-adjectives, な-adjectives and いい, plain and polite, 18 forms.",
+  },
+  particles: {
+    label: "Particles",
+    icon: "助",
+    hue: 175,
+    summary: "Particle roles, connections and nuances with examples.",
+  },
   counters: { label: "Counters", icon: "数", hue: 32, summary: "Common counters, irregular readings and examples." },
-  radicals: { label: "Radicals", icon: "部", hue: 195, summary: "Common forms and examples, plus the 214 traditional radicals." },
-  ambiguities: { label: "Word contrasts", icon: "違", hue: 350, summary: "Choose between confusable words and particles with examples." },
+  radicals: {
+    label: "Radicals",
+    icon: "部",
+    hue: 195,
+    summary: "Common forms and examples, plus the 214 traditional radicals.",
+  },
+  ambiguities: {
+    label: "Word contrasts",
+    icon: "違",
+    hue: 350,
+    summary: "Choose between confusable words and particles with examples.",
+  },
   lookalikes: { label: "Kanji Lookalikes", icon: "似", hue: 35, summary: "Visual clues for commonly confused kanji." },
-  "grammar-contrasts": { label: "Grammar contrasts", icon: "文", hue: 160, summary: "Conditionals, appearance, obligation, passive forms and intention." }
+  "grammar-contrasts": {
+    label: "Grammar contrasts",
+    icon: "文",
+    hue: 160,
+    summary: "Conditionals, appearance, obligation, passive forms and intention.",
+  },
 };
 const FORMAT_NOTES = {
-  png: "Sharp image, 1985 × 2808 px", pdf: "A4 page (image based)", svg: "Scalable vector graphic", html: "Self-contained page, prints on A4",
-  md: "Tables for notes apps", txt: "Aligned plain text", csv: "For spreadsheets and flashcards"
+  png: "Sharp image, 1985 × 2808 px",
+  pdf: "A4 page (image based)",
+  svg: "Scalable vector graphic",
+  html: "Self-contained page, prints on A4",
+  md: "Tables for notes apps",
+  txt: "Aligned plain text",
+  csv: "For spreadsheets and flashcards",
 };
 
 mountAppearance(document.querySelector("header"), document.getElementById("themeButton"));
@@ -39,20 +79,88 @@ const preview = document.getElementById("sheetPreview");
 const list = document.getElementById("downloadList");
 const status = document.getElementById("downloadStatus");
 const grayscale = document.getElementById("sheetGrayscale");
-const worksheet = mountWorksheet({ picker, preview, panel: document.querySelector(".download-panel"), grayscale });
+const panel = document.querySelector(".download-panel");
+const worksheetButton = document.createElement("button");
+worksheetButton.type = "button";
+worksheetButton.className = "sheet-tab";
+worksheetButton.dataset.sheet = "worksheet";
+worksheetButton.style.setProperty("--tab-hue", "195");
+setHTML(worksheetButton, '<span class="sheet-tab-icon" aria-hidden="true">書</span><span>Worksheet</span>');
+picker.append(worksheetButton);
+
+let worksheetInstance = null;
+let worksheetLoading = null;
+let worksheetWanted = false;
+const loadWorksheet = () =>
+  (worksheetLoading ??= import("./worksheet.js")
+    .then(({ mountWorksheet }) => {
+      worksheetInstance = mountWorksheet({ picker, preview, panel, grayscale, button: worksheetButton });
+      return worksheetInstance;
+    })
+    .catch((error) => {
+      worksheetLoading = null;
+      throw error;
+    }));
+const worksheet = {
+  button: worksheetButton,
+  isActive: () => Boolean(worksheetInstance?.isActive()),
+  deactivate() {
+    worksheetWanted = false;
+    worksheetInstance?.deactivate();
+  },
+  async activate() {
+    worksheetWanted = true;
+    controls.hidden = true;
+    for (const tab of picker.querySelectorAll(".sheet-tab"))
+      tab.setAttribute("aria-pressed", String(tab === worksheetButton));
+    try {
+      const instance = await loadWorksheet();
+      if (worksheetWanted) instance.activate();
+    } catch (error) {
+      if (worksheetWanted) status.textContent = `Could not load worksheet: ${error.message}`;
+    }
+  },
+  async download(format, progress) {
+    return (await loadWorksheet()).download(format, progress);
+  },
+  async preparePrint() {
+    return (await loadWorksheet()).preparePrint();
+  },
+};
 const controls = document.createElement("section");
 controls.className = "worksheet-controls reference-controls";
 controls.hidden = true;
-controls.innerHTML = '<label>Page layout <select data-reference="orientation"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></label><label>Paper size <select data-reference="paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="legal">US Legal</option></select></label><div class="worksheet-pages"><button type="button" data-reference-action="previous" aria-label="Previous page">←</button><span data-reference-page></span><button type="button" data-reference-action="next" aria-label="Next page">→</button></div>';
-document.querySelector(".download-panel").insertBefore(controls, list);
-worksheet.button.addEventListener("click", () => { controls.hidden = true; });
-let sheet = null, page = 0;
+setHTML(
+  controls,
+  '<label>Page layout <select data-reference="orientation"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></label><label>Paper size <select data-reference="paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="legal">US Legal</option></select></label><div class="worksheet-pages"><button type="button" data-reference-action="previous" aria-label="Previous page">←</button><span data-reference-page></span><button type="button" data-reference-action="next" aria-label="Next page">→</button></div>',
+);
+panel.insertBefore(controls, list);
+worksheet.button.addEventListener("click", () => {
+  worksheet.activate();
+});
+let sheet = null,
+  page = 0;
 const paginated = () => !["kana", "verb", "adjective"].includes(sheet?.id);
 const pageLayout = () => {
   const [w, h] = dimensions();
   return { ...PAGE, w, h, label: { a4: "A4", letter: "US Letter", legal: "US Legal" }[paper()] };
 };
-const pages = () => paginated() ? paginateReference(sheet, sheet.id === "radicals" ? (orientation() === "landscape" ? 11 : 18) : (["ambiguities", "grammar-contrasts"].includes(sheet.id) ? 4 : orientation() === "landscape" ? 6 : 12), pageLayout()) : [sheet];
+const pages = () =>
+  paginated()
+    ? paginateReference(
+        sheet,
+        sheet.id === "radicals"
+          ? orientation() === "landscape"
+            ? 11
+            : 18
+          : ["ambiguities", "grammar-contrasts"].includes(sheet.id)
+            ? 4
+            : orientation() === "landscape"
+              ? 6
+              : 12,
+        pageLayout(),
+      )
+    : [sheet];
 const paper = () => controls.querySelector('[data-reference="paper"]').value;
 const orientation = () => controls.querySelector('[data-reference="orientation"]').value;
 function dimensions() {
@@ -66,7 +174,7 @@ function pageSVG(item, standalone = true) {
 function render() {
   const all = pages();
   page = Math.max(0, Math.min(page, all.length - 1));
-  preview.innerHTML = pageSVG(all[page], false);
+  setHTML(preview, pageSVG(all[page], false));
   preview.style.aspectRatio = dimensions().join(" / ");
   controls.hidden = false;
   controls.querySelector(".worksheet-pages").hidden = !paginated();
@@ -77,18 +185,31 @@ function render() {
     const format = button.dataset.format;
     if (!FORMAT_NOTES[format]) continue;
     const [width, height] = dimensions();
-    const notes = { ...FORMAT_NOTES, png: `Sharp image, ${Math.round(width * 2.5)} × ${Math.round(height * 2.5)} px`, pdf: `${pageLayout().label} ${orientation()} (image based)`, html: `Self-contained page, prints on ${pageLayout().label}` };
-    button.querySelector("small").textContent = paginated() && ["png", "svg", "html"].includes(format)
-      ? "ZIP with one file per page" : paginated() && format === "pdf"
-        ? "All pages, selected paper size" : notes[format];
+    const notes = {
+      ...FORMAT_NOTES,
+      png: `Sharp image, ${Math.round(width * 2.5)} × ${Math.round(height * 2.5)} px`,
+      pdf: `${pageLayout().label} ${orientation()} (image based)`,
+      html: `Self-contained page, prints on ${pageLayout().label}`,
+    };
+    button.querySelector("small").textContent =
+      paginated() && ["png", "svg", "html"].includes(format)
+        ? "ZIP with one file per page"
+        : paginated() && format === "pdf"
+          ? "All pages, selected paper size"
+          : notes[format];
   }
 }
 controls.addEventListener("change", () => render());
 controls.addEventListener("click", (event) => {
   const action = event.target.closest("[data-reference-action]")?.dataset.referenceAction;
-  if (action) { page += action === "next" ? 1 : -1; render(); }
+  if (action) {
+    page += action === "next" ? 1 : -1;
+    render();
+  }
 });
-grayscale.addEventListener("change", () => { if (!worksheet.isActive()) render(); });
+grayscale.addEventListener("change", () => {
+  if (!worksheet.isActive()) render();
+});
 
 for (const { id } of SHEETS) {
   const button = document.createElement("button");
@@ -96,7 +217,10 @@ for (const { id } of SHEETS) {
   button.className = "sheet-tab";
   button.dataset.sheet = id;
   button.style.setProperty("--tab-hue", META[id].hue);
-  button.innerHTML = `<span class="sheet-tab-icon" aria-hidden="true">${META[id].icon}</span><span>${META[id].label}</span>`;
+  setHTML(
+    button,
+    `<span class="sheet-tab-icon" aria-hidden="true">${META[id].icon}</span><span>${META[id].label}</span>`,
+  );
   button.addEventListener("click", () => select(id));
   picker.append(button);
 }
@@ -109,7 +233,8 @@ function balancePicker() {
     if (start === buttons.length) {
       const widths = rows.map((row) => row.width);
       const spread = Math.max(...widths) - Math.min(...widths);
-      if (!best || rows.length < best.rows.length || (rows.length === best.rows.length && spread < best.spread)) best = { rows, spread };
+      if (!best || rows.length < best.rows.length || (rows.length === best.rows.length && spread < best.spread))
+        best = { rows, spread };
       return;
     }
     if (best && rows.length >= best.rows.length) return;
@@ -121,7 +246,10 @@ function balancePicker() {
     }
   }
   partition(0, []);
-  const breaks = best.rows.slice(0, -1).map((row) => row.end).join(",");
+  const breaks = best.rows
+    .slice(0, -1)
+    .map((row) => row.end)
+    .join(",");
   if (picker.dataset.breaks === breaks) return;
   picker.dataset.breaks = breaks;
   picker.querySelectorAll(".sheet-picker-break").forEach((item) => item.remove());
@@ -140,7 +268,7 @@ for (const format of FORMATS) {
   button.type = "button";
   button.className = "download-button";
   button.dataset.format = format.id;
-  button.innerHTML = `<strong>${format.label}</strong><small>${FORMAT_NOTES[format.id]}</small>`;
+  setHTML(button, `<strong>${format.label}</strong><small>${FORMAT_NOTES[format.id]}</small>`);
   button.addEventListener("click", () => download(format.id, button));
   list.append(button);
 }
@@ -148,30 +276,54 @@ const print = document.createElement("button");
 print.type = "button";
 print.className = "download-button";
 print.dataset.format = "print";
-print.innerHTML = "<strong>Print / Save as PDF</strong><small>Vector text, via the browser dialog</small>";
+setHTML(print, "<strong>Print / Save as PDF</strong><small>Vector text, via the browser dialog</small>");
 print.addEventListener("click", async () => {
   let frame;
-  try { frame = worksheet.isActive() ? await worksheet.preparePrint() : await prepareSheetPrint(); }
-  catch (error) { status.textContent = `Could not prepare printing: ${error.message}`; return; }
-  const cleanup = () => { frame.remove(); window.removeEventListener("afterprint", cleanup); };
+  try {
+    frame = worksheet.isActive() ? await worksheet.preparePrint() : await prepareSheetPrint();
+  } catch (error) {
+    status.textContent = `Could not prepare printing: ${error.message}`;
+    return;
+  }
+  const cleanup = () => {
+    frame.remove();
+    window.removeEventListener("afterprint", cleanup);
+  };
   frame.contentWindow.addEventListener("afterprint", cleanup, { once: true });
   window.addEventListener("afterprint", cleanup, { once: true });
-  try { frame.contentWindow.focus(); frame.contentWindow.print(); }
-  catch (error) { cleanup(); status.textContent = `Could not print: ${error.message}`; }
+  try {
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+  } catch (error) {
+    cleanup();
+    status.textContent = `Could not print: ${error.message}`;
+  }
 });
 list.append(print);
 
 async function prepareSheetPrint() {
   const frame = document.createElement("iframe");
   frame.title = "Print cheatsheet";
-  frame.style.cssText = "position:fixed;width:0;height:0;border:0;";
-  const stylesheets = [...document.querySelectorAll('link[rel="stylesheet"]')].map((link) => `<link rel="stylesheet" href="${link.href}">`).join("");
+  frame.className = "study-print-frame";
+  const stylesheets = [...document.querySelectorAll('link[rel="stylesheet"]')]
+    .map((link) => `<link rel="stylesheet" href="${link.href}">`)
+    .join("");
   const size = `${paper()} ${orientation()}`;
-  frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8">${stylesheets}<style>@page{size:${size};margin:0}body{margin:0}body>svg{display:block;width:100%;height:auto;break-after:page}body>svg:last-child{break-after:auto}</style></head><body>${pages().map((item) => pageSVG(item)).join("")}</body></html>`;
-  const loaded = new Promise((resolve, reject) => { frame.onload = resolve; frame.onerror = reject; });
+  frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8">${stylesheets}<style>@page{size:${size};margin:0}body{margin:0}body>svg{display:block;width:100%;height:auto;break-after:page}body>svg:last-child{break-after:auto}</style></head><body>${pages()
+    .map((item) => pageSVG(item))
+    .join("")}</body></html>`;
+  const loaded = new Promise((resolve, reject) => {
+    frame.onload = resolve;
+    frame.onerror = reject;
+  });
   document.body.append(frame);
-  try { await loaded; await frame.contentDocument.fonts.ready; }
-  catch (error) { frame.remove(); throw error; }
+  try {
+    await loaded;
+    await frame.contentDocument.fonts.ready;
+  } catch (error) {
+    frame.remove();
+    throw error;
+  }
   return frame;
 }
 
@@ -179,7 +331,8 @@ function select(id) {
   worksheet.deactivate();
   sheet = buildSheet(id);
   page = 0;
-  for (const tab of picker.querySelectorAll(".sheet-tab")) tab.setAttribute("aria-pressed", String(tab.dataset.sheet === id));
+  for (const tab of picker.querySelectorAll(".sheet-tab"))
+    tab.setAttribute("aria-pressed", String(tab.dataset.sheet === id));
   render();
   preview.dataset.sheet = id;
   document.getElementById("sheetTitle").textContent = `${sheet.title} · ${sheet.jp}`;
@@ -200,8 +353,13 @@ function save(blob, name) {
 }
 
 async function renderCanvas(scale) {
-  try { await Promise.all([400, 500, 700, 800].map((weight) => document.fonts.load(`${weight} 16px "Noto Sans JP"`, "あ漢"))); }
-  catch { /* fall back to system fonts */ }
+  try {
+    await Promise.all(
+      [400, 500, 700, 800].map((weight) => document.fonts.load(`${weight} 16px "Noto Sans JP"`, "あ漢")),
+    );
+  } catch {
+    /* fall back to system fonts */
+  }
   const canvas = document.createElement("canvas");
   const [width, height] = dimensions();
   canvas.width = Math.round(width * scale);
@@ -213,7 +371,10 @@ async function renderCanvas(scale) {
   return canvas;
 }
 
-const toBlob = (canvas, type, quality) => new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Could not encode image."))), type, quality));
+const toBlob = (canvas, type, quality) =>
+  new Promise((resolve, reject) =>
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Could not encode image."))), type, quality),
+  );
 
 async function download(id, button) {
   button.disabled = true;
@@ -221,14 +382,17 @@ async function download(id, button) {
   try {
     const format = FORMATS.find((item) => item.id === id);
     if (worksheet.isActive()) {
-      const blob = await worksheet.download(id, (current, total) => { status.textContent = `Preparing page ${current} of ${total}…`; });
+      const blob = await worksheet.download(id, (current, total) => {
+        status.textContent = `Preparing page ${current} of ${total}…`;
+      });
       const name = `nihon-handwriting-worksheet.${id === "pdf" ? "pdf" : "zip"}`;
       save(blob, name);
       status.textContent = `Saved ${name}.`;
       return;
     }
     if (paginated() && ["png", "pdf", "svg", "html"].includes(id)) {
-      const all = pages(), [width, height] = dimensions();
+      const all = pages(),
+        [width, height] = dimensions();
       const pdf = id === "pdf" ? await PDFDocument.create() : null;
       const files = {};
       for (let index = 0; index < all.length; index++) {
@@ -236,23 +400,40 @@ async function download(id, button) {
         const svg = pageSVG(all[index]);
         const name = `page-${String(index + 1).padStart(3, "0")}`;
         if (id === "svg") files[`${name}.svg`] = strToU8(svg);
-        else if (id === "html") files[`${name}.html`] = strToU8(`<!doctype html><meta charset="utf-8"><title>${sheet.title}</title><style>@page{size:${paper()} ${orientation()};margin:0}body{margin:0}svg{display:block;width:100%;height:auto}</style>${svg}`);
+        else if (id === "html")
+          files[`${name}.html`] = strToU8(
+            `<!doctype html><meta charset="utf-8"><title>${sheet.title}</title><style>@page{size:${paper()} ${orientation()};margin:0}body{margin:0}svg{display:block;width:100%;height:auto}</style>${svg}`,
+          );
         else {
           const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
           try {
-            const image = new Image(); image.src = url; await image.decode();
-            const canvas = document.createElement("canvas"); canvas.width = Math.round(width * 2); canvas.height = Math.round(height * 2);
+            const image = new Image();
+            image.src = url;
+            await image.decode();
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.round(width * 2);
+            canvas.height = Math.round(height * 2);
             canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-            const bytes = new Uint8Array(await (await toBlob(canvas, pdf ? "image/jpeg" : "image/png", .93)).arrayBuffer());
+            const bytes = new Uint8Array(
+              await (await toBlob(canvas, pdf ? "image/jpeg" : "image/png", 0.93)).arrayBuffer(),
+            );
             if (pdf) {
-              const jpeg = await pdf.embedJpg(bytes), pdfPage = pdf.addPage([width * .75, height * .75]);
-              pdfPage.drawImage(jpeg, { x: 0, y: 0, width: width * .75, height: height * .75 });
+              const jpeg = await pdf.embedJpg(bytes),
+                pdfPage = pdf.addPage([width * 0.75, height * 0.75]);
+              pdfPage.drawImage(jpeg, { x: 0, y: 0, width: width * 0.75, height: height * 0.75 });
             } else files[`${name}.png`] = bytes;
-          } finally { URL.revokeObjectURL(url); }
+          } finally {
+            URL.revokeObjectURL(url);
+          }
         }
       }
       const name = `nihon-${sheet.id}-cheatsheet.${pdf ? "pdf" : "zip"}`;
-      save(pdf ? new Blob([await pdf.save()], { type: "application/pdf" }) : new Blob([zipSync(files, { level: 6 })], { type: "application/zip" }), name);
+      save(
+        pdf
+          ? new Blob([/** @type {BlobPart} */ (await pdf.save())], { type: "application/pdf" })
+          : new Blob([/** @type {BlobPart} */ (zipSync(files, { level: 6 }))], { type: "application/zip" }),
+        name,
+      );
       status.textContent = `Saved ${name}.`;
       return;
     }
@@ -263,8 +444,17 @@ async function download(id, button) {
       const jpeg = new Uint8Array(await (await toBlob(canvas, "image/jpeg", 0.93)).arrayBuffer());
       blob = new Blob([buildPdf(jpeg, canvas.width, canvas.height, sheet.title, dimensions())], { type: format.mime });
     } else if (id === "svg") blob = new Blob([pageSVG(sheet)], { type: format.mime });
-    else if (id === "html") blob = new Blob([`<!doctype html><meta charset="utf-8"><title>${sheet.title}</title><style>@page{size:${paper()} ${orientation()};margin:0}body{margin:0}svg{display:block;width:100%;height:auto}</style>${pageSVG(sheet)}`], { type: format.mime });
-    else blob = new Blob([textExporters[id](sheet, { grayscale: grayscale.checked })], { type: `${format.mime};charset=utf-8` });
+    else if (id === "html")
+      blob = new Blob(
+        [
+          `<!doctype html><meta charset="utf-8"><title>${sheet.title}</title><style>@page{size:${paper()} ${orientation()};margin:0}body{margin:0}svg{display:block;width:100%;height:auto}</style>${pageSVG(sheet)}`,
+        ],
+        { type: format.mime },
+      );
+    else
+      blob = new Blob([textExporters[id](sheet, { grayscale: grayscale.checked })], {
+        type: `${format.mime};charset=utf-8`,
+      });
     save(blob, fileName(sheet, id));
     status.textContent = `Saved ${fileName(sheet, id)}.`;
   } catch (error) {
@@ -275,4 +465,11 @@ async function download(id, button) {
 }
 
 if (location.hash === "#worksheet") worksheet.button.click();
-else select(location.hash === "#grammar-contrasts-2" ? "grammar-contrasts" : SHEETS.some((item) => `#${item.id}` === location.hash) ? location.hash.slice(1) : "kana");
+else
+  select(
+    location.hash === "#grammar-contrasts-2"
+      ? "grammar-contrasts"
+      : SHEETS.some((item) => `#${item.id}` === location.hash)
+        ? location.hash.slice(1)
+        : "kana",
+  );

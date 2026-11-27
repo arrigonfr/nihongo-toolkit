@@ -80,7 +80,7 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     const index = readFileSync(join(directory, "kanji", "index.html"), "utf8");
     assert.match(index, /<section class="study-intro tool-intro"[^>]*>\s*<div class="study-intro-content">[\s\S]*?<h1 id="catalogue-title">/);
     assert.match(index, /<select id="catalogue-group"><option value="jlpt" selected>/);
-    assert.deepEqual([...index.matchAll(/<details><summary>(.*?) \(\d+\)<\/summary>/g)].map(([, group]) => group),
+    assert.deepEqual([...index.matchAll(/<details><summary[^>]*>(.*?) \(\d+\)<\/summary>/g)].map(([, group]) => group),
       ["N5", "N4", "N3", "N2", "N1", "No JLPT estimate"]);
     assert.ok(kanjiUrls.includes(new URL("/kanji/", site).href));
     assert.ok(kanjiUrls.includes(new URL("/kanji/食", site).href));
@@ -90,6 +90,11 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     assert.ok(!files.includes("氵.html"));
     const page = readFileSync(join(directory, "kanji", "食.html"), "utf8");
     assert.match(page, /rel="canonical" href="https:\/\/nihongotoolkit\.pages\.dev\/kanji\/%E9%A3%9F"/);
+    assert.match(page, /<meta property="og:title" content="食 Kanji — eat \| NihongoToolkit">/);
+    assert.match(page, /<meta property="og:site_name" content="Nihongo Toolkit">/);
+    assert.match(page, /<meta property="og:locale" content="en_US">/);
+    assert.match(page, /<meta name="twitter:card" content="summary_large_image">/);
+    assert.match(page, /<meta name="robots" content="max-image-preview:large">/);
     assert.match(page, /<h1><span class="glyph" lang="ja">食<\/span>/);
     assert.match(page, /eat; food/);
     assert.match(page, /ショク/);
@@ -102,7 +107,9 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
     assert.match(incompletePage, /Dictionary indexing radical<\/dt><dd><span lang="ja">肉<\/span> \(130\)/);
     assert.match(readFileSync(join(directory, "kanji", "u-f91d.html"), "utf8"), /lang="ja">欄<\/span>/);
     assert.match(readFileSync(join(directory, "kanji", "欄.html"), "utf8"), /lang="ja">欄<\/span>/);
-    assert.match(readFileSync(join(directory, "404.html"), "utf8"), /Page not found/);
+    const notFoundHtml = readFileSync(join(directory, "404.html"), "utf8");
+    assert.match(notFoundHtml, /Page not found/);
+    assert.match(notFoundHtml, /<meta name="robots" content="noindex">/);
     assert.ok(!sitemap.includes(".html"));
     assert.equal(readFileSync(join(directory, "robots.txt"), "utf8"), `User-agent: *\nAllow: /\n\nSitemap: ${site}sitemap.xml\n`);
     const root = new URL("../", import.meta.url);
@@ -114,28 +121,44 @@ test("deployment metadata and sitemap use final clean URLs and explicit site ide
       assert.ok(!/href="\.\/[^"?#]+\.html/.test(result.html));
       assert.ok(!result.html.includes('class="dashboard-back"'));
       if (file === "index.html") {
+        const expectedLdName = "Nihongo Toolkit | Free Japanese learning tools";
         const data = JSON.parse(result.html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
         assert.equal(data.url, undefined);
         assert.equal(data["@graph"].length, 3);
-        const identity = data["@graph"][0];
+        const [identity, webpage, app] = data["@graph"];
         assert.equal(identity["@type"], "WebSite");
-        assert.equal(identity.name, "NihongoToolkit");
+        assert.equal(identity.name, expectedLdName);
         assert.equal(identity.url, site);
+        assert.equal(identity.inLanguage, "en");
+        assert.ok(identity.alternateName.includes("Nihongo Toolkit"));
         assert.ok(identity.alternateName.includes(new URL(site).hostname));
-        assert.equal(identity.publisher.name, identity.name);
-        assert.equal(identity.publisher.logo.url, `${site}logo.png`);
-        assert.notEqual(identity.publisher["@id"], data["@graph"][1]["@id"]);
+        assert.equal(identity.publisher.name, expectedLdName);
+        assert.equal(identity.publisher.alternateName, "Nihongo Toolkit");
+        assert.deepEqual(identity.publisher.knowsLanguage, ["en"]);
+        assert.equal(identity.publisher.logo.url, `${site}logo.webp`);
+        assert.equal(identity.publisher.logo.caption, "Nihongo Toolkit");
+        assert.notEqual(identity.publisher["@id"], webpage["@id"]);
         assert.notEqual(identity.publisher.logo["@id"], identity["@id"]);
-        assert.equal(data["@graph"][2].screenshot, `${site}og-image.png`);
-        assert.ok(!/FSRS|Cloud sync|AI-powered/.test(JSON.stringify(data)));
+        assert.equal(webpage.name, expectedLdName);
+        assert.equal(app.name, expectedLdName);
+        assert.equal(app.inLanguage, "en");
+        assert.deepEqual(app.availableLanguage, ["en"]);
+        assert.equal(app.screenshot, `${site}og-image.png`);
+        assert.ok(!/FSRS|Cloud sync|AI-powered|preview/i.test(JSON.stringify(data)));
       }
       const meta = (name) => result.tags.find((tag) => (tag.attrs?.property || tag.attrs?.name) === name)?.attrs.content;
+      assert.equal(meta("color-scheme"), "dark light");
+      assert.equal(meta("referrer"), "strict-origin-when-cross-origin");
+      assert.equal(meta("robots"), "max-image-preview:large");
+      assert.equal(meta("og:locale"), "en_US");
+      assert.equal(meta("apple-mobile-web-app-title"), "Nihongo Toolkit");
+      assert.ok(result.tags.some((tag) => tag.tag === "link" && tag.attrs?.rel === "manifest"));
       assert.equal(meta("twitter:image"), `${site}og-image.png`);
       assert.equal(meta("twitter:card"), "summary_large_image");
       if (file === "index.html") {
         assert.equal(meta("og:image"), `${site}og-image.png`);
         assert.equal(meta("og:image:type"), "image/png");
-        assert.equal(meta("og:title"), "NihongoToolkit");
+        assert.equal(meta("og:title"), "Nihongo Toolkit | Free Japanese learning tools for kana, kanji, vocabulary, conjugation practice, dictionary lookup, word games, and printable study sheets.");
         assert.equal(meta("og:image:width"), "1200");
         assert.equal(meta("og:image:height"), "630");
       } else {
@@ -156,9 +179,12 @@ test("social assets have the dimensions declared in metadata", () => {
   assert.equal(image.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
   assert.equal(image.readUInt32BE(16), 1200);
   assert.equal(image.readUInt32BE(20), 630);
-  const logo = readFileSync(new URL("../public/logo.png", import.meta.url));
-  assert.equal(logo.readUInt32BE(16), 1024);
-  assert.equal(logo.readUInt32BE(20), 1024);
+  const logo = readFileSync(new URL("../public/logo.webp", import.meta.url));
+  assert.equal(logo.subarray(0, 4).toString("ascii"), "RIFF");
+  assert.equal(logo.subarray(8, 12).toString("ascii"), "WEBP");
+  assert.equal(logo.subarray(12, 16).toString("ascii"), "VP8X");
+  assert.equal(logo.readUIntLE(24, 3) + 1, 1024);
+  assert.equal(logo.readUIntLE(27, 3) + 1, 1024);
 });
 
 test("all graph identities and image URLs follow a configured production domain", () => {
@@ -173,7 +199,7 @@ test("all graph identities and image URLs follow a configured production domain"
     assert.equal(website.url, "https://example.com/");
     assert.equal(website["@id"], "https://example.com/#website");
     assert.equal(webpage.isPartOf["@id"], website["@id"]);
-    assert.equal(website.publisher.logo.url, "https://example.com/logo.png");
+    assert.equal(website.publisher.logo.url, "https://example.com/logo.webp");
     assert.equal(website.publisher.logo.contentUrl, website.publisher.logo.url);
     assert.equal(application.screenshot, "https://example.com/og-image.png");
     assert.ok(!JSON.stringify(data).includes("nihongotoolkit.pages.dev"));
@@ -183,26 +209,84 @@ test("all graph identities and image URLs follow a configured production domain"
   }
 });
 
-test("every page configures host-only analytics cookies before loading Google tags", () => {
-  const { plugins } = config({ mode: "test" });
-  const navigation = plugins.find((plugin) => plugin.name === "tool-navigation");
+test("analytics tags are env-gated, omitted in dev, and defer Google script loading until consent is granted", () => {
+  const prevGa = process.env.VITE_GA_ID;
+  const prevGtm = process.env.VITE_GTM_ID;
+  const prevDev = process.env.VITE_ANALYTICS_DEV;
   const root = new URL("../", import.meta.url);
-  for (const file of readdirSync(root).filter((name) => name.endsWith(".html") && !editorialPage(name))) {
-    const result = navigation.transformIndexHtml.handler(
-      readFileSync(new URL(file, root), "utf8"),
-      { filename: new URL(file, root).pathname }
-    );
-    const html = typeof result === "string" ? result : result.html;
-    const bootstrap = html.match(/<script>(window\.dataLayer[\s\S]*?)<\/script>/);
-    assert.ok(bootstrap, file);
-    const window = {};
-    runInNewContext(bootstrap[1], { window, dataLayer: window.dataLayer = [] });
-    const commands = window.dataLayer.map((args) => Array.from(args));
-    assert.deepEqual(commands[0], ["set", "cookie_domain", "none"], file);
-    assert.equal(commands[2][0], "config", file);
-    assert.equal(commands[2][1], "G-LL2V1JZBER", file);
-    assert.equal(commands[2][2].cookie_domain, "none", file);
-    assert.ok(html.indexOf(bootstrap[0]) < html.indexOf('src="https://www.googletagmanager.com/gtag/js'), file);
-    assert.ok(html.indexOf(bootstrap[0]) < html.indexOf("'gtm.start'"), file);
+  try {
+    process.env.VITE_GA_ID = "";
+    process.env.VITE_GTM_ID = "";
+    process.env.VITE_ANALYTICS_DEV = "";
+    const withoutIds = config({ mode: "production", command: "build" }).plugins.find((plugin) => plugin.name === "tool-navigation");
+    const kanaSource = readFileSync(new URL("kana.html", root), "utf8");
+    const kanaNoAnalytics = withoutIds.transformIndexHtml.handler(kanaSource, { filename: new URL("kana.html", root).pathname });
+    assert.doesNotMatch(kanaNoAnalytics.html, /googletagmanager\.com|gtag\(/);
+    assert.ok(!kanaNoAnalytics.tags.some((tag) => String(tag.children || "").includes("loading-styles")), "Production build must not inject render-blocking loading-styles");
+    assert.ok(kanaNoAnalytics.tags.some((tag) => String(tag.children || "").includes("nihon:appearance-v1")), "Production build injects synchronous theme pre-init");
+
+    process.env.VITE_GA_ID = "G-LL2V1JZBER";
+    process.env.VITE_GTM_ID = "GTM-T7N85X93";
+    const devNav = config({ mode: "development", command: "serve", isPreview: false }).plugins.find((plugin) => plugin.name === "tool-navigation");
+    const kanaDev = devNav.transformIndexHtml.handler(kanaSource, { filename: new URL("kana.html", root).pathname });
+    assert.doesNotMatch(kanaDev.html, /googletagmanager\.com|gtag\(/, "Dev server must not inject analytics by default");
+
+    const { plugins } = config({ mode: "production", command: "build" });
+    const navigation = plugins.find((plugin) => plugin.name === "tool-navigation");
+    const runBootstrap = (scriptText, savedConsent) => {
+      const injected = [];
+      const document = {
+        createElement: (tag) => ({ tag, async: false, src: "" }),
+        head: { appendChild: (node) => { injected.push(node); } }
+      };
+      const window = {};
+      runInNewContext(scriptText, {
+        window,
+        document,
+        dataLayer: window.dataLayer = [],
+        localStorage: { getItem: () => savedConsent }
+      });
+      return { window, injected };
+    };
+    for (const file of readdirSync(root).filter((name) => name.endsWith(".html") && !editorialPage(name))) {
+      const result = navigation.transformIndexHtml.handler(
+        readFileSync(new URL(file, root), "utf8"),
+        { filename: new URL(file, root).pathname }
+      );
+      const html = typeof result === "string" ? result : result.html;
+      assert.doesNotMatch(html, /<script[^>]+src="https:\/\/www\.googletagmanager\.com/, file);
+      assert.doesNotMatch(html, /googletagmanager\.com\/ns\.html/, file);
+      const bootstrap = html.match(/<script>(window\.dataLayer[\s\S]*?)<\/script>/);
+      assert.ok(bootstrap, file);
+
+      // Without consent or when denied, no third-party scripts are appended.
+      const denied = runBootstrap(bootstrap[1], null);
+      const commands = denied.window.dataLayer.map((args) => Array.from(args));
+      assert.deepEqual(commands[0], ["set", "cookie_domain", "none"], file);
+      assert.equal(commands[1][0], "consent", file);
+      assert.equal(commands[1][1], "default", file);
+      assert.equal(commands[1][2].analytics_storage, "denied", file);
+      assert.equal(commands[1][2].ad_storage, "denied", file);
+      assert.equal(commands[3][0], "config", file);
+      assert.equal(commands[3][1], "G-LL2V1JZBER", file);
+      assert.equal(commands[3][2].cookie_domain, "none", file);
+      assert.equal(denied.injected.length, 0, `${file}: must not load GA/GTM before consent`);
+
+      // Calling load() after user opts in appends both scripts once idempotently.
+      denied.window.__nihonAnalytics.load();
+      denied.window.__nihonAnalytics.load();
+      assert.deepEqual(denied.injected.map((n) => n.src), [
+        "https://www.googletagmanager.com/gtag/js?id=G-LL2V1JZBER",
+        "https://www.googletagmanager.com/gtm.js?id=GTM-T7N85X93"
+      ], file);
+
+      // When consent was previously granted, scripts load automatically on page load.
+      const granted = runBootstrap(bootstrap[1], "granted");
+      assert.equal(granted.injected.length, 2, file);
+    }
+  } finally {
+    if (prevGa === undefined) delete process.env.VITE_GA_ID; else process.env.VITE_GA_ID = prevGa;
+    if (prevGtm === undefined) delete process.env.VITE_GTM_ID; else process.env.VITE_GTM_ID = prevGtm;
+    if (prevDev === undefined) delete process.env.VITE_ANALYTICS_DEV; else process.env.VITE_ANALYTICS_DEV = prevDev;
   }
 });

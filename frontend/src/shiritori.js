@@ -1,48 +1,77 @@
+import { escapeHTML as escape, setHTML } from "./html.js";
 import { createSessionView } from "./session-view.js";
 import "./shiritori.css";
-import { mountGameExport } from "./game-export.js";
 import { bind, toKana } from "wanakana";
-import { API_BASE } from "./api.js";
-import { mountStudyControls, study, japaneseHTML, audioHTML, readingsHTML, speakJapanese } from "./study-controls.js";
-import { mountSentenceExamples } from "./examples.js";
-import { DEFAULT_RULES, READING_ENDING_RULE, parseRules, kana, morae, requiredStart, startOptions, kanjiChain, connection, wordEndingError, validateWord, scoreWord, assistAllowed, isKanji } from "../../backend/src/shiritori-rules.js";
-import { createSeededRandom } from "./crossword-engine.js";
-import { JAPANESE_FONTS, isFontSetting, applyJapaneseFont } from "./japanese-fonts.js";
+import {
+  assistAllowed,
+  connection,
+  DEFAULT_RULES,
+  isKanji,
+  kana,
+  kanjiChain,
+  morae,
+  parseRules,
+  READING_ENDING_RULE,
+  requiredStart,
+  scoreWord,
+  startOptions,
+  validateWord,
+  wordEndingError,
+} from "../../backend/src/shiritori-rules.js";
+import { fetchJSON } from "./api.js";
 import { confirmAction } from "./confirm-dialog.js";
+import { createSeededRandom } from "./crossword-engine.js";
+import { mountSentenceExamples } from "./examples.js";
+import { mountGameExport } from "./game-export.js";
+import { applyJapaneseFont, isFontSetting } from "./japanese-fonts.js";
 import { setSettingAvailability } from "./settings-panel.js";
+import { modes, renderShiritoriShell } from "./shiritori-shell.js";
+import { audioHTML, japaneseHTML, mountStudyControls, readingsHTML, speakJapanese, study } from "./study-controls.js";
 
-const startOptionList = (word, rules) => { const o = startOptions(word, rules); return [...o.kana, ...o.kanji]; };
+const startOptionList = (word, rules) => {
+  const o = startOptions(word, rules);
+  return [...o.kana, ...o.kanji];
+};
+/** @returns {any} */
 const $ = (id) => document.getElementById(id);
-const escape = (text) => String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const settingsKey = "nihon:shiritori-settings-v1";
 const progressKey = "nihon:shiritori-progress-v1";
-const modes = { classic: "Classic", relaxed: "Relaxed", timed: "Timed", sudden: "Sudden Death", kanji: "Kanji Shiritori", katakana: "Katakana Challenge", beginner: "Beginner", marathon: "Marathon" };
-const modeDescriptions = {
-  classic: "Build a chain by connecting each word to the previous word's ending.",
-  relaxed: "No timer and unlimited hints and reveals. An invalid connection still ends the round.",
-  timed: "Play a valid word before the turn countdown expires.", sudden: "Any invalid play ends the round with a loss.",
-  kanji: "Connect words using kanji, rather than kana endings.",
-  katakana: "Use words written in katakana.", beginner: "Words up to four morae, unlimited hints and furigana.",
-  marathon: "Build a long chain and earn extra points as it grows."
+const defaults = {
+  ...DEFAULT_RULES,
+  opponent: "computer",
+  players: 2,
+  fontSize: "normal",
+  font: "Noto Sans JP",
+  contrast: false,
+  translations: false,
 };
-const defaults = { ...DEFAULT_RULES, opponent: "computer", players: 2, fontSize: "normal", font: "Noto Sans JP", contrast: false, translations: false };
 let settings = { ...defaults };
 let progress = { known: [], review: [] };
 let restoreError = "";
 function validateSettings(value) {
   parseRules(value);
-  for (const [key, options] of Object.entries({ opponent: ["computer", "local"], fontSize: ["normal", "large", "larger"], font: { includes: isFontSetting } })) {
+  for (const [key, options] of Object.entries({
+    opponent: ["computer", "local"],
+    fontSize: ["normal", "large", "larger"],
+    font: { includes: isFontSetting },
+  })) {
     if (key in value && !options.includes(value[key])) throw new Error(`Invalid ${key} preference.`);
   }
-  if ("translations" in value && typeof value.translations !== "boolean") throw new Error("Invalid translations preference.");
-  if ("players" in value && (!Number.isInteger(value.players) || value.players < 1 || value.players > 6)) throw new Error("Choose one to six local players.");
+  if ("translations" in value && typeof value.translations !== "boolean")
+    throw new Error("Invalid translations preference.");
+  if ("players" in value && (!Number.isInteger(value.players) || value.players < 1 || value.players > 6))
+    throw new Error("Choose one to six local players.");
 }
 try {
   const saved = JSON.parse(localStorage.getItem(settingsKey) || "{}");
   if (!Object.hasOwn(saved, "bonusKana") && typeof saved.bonus === "boolean") saved.bonusKana = saved.bonus;
   delete saved.level;
   validateSettings(saved);
-  settings = { ...defaults, ...Object.fromEntries(Object.entries(saved).filter(([key]) => Object.hasOwn(defaults, key))), ...parseRules(saved) };
+  settings = {
+    ...defaults,
+    ...Object.fromEntries(Object.entries(saved).filter(([key]) => Object.hasOwn(defaults, key))),
+    ...parseRules(saved),
+  };
   for (const key of ["hints", "reveal"]) if (Object.hasOwn(saved, key)) settings[key] = saved[key];
   localStorage.setItem(settingsKey, JSON.stringify(settings));
   const stored = JSON.parse(localStorage.getItem(progressKey) || "null");
@@ -68,115 +97,41 @@ let recentStarters = [];
 try {
   const saved = JSON.parse(sessionStorage.getItem("nihon:shiritori-starters") || "[]");
   if (Array.isArray(saved) && saved.every((id) => typeof id === "string")) recentStarters = saved.slice(-12);
-} catch (error) { console.warn("Could not restore recent opening words.", error); }
+} catch (error) {
+  console.warn("Could not restore recent opening words.", error);
+}
 const exampleCache = new Map();
 const info = (message, error = false) => {
   $("feedback").textContent = message;
   $("feedback").dataset.error = String(error);
 };
 function persist(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); return true; }
-  catch (error) { console.error("Could not save Shiritori data.", error); info("Your browser could not save settings and progress. Export your review list before leaving.", true); return false; }
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (error) {
+    console.error("Could not save Shiritori data.", error);
+    info("Your browser could not save settings and progress. Export your review list before leaving.", true);
+    return false;
+  }
 }
-const tip = (description) => description ? ` data-setting-description="${escape(description)}"` : "";
-function selectSetting(key, label, options, description, noHelp = false) {
-  return `<div class="setting"><div class="setting-title"><label for="setting-${key}"${tip(description)}>${label}</label></div><select id="setting-${key}" data-setting="${key}"${noHelp ? " data-no-setting-help" : ""}>${Object.entries(options).map(([value, text]) => `<option value="${value}">${text}</option>`).join("")}</select></div>`;
-}
-function numberSetting(key, label, min, max, description, noHelp = false) {
-  return `<div class="setting"><div class="setting-title"><label for="setting-${key}"${tip(description)}>${label}</label></div><input id="setting-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="1" required${noHelp ? " data-no-setting-help" : ""}></div>`;
-}
-function checkboxSetting(key, label, description, noHelp = false) {
-  return `<div class="setting check"><label class="check-label" for="setting-${key}"${tip(description)}><input id="setting-${key}" data-setting="${key}" type="checkbox"${noHelp ? " data-no-setting-help" : ""}>${label}</label></div>`;
-}
-function settingsMarkup() {
-  return `<p class="small">Valid settings save automatically and apply to your next game. The top reading, audio and appearance controls stay live.</p>
-  <form id="settingsForm">
-  <div class="mode-pills" id="modePills" role="group" aria-label="Game mode">${Object.entries(modes).map(([key, label]) => `<button class="mode-pill" type="button" data-mode="${key}" data-setting-description="${escape(modeDescriptions[key])}" aria-pressed="false">${label}</button>`).join("")}</div>
-  <fieldset class="settings-section" id="gameSettings"><legend>Game</legend><div class="settings-grid">
-  <input type="hidden" id="setting-mode" data-setting="mode">
-  ${selectSetting("opponent", "Play against", { computer: "Computer", local: "Local players / solo" }, "Computer alternates with you. Local mode supports one learner or up to six players sharing this device.")}
-  ${numberSetting("players", "Local players", 1, 6, "Number of players taking turns on this device. Ignored when playing the computer. A losing move ends the round for everyone.")}
-  ${selectSetting("timer", "Seconds per turn", { 10: "10 seconds", 20: "20 seconds", 30: "30 seconds", 60: "60 seconds" }, "Only Timed mode uses a countdown. It includes checks, hints, dictionary requests and time in dialogs. Other modes have no timer.")}
-  </div></fieldset>
-  <fieldset class="settings-section"><legend>Scoring and rules</legend><div class="settings-grid">
-  ${checkboxSetting("voicing", "Allow voiced / unvoiced variation", "Treat か / が and は / ば / ぱ as equivalent at the connection. Off by default. Does not affect kanji connections.")}
-  ${checkboxSetting("bonus", "Bonus points", "A single final kana earns no overlap bonus. Start with two or more trailing syllables (or kanji) for +5 per extra unit, without reusing the whole previous word.")}
-  ${checkboxSetting("bonusKana", "Bonus kana", "Every third accepted move offers a bonus kana. Include it anywhere in your new accepted word for +15 points, independently of overlap bonuses.")}
-  </div></fieldset>
-  <fieldset class="settings-section help-section"><legend>Help during play</legend><div class="help-pair">
-  <fieldset class="help-group" id="hintSettings"><legend>Hints</legend><div class="settings-grid">
-  ${selectSetting("hints", "Hint availability", { limited: "Limited per player", unlimited: "Unlimited", disabled: "Disabled" }, "", true)}
-  ${numberSetting("hintLimit", "Hints per player", 0, 30, "", true)}
-  </div></fieldset>
-  <fieldset class="help-group" id="revealSettings"><legend>Reveal answer</legend><div class="settings-grid">
-  ${checkboxSetting("reveal", "Allow Reveal Answer", "", true)}
-  ${numberSetting("revealLimit", "Reveals per player", 0, 30, "", true)}
-  </div></fieldset>
-  </div></fieldset>
-  <fieldset class="settings-section"><legend>Display and accessibility</legend><div class="settings-grid">
-  ${selectSetting("font", "Japanese font", JAPANESE_FONTS)}
-  ${selectSetting("fontSize", "Font size", { normal: "Standard", large: "Large", larger: "Extra large" })}
-  ${checkboxSetting("contrast", "High contrast")}
-  ${checkboxSetting("translations", "Show translations in word chain", "Show the English meaning above or below each word in the word chain. Off by default because long translations can crowd the chain.")}
-  </div></fieldset>
-  <p id="settingsError" role="alert" class="feedback" hidden></p>
-  </form>
-  <div class="settings-footer">
-    <button id="exportReview" type="button" data-setting-description="Download a JSON file of saved vocabulary, readings, meanings and source metadata.">Export review list</button>
-    <button id="importReview" type="button" data-setting-description="Merge a previously exported review list. Files are validated locally and cannot add words to the accepted game dictionary.">Import review list</button>
-    <button id="resetProgress" type="button" data-setting-description="Permanently clear discoveries and the review list on this browser, after confirmation. Game statistics reset whenever you start a new game.">Reset progress</button>
-    <input id="reviewFile" type="file" accept="application/json,.json" hidden>
-  </div>`;
-}
-$("shiritoriRoot").innerHTML = `<div class="shell">
-  <header><div class="brand"><span class="brand-mark" aria-hidden="true"><img src="/tool-icons/shiritori.webp" alt=""></span><span class="brand-name">Shiritori<span class="brand-note">NihongoToolkit</span></span></div><button id="themeButton" type="button" aria-label="Toggle light and dark mode">◐</button></header>
-  <section class="intro"><span class="eyebrow"><span lang="ja">しりとり</span> · <span>Word chain</span></span>
-        <h1>Follow the last sound. <br><span>Find the next word.</span> <button id="helpButton" class="help-button" type="button" aria-label="How to play Shiritori">?</button></h1><p>One word leads to another. Follow the last sound, discover new words, and see how far your Japanese can take you.</p></section>
-  <details id="settingsPanel" class="card game-settings" open><summary>Game settings</summary><div class="settings-body">${settingsMarkup()}</div></details>
-  <div class="toolbar"><span id="modeBadge" class="tag">Classic · vs. computer</span><button id="reviewButton" type="button">Review list <span id="reviewCount">0</span></button><button id="newGame" class="primary" type="button">Start game →</button></div>
-  <p id="startError" class="feedback start-error" role="alert" hidden></p>
-  <div class="layout"><main class="main-column">
-    <section class="card" aria-label="Current turn">
-      <div class="turn-strip"><span id="turnLabel"><span class="turn-dot"></span>Ready when you are</span><span id="timer" class="timer" aria-label="Time remaining">No timer</span></div>
-      <div class="prompt"><div><span class="eyebrow">Previous word</span><div id="previousWord" class="previous-word" lang="ja">しりとり</div><span id="previousReading" class="small">Start a new chain</span></div><span class="connection-arrow" aria-hidden="true">→</span><div class="required-wrap"><span class="eyebrow">Your word can start with:</span><ul id="startOptions" class="start-options" lang="ja"></ul></div></div>
-      <form id="wordForm"><label class="entry-label" for="wordInput">Keep the chain going</label><div class="entry-row"><input id="wordInput" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="60" placeholder="Type a Japanese word…" disabled aria-describedby="entryNote feedback"><button id="playWord" class="primary" type="submit" disabled>Play ↵</button></div><p class="entry-note small" id="entryNote">Romaji converts to kana as you type. You can also use a Japanese keyboard.</p></form>
-      <div class="actions"><button id="hintButton" type="button" disabled>Hint</button><button id="revealButton" type="button" disabled>Reveal Answer</button><button id="passButton" type="button" disabled>Pass</button><button id="retryComputer" type="button" hidden>Retry computer turn</button><button id="stopGame" type="button" hidden>End round</button></div>
-      <div id="feedback" class="feedback" role="status" aria-live="polite"></div><div id="choices" class="candidates"></div><div id="hintPanel" class="feedback" role="status" hidden></div>
-    </section>
-    <section id="results" class="card results" tabindex="-1" hidden></section>
-    <section class="card"><div class="card-heading"><h2>The word chain</h2><span id="chainCount" class="tag">0 words</span></div><ol id="chain" class="chain"></ol><div id="chainEmpty" class="empty-state"><span class="empty-icon" lang="ja">言葉をつなごう</span>Your first connection is waiting.<br><span class="small">Every word is a chance to learn something new.</span></div></section>
-  </main><aside class="sidebar">
-    <section class="card"><div class="card-heading"><h2>This round</h2></div><div id="scores" class="muted">A fresh chain, a fresh start.</div><div id="stats" class="stats"></div><p id="bonusLabel" class="small" style="margin:16px 0 0">N5 → 10 pts · N1 → 50 pts</p></section>
-    <section class="card" id="wordDetails"><div class="card-heading"><h2>Word notebook</h2><span class="small">Learn as you play</span></div><div id="detailBody" class="muted">Tap or hover over a played word to explore its reading, meaning, and an example. Tap an individual kanji for a closer look.</div></section>
-    <section class="card rule-note"><h2>A small reminder</h2><p id="ruleSummary"></p><p class="small">Small kana stay with their syllable (しょ → しょ…). Longer overlaps earn bonus points. Prefer a gentler chain? Try Beginner in Settings.</p></section>
-  </aside></div>
-  <footer><span>Little connections. Lasting vocabulary.</span><a href="./data-sources.html" target="_blank" rel="noopener">Dictionary &amp; sentence credits ↗</a></footer>
-  <dialog id="helpDialog" aria-labelledby="helpTitle"><div class="dialog-head"><h2 id="helpTitle">A word game that keeps you learning</h2><button class="close" data-close type="button" aria-label="Close help">×</button></div><div class="dialog-body">
-    <div class="help-example" lang="ja">りんご → ごりら → らっぱ</div>
-    <p><strong>Shiritori means “taking the tail”.</strong> Start your word with the last syllable of the previous word, or with more of it: the last two or three syllables, or its last kanji or kanji compound. The answer must be longer than the overlap, so it can never begin with the entire previous word. Small kana stay attached (しょ needs しょ, and しょう works). Hiragana and katakana are equivalent. Submit with Enter or Play. Words ending in <strong>ん / ン</strong> and the particle <strong>を / ヲ</strong> are not accepted. Stuck? Use <strong>Pass</strong> to skip your turn; if everyone passes in a row, the round ends.</p>
-    <h3>Play your way</h3><p>Play the computer, practice alone, or share this device with up to six local players. Classic retries invalid entries. Sudden Death loses on any invalid submission. Relaxed has unlimited hints and reveals and no timer: an invalid connection ends the round. Timed includes dictionary-check time. Beginner caps words at four morae and enables furigana. Marathon adds points for every word.</p>
-    <p>Katakana Challenge uses words written in katakana. Advanced Kanji Shiritori only accepts overlaps made of the last kanji or kanji compound.</p>
-    <h3>Make the rules yours</h3><p>Choose a game mode, assistance and scoring options. Conjugated verbs and adjectives are accepted. Romaji converts as you type; pick the right spelling when a reading is ambiguous. Kanji Shiritori accepts a typed reading after you confirm its spelling.</p>
-    <p>For kanji chains: ${escape(READING_ENDING_RULE)} Dictionary readings are checked even when you type kanji. A long-vowel mark inside a word is fine, as in ケーキ. Outside Kanji Shiritori, a final ー stays attached to its syllable (コーヒー requires ヒー). Repeated words and words ending in ん / ン are never accepted. You can allow voiced/unvoiced pairs. No available dictionary continuation ends the round with an explanation, not an invented word.</p>
-    <h3>Learn, don’t just guess</h3><p>Hints cycle through first kana, morae and a hidden reading; Reveal gives a legal word and meaning. Hover, focus or tap chain words to explore them. Kanji buttons show meanings, on’yomi, kun’yomi and compounds. Audio uses an installed Japanese device voice. Sentence availability depends on the dictionary and Tatoeba.</p>
-    <h3>Points &amp; progress</h3><p>N5 / N4 / N3 / N2 / N1 earn 10 / 20 / 30 / 40 / 50 points. Unrated words earn 10 and appear only in All. Bonus kana earns 15; extra overlap earns 5 per additional syllable or character. Marathon adds 5 per valid word. Statistics reset for each new game. Save words to a local review list and export/import it in Settings.</p>
-    <p class="small">JLPT levels are community estimates. Categories are approximate dictionary-gloss filters. Name coverage is limited to dictionary entries, not an exhaustive list of famous people. Unknown submissions may be sent to the optional Jisho fallback; example lookups may use Tatoeba. Provider errors are shown and are never treated as proof that a word is invalid.</p>
-  </div></dialog>
-  <dialog id="kanjiDialog" aria-labelledby="kanjiTitle"><div class="dialog-head"><h2 id="kanjiTitle">Kanji details</h2><button class="close" data-close type="button" aria-label="Close kanji details">×</button></div><div class="dialog-body" id="kanjiBody"></div></dialog>
-  <dialog id="reviewDialog" aria-labelledby="reviewTitle"><div class="dialog-head"><h2 id="reviewTitle">Your review list</h2><button class="close" data-close type="button" aria-label="Close review list">×</button></div><div class="dialog-body" id="reviewBody"></div></dialog>
-</div>`;
+renderShiritoriShell($("shiritoriRoot"));
 
 mountStudyControls();
 bind($("wordInput"), { IMEMode: true });
 function applyAccessibility() {
   const display = game?.settings || settings;
-  applyJapaneseFont(display.font, generation);
+  applyJapaneseFont(display.font, String(generation));
   document.documentElement.dataset.contrast = String(display.contrast);
-  document.documentElement.style.setProperty("--scale", { normal: 1, large: 1.15, larger: 1.3 }[display.fontSize] || 1);
+  document.documentElement.style.setProperty(
+    "--scale",
+    String({ normal: 1, large: 1.15, larger: 1.3 }[display.fontSize] || 1),
+  );
 }
 applyAccessibility();
 function syncModePills() {
-  for (const pill of document.querySelectorAll("#modePills .mode-pill")) pill.setAttribute("aria-pressed", String(pill.dataset.mode === $("setting-mode").value));
+  for (const pill of document.querySelectorAll("#modePills .mode-pill"))
+    pill.setAttribute("aria-pressed", String(pill.dataset.mode === $("setting-mode").value));
 }
 function populateSettings() {
   for (const node of document.querySelectorAll("[data-setting]")) {
@@ -196,10 +151,16 @@ function syncAvailability() {
     players: $("setting-opponent").value !== "local" ? "Choose local players." : "",
     timer: mode !== "timed" ? "Used in Timed mode." : "",
     hints: forcedHints ? "Hint availability is determined by this mode." : "",
-    hintLimit: forcedHints || $("setting-hints").value !== "limited" ? "Choose limited hints outside a fixed-hint mode." : "",
+    hintLimit:
+      forcedHints || $("setting-hints").value !== "limited" ? "Choose limited hints outside a fixed-hint mode." : "",
     reveal: mode === "relaxed" ? "Relaxed mode allows unlimited reveals." : "",
-    revealLimit: mode === "relaxed" ? "Relaxed mode allows unlimited reveals." : !$("setting-reveal").checked ? "Allow Reveal Answer to set a limit." : "",
-    voicing: mode === "kanji" ? "Kana voicing does not affect kanji connections." : ""
+    revealLimit:
+      mode === "relaxed"
+        ? "Relaxed mode allows unlimited reveals."
+        : !$("setting-reveal").checked
+          ? "Allow Reveal Answer to set a limit."
+          : "",
+    voicing: mode === "kanji" ? "Kana voicing does not affect kanji connections." : "",
   };
   for (const control of document.querySelectorAll("[data-setting]")) {
     const key = control.dataset.setting;
@@ -222,9 +183,15 @@ function saveSettings() {
   for (const node of document.querySelectorAll("[data-setting]")) {
     const key = node.dataset.setting;
     if (node.disabled || node.closest("fieldset")?.disabled) continue;
-    next[key] = node.type === "checkbox" ? node.checked : typeof defaults[key] === "number" ? Number(node.value) : node.value;
+    next[key] =
+      node.type === "checkbox" ? node.checked : typeof defaults[key] === "number" ? Number(node.value) : node.value;
   }
-  try { validateSettings(next); } catch (error) { showSettingsError(error.message); return; }
+  try {
+    validateSettings(next);
+  } catch (error) {
+    showSettingsError(error.message);
+    return;
+  }
   settings = next;
   applyAccessibility();
   renderChain();
@@ -251,28 +218,37 @@ $("settingsForm").addEventListener("submit", (event) => {
   saveSettings();
 });
 populateSettings();
-$("settingsPanel").querySelector("summary").addEventListener("click", () => {
-  if (!$("settingsPanel").open) populateSettings();
-});
+$("settingsPanel")
+  .querySelector("summary")
+  .addEventListener("click", () => {
+    if (!$("settingsPanel").open) populateSettings();
+  });
 $("helpButton").addEventListener("click", () => $("helpDialog").showModal());
-document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
+document
+  .querySelectorAll("[data-close]")
+  .forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
 
 async function api(path, params = {}) {
-  const url = new URL(`${API_BASE}${path}`);
-  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, typeof value === "string" ? value : JSON.stringify(value));
-  const response = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { Accept: "application/json" } });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || "The dictionary is unavailable. Please retry.");
-  return payload;
+  const query = Object.fromEntries(
+    Object.entries(params).map(([key, value]) => [key, typeof value === "string" ? value : JSON.stringify(value)]),
+  );
+  return fetchJSON(path, {
+    params: query,
+    timeoutMs: 15000,
+    fallbackError: "The dictionary is unavailable. Please retry.",
+  });
 }
 async function roundWords(query = "") {
   const randomOpening = !query && !game.chain.length;
   const params = {
-    rules: game.rules, ...(query ? { q: query, examples: "0" } : {
-      ...(game.chain.length ? { prev: { word: game.chain.at(-1).word, reading: game.chain.at(-1).reading } } : {}),
-      used: randomOpening ? recentStarters : game.chain.map((w) => w.id),
-      ...(randomOpening ? { random: "1" } : {})
-    })
+    rules: game.rules,
+    ...(query
+      ? { q: query, examples: "0" }
+      : {
+          ...(game.chain.length ? { prev: { word: game.chain.at(-1).word, reading: game.chain.at(-1).reading } } : {}),
+          used: randomOpening ? recentStarters : game.chain.map((w) => w.id),
+          ...(randomOpening ? { random: "1" } : {}),
+        }),
   };
   const data = await api("/api/shiritori/words", params);
   if (randomOpening && !data.items.length && recentStarters.length) {
@@ -285,10 +261,19 @@ function enableControls() {
   const playable = humanTurn() && !busy;
   for (const id of ["wordInput", "playWord"]) $(id).disabled = !playable;
   const player = game?.players[game.turn];
-  $("hintButton").disabled = !playable || game.rules.hints === "disabled" || game.rules.hints === "limited" && player.hints >= game.rules.hintLimit;
+  $("hintButton").disabled =
+    !playable ||
+    game.rules.hints === "disabled" ||
+    (game.rules.hints === "limited" && player.hints >= game.rules.hintLimit);
   $("revealButton").disabled = !playable || !assistAllowed(game.rules, player, "reveal");
-  $("hintButton").textContent = game?.active && game.rules.hints === "limited" ? `Hint · ${Math.max(0, game.rules.hintLimit - player.hints)} left` : "Hint";
-  $("revealButton").textContent = game?.active && game.rules.reveal && game.rules.mode !== "relaxed" ? `Reveal Answer · ${Math.max(0, game.rules.revealLimit - player.reveals)} left` : "Reveal Answer";
+  $("hintButton").textContent =
+    game?.active && game.rules.hints === "limited"
+      ? `Hint · ${Math.max(0, game.rules.hintLimit - player.hints)} left`
+      : "Hint";
+  $("revealButton").textContent =
+    game?.active && game.rules.reveal && game.rules.mode !== "relaxed"
+      ? `Reveal Answer · ${Math.max(0, game.rules.revealLimit - player.reveals)} left`
+      : "Reveal Answer";
   $("passButton").disabled = !playable;
   $("newGame").disabled = busy;
   $("stopGame").hidden = !game?.active;
@@ -296,27 +281,64 @@ function enableControls() {
 function render() {
   const rules = game?.rules || parseRules(settings);
   const players = game?.settings || settings;
-  $("modeBadge").textContent = `${modes[rules.mode]} · ${players.opponent === "computer" ? "vs. computer" : players.players === 1 ? "solo practice" : `${players.players} local players`}`;
+  $("modeBadge").textContent =
+    `${modes[rules.mode]} · ${players.opponent === "computer" ? "vs. computer" : players.players === 1 ? "solo practice" : `${players.players} local players`}`;
   $("newGame").textContent = game ? "New game →" : "Start game →";
   $("reviewCount").textContent = progress.review.length;
   const restrictedEndings = kanjiChain(rules);
-  $("ruleSummary").textContent = `${kanjiChain(rules) ? "Reuse the final kanji or kanji compound" : "Reuse the last syllable or more, or the final kanji / compound"}. No repeated words. ${restrictedEndings ? READING_ENDING_RULE : "Words ending in ん / ン are not accepted."}`;
-  $("entryNote").textContent = `Romaji converts to kana as you type. You can also use a Japanese keyboard.${restrictedEndings ? ` ${READING_ENDING_RULE}` : ""}`;
+  $("ruleSummary").textContent =
+    `${kanjiChain(rules) ? "Reuse the final kanji or kanji compound" : "Reuse the last syllable or more, or the final kanji / compound"}. No repeated words. ${restrictedEndings ? READING_ENDING_RULE : "Words ending in ん / ン are not accepted."}`;
+  $("entryNote").textContent =
+    `Romaji converts to kana as you type. You can also use a Japanese keyboard.${restrictedEndings ? ` ${READING_ENDING_RULE}` : ""}`;
   const stats = game?.stats || { words: 0, unique: new Set(), hints: 0, revealed: 0, longest: 0 };
-  $("stats").innerHTML = [[stats.words, "Words played"], [stats.longest, "Longest chain"], [stats.unique.size, "Unique words"], [stats.hints, "Hints used"], [stats.revealed, "Words revealed"], [game?.chain.length || 0, "Chain length"]]
-    .map(([value, label]) => `<div><strong>${value}</strong><span>${label}</span></div>`).join("");
+  setHTML(
+    $("stats"),
+    [
+      [stats.words, "Words played"],
+      [stats.longest, "Longest chain"],
+      [stats.unique.size, "Unique words"],
+      [stats.hints, "Hints used"],
+      [stats.revealed, "Words revealed"],
+      [game?.chain.length || 0, "Chain length"],
+    ]
+      .map(([value, label]) => `<div><strong>${value}</strong><span>${label}</span></div>`)
+      .join(""),
+  );
   if (game) {
-    $("scores").innerHTML = game.players.map((player, i) => `<div class="score-row ${game.active && game.turn === i ? "active" : ""}" data-player="${i % 6}"><span><i class="swatch" aria-hidden="true"></i>${game.active && game.turn === i ? "→ " : ""}${escape(player.name)}</span><strong>${player.score} <span class="small">pts</span></strong></div>`).join("");
+    setHTML(
+      $("scores"),
+      game.players
+        .map(
+          (player, i) =>
+            `<div class="score-row ${game.active && game.turn === i ? "active" : ""}" data-player="${i % 6}"><span data-i18n-scope><i class="swatch" aria-hidden="true"></i>${game.active && game.turn === i ? "→ " : ""}${escape(player.name)}</span><strong>${player.score} <span class="small" data-i18n-scope>pts</span></strong></div>`,
+        )
+        .join(""),
+    );
     const previous = game.chain.at(-1);
     if (previous) {
-      $("previousWord").innerHTML = japaneseHTML(previous.word, previous.reading);
+      setHTML($("previousWord"), japaneseHTML(previous.word, previous.reading));
       $("previousReading").textContent = `${previous.reading} · ${previous.meaning.split(";")[0]}`;
-      $("startOptions").innerHTML = startOptionList(previous, game.rules).map(({ text, size }) => `<li><span>${escape(text)}</span>${game.rules.bonus && size > 1 ? `<small>+${(size - 1) * 5}</small>` : ""}</li>`).join("");
+      setHTML(
+        $("startOptions"),
+        startOptionList(previous, game.rules)
+          .map(
+            ({ text, size }) =>
+              `<li><span>${escape(text)}</span>${game.rules.bonus && size > 1 ? `<small>+${(size - 1) * 5}</small>` : ""}</li>`,
+          )
+          .join(""),
+      );
     }
     const player = game.players[game.turn];
-    const turnText = player.computer ? "Computer is thinking…" : player.name === "You" ? "Your turn" : `${player.name}’s turn`;
+    const turnText = player.computer
+      ? "Computer is thinking…"
+      : player.name === "You"
+        ? "Your turn"
+        : `${player.name}’s turn`;
     $("turnLabel").textContent = game.active ? turnText : "Round complete";
-    $("bonusLabel").textContent = game.bonusKana && game.active ? `Bonus kana: ${game.bonusKana} · include it for +15 points` : `N5 → 10 pts · N1 → 50 pts${game.rules.bonus ? " · extra overlap +5" : ""}`;
+    $("bonusLabel").textContent =
+      game.bonusKana && game.active
+        ? `Bonus kana: ${game.bonusKana} · include it for +15 points`
+        : `N5 → 10 pts · N1 → 50 pts${game.rules.bonus ? " · extra overlap +5" : ""}`;
   }
   enableControls();
 }
@@ -324,7 +346,8 @@ const sharedChars = (previous, word) => {
   if (game && kanjiChain(game.rules)) {
     const before = [...previous.word];
     const after = [...word.word];
-    for (let n = Math.min(before.length, after.length - 1); n > 0; n--) if (before.slice(-n).join("") === after.slice(0, n).join("")) return n;
+    for (let n = Math.min(before.length, after.length - 1); n > 0; n--)
+      if (before.slice(-n).join("") === after.slice(0, n).join("")) return n;
     return 0;
   }
   const before = kana(previous.reading);
@@ -340,7 +363,7 @@ function renderChain() {
   let column = 0;
   let end = 0;
   const blocks = chain.map((word, i) => {
-    const shown = (w) => kanjiChain(game.rules) ? w.word : w.reading;
+    const shown = (w) => (kanjiChain(game.rules) ? w.word : w.reading);
     const length = [...shown(word)].length;
     const lane = i % 2;
     if (i) column += [...shown(chain[i - 1])].length - sharedChars(chain[i - 1], word);
@@ -349,15 +372,19 @@ function renderChain() {
     end = Math.max(end, column + length);
     const color = word.playerIndex === undefined ? "starter" : word.playerIndex % 6;
     const meaning = `${word.word !== word.reading ? `${word.word} · ` : ""}${word.meaning.split(";")[0]}`;
-    const score = word.points ? `+${word.points.total}${word.overlap?.text ? ` · ↔ ${escape(word.overlap.text)}` : ""}` : "Opening word";
+    const score = word.points
+      ? `+${word.points.total}${word.overlap?.text ? ` · ↔ ${escape(word.overlap.text)}` : ""}`
+      : "Opening word";
     const detail = word.points ? `${escape(word.player)} · ${score}` : score;
-    const gloss = settings.translations ? `<span class="chain-gloss" title="${escape(meaning)}">${escape(meaning)}</span>` : "";
-    return `<li class="lane-${lane}" data-player="${color}" style="--col:${column};--len:${length}"><button type="button" data-word-index="${i}" aria-label="Explore ${escape(word.word)}, ${escape(word.reading)}, ${detail}">${kanjiChain(game.rules) ? `<span class="chain-furi" lang="ja">${escape(word.reading)}</span>` : ""}<span class="chain-word" lang="ja">${escape(shown(word))}</span><span class="chain-meta">${score}</span></button>${gloss}</li>`;
+    const gloss = settings.translations
+      ? `<span class="chain-gloss" title="${escape(meaning)}">${escape(meaning)}</span>`
+      : "";
+    return `<li class="lane-${lane}" data-player="${color}" style="--col:${column};--len:${length}"><button type="button" data-word-index="${i}" aria-label="Explore ${escape(word.word)}, ${escape(word.reading)}, ${detail}">${kanjiChain(game.rules) ? `<span class="chain-furi" lang="ja">${escape(word.reading)}</span>` : ""}<span class="chain-word" lang="ja">${escape(shown(word))}</span><span class="chain-meta" data-i18n-scope>${score}</span></button>${gloss}</li>`;
   });
   $("chain").style.setProperty("--cols", end);
   $("chain").classList.toggle("with-gloss", Boolean(settings.translations));
   $("chain").classList.toggle("kanji-chain", Boolean(game && kanjiChain(game.rules)));
-  $("chain").innerHTML = blocks.join("");
+  setHTML($("chain"), blocks.join(""));
   $("chain").scrollLeft = $("chain").scrollWidth;
 }
 function deadlineTick() {
@@ -372,41 +399,79 @@ function expired() {
   return !game?.active;
 }
 function resetEntry() {
-  selected = null; checkedText = ""; candidates = [];
-  $("wordInput").value = ""; $("choices").replaceChildren();
-  $("hintPanel").hidden = true; $("hintPanel").textContent = "";
+  selected = null;
+  checkedText = "";
+  candidates = [];
+  $("wordInput").value = "";
+  $("choices").replaceChildren();
+  $("hintPanel").hidden = true;
+  $("hintPanel").textContent = "";
 }
 function startError(message = "") {
   $("startError").hidden = !message;
   $("startError").textContent = message;
 }
 async function startGame() {
-  if (game?.active && !await confirmAction("End this round and start a new game? Current round statistics will reset. Saved words remain in your notebook.", { confirmLabel: "New game" })) return;
+  if (
+    game?.active &&
+    !(await confirmAction(
+      "End this round and start a new game? Current round statistics will reset. Saved words remain in your notebook.",
+      { confirmLabel: "New game" },
+    ))
+  )
+    return;
   let rules;
   startError();
   try {
     rules = parseRules(settings);
-  } catch (error) { startError(error.message); return; }
+  } catch (error) {
+    startError(error.message);
+    return;
+  }
   const token = ++generation;
   sessionView.start();
   const doneLoading = beginLoading($("newGame"), $("previousWord").closest(".card"));
   clearInterval(timerHandle);
   game = {
-    rules, settings: { ...settings }, active: false, turn: 0, chain: [], bonusKana: "", deadline: 0, hintStep: 0,
+    rules,
+    settings: { ...settings },
+    active: false,
+    turn: 0,
+    chain: [],
+    bonusKana: "",
+    deadline: 0,
+    hintStep: 0,
     rng: createSeededRandom(`${Date.now()}-${Math.random()}`),
     knownBefore: new Set(progress.known),
-    players: settings.opponent === "computer"
-      ? [{ name: "You", score: 0, hints: 0, reveals: 0 }, { name: "Computer", score: 0, hints: 0, reveals: 0, computer: true }]
-      : Array.from({ length: settings.players }, (_, i) => ({ name: `Player ${i + 1}`, score: 0, hints: 0, reveals: 0 })),
-    stats: { words: 0, unique: new Set(), longest: 0, hints: 0, revealed: 0, missed: {} }
+    players:
+      settings.opponent === "computer"
+        ? [
+            { name: "You", score: 0, hints: 0, reveals: 0 },
+            { name: "Computer", score: 0, hints: 0, reveals: 0, computer: true },
+          ]
+        : Array.from({ length: settings.players }, (_, i) => ({
+            name: `Player ${i + 1}`,
+            score: 0,
+            hints: 0,
+            reveals: 0,
+          })),
+    stats: { words: 0, unique: new Set(), longest: 0, hints: 0, revealed: 0, missed: {} },
   };
   applyAccessibility();
   if (rules.mode === "beginner" && !study.furigana) $("furiganaQuickToggle").click();
-  resetEntry(); detailGeneration++; detailWord = null;
-  $("detailBody").textContent = "Your word notebook will appear here.";
-  $("results").hidden = true; $("retryComputer").hidden = true;
-  $("previousWord").textContent = "…"; $("previousReading").textContent = ""; $("startOptions").replaceChildren();
-  busy = true; render(); renderChain(); info("Finding your opening word…");
+  resetEntry();
+  detailGeneration++;
+  detailWord = null;
+  setHTML($("detailBody"), "<span data-i18n-scope>Your word notebook will appear here.</span>");
+  $("results").hidden = true;
+  $("retryComputer").hidden = true;
+  $("previousWord").textContent = "…";
+  $("previousReading").textContent = "";
+  $("startOptions").replaceChildren();
+  busy = true;
+  render();
+  renderChain();
+  info("Finding your opening word…");
   try {
     const words = await roundWords();
     if (generation !== token) return;
@@ -419,7 +484,10 @@ async function startGame() {
       game.chain = [{ ...candidate, player: "Starter" }];
       following = await nextWords();
       if (generation !== token) return;
-      if (following.length) { starter = candidate; break; }
+      if (following.length) {
+        starter = candidate;
+        break;
+      }
     }
     if (!starter) {
       game.chain = [];
@@ -427,15 +495,25 @@ async function startGame() {
     }
     game.stats.longest = 1;
     recentStarters = [...recentStarters.filter((id) => id !== starter.id), starter.id].slice(-12);
-    try { sessionStorage.setItem("nihon:shiritori-starters", JSON.stringify(recentStarters)); }
-    catch (error) { console.warn("Could not save recent opening words.", error); }
-    game.active = true; busy = false;
+    try {
+      sessionStorage.setItem("nihon:shiritori-starters", JSON.stringify(recentStarters));
+    } catch (error) {
+      console.warn("Could not save recent opening words.", error);
+    }
+    game.active = true;
+    busy = false;
     $("settingsPanel").open = false;
-    renderChain(); showWord(starter); speakJapanese(starter.reading); beginTurn(following);
+    renderChain();
+    showWord(starter);
+    speakJapanese(starter.reading);
+    beginTurn(following);
     info(`Your opening word is ${starter.word} (${starter.reading}). Continue with ${requiredStart(starter, rules)}.`);
   } catch (error) {
     if (generation !== token) return;
-    game.active = false; busy = false; render(); info("");
+    game.active = false;
+    busy = false;
+    render();
+    info("");
     sessionView.setup();
     startError(error.message);
   } finally {
@@ -446,7 +524,10 @@ function beginTurn(preloaded = null) {
   resetEntry();
   game.hintStep = 0;
   game.nextWords = preloaded;
-  game.bonusKana = game.rules.bonusKana && game.stats.words % 3 === 2 ? [..."あいうえおかきくけこさしすせそ"][Math.floor(game.rng() * 15)] : "";
+  game.bonusKana =
+    game.rules.bonusKana && game.stats.words % 3 === 2
+      ? [..."あいうえおかきくけこさしすせそ"][Math.floor(game.rng() * 15)]
+      : "";
   game.deadline = game.rules.mode === "timed" ? Date.now() + game.rules.timer * 1000 : 0;
   clearInterval(timerHandle);
   $("timer").classList.remove("urgent");
@@ -468,21 +549,28 @@ async function nextWords() {
 async function prepareHumanTurn() {
   const token = generation;
   const doneLoading = beginLoading([$("playWord"), $("hintButton"), $("revealButton")], $("choices"));
-  busy = true; enableControls();
+  busy = true;
+  enableControls();
   try {
     const words = await nextWords();
     if (generation !== token || expired()) return;
     game.nextWords = words;
     if (!words.length) {
-      finish("no available continuation", `No unused dictionary word matches ${requiredStart(game.chain.at(-1), game.rules)} and the active rules. The chain ends without a loser. Try broader filters for the next game.`, null);
+      finish(
+        "no available continuation",
+        `No unused dictionary word matches ${requiredStart(game.chain.at(-1), game.rules)} and the active rules. The chain ends without a loser. Try broader filters for the next game.`,
+        null,
+      );
       return;
     }
-    busy = false; enableControls();
+    busy = false;
+    enableControls();
     $("wordInput").focus();
     if (game.rules.mode === "beginner") assist(false, true);
   } catch (error) {
     if (generation !== token) return;
-    busy = false; enableControls();
+    busy = false;
+    enableControls();
     info(`${error.message} You can still try a word or retry with Hint.`, true);
   } finally {
     await doneLoading();
@@ -492,12 +580,18 @@ async function computerTurn() {
   if (!game?.active || !game.players[game.turn].computer || busy) return;
   const token = generation;
   const doneLoading = beginLoading($("retryComputer"), $("choices"));
-  busy = true; $("retryComputer").hidden = true; render();
+  busy = true;
+  $("retryComputer").hidden = true;
+  render();
   try {
     const words = await nextWords();
     if (generation !== token || expired()) return;
     if (!words.length) {
-      finish("no available continuation", `The computer has no unused dictionary word matching ${requiredStart(game.chain.at(-1), game.rules)} and the active rules.`, game.turn);
+      finish(
+        "no available continuation",
+        `The computer has no unused dictionary word matching ${requiredStart(game.chain.at(-1), game.rules)} and the active rules.`,
+        game.turn,
+      );
       return;
     }
     const word = words[Math.floor(game.rng() * words.length)];
@@ -505,7 +599,11 @@ async function computerTurn() {
     accept(word);
   } catch (error) {
     if (generation !== token) return;
-    finish("dictionary unavailable", `${error.message} The round ended because the computer's next word could not be loaded. No winner or loser is declared.`, null);
+    finish(
+      "dictionary unavailable",
+      `${error.message} The round ended because the computer's next word could not be loaded. No winner or loser is declared.`,
+      null,
+    );
   } finally {
     await doneLoading();
   }
@@ -514,53 +612,90 @@ function reject(result) {
   info(`${result.reason}: ${result.message}`, true);
   const start = requiredStart(game.chain.at(-1), game.rules);
   game.stats.missed[start] = (game.stats.missed[start] || 0) + 1;
-  if (game.rules.mode === "sudden" || game.rules.mode === "relaxed" && result.reason === "invalid connection") finish(result.reason, result.message, game.turn);
+  if (game.rules.mode === "sudden" || (game.rules.mode === "relaxed" && result.reason === "invalid connection"))
+    finish(result.reason, result.message, game.turn);
 }
 function resolveWord(word) {
   const result = validateWord(word, game.chain.at(-1), game.chain, game.rules);
-  if (!result.ok) { reject(result); return; }
+  if (!result.ok) {
+    reject(result);
+    return;
+  }
   accept(word, result);
 }
 async function submit() {
   if (!humanTurn() || busy || expired()) return;
   const text = toKana($("wordInput").value.trim(), { IMEMode: false }).normalize("NFKC");
   $("wordInput").value = text;
-  if (!text) { info("Enter a word first.", true); return; }
+  if (!text) {
+    info("Enter a word first.", true);
+    return;
+  }
   const endingError = wordEndingError(text, game.rules);
   if (endingError) {
-    reject({ reason: "vocabulary rule", message: `${endingError} Choose a different word.` }); return;
+    reject({ reason: "vocabulary rule", message: `${endingError} Choose a different word.` });
+    return;
   }
   if (!/^[\p{Script=Han}ぁ-ゖァ-ヶー]+$/u.test(text) || /[をヲ]/.test(text)) {
-    reject({ reason: "vocabulary rule", message: "Use a Japanese dictionary word without spaces, punctuation, を or ヲ." }); return;
+    reject({
+      reason: "vocabulary rule",
+      message: "Use a Japanese dictionary word without spaces, punctuation, を or ヲ.",
+    });
+    return;
   }
-  if (selected && checkedText === text) { resolveWord(selected); return; }
+  if (selected && checkedText === text) {
+    resolveWord(selected);
+    return;
+  }
   const token = generation;
   const doneLoading = beginLoading($("playWord"), $("choices"));
-  busy = true; enableControls(); info("Checking the dictionary…");
+  busy = true;
+  enableControls();
+  info("Checking the dictionary…");
   try {
     candidates = await roundWords(text);
     if (generation !== token || expired()) return;
     checkedText = text;
-    if (candidates.length && kanjiChain(game.rules) && !(candidates = candidates.filter((word) => [...word.word].every(isKanji))).length) {
-      reject({ reason: "vocabulary rule", message: "Kanji chains only accept words written entirely in kanji." }); return;
+    if (candidates.length && kanjiChain(game.rules)) {
+      candidates = candidates.filter((word) => [...word.word].every(isKanji));
+      if (!candidates.length) {
+        reject({ reason: "vocabulary rule", message: "Kanji chains only accept words written entirely in kanji." });
+        return;
+      }
     }
-    if (!candidates.length) { reject({ reason: "not in accepted vocabulary", message: "No exact dictionary spelling or reading was found, including the enabled fallback. Check your spelling." }); return; }
+    if (!candidates.length) {
+      reject({
+        reason: "not in accepted vocabulary",
+        message:
+          "No exact dictionary spelling or reading was found, including the enabled fallback. Check your spelling.",
+      });
+      return;
+    }
     const legal = candidates.filter((word) => validateWord(word, game.chain.at(-1), game.chain, game.rules).ok);
-    if (!legal.length) { const { ok, ...result } = validateWord(candidates[0], game.chain.at(-1), game.chain, game.rules); reject(result); return; }
+    if (!legal.length) {
+      const { ok, ...result } = validateWord(candidates[0], game.chain.at(-1), game.chain, game.rules);
+      reject(result);
+      return;
+    }
     candidates = legal;
-    const requiresConfirmation = candidates.length > 1 || kanjiChain(game.rules) && ![...text].some(isKanji);
+    const requiresConfirmation = candidates.length > 1 || (kanjiChain(game.rules) && ![...text].some(isKanji));
     if (requiresConfirmation) {
-      $("choices").innerHTML = `<p class="small">Pick the spelling and reading you mean; it is played right away.</p>${candidates.map((word, i) => `<button type="button" data-choice="${i}"><strong lang="ja">${escape(word.word)}</strong> · ${escape(word.reading)}<br><span class="small">${escape(word.meaning)} · ${word.level ? `N${word.level}` : "Unrated"}</span></button>`).join("")}`;
+      setHTML(
+        $("choices"),
+        `<p class="small" data-i18n-scope>Pick the spelling and reading you mean; it is played right away.</p>${candidates.map((word, i) => `<button type="button" data-choice="${i}"><strong lang="ja">${escape(word.word)}</strong> · ${escape(word.reading)}<br><span class="small">${escape(word.meaning)} · ${word.level ? `N${word.level}` : "Unrated"}</span></button>`).join("")}`,
+      );
       info("Choose the dictionary entry below to play it.");
     } else {
       selected = candidates[0];
       resolveWord(selected);
     }
-  } catch (error) { if (generation === token) info(error.message, true); }
-  finally {
+  } catch (error) {
+    if (generation === token) info(error.message, true);
+  } finally {
     await doneLoading();
     if (generation === token) {
-      busy = false; enableControls();
+      busy = false;
+      enableControls();
       if (humanTurn()) $("wordInput").focus();
       else if (game?.active) computerTurn();
     }
@@ -580,21 +715,33 @@ function accept(word, result = validateWord(word, game.chain.at(-1), game.chain,
   game.stats.words++;
   game.stats.unique.add(word.id);
   game.stats.longest = game.chain.length;
-  if (!progress.known.includes(word.id)) { progress.known.push(word.id); persist(progressKey, progress); }
-  renderChain(); showWord(played); speakJapanese(word.reading);
-  info(`${word.word} · ${word.reading} — ${word.meaning.split(";")[0]}. +${points.total} points (base ${points.base}${points.overlapBonus ? ` + overlap ${points.overlapBonus}` : ""}${points.kanaBonus ? " + bonus kana 15" : ""}${points.marathonBonus ? " + Marathon 5" : ""}).`);
+  if (!progress.known.includes(word.id)) {
+    progress.known.push(word.id);
+    persist(progressKey, progress);
+  }
+  renderChain();
+  showWord(played);
+  speakJapanese(word.reading);
+  info(
+    `${word.word} · ${word.reading} — ${word.meaning.split(";")[0]}. +${points.total} points (base ${points.base}${points.overlapBonus ? ` + overlap ${points.overlapBonus}` : ""}${points.kanaBonus ? " + bonus kana 15" : ""}${points.marathonBonus ? " + Marathon 5" : ""}).`,
+  );
   game.passes = 0;
   advanceTurn();
 }
 // Give the player time to hear the word just played before the computer answers.
 function advanceTurn(preloaded = null) {
   game.turn = (game.turn + 1) % game.players.length;
-  if (!game.players[game.turn].computer) { beginTurn(preloaded); return; }
+  if (!game.players[game.turn].computer) {
+    beginTurn(preloaded);
+    return;
+  }
   const token = generation;
-  busy = true; enableControls();
+  busy = true;
+  enableControls();
   setTimeout(() => {
     if (generation !== token || !game?.active) return;
-    busy = false; beginTurn(preloaded);
+    busy = false;
+    beginTurn(preloaded);
   }, 2200);
 }
 function pass() {
@@ -606,74 +753,141 @@ function pass() {
     return;
   }
   const preloaded = game.nextWords;
-  info(`${player.name} passed. ${game.players[(game.turn + 1) % game.players.length].name} continues from the same word.`);
+  info(
+    `${player.name} passed. ${game.players[(game.turn + 1) % game.players.length].name} continues from the same word.`,
+  );
   advanceTurn(preloaded);
 }
 async function assist(reveal, automatic = false) {
   if (!humanTurn() || busy || expired()) return;
   const player = game.players[game.turn];
-  if (reveal ? !assistAllowed(game.rules, player, "reveal") : game.rules.hints === "disabled" || game.rules.hints === "limited" && player.hints >= game.rules.hintLimit) return;
+  if (
+    reveal
+      ? !assistAllowed(game.rules, player, "reveal")
+      : game.rules.hints === "disabled" || (game.rules.hints === "limited" && player.hints >= game.rules.hintLimit)
+  )
+    return;
   const token = generation;
   const doneLoading = beginLoading([$("hintButton"), $("revealButton")], $("choices"));
-  busy = true; enableControls();
+  busy = true;
+  enableControls();
   try {
     const words = await nextWords();
     if (generation !== token || expired()) return;
     game.nextWords = words;
     if (!words.length) {
-      finish("no available continuation", `No unused dictionary word matches ${requiredStart(game.chain.at(-1), game.rules)} and the active rules. The chain ends without a loser. Try broader filters for the next game.`, null);
+      finish(
+        "no available continuation",
+        `No unused dictionary word matches ${requiredStart(game.chain.at(-1), game.rules)} and the active rules. The chain ends without a loser. Try broader filters for the next game.`,
+        null,
+      );
       return;
     }
     const word = words[0];
     $("hintPanel").hidden = false;
     if (reveal) {
-      game.stats.revealed++; player.reveals++;
+      game.stats.revealed++;
+      player.reveals++;
       $("hintPanel").textContent = `${word.word} · ${word.reading} — ${word.meaning}`;
       $("wordInput").value = word.word;
-      checkedText = $("wordInput").value; selected = word;
+      checkedText = $("wordInput").value;
+      selected = word;
       $("choices").replaceChildren();
     } else {
-      player.hints++; game.stats.hints++;
+      player.hints++;
+      game.stats.hints++;
       const letters = [...word.reading];
-      const partial = letters.map((c, i) => i === 0 || i === letters.length - 1 && letters.length > 2 ? c : "_").join(" ");
+      const partial = letters
+        .map((c, i) => (i === 0 || (i === letters.length - 1 && letters.length > 2) ? c : "_"))
+        .join(" ");
       const messages = [
         `First kana: ${word.reading[0]}`,
         `A possible word has ${morae(word.reading)} morae.`,
-        `Hidden reading: ${partial}`
+        `Hidden reading: ${partial}`,
       ];
-      $("hintPanel").textContent = `${automatic ? "Beginner hint · " : ""}${messages[game.hintStep++ % messages.length]}`;
+      $("hintPanel").textContent =
+        `${automatic ? "Beginner hint · " : ""}${messages[game.hintStep++ % messages.length]}`;
     }
     render();
-  } catch (error) { if (generation === token) info(error.message, true); }
-  finally { await doneLoading(); if (generation === token) { busy = false; enableControls(); if (humanTurn()) $("wordInput").focus(); } }
+  } catch (error) {
+    if (generation === token) info(error.message, true);
+  } finally {
+    await doneLoading();
+    if (generation === token) {
+      busy = false;
+      enableControls();
+      if (humanTurn()) $("wordInput").focus();
+    }
+  }
 }
 function finish(reason, explanation, loser = null) {
   if (!game?.active) return;
-  game.active = false; generation++; busy = false; game.deadline = 0;
+  game.active = false;
+  generation++;
+  busy = false;
+  game.deadline = 0;
   info("Round complete — see the results below.");
-  clearInterval(timerHandle); $("timer").textContent = "Round ended"; $("choices").replaceChildren(); $("retryComputer").hidden = true;
-  const title = loser === null ? "A chain worth remembering" : game.players.length === 1 ? "Round lost" : game.players[loser].computer ? "You win!" : `${game.players[loser].name} ${game.players[loser].name === "You" ? "lose" : "loses"}`;
-  const winners = loser === null ? "" : game.players.filter((_, i) => i !== loser).map((p) => p.name).join(", ");
+  clearInterval(timerHandle);
+  $("timer").textContent = "Round ended";
+  $("choices").replaceChildren();
+  $("retryComputer").hidden = true;
+  const title =
+    loser === null
+      ? "A chain worth remembering"
+      : game.players.length === 1
+        ? "Round lost"
+        : game.players[loser].computer
+          ? "You win!"
+          : `${game.players[loser].name} ${game.players[loser].name === "You" ? "lose" : "loses"}`;
+  const winners =
+    loser === null
+      ? ""
+      : game.players
+          .filter((_, i) => i !== loser)
+          .map((p) => p.name)
+          .join(", ");
   const discoveries = game.chain.filter((word, i, list) => list.findIndex((item) => item.id === word.id) === i);
-  const missed = Object.entries(game.stats.missed).sort((a, b) => b[1] - a[1]).map(([k, count]) => `${escape(k)} (${count})`).join(" · ");
-  $("results").innerHTML = `<span class="eyebrow">${escape(reason)}</span><h2>${title}</h2><p>${escape(explanation)}${winners ? ` Winner${game.players.length > 2 ? "s" : ""}: ${escape(winners)}.` : ""}</p><p class="small">${game.stats.words} words played · ${game.stats.unique.size} unique words · longest chain ${game.stats.longest}<br>${game.stats.hints} hints · ${game.stats.revealed} reveals${missed ? `<br>Starting kana to practice: ${missed}` : ""}</p><h3>Words in this round</h3><p class="small">${discoveries.length ? "Tap a word to revisit it and save it for later." : "No words were played this round."}</p><div class="discovery-list">${discoveries.map((word) => `<button type="button" data-player="${word.playerIndex === undefined ? "starter" : word.playerIndex % 6}" data-word-index="${game.chain.indexOf(word)}"><strong>${escape(word.word)}</strong>${escape(word.reading)}<br><span class="small">${escape(word.meaning.split(";")[0])}</span></button>`).join("")}</div>`;
-  mountGameExport($("results"), () => ({ title: "Shiritori", filename: "shiritori", chain: discoveries.map((word) => ({ ...word, meaning: word.meaning.split(";")[0] })) }));
-  $("results").hidden = false; render(); sessionView.finish(); $("results").focus();
+  const missed = Object.entries(game.stats.missed)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, count]) => `${escape(k)} (${count})`)
+    .join(" · ");
+  setHTML(
+    $("results"),
+    `<span class="eyebrow" data-i18n-scope>${escape(reason)}</span><h2 data-i18n-scope>${title}</h2><p data-i18n-scope>${escape(explanation)}${winners ? ` Winner${game.players.length > 2 ? "s" : ""}: ${escape(winners)}.` : ""}</p><p class="small" data-i18n-scope>${game.stats.words} words played · ${game.stats.unique.size} unique words · longest chain ${game.stats.longest}<br>${game.stats.hints} hints · ${game.stats.revealed} reveals${missed ? `<br>Starting kana to practice: ${missed}` : ""}</p><h3 data-i18n-scope>Words in this round</h3><p class="small" data-i18n-scope>${discoveries.length ? "Tap a word to revisit it and save it for later." : "No words were played this round."}</p><div class="discovery-list">${discoveries.map((word) => `<button type="button" data-player="${word.playerIndex === undefined ? "starter" : word.playerIndex % 6}" data-word-index="${game.chain.indexOf(word)}"><strong>${escape(word.word)}</strong>${escape(word.reading)}<br><span class="small">${escape(word.meaning.split(";")[0])}</span></button>`).join("")}</div>`,
+  );
+  mountGameExport($("results"), () => ({
+    title: "Shiritori",
+    filename: "shiritori",
+    chain: discoveries.map((word) => ({ ...word, meaning: word.meaning.split(";")[0] })),
+  }));
+  $("results").hidden = false;
+  render();
+  sessionView.finish();
+  $("results").focus();
 }
 
 async function showWord(word) {
   detailWord = word;
   const token = ++detailGeneration;
-  $("detailBody").innerHTML = `<div class="detail-word">${japaneseHTML(word.word, word.reading)}${audioHTML(word.reading)}</div><div class="detail-reading" lang="ja">${escape(word.reading)} ${audioHTML(word.reading)}</div><div class="detail-tags"><span class="tag">${word.level ? `N${word.level}` : "Unrated"}</span><span class="tag">${morae(word.reading)} morae</span><span class="tag">${escape(word.partOfSpeech || "Part of speech unavailable")}</span></div><p>${escape(word.meaning)}</p><div class="kanji-buttons">${[...new Set([...word.word].filter(isKanji))].map((character) => `<button type="button" data-kanji="${character}" aria-label="Explore kanji ${character}">${character}</button>`).join("")}</div><div id="wordExample" class="small">Loading an example…</div><button type="button" id="saveWord">＋ Save to review</button><p class="small" style="margin-top:12px">${escape(word.source)} · <a href="https://www.edrdg.org/edrdg/licence.html" target="_blank" rel="noopener">Dictionary credits</a></p>`;
+  setHTML(
+    $("detailBody"),
+    `<div class="detail-word">${japaneseHTML(word.word, word.reading)}${audioHTML(word.reading)}</div><div class="detail-reading" lang="ja">${escape(word.reading)} ${audioHTML(word.reading)}</div><div class="detail-tags"><span class="tag" data-i18n>${word.level ? `N${word.level}` : "Unrated"}</span><span class="tag" data-i18n>${morae(word.reading)} morae</span><span class="tag">${escape(word.partOfSpeech || "Part of speech unavailable")}</span></div><p>${escape(word.meaning)}</p><div class="kanji-buttons">${[...new Set([...word.word].filter(isKanji))].map((character) => `<button type="button" data-kanji="${character}" aria-label="Explore kanji ${character}">${character}</button>`).join("")}</div><div id="wordExample" class="small">Loading an example…</div><button type="button" id="saveWord" data-i18n-scope>＋ Save to review</button><p class="small" style="margin-top:12px">${escape(word.source)} · <a href="https://www.edrdg.org/edrdg/licence.html" target="_blank" rel="noopener" data-i18n-scope>Dictionary credits</a></p>`,
+  );
   $("saveWord").addEventListener("click", () => {
     if (!progress.review.some((item) => item.word === word.word && item.reading === word.reading)) {
-      progress.review.push({ ...word, examples: exampleCache.get(`${word.word}:${word.reading}`) || word.examples || [] });
+      progress.review.push({
+        ...word,
+        examples: exampleCache.get(`${word.word}:${word.reading}`) || word.examples || [],
+      });
       persist(progressKey, progress);
     }
-    $("saveWord").textContent = "✓ Saved to review"; render();
+    $("saveWord").textContent = "✓ Saved to review";
+    render();
   });
   const key = `${word.word}:${word.reading}`;
-  const initial = exampleCache.get(key) || word.examples?.filter((e) => e.japanese?.includes(word.word) || e.japanese?.includes(word.reading));
+  const initial =
+    exampleCache.get(key) ||
+    word.examples?.filter((e) => e.japanese?.includes(word.word) || e.japanese?.includes(word.reading));
   const examples = await mountSentenceExamples($("wordExample"), word.word, initial);
   if (detailGeneration === token && examples.length) exampleCache.set(key, examples);
 }
@@ -681,31 +895,53 @@ let kanjiRequest = 0;
 async function showKanji(character, button) {
   const token = ++kanjiRequest;
   $("kanjiTitle").textContent = `${character} · Kanji details`;
-  $("kanjiBody").textContent = "Loading kanji…";
+  setHTML($("kanjiBody"), "<span data-i18n-scope>Loading kanji…</span>");
   if (!$("kanjiDialog").open) $("kanjiDialog").showModal();
   const doneLoading = beginLoading(button, $("kanjiBody"), "Looking up kanji…", { captureTrigger: false });
   try {
     const word = await api(`/api/kanji/${encodeURIComponent(character)}`);
     if (token !== kanjiRequest) return;
-    $("kanjiBody").innerHTML = `<div class="detail-word" lang="ja">${escape(character)}</div><p>${escape(word.meanings.join("; "))}</p><h3>On’yomi</h3><p>${readingsHTML(word.on_readings) || "No on’yomi listed."}</p><h3>Kun’yomi</h3><p>${readingsHTML(word.kun_readings) || "No kun’yomi listed."}</p><h3>Example words</h3>${word.examples.map((item) => `<p>${japaneseHTML(item.word, item.reading)} ${audioHTML(item.reading)}<br><span class="small">${escape(item.meanings.join("; "))}</span></p>`).join("") || "<p>No examples available.</p>"}`;
-  } catch (error) { if (token === kanjiRequest) $("kanjiBody").textContent = error.message; }
-  finally { await doneLoading(); }
+    setHTML(
+      $("kanjiBody"),
+      `<div class="detail-word" lang="ja">${escape(character)}</div><p>${escape(word.meanings.join("; "))}</p><h3 data-i18n-scope>On’yomi</h3><p>${readingsHTML(word.on_readings) || "No on’yomi listed."}</p><h3 data-i18n-scope>Kun’yomi</h3><p>${readingsHTML(word.kun_readings) || "No kun’yomi listed."}</p><h3 data-i18n-scope>Example words</h3>${word.examples.map((item) => `<p>${japaneseHTML(item.word, item.reading)} ${audioHTML(item.reading)}<br><span class="small">${escape(item.meanings.join("; "))}</span></p>`).join("") || "<p data-i18n-scope>No examples available.</p>"}`,
+    );
+  } catch (error) {
+    if (token === kanjiRequest) $("kanjiBody").textContent = error.message;
+  } finally {
+    await doneLoading();
+  }
 }
 function renderReview() {
-  $("reviewBody").innerHTML = progress.review.length ? `<p class="small">Saved on this browser. Export or import your list in Settings.</p>${progress.review.map((word, i) => `<div class="score-row"><span>${japaneseHTML(word.word, word.reading)}${audioHTML(word.reading)}<br><span class="small">${escape(word.meaning)}</span></span><button type="button" data-remove-review="${i}" aria-label="Remove ${escape(word.word)} from review">Remove</button></div>`).join("")}` : "<p>No saved words yet. Play a word, then choose Save to review in the word notebook.</p>";
+  setHTML(
+    $("reviewBody"),
+    progress.review.length
+      ? `<p class="small" data-i18n-scope>Saved on this browser. Export or import your list in Settings.</p>${progress.review.map((word, i) => `<div class="score-row"><span>${japaneseHTML(word.word, word.reading)}${audioHTML(word.reading)}<br><span class="small">${escape(word.meaning)}</span></span><button type="button" data-remove-review="${i}" aria-label="Remove ${escape(word.word)} from review" data-i18n-scope>Remove</button></div>`).join("")}`
+      : "<p data-i18n-scope>No saved words yet. Play a word, then choose Save to review in the word notebook.</p>",
+  );
 }
-$("reviewButton").addEventListener("click", () => { renderReview(); $("reviewDialog").showModal(); });
+$("reviewButton").addEventListener("click", () => {
+  renderReview();
+  $("reviewDialog").showModal();
+});
 $("reviewBody").addEventListener("click", (event) => {
   const button = event.target.closest("[data-remove-review]");
   if (!button) return;
-  progress.review.splice(Number(button.dataset.removeReview), 1); persist(progressKey, progress); renderReview(); render();
+  progress.review.splice(Number(button.dataset.removeReview), 1);
+  persist(progressKey, progress);
+  renderReview();
+  render();
 });
 $("exportReview").addEventListener("click", () => {
   const date = new Date();
   const stamp = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  const blob = new Blob([JSON.stringify({ version: 1, words: progress.review }, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify({ version: 1, words: progress.review }, null, 2)], {
+    type: "application/json",
+  });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a"); link.href = url; link.download = `shiritori-review-${stamp}.json`; link.click();
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `shiritori-review-${stamp}.json`;
+  link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 $("importReview").addEventListener("click", () => $("reviewFile").click());
@@ -715,38 +951,88 @@ $("reviewFile").addEventListener("change", async () => {
   try {
     if (file.size > 5_000_000) throw new Error("Review files must be smaller than 5 MB.");
     const data = JSON.parse(await file.text());
-    if (data.version !== 1 || !Array.isArray(data.words) || data.words.length > 5000
-        || data.words.some((w) => !w || !["word", "reading", "meaning"].every((key) => typeof w[key] === "string" && w[key].length > 0 && w[key].length <= (key === "meaning" ? 5000 : 100))
-          || !/^[ぁ-ゖー]+$/.test(kana(w.reading)))) throw new Error("Invalid review file. Import a Shiritori review export with valid words, readings and meanings.");
+    if (
+      data.version !== 1 ||
+      !Array.isArray(data.words) ||
+      data.words.length > 5000 ||
+      data.words.some(
+        (w) =>
+          !w ||
+          !["word", "reading", "meaning"].every(
+            (key) =>
+              typeof w[key] === "string" && w[key].length > 0 && w[key].length <= (key === "meaning" ? 5000 : 100),
+          ) ||
+          !/^[ぁ-ゖー]+$/.test(kana(w.reading)),
+      )
+    )
+      throw new Error("Invalid review file. Import a Shiritori review export with valid words, readings and meanings.");
     const merged = [...progress.review];
-    for (const word of data.words) if (!merged.some((w) => w.word === word.word && w.reading === word.reading)) {
-      merged.push({ word: word.word, reading: word.reading, meaning: word.meaning, source: typeof word.source === "string" ? word.source : "Imported review" });
-    }
-    progress.review = merged; persist(progressKey, progress); render(); showSettingsError(`Imported ${data.words.length} entries (duplicates merged).`);
-  } catch (error) { showSettingsError(error.message); }
+    for (const word of data.words)
+      if (!merged.some((w) => w.word === word.word && w.reading === word.reading)) {
+        merged.push({
+          word: word.word,
+          reading: word.reading,
+          meaning: word.meaning,
+          source: typeof word.source === "string" ? word.source : "Imported review",
+        });
+      }
+    progress.review = merged;
+    persist(progressKey, progress);
+    render();
+    showSettingsError(`Imported ${data.words.length} entries (duplicates merged).`);
+  } catch (error) {
+    showSettingsError(error.message);
+  }
   $("reviewFile").value = "";
 });
 $("resetProgress").addEventListener("click", async () => {
-  if (game?.active) { showSettingsError("End the current round before resetting progress."); return; }
-  if (!await confirmAction("Clear all discoveries and saved review words on this browser?", { confirmLabel: "Delete progress" })) return;
+  if (game?.active) {
+    showSettingsError("End the current round before resetting progress.");
+    return;
+  }
+  if (
+    !(await confirmAction("Clear all discoveries and saved review words on this browser?", {
+      confirmLabel: "Delete progress",
+    }))
+  )
+    return;
   progress = { known: [], review: [] };
-  persist(progressKey, progress); render(); showSettingsError("Progress reset.");
+  persist(progressKey, progress);
+  render();
+  showSettingsError("Progress reset.");
 });
 const sessionView = createSessionView({
-  settings: $("settingsPanel"), start: $("newGame"), results: $("results"), footer: true,
+  settings: $("settingsPanel"),
+  start: $("newGame"),
+  results: $("results"),
+  footer: true,
   play: [$("previousWord").closest(".card"), $("modeBadge")],
-  keepResults: [$("chain").closest("section"), document.querySelector(".sidebar")]
+  keepResults: [$("chain").closest("section"), document.querySelector(".sidebar")],
 });
 $("newGame").addEventListener("click", startGame);
-$("stopGame").addEventListener("click", () => finish("round stopped", "You ended this round. No winner or loser is declared.", null));
-$("wordForm").addEventListener("submit", (event) => { event.preventDefault(); if (!event.isComposing) submit(); });
-$("wordInput").addEventListener("keydown", (event) => { if (event.key === "Enter" && (event.isComposing || event.keyCode === 229)) event.preventDefault(); });
-$("wordInput").addEventListener("input", () => { selected = null; checkedText = ""; $("choices").replaceChildren(); });
+$("stopGame").addEventListener("click", () =>
+  finish("round stopped", "You ended this round. No winner or loser is declared.", null),
+);
+$("wordForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!event.isComposing) submit();
+});
+$("wordInput").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && (event.isComposing || event.keyCode === 229)) event.preventDefault();
+});
+$("wordInput").addEventListener("input", () => {
+  selected = null;
+  checkedText = "";
+  $("choices").replaceChildren();
+});
 $("hintButton").addEventListener("click", () => assist(false));
 $("passButton").addEventListener("click", pass);
 $("revealButton").addEventListener("click", () => assist(true));
 $("retryComputer").addEventListener("click", () => {
-  if (game.rules.mode === "timed") { game.deadline = Date.now() + game.rules.timer * 1000; timerHandle = setInterval(deadlineTick, 200); }
+  if (game.rules.mode === "timed") {
+    game.deadline = Date.now() + game.rules.timer * 1000;
+    timerHandle = setInterval(deadlineTick, 200);
+  }
   computerTurn();
 });
 $("choices").addEventListener("click", (event) => {
@@ -754,7 +1040,7 @@ $("choices").addEventListener("click", (event) => {
   if (!button || !humanTurn() || expired()) return;
   selected = candidates[Number(button.dataset.choice)];
   $("choices").replaceChildren();
-  resolveWord(selected, false);
+  resolveWord(selected);
   if (humanTurn()) $("wordInput").focus();
 });
 function exploreWord(event) {
@@ -767,13 +1053,20 @@ function exploreWord(event) {
 for (const id of ["chain", "results"]) {
   $(id).addEventListener("click", exploreWord);
   $(id).addEventListener("focusin", exploreWord);
-  $(id).addEventListener("pointerover", (event) => { if (event.pointerType === "mouse") exploreWord(event); });
+  $(id).addEventListener("pointerover", (event) => {
+    if (event.pointerType === "mouse") exploreWord(event);
+  });
 }
 $("detailBody").addEventListener("click", (event) => {
   const button = event.target.closest("[data-kanji]");
   if (button) showKanji(button.dataset.kanji, button);
 });
-window.addEventListener("pagehide", () => { generation++; detailGeneration++; clearInterval(timerHandle); });
+window.addEventListener("pagehide", () => {
+  generation++;
+  detailGeneration++;
+  clearInterval(timerHandle);
+});
 document.addEventListener("visibilitychange", deadlineTick);
 render();
+
 import { beginLoading } from "./request-loading.js";

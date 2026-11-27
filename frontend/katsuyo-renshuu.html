@@ -22,10 +22,10 @@
         <h1>Read the prompt. <br><span>Find the right form.</span></h1>
         <p>Find your rhythm. One word, one ending, one step closer to fluency.</p>
       </section>
-      <div id="notice" role="status" aria-live="polite"></div>
+      <div id="notice" role="status" aria-live="polite" data-i18n-scope></div>
       <div class="practice-layout">
         <div>
-          <section id="setup" class="panel">
+          <section id="setup" class="panel" data-i18n-scope>
             <div class="section-heading"><h2>Your practice, your pace</h2><span class="badge">活用練習</span></div>
             <p class="muted">Start small. Your missed forms will return more often as you practice.</p>
             <div class="settings-grid" id="quickSettings"></div>
@@ -45,52 +45,52 @@
             <p id="startError" class="start-error" role="alert"></p>
           </section>
           <section id="practice" class="panel question-panel" hidden aria-label="Conjugation question">
-            <div class="session-bar"><span id="sessionMode" class="badge"></span><span id="questionCount"></span><span id="clock" role="timer"></span><label class="check-label auto-advance"><input id="setting-autoAdvance" data-setting="autoAdvance" type="checkbox"> Advance automatically on right answer</label><button id="endButton" type="button">End session</button></div>
+            <div class="session-bar" data-i18n-scope><span id="sessionMode" class="badge"></span><span id="questionCount"></span><span id="clock" role="timer"></span><label class="check-label auto-advance"><input id="setting-autoAdvance" data-setting="autoAdvance" type="checkbox"> Advance automatically on right answer</label><button id="endButton" type="button">End session</button></div>
             <progress id="sessionProgress" max="10" value="0" aria-label="Session progress"></progress>
             <div id="questionBody"></div>
             <form id="answerForm">
               <div class="answer-feedback-slot">
                 <p id="correctCaption" class="correct-caption" role="status" aria-live="polite" hidden>Correct!</p>
-                <p id="answerNotice" class="incorrect-caption" role="status" aria-live="polite"></p>
+                <p id="answerNotice" class="incorrect-caption" role="status" aria-live="polite" data-i18n-scope></p>
               </div>
-              <label id="answerLabel" for="answerInput">Your answer</label>
+              <label id="answerLabel" for="answerInput" data-i18n-scope>Your answer</label>
               <input id="answerInput" lang="ja" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="160" aria-describedby="inputHelp answerNotice">
               <select id="answerChoice" hidden aria-label="Your answer"></select>
               <div id="answerOptions" class="study-pills" role="group" aria-label="Your answer" hidden></div>
-              <p id="inputHelp" class="muted small"></p>
-              <p class="practice-shortcut small muted">1–9: choose · H: hint · R: reveal · C: check · N: next (outside the typing field)</p>
+              <p id="inputHelp" class="muted small" data-i18n-scope></p>
+              <p class="practice-shortcut small muted" data-i18n-scope>1–9: choose · H: hint · R: reveal · C: check · N: next (outside the typing field)</p>
               <div class="answer-actions"><button id="checkButton" class="primary" type="submit">Check answer <kbd>↵</kbd></button><button id="hintButton" type="button">Hint</button><button id="revealButton" type="button">Reveal answer</button></div>
             </form>
-            <p id="hintText" class="hint" role="status" hidden></p>
-            <div id="feedback" role="status" aria-live="polite" tabindex="-1" hidden></div>
+            <p id="hintText" class="hint" role="status" data-i18n-scope hidden></p>
+            <div id="feedback" role="status" aria-live="polite" tabindex="-1" data-i18n-scope hidden></div>
             <div id="followup" class="answer-actions" hidden><button id="nextButton" type="button" class="primary">Next question →</button><button id="retryButton" type="button">Try again</button></div>
-            <details id="ruleCard" class="rule-card" hidden><summary>Rule card</summary><div id="ruleContent"></div></details>
+            <details id="ruleCard" class="rule-card" hidden><summary data-i18n-scope>Rule card</summary><div id="ruleContent"></div></details>
           </section>
           <section id="results" class="panel" hidden aria-labelledby="resultsTitle">
-            <p class="eyebrow">PRACTICE MAKES PROGRESS</p><h2 id="resultsTitle" tabindex="-1">Session complete</h2>
+            <p class="eyebrow" data-i18n-scope>PRACTICE MAKES PROGRESS</p><h2 id="resultsTitle" tabindex="-1" data-i18n-scope>Session complete</h2>
             <div id="resultContent"></div>
             <div class="replay-actions"><button id="restartButton" class="primary" type="button">Practice again →</button></div>
           </section>
         </div>
         <aside class="practice-sidebar">
           <section class="panel progress-panel">
-            <span class="eyebrow">YOUR LEARNING JOURNEY</span>
-            <div id="lifetime"></div>
-            <h3>Give these another try</h3><div id="weakForms"></div>
-            <details><summary>Missed-word log</summary><ul id="missedWords" class="small"></ul></details>
+            <span class="eyebrow" data-i18n-scope>YOUR LEARNING JOURNEY</span>
+            <div id="lifetime" data-i18n-scope></div>
+            <h3 data-i18n-scope>Give these another try</h3><div id="weakForms"></div>
+            <details><summary data-i18n-scope>Missed-word log</summary><ul id="missedWords" class="small"></ul></details>
           </section>
-          <section class="panel quiet-panel">
+          <section class="panel quiet-panel" data-i18n-scope>
             <h3>Understand the ending</h3>
             <p class="muted">Mistakes are part of learning. Take a hint, try again, and read the rule before moving on.</p>
             <a href="./#helper=katsuyo.html" target="_top">Explore the conjugation reference ↗</a>
           </section>
-          <button id="resetButton" class="text-button" type="button">Reset practice progress</button>
+          <button id="resetButton" class="text-button" type="button" data-i18n-scope>Reset practice progress</button>
         </aside>
       </div>
       <footer>Offline study bank · JLPT levels are estimates, not official assignments. Original teaching examples use standard modern Japanese. <a href="./data-sources.html">Data sources & licenses</a>.</footer>
     </main>
   </div>
-  <dialog id="kanjiDialog" aria-labelledby="kanjiTitle"><h2 id="kanjiTitle"></h2><div id="kanjiContent"></div><form method="dialog"><button>Close</button></form></dialog>
+  <dialog id="kanjiDialog" aria-labelledby="kanjiTitle"><h2 id="kanjiTitle"></h2><div id="kanjiContent"></div><form method="dialog" data-i18n-scope><button>Close</button></form></dialog>
   <noscript>Enable JavaScript to practice Japanese conjugations.</noscript>
   <script type="module" src="./src/conjugation-practice.js"></script>
 </body>

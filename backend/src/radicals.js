@@ -213,50 +213,61 @@ const RADICALS_214 = [
   ["歯", "は", "tooth"],
   ["竜", "りゅう", "dragon"],
   ["亀", "かめ", "turtle"],
-  ["龠", "やく", "flute"]
+  ["龠", "やく", "flute"],
 ];
 
 const RADICAL_BY_CHAR = new Map(
-  RADICALS_214.slice(1).map(([character, name, meaning], index) => [character, { number: index + 1, character, name, meaning }])
+  /** @type {Array<[string, string, string]>} */ (RADICALS_214.slice(1)).map(([character, name, meaning], index) => [
+    character,
+    { number: index + 1, character, name, meaning },
+  ]),
 );
 
 const COMPONENT_OVERLAY = {
-  "亻": { character: "亻", original: "人", name: "にんべん", meaning: "person" },
-  "氵": { character: "氵", original: "水", name: "さんずい", meaning: "water" },
-  "扌": { character: "扌", original: "手", name: "てへん", meaning: "hand" },
-  "忄": { character: "忄", original: "心", name: "りっしんべん", meaning: "heart" },
-  "艹": { character: "艹", original: "艸", name: "くさかんむり", meaning: "grass" },
-  "辶": { character: "辶", original: "辵", name: "しんにょう", meaning: "walk / road" },
+  亻: { character: "亻", original: "人", name: "にんべん", meaning: "person" },
+  氵: { character: "氵", original: "水", name: "さんずい", meaning: "water" },
+  扌: { character: "扌", original: "手", name: "てへん", meaning: "hand" },
+  忄: { character: "忄", original: "心", name: "りっしんべん", meaning: "heart" },
+  艹: { character: "艹", original: "艸", name: "くさかんむり", meaning: "grass" },
+  辶: { character: "辶", original: "辵", name: "しんにょう", meaning: "walk / road" },
   "⻌": { character: "辶", original: "辵", name: "しんにょう", meaning: "walk / road" },
-  "阝": { character: "阝", name: "こざとへん・おおざと", meaning: "hill / village" },
+  阝: { character: "阝", name: "こざとへん・おおざと", meaning: "hill / village" },
   "⻖": { character: "阝", original: "阜", name: "こざとへん", meaning: "mound / hill" },
   "⻏": { character: "阝", original: "邑", name: "おおざと", meaning: "village" },
-  "礻": { character: "礻", original: "示", name: "しめすへん", meaning: "altar / show" },
-  "衤": { character: "衤", original: "衣", name: "ころもへん", meaning: "clothes" },
-  "犭": { character: "犭", original: "犬", name: "けものへん", meaning: "dog / beast" },
+  礻: { character: "礻", original: "示", name: "しめすへん", meaning: "altar / show" },
+  衤: { character: "衤", original: "衣", name: "ころもへん", meaning: "clothes" },
+  犭: { character: "犭", original: "犬", name: "けものへん", meaning: "dog / beast" },
   "⺨": { character: "犭", original: "犬", name: "けものへん", meaning: "dog / beast" },
-  "刂": { character: "刂", original: "刀", name: "りっとう", meaning: "sword / knife" },
-  "灬": { character: "灬", original: "火", name: "れっか", meaning: "fire" },
-  "爫": { character: "爫", original: "爪", name: "つめかんむり", meaning: "claw" },
+  刂: { character: "刂", original: "刀", name: "りっとう", meaning: "sword / knife" },
+  灬: { character: "灬", original: "火", name: "れっか", meaning: "fire" },
+  爫: { character: "爫", original: "爪", name: "つめかんむり", meaning: "claw" },
   "⺤": { character: "爫", original: "爪", name: "つめかんむり", meaning: "claw" },
-  "牜": { character: "牜", original: "牛", name: "うしへん", meaning: "cow" },
-  "罒": { character: "罒", original: "网", name: "あみがしら", meaning: "net" },
+  牜: { character: "牜", original: "牛", name: "うしへん", meaning: "cow" },
+  罒: { character: "罒", original: "网", name: "あみがしら", meaning: "net" },
   "⺍": { character: "⺍", name: "つかんむり", meaning: "three dots" },
   "⺌": { character: "⺌", original: "小", name: "しょうかんむり", meaning: "small" },
   "⻞": { character: "飠", original: "食", name: "しょくへん", meaning: "eat / food" },
-  "飠": { character: "飠", original: "食", name: "しょくへん", meaning: "eat / food" }
+  飠: { character: "飠", original: "食", name: "しょくへん", meaning: "eat / food" },
 };
 
 // Component forms in the Japanese reference catalogue; dictionary glosses and
 // readings sometimes describe the parent kanji rather than independent usage.
-const COMPONENT_ONLY = new Set([..."㓁㣺丨丶丿乚亅亠亻冂冖冫凵刂勹匚匸厶囗夂夊宀屮巛幺廴彑忄扌攵氵氺灬爫牜犭疒癶礻罒罓耂艹虍衤覀辶镸阝飠"]);
-const KANGXI_BASE_FORMS = new Set(Array.from({ length: 214 }, (_, index) =>
-  String.fromCodePoint(0x2f00 + index).normalize("NFKC")));
+const COMPONENT_ONLY = new Set([
+  ..."㓁㣺丨丶丿乚亅亠亻冂冖冫凵刂勹匚匸厶囗夂夊宀屮巛幺廴彑忄扌攵氵氺灬爫牜犭疒癶礻罒罓耂艹虍衤覀辶镸阝飠",
+]);
+const KANGXI_BASE_FORMS = new Set(
+  Array.from({ length: 214 }, (_, index) => String.fromCodePoint(0x2f00 + index).normalize("NFKC")),
+);
 
 export function kanjiKind(character) {
   const code = character.codePointAt(0);
-  if ((code >= 0x2e80 && code <= 0x2eff) || (code >= 0x2f00 && code <= 0x2fdf)
-      || (code >= 0x31c0 && code <= 0x31ef) || COMPONENT_ONLY.has(character.normalize("NFC"))) return "radical-only";
+  if (
+    (code >= 0x2e80 && code <= 0x2eff) ||
+    (code >= 0x2f00 && code <= 0x2fdf) ||
+    (code >= 0x31c0 && code <= 0x31ef) ||
+    COMPONENT_ONLY.has(character.normalize("NFC"))
+  )
+    return "radical-only";
   const base = character.normalize("NFC");
   return RADICAL_BY_CHAR.has(base) || KANGXI_BASE_FORMS.has(base) ? "kanji-and-radical" : "kanji";
 }
@@ -273,7 +284,10 @@ export function enrichRadicals(radicals) {
 
 function cleanMeaning(value) {
   if (!value) return "";
-  return value.replace(/\s*radical\s*\(no\.?\s*\d+\)?/i, "").replace(/^radical number \d+$/i, "").trim();
+  return value
+    .replace(/\s*radical\s*\(no\.?\s*\d+\)?/i, "")
+    .replace(/^radical number \d+$/i, "")
+    .trim();
 }
 
 export function extractComponents(character, svg, lookupKanji) {
@@ -294,12 +308,14 @@ export function extractComponents(character, svg, lookupKanji) {
     const record = lookupKanji?.(primary) || (original ? lookupKanji?.(original) : null);
     const meaning = overlay?.meaning || radicalInfo?.meaning || cleanMeaning(record?.meanings?.[0]);
     const name = overlay?.name || radicalInfo?.name || record?.radical_names?.[0];
-    const base = overlay?.original || (original && original !== primary && [...original].length === 1 && original !== "つ" ? original : undefined);
+    const base =
+      overlay?.original ||
+      (original && original !== primary && [...original].length === 1 && original !== "つ" ? original : undefined);
     components.push({
       character: primary,
       ...(base ? { original: base } : {}),
       ...(name ? { name } : {}),
-      ...(meaning ? { meaning } : {})
+      ...(meaning ? { meaning } : {}),
     });
   }
   return components;

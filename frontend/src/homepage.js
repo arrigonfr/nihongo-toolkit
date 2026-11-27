@@ -1,23 +1,108 @@
 import { mountSectionLinks } from "./section-links.js";
 
 const introductions = {
-  "kana.html": ["Learn to recognize hiragana and katakana one character at a time. Choose the practice that suits your level and build confidence with the sounds of Japanese.", "Which sound does this character make?", "あ", ["a", "i", "u", "e"]],
-  "yomi.html": ["Practice reading kanji and become more comfortable recognizing how characters are pronounced. Focus your study and take a few readings at a time.", "Kanji reading", "日", ["Practice the reading"]],
-  "imi.html": ["Connect kanji with their meanings through focused practice. A little recognition work can make unfamiliar characters feel less intimidating.", "Kanji meaning", "山", ["What does it mean?"]],
-  "goi.html": ["Build your Japanese vocabulary with practice organized around JLPT levels. Revisit words and make room for new ones at your own pace.", "Vocabulary practice", "食べる", ["Practice a word"]],
-  "katsuyo-renshuu.html": ["Practice Japanese verb and adjective conjugations in a focused session. Work with the forms you want to get more comfortable using.", "Conjugation practice", "食べる", ["Choose a form", "Practice"]],
-  "kotoba.html": ["Look up Japanese words when curiosity strikes. Explore dictionary results, readings, and meanings as you work through something you are learning.", "Dictionary", "日本語", ["Search for a word"]],
-  "kanji-chizucho.html": ["Explore kanji and the compounds connected to them. Follow relationships between characters and discover more about the words they help form.", "Explore connections", "漢字", ["Kanji", "Compounds"]],
-  "kanji/": ["Browse the kanji catalogue when you want to look up a character or explore the collection. Open an entry to take a closer look.", "Kanji catalogue", "字", ["Browse characters"]],
-  "kanji-of-the-day.html": ["Spend a moment with a common kanji each day. It is a small, approachable way to encounter a character and return to it later.", "Kanji of the day", "日", ["A daily character"]],
-  "katsuyo.html": ["Explore how Japanese verbs and adjectives change form. Use the conjugator when you want to look up a form rather than start a practice session.", "Conjugator", "食べる", ["Explore forms"]],
-  "fumitoki.html": ["Take a closer look at a Japanese sentence by breaking it down into parts. Use it when you want help exploring the words in something you are reading.", "Sentence breakdown", "日本語を読む", ["Explore the sentence"]],
-  "shiryo.html": ["Find printable Japanese study sheets for reference away from the screen. Browse the available sheets and choose what is useful for your study.", "Study sheets", "あ　い　う", ["Browse sheets"]],
-  "kanji-kuizu.html": ["Put your kanji recognition to the test by spotting the matching character. A quick round gives you a playful way to pay attention to the details.", "Find the matching kanji", "木", ["木", "本", "未"]],
-  "eawase.html": ["Turn vocabulary and kana practice into a memory game. Look for matching pairs as you uncover the board, one turn at a time.", "Memory matching", "あ　　あ", ["Find a pair"]],
-  "kotoba-sagashi.html": ["Look for Japanese words hidden in a word-search grid. Take your time finding each one and give familiar vocabulary another moment of attention.", "Word search", "こ　と　ば", ["Find the words"]],
-  "pazuru.html": ["Work through a Japanese vocabulary crossword. Use the clues to fill the grid and enjoy a different way to spend time with words.", "Vocabulary crossword", "□　□　□", ["Read clues", "Fill the grid"]],
-  "shiritori.html": ["Play the Japanese word-chain game: each word begins with the sound that ended the previous one. Keep the chain going and see what words come to mind.", "Word chain", "ことば →", ["Continue the chain"]]
+  "kana.html": [
+    "Learn to recognize hiragana and katakana one character at a time. Choose the practice that suits your level and build confidence with the sounds of Japanese.",
+    "Which sound does this character make?",
+    "あ",
+    ["a", "i", "u", "e"],
+  ],
+  "yomi.html": [
+    "Practice reading kanji and become more comfortable recognizing how characters are pronounced. Focus your study and take a few readings at a time.",
+    "Kanji reading",
+    "日",
+    ["Practice the reading"],
+  ],
+  "imi.html": [
+    "Connect kanji with their meanings through focused practice. A little recognition work can make unfamiliar characters feel less intimidating.",
+    "Kanji meaning",
+    "山",
+    ["What does it mean?"],
+  ],
+  "goi.html": [
+    "Build your Japanese vocabulary with practice organized around JLPT levels. Revisit words and make room for new ones at your own pace.",
+    "Vocabulary practice",
+    "食べる",
+    ["Practice a word"],
+  ],
+  "katsuyo-renshuu.html": [
+    "Practice Japanese verb and adjective conjugations in a focused session. Work with the forms you want to get more comfortable using.",
+    "Conjugation practice",
+    "食べる",
+    ["Choose a form", "Practice"],
+  ],
+  "kotoba.html": [
+    "Look up Japanese words when curiosity strikes. Explore dictionary results, readings, and meanings as you work through something you are learning.",
+    "Dictionary",
+    "日本語",
+    ["Search for a word"],
+  ],
+  "kanji-chizucho.html": [
+    "Explore kanji and the compounds connected to them. Follow relationships between characters and discover more about the words they help form.",
+    "Explore connections",
+    "漢字",
+    ["Kanji", "Compounds"],
+  ],
+  "kanji/": [
+    "Browse the kanji catalogue when you want to look up a character or explore the collection. Open an entry to take a closer look.",
+    "Kanji catalogue",
+    "字",
+    ["Browse characters"],
+  ],
+  "kanji-of-the-day.html": [
+    "Spend a moment with a common kanji each day. It is a small, approachable way to encounter a character and return to it later.",
+    "Kanji of the day",
+    "日",
+    ["A daily character"],
+  ],
+  "katsuyo.html": [
+    "Explore how Japanese verbs and adjectives change form. Use the conjugator when you want to look up a form rather than start a practice session.",
+    "Conjugator",
+    "食べる",
+    ["Explore forms"],
+  ],
+  "fumitoki.html": [
+    "Take a closer look at a Japanese sentence by breaking it down into parts. Use it when you want help exploring the words in something you are reading.",
+    "Sentence breakdown",
+    "日本語を読む",
+    ["Explore the sentence"],
+  ],
+  "shiryo.html": [
+    "Find printable Japanese study sheets for reference away from the screen. Browse the available sheets and choose what is useful for your study.",
+    "Study sheets",
+    "あ　い　う",
+    ["Browse sheets"],
+  ],
+  "kanji-kuizu.html": [
+    "Put your kanji recognition to the test by spotting the matching character. A quick round gives you a playful way to pay attention to the details.",
+    "Find the matching kanji",
+    "木",
+    ["木", "本", "未"],
+  ],
+  "eawase.html": [
+    "Turn vocabulary and kana practice into a memory game. Look for matching pairs as you uncover the board, one turn at a time.",
+    "Memory matching",
+    "あ　　あ",
+    ["Find a pair"],
+  ],
+  "kotoba-sagashi.html": [
+    "Look for Japanese words hidden in a word-search grid. Take your time finding each one and give familiar vocabulary another moment of attention.",
+    "Word search",
+    "こ　と　ば",
+    ["Find the words"],
+  ],
+  "pazuru.html": [
+    "Work through a Japanese vocabulary crossword. Use the clues to fill the grid and enjoy a different way to spend time with words.",
+    "Vocabulary crossword",
+    "□　□　□",
+    ["Read clues", "Fill the grid"],
+  ],
+  "shiritori.html": [
+    "Play the Japanese word-chain game: each word begins with the sound that ended the previous one. Keep the chain going and see what words come to mind.",
+    "Word chain",
+    "ことば →",
+    ["Continue the chain"],
+  ],
 };
 
 const purposes = {
@@ -37,7 +122,7 @@ const purposes = {
   "eawase.html": "Match pairs",
   "kotoba-sagashi.html": "Find hidden words",
   "pazuru.html": "Solve a crossword",
-  "shiritori.html": "Build a word chain"
+  "shiritori.html": "Build a word chain",
 };
 
 const previewPairs = {
@@ -49,7 +134,7 @@ const previewPairs = {
   "fumitoki.html": ["日本語を読む", "日本語 / を / 読む"],
   "katsuyo-renshuu.html": ["食べる", "食べます"],
   "katsuyo.html": ["食べる", "食べます"],
-  "shiritori.html": ["ことば", "ばなな"]
+  "shiritori.html": ["ことば", "ばなな"],
 };
 
 function element(tag, className, text) {
@@ -75,8 +160,9 @@ export function mountHomepageShowcase() {
     const indexLinks = element("ul", "home-tool-index-links");
     for (const tool of group.querySelectorAll(".helper-link[data-file]")) {
       const purpose = tool.dataset.purpose || purposes[tool.dataset.file];
-      const details = introductions[tool.dataset.file] || (tool.dataset.description &&
-        [tool.dataset.description, purpose, tool.dataset.example, ["Editorial preview"]]);
+      const details =
+        introductions[tool.dataset.file] ||
+        (tool.dataset.description && [tool.dataset.description, purpose, tool.dataset.example, ["Editorial preview"]]);
       if (!details) {
         console.warn(`No homepage introduction for ${tool.dataset.file}.`);
         continue;

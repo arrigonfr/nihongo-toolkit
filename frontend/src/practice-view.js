@@ -1,34 +1,59 @@
+import { setHTML } from "./html.js";
 import "./practice.css";
 import "./answer-feedback.css";
 
 const tools = {
-  kana: { name: "Kana", icon: "あ", image: "kana", japanese: "仮名", description: "Hiragana and katakana", heading: "Make kana <br><span>second nature.</span>" },
-  meaning: { name: "Imi", icon: "意", image: "imi", japanese: "意味", description: "Kanji meaning practice", heading: "Find meaning <br><span>in every kanji.</span>" },
-  reading: { name: "Yomi", icon: "読", image: "yomi", japanese: "読み", description: "Kanji reading practice", heading: "Give every kanji <br><span>a voice.</span>" }
+  kana: {
+    name: "Kana",
+    icon: "あ",
+    image: "kana",
+    japanese: "仮名",
+    description: "Hiragana and katakana",
+    heading: "Make kana <br><span>second nature.</span>",
+  },
+  meaning: {
+    name: "Imi",
+    icon: "意",
+    image: "imi",
+    japanese: "意味",
+    description: "Kanji meaning practice",
+    heading: "Find meaning <br><span>in every kanji.</span>",
+  },
+  reading: {
+    name: "Yomi",
+    icon: "読",
+    image: "yomi",
+    japanese: "読み",
+    description: "Kanji reading practice",
+    heading: "Give every kanji <br><span>a voice.</span>",
+  },
 };
 
 export function renderPractice(kind) {
   const tool = tools[kind];
   if (!tool) throw new Error(`Unknown practice tool: ${kind}`);
   const kanji = kind !== "kana";
-  const direction = kind === "kana"
-    ? `<label>Kana direction<select id="kanaDirection">
+  const direction =
+    kind === "kana"
+      ? `<label>Kana direction<select id="kanaDirection">
         <option value="hiragana-romaji,katakana-romaji" selected>Kana → romaji</option>
         <option value="to-romaji">Kana (any) → romaji</option>
         <option value="to-kana">Romaji → kana (script shown)</option>
         <option value="romaji-any" hidden>Romaji → either kana script</option>
       </select></label>`
-    : kind === "meaning"
-      ? `<label>Meaning direction<select id="meaningDirection">
+      : kind === "meaning"
+        ? `<label>Meaning direction<select id="meaningDirection">
           <option value="meaning-forward">Kanji → English meaning</option>
           <option value="meaning-reverse">English meaning → Kanji</option>
         </select></label>`
-      : `<label>Answer options<select id="readingDirection">
+        : `<label>Answer options<select id="readingDirection">
           <option value="reading-katakana">On'yomi</option>
           <option value="reading-hiragana">Kun'yomi</option>
           <option value="reading-any-kana" selected>Both</option>
         </select></label>`;
-  document.getElementById("practiceRoot").innerHTML = `
+  setHTML(
+    document.getElementById("practiceRoot"),
+    `
     <div class="shell">
       <header>
         <a class="brand" href="#" aria-label="${tool.name} at NihongoToolkit home"><span class="brand-mark" aria-hidden="true"><img src="/tool-icons/${tool.image}.webp" alt=""></span><span class="brand-name">${tool.name}<span class="brand-note">NihongoToolkit</span></span></a>
@@ -46,12 +71,16 @@ export function renderPractice(kind) {
               <div class="settings-body">
               <p class="study-settings-note">Settings save automatically and apply to your next session. The top study controls stay live.</p>
                 <div class="settings-row practice-settings-row">
-                ${kanji ? `<label>JLPT level<select id="levelSelect">
+                ${
+                  kanji
+                    ? `<label>JLPT level<select id="levelSelect">
                   <option value="all">All</option>
                   <option value="5" selected>N5</option><option value="4">N4</option><option value="3">N3</option>
                   <option value="2">N2</option><option value="1">N1</option>
                   <option value="unrated">Non-JLPT</option>
-                </select><small>Levels are estimates; Non-JLPT means unrated.</small></label>` : ""}
+                </select><small>Levels are estimates; Non-JLPT means unrated.</small></label>`
+                    : ""
+                }
                 ${direction}
                 </div>
                 <div class="font-field"><select id="fontChoice"><option value="random">Rotate</option><option value="Noto Sans JP" selected>Noto Sans JP</option></select></div>
@@ -70,7 +99,7 @@ export function renderPractice(kind) {
                 <button class="button primary" id="startSessionButton" type="button">Start session</button>
               </div>
               <div class="start-error" id="startError" role="alert" hidden></div>
-              <div class="session-status" id="sessionStatus" aria-live="polite"></div>
+              <div class="session-status" id="sessionStatus" aria-live="polite" data-i18n-scope></div>
               <div id="sessionStatsContent">
                 <div class="stats-overview">
                   <div class="stat-box"><strong class="stat-value" id="answeredStat">0</strong><span class="stat-label">answered</span></div>
@@ -79,16 +108,19 @@ export function renderPractice(kind) {
                   <div class="stat-box"><strong class="stat-value" id="totalTimeStat">00:00.000</strong><span class="stat-label">total time</span></div>
                 </div>
                 <div class="stat-breakdown">
-                  ${kanji ? '<div class="breakdown-row"><span>Kanji</span><strong id="kanjiStat">0 / 0</strong></div>' :
-                    '<div class="breakdown-row"><span>Hiragana</span><strong id="hiraganaStat">0 / 0</strong></div><div class="breakdown-row"><span>Katakana</span><strong id="katakanaStat">0 / 0</strong></div>'}
+                  ${
+                    kanji
+                      ? '<div class="breakdown-row"><span>Kanji</span><strong id="kanjiStat">0 / 0</strong></div>'
+                      : '<div class="breakdown-row"><span>Hiragana</span><strong id="hiraganaStat">0 / 0</strong></div><div class="breakdown-row"><span>Katakana</span><strong id="katakanaStat">0 / 0</strong></div>'
+                  }
                 </div>
               </div>
             </section>
             ${kanji ? '<label class="switch-option review-option"><input id="reviewKanjiToggle" type="checkbox"> Pause to review kanji details</label>' : ""}
             <section id="questionSection" aria-label="Question" hidden>
-            <div class="card-top"><span class="question-label" id="questionCount">Ready</span><span class="tag" id="typeTag">${kind}</span><button class="button stop-session" id="stopSessionButton" type="button">Stop session</button></div>
-            <div class="prompt" aria-live="polite"><div class="glyph" id="glyph" lang="ja">${tool.icon}</div><p class="question-text" id="promptText"></p></div>
-            <form id="answerForm" autocomplete="off">
+            <div class="card-top"><span class="question-label" id="questionCount" data-i18n-scope>Ready</span><span class="tag" id="typeTag">${kind}</span><button class="button stop-session" id="stopSessionButton" type="button">Stop session</button></div>
+            <div class="prompt" aria-live="polite"><div class="glyph" id="glyph" lang="ja">${tool.icon}</div><p class="question-text" id="promptText" data-i18n-scope></p></div>
+            <form id="answerForm" autocomplete="off" data-i18n-scope>
               <div class="answer-feedback-slot">
                 <p id="correctCaption" class="correct-caption" role="status" hidden>Correct!</p>
                 <p id="incorrectCaption" class="incorrect-caption" role="status"></p>
@@ -104,6 +136,7 @@ export function renderPractice(kind) {
         </div>
         <footer><a href="data-sources.html">Data sources and licenses</a></footer>
       </main>
-    </div>`;
+    </div>`,
+  );
   return tool;
 }

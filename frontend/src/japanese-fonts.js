@@ -6,7 +6,7 @@ export const JAPANESE_FONTS = {
   "Noto Sans JP": "Noto Sans JP · sans",
   "Sawarabi Mincho": "Sawarabi Mincho · serif",
   "M PLUS Rounded 1c": "M PLUS Rounded 1c · rounded",
-  "Zen Kurenaido": "Zen Kurenaido · handwritten"
+  "Zen Kurenaido": "Zen Kurenaido · handwritten",
 };
 export const FONT_FAMILIES = Object.keys(JAPANESE_FONTS).filter((key) => !["default", "random"].includes(key));
 
@@ -54,7 +54,11 @@ export function mountFontControls() {
     const sample = (font) => `<span lang="ja" style="font-family:'${font}',sans-serif">あア漢字</span>`;
     mountChips(select, {
       multiple: true,
-      options: FONT_FAMILIES.map((font) => ({ value: font, label: JAPANESE_FONTS[font].replace(/ · .*/, ""), preview: sample(font) })),
+      options: FONT_FAMILIES.map((font) => ({
+        value: font,
+        label: JAPANESE_FONTS[font].replace(/ · .*/, ""),
+        preview: sample(font),
+      })),
       allValue: "random",
       title: "Japanese fonts",
       fieldClass: "font-field",
@@ -62,7 +66,7 @@ export function mountFontControls() {
       optionClass: "font-chip",
       label: "Japanese fonts",
       decode: (value) => fontList(value),
-      encode: (values) => encodeFonts(values)
+      encode: (values) => encodeFonts(values),
     });
   }
 }

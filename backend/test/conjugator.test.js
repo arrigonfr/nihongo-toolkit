@@ -58,6 +58,11 @@ test("lookup offers ambiguous classes, treats wildcard input literally, and rand
   assert.equal((await findConjugationEntries(counted, { query: "食べ" }))[0].word, "食べる");
   assert.equal(calls, 2, "one indexed candidate query and one bulk level query");
   assert.equal((await findConjugationEntries(db, { random: true, category: "adjective" }))[0].word, "ハンサム");
+  const executedSql = [];
+  const recorder = { prepare(sql) { executedSql.push(sql); const stmt = db.prepare(sql); return { all(...args) { return stmt.all(...args); } }; } };
+  assert.equal((await findConjugationEntries(recorder, { random: true, level: "5", category: "verb" })).length, 1);
+  assert.equal((await findConjugationEntries(recorder, { random: true, level: "all", category: "adjective" })).length, 1);
+  assert.ok(executedSql.every((sql) => !/ORDER BY\s+random\(\)/i.test(sql)), "random conjugator avoids ORDER BY random()");
   await assert.rejects(findConjugationEntries(db, { random: true, level: "0" }), /JLPT/);
   db.close();
 });

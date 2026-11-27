@@ -21,7 +21,10 @@ export function groupSettings(container, groups) {
 
 export function setSettingAvailability(control, reason = "") {
   control.disabled = Boolean(reason);
-  const label = control.closest("label") || control.closest(".setting") || ((control.dataset.levelChoices || control.dataset.chips) ? control.parentElement : null);
+  const label =
+    control.closest("label") ||
+    control.closest(".setting") ||
+    (control.dataset.levelChoices || control.dataset.chips ? control.parentElement : null);
   if (!label) return;
   label.classList.toggle("setting-unavailable", Boolean(reason));
   label.classList.toggle("setting-relevant", !reason);

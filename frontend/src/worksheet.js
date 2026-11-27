@@ -1,20 +1,103 @@
-import levels from "./worksheet-kanji.json";
-import strokes from "./worksheet-strokes.json";
-import fontUrl from "./KanjiStrokeOrders_v4.005.ttf?url";
-import { PDFDocument } from "pdf-lib";
 import { strToU8, zipSync } from "fflate";
+import { PDFDocument } from "pdf-lib";
+import { escapeXML as escape, setHTML } from "./html.js";
 import { interfaceSourceText } from "./interface-i18n.js";
+import levels from "./worksheet-kanji.json";
+import unratedString from "./worksheet-unrated.json";
 
-const kana = [..."あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ"];
-const escape = (value) => String(value).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]);
+const CHUNK_SIZE = 350;
+const kana = [
+  ..."あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ",
+];
 const ratedKanji = new Set(Object.values(levels).flatMap((characters) => [...characters]));
-const unratedKanji = Object.keys(strokes).filter((character) => /^\p{Script=Han}$/u.test(character) && /^\p{Ideographic}$/u.test(character) && !ratedKanji.has(character));
+const unratedKanji = [...unratedString];
+const unratedSet = new Set(unratedKanji);
 const kanjiLevels = [5, 4, 3, 2, 1, "unrated"];
+const strokes = Object.create(null);
+const loadedChunks = new Set();
+const pendingChunks = new Map();
+const chunkModules = import.meta.glob("./worksheet-strokes/*.json");
+const chunkLoaders = Object.fromEntries(
+  Object.entries(chunkModules).map(([path, loader]) => [
+    path.replace("./worksheet-strokes/", "").replace(/\.json$/, ""),
+    loader,
+  ]),
+);
+
+const characterChunk = new Map();
+const groupChunks = new Map();
+function registerGroup(groupKey, prefix, chars) {
+  if (chars.length <= 400) {
+    groupChunks.set(groupKey, [prefix]);
+    for (const ch of chars) characterChunk.set(ch, prefix);
+    return;
+  }
+  const names = [];
+  for (let i = 0; i < chars.length; i += CHUNK_SIZE) {
+    const chunkName = `${prefix}-${names.length}`;
+    names.push(chunkName);
+    for (const ch of chars.slice(i, i + CHUNK_SIZE)) characterChunk.set(ch, chunkName);
+  }
+  groupChunks.set(groupKey, names);
+}
+registerGroup("kana", "kana", kana);
+for (const level of [5, 4, 3, 2, 1]) registerGroup(String(level), `n${level}`, [...(levels[level] || "")]);
+registerGroup("unrated", "unrated", unratedKanji);
+
+function normalizeGroup(group) {
+  const key = String(group)
+    .toLowerCase()
+    .replace(/^n([1-5])$/, "$1");
+  return groupChunks.has(key) ? key : null;
+}
+
+function chunksForCharacters(chars) {
+  const names = new Set();
+  for (const ch of chars) {
+    const chunk = characterChunk.get(ch);
+    if (chunk && chunkLoaders[chunk]) names.add(chunk);
+  }
+  return [...names];
+}
+
+async function loadChunks(chunkNames) {
+  await Promise.all(
+    chunkNames.map((chunk) => {
+      if (loadedChunks.has(chunk) || !chunkLoaders[chunk]) return Promise.resolve();
+      if (!pendingChunks.has(chunk)) {
+        pendingChunks.set(
+          chunk,
+          chunkLoaders[chunk]()
+            .then((/** @type {any} */ module) => {
+              Object.assign(strokes, module.default || module);
+              loadedChunks.add(chunk);
+            })
+            .finally(() => {
+              pendingChunks.delete(chunk);
+            }),
+        );
+      }
+      return pendingChunks.get(chunk);
+    }),
+  );
+}
+
+export async function loadWorksheetStrokes(groups) {
+  const list = [...new Set((Array.isArray(groups) ? groups : [groups]).map(normalizeGroup).filter(Boolean))];
+  const names = [...new Set(list.flatMap((group) => groupChunks.get(group) || []))];
+  await loadChunks(names);
+}
+
+export async function loadWorksheetStrokesForCharacters(chars) {
+  await loadChunks(chunksForCharacters(chars));
+}
 
 export function worksheetLayout({ size = 42, paper = "a4", orientation = "portrait" } = {}) {
   const dimensions = paper === "legal" ? [816, 1344] : paper === "letter" ? [816, 1056] : [794, 1123];
   const [width, height] = orientation === "landscape" ? dimensions.reverse() : dimensions;
-  const scale = size / 68, minimumWidth = 360 * scale, gridHeight = 120 * scale;
+  const scale = size / 68,
+    minimumWidth = 360 * scale,
+    gridHeight = 120 * scale;
   const columns = Math.max(1, Math.floor((width - 60 + 8) / (minimumWidth + 8)));
   const gridWidth = (width - 60 - (columns - 1) * 8) / columns;
   const rows = Math.max(1, Math.floor((height - 120) / (gridHeight + 8)));
@@ -23,49 +106,85 @@ export function worksheetLayout({ size = 42, paper = "a4", orientation = "portra
 
 export function worksheetCharacters(mode, level) {
   const selectedLevels = Array.isArray(level) ? level : level === "all" ? kanjiLevels : [level];
-  const kanji = selectedLevels.flatMap((item) => item === "unrated" ? unratedKanji : [...(levels[item] || "")]);
+  const kanji = selectedLevels.flatMap((item) => (item === "unrated" ? unratedKanji : [...(levels[item] || "")]));
   const selectedModes = Array.isArray(mode) ? mode : mode === "both" ? ["kana", "kanji"] : [mode];
-  return [...new Set([...(selectedModes.includes("kana") ? kana : []), ...(selectedModes.includes("kanji") ? kanji : [])])];
+  return [
+    ...new Set([...(selectedModes.includes("kana") ? kana : []), ...(selectedModes.includes("kanji") ? kanji : [])]),
+  ];
 }
 
-export function worksheetSVG(characters, { page = 0, size = 42, paper = "a4", orientation = "portrait", opacity = 1, numberSize = 12, grayscale = false, font = fontUrl } = {}) {
+export function worksheetSVG(
+  characters,
+  { page = 0, size = 42, paper = "a4", orientation = "portrait", opacity = 1, numberSize = 12, grayscale = false } = {},
+) {
   const layout = worksheetLayout({ size, paper, orientation });
   const { width, height, scale, gridWidth, gridHeight, columns, perPage } = layout;
   const visible = characters.slice(page * perPage, (page + 1) * perPage);
-  const rows = visible.map((character, index) => {
-    const column = index % columns, row = Math.floor(index / columns);
-    const x = 30 + column * (gridWidth + 8), y = 75 + row * (gridHeight + 8);
-    const colors = ["#337ea6", "#c55863", "#3f997d", "#9862a6", "#c17e35", "#5276bb"];
-    const glyph = escape(character);
-    const data = strokes[character];
-    const model = data ? `<svg x="5" y="16" width="86" height="86" viewBox="0 0 109 109"><g fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity="${opacity}">${data[0].map((path, number) => `<path d="${escape(path)}" stroke="${grayscale ? "#555" : colors[number % colors.length]}"/>`).join("")}</g>${data[1].map(([numberX, numberY, number]) => `<text x="${numberX}" y="${numberY}" font-family="sans-serif" font-size="${numberSize}" font-weight="700" fill="#444">${number}</text>`).join("")}</svg>` : `<text x="48" y="78" font-family="StrokeOrder" font-size="68" text-anchor="middle" fill="#555">${glyph}</text>`;
-    const rightEdge = gridWidth / scale;
-    return `<g transform="translate(${x} ${y}) scale(${scale})"><rect width="${rightEdge}" height="120" fill="#fff" stroke="#b9bdbb"/><path d="M96 0v120 M142 0v120 M188 0v120 M234 0v120 M280 0v120 M96 60h184 M280 40h${rightEdge - 280} M280 80h${rightEdge - 280}" stroke="#d5d8d6" fill="none"/>${model}${[119, 165].flatMap((dx) => [48, 108].map((dy) => `<text x="${dx}" y="${dy}" font-family="sans-serif" font-size="38" text-anchor="middle" fill="#333" opacity=".2">${glyph}</text>`)).join("")}${[30, 70, 110].map((dy) => `<text x="284" y="${dy}" font-family="sans-serif" font-size="27" text-anchor="start" fill="#333" opacity=".15">${glyph}</text>`).join("")}</g>`;
-  }).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Handwriting worksheet"><style>${font ? `@font-face{font-family:StrokeOrder;src:url('${font}')}` : ""} text:not([font-family]){font-family:sans-serif}</style><rect width="${width}" height="${height}" fill="white"/><text x="30" y="45" font-size="22" font-weight="700" fill="#252b28">Handwriting Practice<tspan dx="16" font-size="11" font-weight="400" fill="#676d69">Stroke order · trace · write</tspan></text><text x="${width - 30}" y="45" text-anchor="end" font-size="12" fill="#676d69">${page + 1} / ${Math.max(1, Math.ceil(characters.length / perPage))}</text>${rows}<text x="30" y="${height - 18}" font-size="8" fill="#777">KanjiVG · Ulrich Apel and contributors · CC BY-SA 3.0 · kanjivg.tagaini.net · JLPT levels are estimates</text></svg>`;
+  const rows = visible
+    .map((character, index) => {
+      const column = index % columns,
+        row = Math.floor(index / columns);
+      const x = 30 + column * (gridWidth + 8),
+        y = 75 + row * (gridHeight + 8);
+      const colors = ["#337ea6", "#c55863", "#3f997d", "#9862a6", "#c17e35", "#5276bb"];
+      const glyph = escape(character);
+      const data = strokes[character];
+      const model = data
+        ? `<svg x="5" y="16" width="86" height="86" viewBox="0 0 109 109"><g fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity="${opacity}">${data[0].map((path, number) => `<path d="${escape(path)}" stroke="${grayscale ? "#555" : colors[number % colors.length]}"/>`).join("")}</g>${data[1].map(([numberX, numberY, number]) => `<text x="${numberX}" y="${numberY}" font-family="sans-serif" font-size="${numberSize}" font-weight="700" fill="#444">${number}</text>`).join("")}</svg>`
+        : `<text x="48" y="78" font-family="sans-serif" font-size="68" text-anchor="middle" fill="#555">${glyph}</text>`;
+      const rightEdge = gridWidth / scale;
+      return `<g transform="translate(${x} ${y}) scale(${scale})"><rect width="${rightEdge}" height="120" fill="#fff" stroke="#b9bdbb"/><path d="M96 0v120 M142 0v120 M188 0v120 M234 0v120 M280 0v120 M96 60h184 M280 40h${rightEdge - 280} M280 80h${rightEdge - 280}" stroke="#d5d8d6" fill="none"/>${model}${[119, 165].flatMap((dx) => [48, 108].map((dy) => `<text x="${dx}" y="${dy}" font-family="sans-serif" font-size="38" text-anchor="middle" fill="#333" opacity=".2">${glyph}</text>`)).join("")}${[30, 70, 110].map((dy) => `<text x="284" y="${dy}" font-family="sans-serif" font-size="27" text-anchor="start" fill="#333" opacity=".15">${glyph}</text>`).join("")}</g>`;
+    })
+    .join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Handwriting worksheet"><style>text:not([font-family]){font-family:sans-serif}</style><rect width="${width}" height="${height}" fill="white"/><text x="30" y="45" font-size="22" font-weight="700" fill="#252b28">Handwriting Practice<tspan dx="16" font-size="11" font-weight="400" fill="#676d69">Stroke order · trace · write</tspan></text><text x="${width - 30}" y="45" text-anchor="end" font-size="12" fill="#676d69">${page + 1} / ${Math.max(1, Math.ceil(characters.length / perPage))}</text>${rows}<text x="30" y="${height - 18}" font-size="8" fill="#777">KanjiVG · Ulrich Apel and contributors · CC BY-SA 3.0 · kanjivg.tagaini.net · JLPT levels are estimates</text></svg>`;
 }
 
-export function mountWorksheet({ picker, preview, panel, grayscale }) {
+export function mountWorksheet({ picker, preview, panel, grayscale, button: existingButton }) {
   const section = document.createElement("section");
   section.className = "worksheet-controls";
   section.hidden = true;
-  section.innerHTML = `<fieldset class="worksheet-choices"><legend>Characters</legend><div class="chips">${["kana", "kanji"].map((value) => `<label class="chip-option"><input type="checkbox" data-field="mode" value="${value}" ${value === "kana" ? "checked" : ""}><span>${value === "kana" ? "Kana" : "Kanji"}</span></label>`).join("")}</div></fieldset><fieldset class="worksheet-choices" data-levels><legend>Kanji Level</legend><div class="chips">${[5, 4, 3, 2, 1].map((value) => `<label class="chip-option"><input type="checkbox" data-field="level" value="${value}" ${value === 5 ? "checked" : ""}><span>N${value}</span></label>`).join("")}</div></fieldset><label>Font Size <input data-field="size" type="range" min="34" max="50" value="42"></label><label>Stroke Index Size <input data-field="numbers" type="range" min="7" max="16" value="12"></label><label>Stroke Opacity <input data-field="opacity" type="range" min="15" max="100" value="100"></label><label>Page Layout <select data-field="orientation"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></label><label>Paper size <select data-field="paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="legal">US Legal</option></select></label><div class="worksheet-pages"><button type="button" data-action="previous" aria-label="Previous worksheet page">←</button><span data-page></span><button type="button" data-action="next" aria-label="Next worksheet page">→</button></div><p class="worksheet-notice" role="status"></p>`;
+  setHTML(
+    section,
+    `<fieldset class="worksheet-choices"><legend>Characters</legend><div class="chips">${["kana", "kanji"].map((value) => `<label class="chip-option"><input type="checkbox" data-field="mode" value="${value}" ${value === "kana" ? "checked" : ""}><span>${value === "kana" ? "Kana" : "Kanji"}</span></label>`).join("")}</div></fieldset><fieldset class="worksheet-choices" data-levels><legend>Kanji Level</legend><div class="chips">${[5, 4, 3, 2, 1].map((value) => `<label class="chip-option"><input type="checkbox" data-field="level" value="${value}" ${value === 5 ? "checked" : ""}><span>N${value}</span></label>`).join("")}</div></fieldset><label>Font Size <input data-field="size" type="range" min="34" max="50" value="42"></label><label>Stroke Index Size <input data-field="numbers" type="range" min="7" max="16" value="12"></label><label>Stroke Opacity <input data-field="opacity" type="range" min="15" max="100" value="100"></label><label>Page Layout <select data-field="orientation"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></label><label>Paper size <select data-field="paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="legal">US Legal</option></select></label><div class="worksheet-pages"><button type="button" data-action="previous" aria-label="Previous worksheet page">←</button><span data-page></span><button type="button" data-action="next" aria-label="Next worksheet page">→</button></div><p class="worksheet-notice" role="status"></p>`,
+  );
   panel.insertBefore(section, panel.querySelector("#downloadList"));
-  const button = document.createElement("button");
-  button.type = "button"; button.className = "sheet-tab"; button.dataset.sheet = "worksheet";
-  button.style.setProperty("--tab-hue", "195");
-  button.innerHTML = '<span class="sheet-tab-icon" aria-hidden="true">書</span><span>Worksheet</span>';
-  picker.append(button);
-  section.querySelector("[data-levels] .chips").insertAdjacentHTML("beforeend", '<label class="chip-option"><input type="checkbox" data-field="level" value="unrated"><span>Unrated</span></label>');
-  const modes = [...section.querySelectorAll('[data-field="mode"]')], levels = [...section.querySelectorAll('[data-field="level"]')];
-  const size = section.querySelector('[data-field="size"]'), paper = section.querySelector('[data-field="paper"]'), orientation = section.querySelector('[data-field="orientation"]'), notice = section.querySelector(".worksheet-notice");
-  const opacity = section.querySelector('[data-field="opacity"]'), numbers = section.querySelector('[data-field="numbers"]');
+  const button =
+    existingButton ||
+    (() => {
+      const tab = document.createElement("button");
+      tab.type = "button";
+      tab.className = "sheet-tab";
+      tab.dataset.sheet = "worksheet";
+      tab.style.setProperty("--tab-hue", "195");
+      setHTML(tab, '<span class="sheet-tab-icon" aria-hidden="true">書</span><span>Worksheet</span>');
+      picker.append(tab);
+      return tab;
+    })();
+  section
+    .querySelector("[data-levels] .chips")
+    .insertAdjacentHTML(
+      "beforeend",
+      '<label class="chip-option"><input type="checkbox" data-field="level" value="unrated"><span>Unrated</span></label>',
+    );
+  const modes = [...section.querySelectorAll('[data-field="mode"]')],
+    levels = [...section.querySelectorAll('[data-field="level"]')];
+  const size = section.querySelector('[data-field="size"]'),
+    paper = section.querySelector('[data-field="paper"]'),
+    orientation = section.querySelector('[data-field="orientation"]'),
+    notice = section.querySelector(".worksheet-notice");
+  const opacity = section.querySelector('[data-field="opacity"]'),
+    numbers = section.querySelector('[data-field="numbers"]');
   let target = import.meta.env.EDITORIAL_PREVIEWS_ENABLED && new URLSearchParams(location.search).get("kanji");
-  if (target && /^\p{Script=Han}$/u.test(target) && Object.hasOwn(strokes, target)) {
+  if (target && /^\p{Script=Han}$/u.test(target) && (ratedKanji.has(target) || unratedSet.has(target))) {
     const choice = document.createElement("label");
     const only = Object.assign(document.createElement("input"), { type: "checkbox", checked: true });
     choice.append(only, ` Practice only ${target}`);
-    const draw = Object.assign(document.createElement("a"), { textContent: `Draw ${target} on screen`, href: `/kanji-kaki?kanji=${encodeURIComponent(target)}`, target: "_blank", rel: "noopener" });
+    const draw = Object.assign(document.createElement("a"), {
+      textContent: `Draw ${target} on screen`,
+      href: `/kanji-kaki?kanji=${encodeURIComponent(target)}`,
+      target: "_blank",
+      rel: "noopener",
+    });
     section.prepend(choice, draw);
     const linked = target;
     const selectTarget = () => {
@@ -75,23 +194,73 @@ export function mountWorksheet({ picker, preview, panel, grayscale }) {
     only.addEventListener("change", selectTarget);
     selectTarget();
   } else target = null;
-  let page = 0, active = false, fontData, fontBytes;
-  const characters = () => target ? [target] : worksheetCharacters(modes.filter((input) => input.checked).map((input) => input.value), levels.filter((input) => input.checked).map((input) => input.value));
-  const options = (font = fontUrl) => ({ page, size: Number(size.value), paper: paper.value, orientation: orientation.value, opacity: Number(opacity.value) / 100, numberSize: Number(numbers.value), grayscale: grayscale.checked, font });
-  function render() {
-    const items = characters(), layout = worksheetLayout(options()), pages = Math.max(1, Math.ceil(items.length / layout.perPage));
+  let page = 0,
+    active = false,
+    renderToken = 0;
+  const characters = () =>
+    target
+      ? [target]
+      : worksheetCharacters(
+          modes.filter((input) => input.checked).map((input) => input.value),
+          levels.filter((input) => input.checked).map((input) => input.value),
+        );
+  const options = () => ({
+    page,
+    size: Number(size.value),
+    paper: paper.value,
+    orientation: orientation.value,
+    opacity: Number(opacity.value) / 100,
+    numberSize: Number(numbers.value),
+    grayscale: grayscale.checked,
+  });
+  function visibleCharacters() {
+    const items = characters(),
+      layout = worksheetLayout(options()),
+      pages = Math.max(1, Math.ceil(items.length / layout.perPage));
+    const clampedPage = Math.max(0, Math.min(page, pages - 1));
+    return items.slice(clampedPage * layout.perPage, (clampedPage + 1) * layout.perPage);
+  }
+  function paint() {
+    const items = characters(),
+      layout = worksheetLayout(options()),
+      pages = Math.max(1, Math.ceil(items.length / layout.perPage));
     page = Math.max(0, Math.min(page, pages - 1));
-    section.querySelector('[data-levels]').disabled = Boolean(target) || !modes.some((input) => input.value === "kanji" && input.checked);
-    for (const input of [...modes, ...levels]) input.closest(".chip-option").classList.toggle("is-active", input.checked);
+    section.querySelector("[data-levels]").disabled =
+      Boolean(target) || !modes.some((input) => input.value === "kanji" && input.checked);
+    for (const input of [...modes, ...levels])
+      input.closest(".chip-option").classList.toggle("is-active", input.checked);
     section.querySelector("[data-page]").textContent = `${page + 1} / ${pages}`;
     section.querySelector('[data-action="previous"]').disabled = page === 0;
     section.querySelector('[data-action="next"]').disabled = page === pages - 1;
-    preview.innerHTML = worksheetSVG(items, options());
+    setHTML(preview, worksheetSVG(items, options()));
     preview.style.aspectRatio = `${layout.width} / ${layout.height}`;
     preview.dataset.sheet = "worksheet";
   }
-  button.addEventListener("click", () => {
-    active = true; section.hidden = false; panel.dataset.worksheet = "true";
+  function render() {
+    const token = ++renderToken;
+    const needed = chunksForCharacters(visibleCharacters());
+    if (needed.every((chunk) => loadedChunks.has(chunk))) {
+      notice.textContent = "";
+      paint();
+      return;
+    }
+    paint();
+    notice.textContent = "Loading stroke order data…";
+    loadChunks(needed)
+      .then(() => {
+        if (token !== renderToken || !active) return;
+        notice.textContent = "";
+        paint();
+      })
+      .catch(() => {
+        if (token !== renderToken || !active) return;
+        notice.textContent = "Could not load stroke order data. Please try again.";
+      });
+  }
+  function activate() {
+    active = true;
+    section.hidden = false;
+    panel.dataset.worksheet = "true";
     section.querySelector(".worksheet-choices").append(grayscale.closest("label"));
     for (const tab of picker.querySelectorAll(".sheet-tab")) tab.setAttribute("aria-pressed", String(tab === button));
     document.getElementById("sheetTitle").textContent = "Handwriting Practice · 書き方";
@@ -104,21 +273,36 @@ export function mountWorksheet({ picker, preview, panel, grayscale }) {
       if (title && item.dataset.format === "png") title.textContent = "PNG Images";
       const description = item.querySelector("small");
       if (description && !item.dataset.originalNote) item.dataset.originalNote = interfaceSourceText(description);
-      if (description && ["png", "svg", "html"].includes(item.dataset.format)) description.textContent = "ZIP compressed";
+      if (description && ["png", "svg", "html"].includes(item.dataset.format))
+        description.textContent = "ZIP compressed";
       else if (description && item.dataset.format === "pdf") description.textContent = "All pages in one PDF";
     }
     history.replaceState(null, "", "#worksheet");
     render();
+  }
+  if (!existingButton) button.addEventListener("click", activate);
+  section.addEventListener("change", (event) => {
+    if (event.target === grayscale) return;
+    if (event.target.type !== "range") page = 0;
+    render();
   });
-  section.addEventListener("change", (event) => { if (event.target === grayscale) return; if (event.target.type !== "range") page = 0; render(); });
-  section.addEventListener("input", (event) => { if (event.target.type === "range") render(); });
+  section.addEventListener("input", (event) => {
+    if (event.target.type === "range") render();
+  });
   section.addEventListener("click", (event) => {
     const action = event.target.closest("[data-action]")?.dataset.action;
-    if (action) { page += action === "next" ? 1 : -1; render(); }
+    if (action) {
+      page += action === "next" ? 1 : -1;
+      render();
+    }
   });
-  grayscale.addEventListener("change", () => { if (active) render(); });
+  grayscale.addEventListener("change", () => {
+    if (active) render();
+  });
   function deactivate() {
-    active = false; section.hidden = true; delete panel.dataset.worksheet;
+    active = false;
+    section.hidden = true;
+    delete panel.dataset.worksheet;
     panel.insertBefore(grayscale.closest("label"), section);
     preview.style.aspectRatio = "";
     for (const item of panel.querySelectorAll("[data-format]")) {
@@ -127,74 +311,82 @@ export function mountWorksheet({ picker, preview, panel, grayscale }) {
       if (item.dataset.originalNote) item.querySelector("small").textContent = item.dataset.originalNote;
     }
   }
-  async function embeddedFont() {
-    if (!fontData) {
-      const response = await fetch(fontUrl);
-      if (!response.ok) throw new Error("Stroke-order font is unavailable.");
-      const blob = await response.blob();
-      fontBytes = new Uint8Array(await blob.arrayBuffer());
-      fontData = await new Promise((resolve, reject) => {
-        const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(blob);
-      });
-    }
-    return fontData;
-  }
   async function rasterize(svg, layout, format) {
     const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
     try {
-      const image = new Image(); image.src = url;
+      const image = new Image();
+      image.src = url;
       await image.decode();
-      const canvas = document.createElement("canvas"); canvas.width = Math.round(layout.width * 1.5); canvas.height = Math.round(layout.height * 1.5);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(layout.width * 1.5);
+      canvas.height = Math.round(layout.height * 1.5);
       canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, format === "pdf" ? "image/jpeg" : "image/png", .93));
+      const blob = await new Promise((resolve) =>
+        canvas.toBlob(resolve, format === "pdf" ? "image/jpeg" : "image/png", 0.93),
+      );
       if (!blob) throw new Error("Could not render worksheet.");
       return new Uint8Array(await blob.arrayBuffer());
-    } finally { URL.revokeObjectURL(url); }
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
-  async function download(format, progress = () => {}) {
-    const items = characters(), config = options(), layout = worksheetLayout(config);
+  async function download(format, progress = (_done, _total) => {}) {
+    const items = characters(),
+      config = options(),
+      layout = worksheetLayout(config);
+    await loadWorksheetStrokesForCharacters(items);
     const count = Math.max(1, Math.ceil(items.length / layout.perPage));
-    const needsFont = items.some((character) => !strokes[character]);
-    const embedded = needsFont ? await embeddedFont() : "";
     const pdf = format === "pdf" ? await PDFDocument.create() : null;
     const files = {};
-    if (needsFont && (format === "svg" || format === "html")) files["stroke-order.ttf"] = fontBytes;
-    if (!pdf) files["README.txt"] = strToU8("Stroke diagrams adapted from KanjiVG by Ulrich Apel and contributors, CC BY-SA 3.0: https://kanjivg.tagaini.net/ and https://creativecommons.org/licenses/by-sa/3.0/\nJLPT levels are estimates.\n");
+    if (!pdf)
+      files["README.txt"] = strToU8(
+        "Stroke diagrams adapted from KanjiVG by Ulrich Apel and contributors, CC BY-SA 3.0: https://kanjivg.tagaini.net/ and https://creativecommons.org/licenses/by-sa/3.0/\nJLPT levels are estimates.\n",
+      );
     for (let index = 0; index < count; index++) {
       progress(index + 1, count);
       const name = `page-${String(index + 1).padStart(3, "0")}`;
-      const svg = worksheetSVG(items, { ...config, page: index, font: needsFont && (format === "svg" || format === "html") ? "stroke-order.ttf" : embedded });
+      const svg = worksheetSVG(items, { ...config, page: index });
       if (format === "svg") files[`${name}.svg`] = strToU8(svg);
-      else if (format === "html") files[`${name}.html`] = strToU8(`<!doctype html><meta charset="utf-8"><title>Handwriting Practice</title><style>@page{size:${config.paper} ${config.orientation};margin:0}body{margin:0}svg{display:block;width:100%;height:auto}</style>${svg}`);
+      else if (format === "html")
+        files[`${name}.html`] = strToU8(
+          `<!doctype html><meta charset="utf-8"><title>Handwriting Practice</title><style>@page{size:${config.paper} ${config.orientation};margin:0}body{margin:0}svg{display:block;width:100%;height:auto}</style>${svg}`,
+        );
       else {
         const image = await rasterize(svg, layout, format);
         if (pdf) {
           const jpeg = await pdf.embedJpg(image);
-          const pdfPage = pdf.addPage([layout.width * .75, layout.height * .75]);
-          pdfPage.drawImage(jpeg, { x: 0, y: 0, width: layout.width * .75, height: layout.height * .75 });
+          const pdfPage = pdf.addPage([layout.width * 0.75, layout.height * 0.75]);
+          pdfPage.drawImage(jpeg, { x: 0, y: 0, width: layout.width * 0.75, height: layout.height * 0.75 });
         } else files[`${name}.png`] = image;
       }
     }
-    return pdf ? new Blob([await pdf.save()], { type: "application/pdf" }) : new Blob([zipSync(files, { level: 6 })], { type: "application/zip" });
+    return pdf
+      ? new Blob([/** @type {BlobPart} */ (await pdf.save())], { type: "application/pdf" })
+      : new Blob([/** @type {BlobPart} */ (zipSync(files, { level: 6 }))], { type: "application/zip" });
   }
   async function preparePrint() {
-    const items = characters(), config = options(), layout = worksheetLayout(config);
+    const items = characters(),
+      config = options(),
+      layout = worksheetLayout(config);
+    await loadWorksheetStrokesForCharacters(items);
     const count = Math.max(1, Math.ceil(items.length / layout.perPage));
     const frame = document.createElement("iframe");
     frame.title = "Print handwriting worksheet";
-    frame.style.cssText = "position:fixed;width:0;height:0;border:0;";
+    frame.className = "study-print-frame";
     const pages = Array.from({ length: count }, (_, index) => worksheetSVG(items, { ...config, page: index })).join("");
     frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${config.paper} ${config.orientation};margin:0}body{margin:0}svg{display:block;width:100%;height:auto;break-after:page}svg:last-child{break-after:auto}</style></head><body>${pages}</body></html>`;
-    const loaded = new Promise((resolve, reject) => { frame.onload = resolve; frame.onerror = reject; });
+    const loaded = new Promise((resolve, reject) => {
+      frame.onload = resolve;
+      frame.onerror = reject;
+    });
     document.body.append(frame);
     try {
       await loaded;
-      if (items.some((character) => !strokes[character])) await frame.contentDocument.fonts.load("68px StrokeOrder", "あ漢");
     } catch (error) {
       frame.remove();
       throw error;
     }
     return frame;
   }
-  return { button, deactivate, isActive: () => active, render, download, preparePrint, notice };
+  return { button, activate, deactivate, isActive: () => active, render, download, preparePrint, notice };
 }

@@ -1,17 +1,20 @@
-import { studyPool } from "../study-pool.js";
 import { shuffle } from "../imposters-engine.js";
-import { el, ja, button, root, setupNote, status } from "./dom.js";
-import { frame, crossResult, validatePuzzle } from "./crossroads-data.js";
+import { studyPool } from "../study-pool.js";
+import { crossResult, frame, validatePuzzle } from "./crossroads-data.js";
+import { button, el, ja, root, setupNote, status } from "./dom.js";
 
 export const crossroads = {
   ...studyPool("crossroads", validatePuzzle),
   setup(container) {
-    setupNote(container, `Find the one missing kanji in three compounds across ${crossroads.items.length.toLocaleString()} puzzles. Readings appear after answering.`);
+    setupNote(
+      container,
+      `Find the one missing kanji in three compounds across ${crossroads.items.length.toLocaleString()} puzzles. Readings appear after answering.`,
+    );
   },
   render(container, item, finish) {
     const board = root(container);
     const frames = el("div", undefined, "pg-frames");
-    const hints = item.compounds.map(c => {
+    const hints = item.compounds.map((c) => {
       const block = el("div");
       const word = el("strong", frame(c));
       word.lang = "ja";
@@ -21,8 +24,10 @@ export const crossroads = {
       return meaning;
     });
     const notice = status();
-    let ended = false, count = 0, selected = "";
-    const commit = guess => {
+    let ended = false,
+      count = 0,
+      selected = "";
+    const commit = (guess) => {
       if (ended) return;
       ended = true;
       finish(crossResult(item, guess, count));
@@ -37,7 +42,9 @@ export const crossroads = {
     const checkKbd = el("kbd", "C", "particle-shortcut");
     checkKbd.setAttribute("aria-hidden", "true");
     check.append(checkKbd);
-    check.addEventListener("click", () => { if (selected) commit(selected); });
+    check.addEventListener("click", () => {
+      if (selected) commit(selected);
+    });
     const choices = shuffle(item.bank).map((char, index) => {
       const tile = el("button");
       tile.type = "button";
@@ -69,17 +76,37 @@ export const crossroads = {
     hintKbd.setAttribute("aria-hidden", "true");
     hint.append(hintKbd);
     controls.append(check, hint);
-    const keydown = event => {
-      if (!matchMedia("(min-width: 761px) and (hover: hover)").matches || event.repeat || event.isComposing ||
-          event.ctrlKey || event.altKey || event.metaKey || event.target.closest("input, textarea, select, [contenteditable=true]") ||
-          document.querySelector("dialog[open]")) return;
+    const keydown = (event) => {
+      if (
+        !matchMedia("(min-width: 761px) and (hover: hover)").matches ||
+        event.repeat ||
+        event.isComposing ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.metaKey ||
+        event.target.closest("input, textarea, select, [contenteditable=true]") ||
+        document.querySelector("dialog[open]")
+      )
+        return;
       const key = event.key.toLowerCase();
-      const option = /^[1-9]$/.test(event.key) ? choices[Number(event.key) - 1] : key === "c" ? check : key === "r" ? hint : null;
-      if (option && !option.disabled) { event.preventDefault(); option.click(); }
+      const option = /^[1-9]$/.test(event.key)
+        ? choices[Number(event.key) - 1]
+        : key === "c"
+          ? check
+          : key === "r"
+            ? hint
+            : null;
+      if (option && !option.disabled) {
+        event.preventDefault();
+        option.click();
+      }
     };
     document.addEventListener("keydown", keydown);
     board.append(el("h3", item.theme), frames, el("p", "Choose the missing kanji."), bank, controls, notice);
-    return () => { ended = true; document.removeEventListener("keydown", keydown); };
+    return () => {
+      ended = true;
+      document.removeEventListener("keydown", keydown);
+    };
   },
   review(container, item) {
     const explanation = container.querySelector('[data-field="explanation"] dd');
@@ -96,5 +123,5 @@ export const crossroads = {
       list.append(li);
     }
     explanation.replaceChildren(list);
-  }
+  },
 };

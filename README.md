@@ -1504,9 +1504,11 @@ The primary key is `(date, page)`; `date` is `YYYY-MM-DD` without a time.
 `updated_at` is a separate UTC audit timestamp. Blocked/failed requests can
 undercount, and this public aggregate endpoint is not bot-proof analytics.
 
-Read daily totals with `GET /api/page-views?date=2026-11-06`. Omitting `date`
-defaults to the current UTC day. The public response contains only pages with
-recorded views, ordered by page:
+Read daily totals with `GET /api/page-views?date=2026-11-06` and an
+`Authorization: Bearer <PAGE_VIEWS_ADMIN_TOKEN>` header (configure
+`PAGE_VIEWS_ADMIN_TOKEN` via `npx wrangler secret put PAGE_VIEWS_ADMIN_TOKEN`).
+Omitting `date` defaults to the current UTC day. The response contains only
+pages with recorded views, ordered by page:
 
 ```json
 {
@@ -1639,13 +1641,16 @@ queries. Turso batches concurrent enrichment in read transactions, deduplicates 
 fetches vocabulary metadata in bounded sets; it never replays synchronous code or
 loads the entire SQL database into an isolate. JSON list parameters keep
 parameter counts bounded and substring searches use literal string matching.
-Shiritori uses indexed dictionary spellings/readings (including alternate forms)
-and fetches JLPT metadata in the same query. Before deploying this version against
+Dictionary search, kanji candidate lookups, and Shiritori use indexed
+spellings/readings (`word_forms`, `kanji_readings`, `vocabulary_romaji`),
+external-content FTS5 tables (`words_meanings_fts`, `kanji_meanings_fts`), and a
+partial covering index (`words_common_expand`) for fast randomized common-word
+sampling. Before deploying this version against
 an existing database, run `npm run db:index-words` locally and
 `npm run db:index-words -- --turso` with a **write-capable migration token** in
 `backend/.env`. The latter changes the configured Turso database; use staging
 credentials for staging. The migration is repeatable and backfills existing
-words; triggers keep the indexes current for subsequent imports and enrichment.
+rows; triggers keep the indexes current for subsequent imports and enrichment.
 New local databases create these indexes automatically. Run the remote migration
 before deploying the Worker, which requires the new table.
 Gameplay validation sends `examples=0` to avoid waiting for sentence queries;

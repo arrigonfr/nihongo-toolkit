@@ -2,9 +2,12 @@ import { cellText } from "./cheatsheet-data.js";
 
 // A4 at 96 dpi. Layout produces drawing primitives that become SVG, canvas or PDF pixels.
 export const PAGE = { w: 794, h: 1123, margin: 30 };
-export const FONT_STACK = '"Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif';
+export const FONT_STACK =
+  '"Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif';
 
-const INK = "#262a27", MUTED = "#6b726c", PAPER = "#ffffff";
+const INK = "#262a27",
+  MUTED = "#6b726c",
+  PAPER = "#ffffff";
 const hsl = (h, s, l) => `hsl(${Math.round(((h % 360) + 360) % 360)} ${s}% ${l}%)`;
 
 export function textWidth(text, size) {
@@ -18,7 +21,11 @@ export function wrapText(text, size, maxWidth) {
   let line = "";
   for (const char of text) {
     if (line && textWidth(line + char, size) > maxWidth) {
-      if (char === " ") { lines.push(line); line = ""; continue; }
+      if (char === " ") {
+        lines.push(line);
+        line = "";
+        continue;
+      }
       const lastSpace = line.lastIndexOf(" ");
       const cjk = char.codePointAt(0) >= 0x2e80;
       if (!cjk && lastSpace > 0) {
@@ -35,13 +42,21 @@ export function wrapText(text, size, maxWidth) {
 }
 
 const rect = (prims, x, y, w, h, fill, rx = 0, stroke) => prims.push({ k: "r", x, y, w, h, rx, fill, stroke });
-const text = (prims, x, y, runs, size, o = {}) => prims.push({
-  k: "t", x, y, size, anchor: o.anchor || "middle", weight: o.weight || 400, fill: o.fill || INK,
-  runs: typeof runs === "string" ? [{ t: runs }] : runs
-});
+const text = (prims, x, y, runs, size, o = {}) =>
+  prims.push({
+    k: "t",
+    x,
+    y,
+    size,
+    anchor: o.anchor || "middle",
+    weight: o.weight || 400,
+    fill: o.fill || INK,
+    runs: typeof runs === "string" ? [{ t: runs }] : runs,
+  });
 
 function header(prims, sheet, page = PAGE) {
-  const { margin, w } = page, h = 62;
+  const { margin, w } = page,
+    h = 62;
   rect(prims, margin, margin, w - margin * 2, h, hsl(sheet.hue, 50, 38), 14);
   rect(prims, w - margin - 190, margin, 190, h, hsl(sheet.hue2, 70, 52), 14);
   rect(prims, w - margin - 190, margin, 20, h, hsl(sheet.hue2, 70, 52));
@@ -54,14 +69,16 @@ function header(prims, sheet, page = PAGE) {
 function footer(prims, sheet, page = PAGE) {
   const { w, h, margin } = page;
   const lines = wrapText(sheet.footer, 8, w - margin * 2);
-  lines.forEach((line, index) => text(prims, w / 2, h - margin + 4 - (lines.length - 1 - index) * 11, line, 8, { fill: MUTED }));
+  lines.forEach((line, index) =>
+    text(prims, w / 2, h - margin + 4 - (lines.length - 1 - index) * 11, line, 8, { fill: MUTED }),
+  );
   text(prims, margin, h - 12, "Nihon · cheatsheet", 7, { anchor: "start", fill: "#9aa19b" });
   text(prims, w - margin, h - 12, page.label || "A4", 7, { anchor: "end", fill: "#9aa19b" });
 }
 
 function fitSize(label, size, width, min = 6) {
   const natural = textWidth(label, size);
-  return natural <= width ? size : Math.max(min, size * width / natural);
+  return natural <= width ? size : Math.max(min, (size * width) / natural);
 }
 
 function drawCell(prims, item, x, y, w, rowH, o) {
@@ -70,7 +87,8 @@ function drawCell(prims, item, x, y, w, rowH, o) {
   const runs = item.parts.map(([t, hl]) => ({ t, fill: hl ? o.accent : o.ink }));
   const baseline = item.sub ? y + rowH / 2 - 0.5 : y + rowH / 2 + size * 0.36;
   text(prims, x + w / 2, baseline, runs, size, { weight: o.weight || 600 });
-  if (item.sub) text(prims, x + w / 2, y + rowH - 4.5, item.sub, fitSize(item.sub, o.subSize, w - 8, 5.5), { fill: MUTED });
+  if (item.sub)
+    text(prims, x + w / 2, y + rowH - 4.5, item.sub, fitSize(item.sub, o.subSize, w - 8, 5.5), { fill: MUTED });
 }
 
 function drawWrapped(prims, item, x, y, w, rowH, size, options = {}) {
@@ -78,14 +96,25 @@ function drawWrapped(prims, item, x, y, w, rowH, size, options = {}) {
   const wrap = (fontSize) => content.split("\n").flatMap((line) => wrapText(line, fontSize, w - 10));
   let lines = wrap(size);
   let fontSize = size;
-  while (lines.length * (fontSize + 2) > rowH - 5 && fontSize > 6) { fontSize -= 0.5; lines = wrap(fontSize); }
+  while (lines.length * (fontSize + 2) > rowH - 5 && fontSize > 6) {
+    fontSize -= 0.5;
+    lines = wrap(fontSize);
+  }
   const top = y + rowH / 2 - ((lines.length - 1) * (fontSize + 2)) / 2 + fontSize * 0.35;
-  lines.forEach((line, index) => text(prims, x + 6, top + index * (fontSize + 2), line, fontSize, { anchor: "start", fill: options.fill || MUTED, weight: options.weight }));
+  lines.forEach((line, index) =>
+    text(prims, x + 6, top + index * (fontSize + 2), line, fontSize, {
+      anchor: "start",
+      fill: options.fill || MUTED,
+      weight: options.weight,
+    }),
+  );
 }
 
 export function drawTable(prims, table, x, y, o) {
-  const widths = o.colW, total = widths.reduce((a, b) => a + b, 0);
-  const rowH = o.rowH, headH = o.headH || 22;
+  const widths = o.colW,
+    total = widths.reduce((a, b) => a + b, 0);
+  const rowH = o.rowH,
+    headH = o.headH || 22;
   let cursor = y;
   if (table.title) {
     rect(prims, x, cursor + 2, 4, 12, o.accent, 2);
@@ -95,7 +124,10 @@ export function drawTable(prims, table, x, y, o) {
   rect(prims, x, cursor, total, headH, o.head, 7);
   let cx = x;
   table.columns.forEach((label, index) => {
-    text(prims, cx + widths[index] / 2, cursor + headH / 2 + 3.5, label, fitSize(label, 9.5, widths[index] - 6), { weight: 700, fill: "#fff" });
+    text(prims, cx + widths[index] / 2, cursor + headH / 2 + 3.5, label, fitSize(label, 9.5, widths[index] - 6), {
+      weight: 700,
+      fill: "#fff",
+    });
     cx += widths[index];
   });
   cursor += headH + 2;
@@ -105,23 +137,42 @@ export function drawTable(prims, table, x, y, o) {
     row.forEach((item, col) => {
       if (item) {
         if (col === 0 && o.stackForms) {
-          drawWrapped(prims, item, px, cursor, widths[col], rowH - 1, 13, { content: cellText(item).replaceAll(" / ", "\n"), fill: o.dark, weight: 700 });
+          drawWrapped(prims, item, px, cursor, widths[col], rowH - 1, 13, {
+            content: cellText(item).replaceAll(" / ", "\n"),
+            fill: o.dark,
+            weight: 700,
+          });
         } else if (col === 0 && o.inlineForms && item.sub) {
           const label = `${cellText(item)}  ${item.sub}`;
           const size = fitSize(label, 10, widths[0] - 16);
-          text(prims, px + 8, cursor + rowH / 2 + size * 0.35, [
-            { t: cellText(item) }, { t: `  ${item.sub}`, fill: MUTED }
-          ], size, { anchor: "start", weight: 700, fill: o.dark });
+          text(
+            prims,
+            px + 8,
+            cursor + rowH / 2 + size * 0.35,
+            [{ t: cellText(item) }, { t: `  ${item.sub}`, fill: MUTED }],
+            size,
+            { anchor: "start", weight: 700, fill: o.dark },
+          );
         } else if (col === 0) {
           const parts = item.sub ? 2 : 1;
-          text(prims, px + 8, cursor + (parts === 2 ? rowH / 2 - 2 : rowH / 2 + 3.5), item.parts[0][0], fitSize(item.parts[0][0], 10, widths[0] - 12), { anchor: "start", weight: 700, fill: o.dark });
+          text(
+            prims,
+            px + 8,
+            cursor + (parts === 2 ? rowH / 2 - 2 : rowH / 2 + 3.5),
+            item.parts[0][0],
+            fitSize(item.parts[0][0], 10, widths[0] - 12),
+            { anchor: "start", weight: 700, fill: o.dark },
+          );
           if (item.sub) text(prims, px + 8, cursor + rowH - 5.5, item.sub, 8, { anchor: "start", fill: MUTED });
         } else if (o.wrapCols?.includes(col)) {
           const value = cellText(item);
-          const content = o.breakContrasts ? (col === 1 && !o.stackForms ? value.replaceAll("; ", "\n") : value.replaceAll(" / ", "\n")) : value;
+          const content = o.breakContrasts
+            ? col === 1 && !o.stackForms
+              ? value.replaceAll("; ", "\n")
+              : value.replaceAll(" / ", "\n")
+            : value;
           drawWrapped(prims, item, px, cursor, widths[col], rowH - 1, 8.5, { content });
-        }
-        else drawCell(prims, item, px, cursor, widths[col], rowH - 1, { ...o, mainSize: o.mainSize, weight: 600 });
+        } else drawCell(prims, item, px, cursor, widths[col], rowH - 1, { ...o, mainSize: o.mainSize, weight: 600 });
       }
       px += widths[col];
     });
@@ -131,19 +182,25 @@ export function drawTable(prims, table, x, y, o) {
 }
 
 function drawKana(prims, table, x, y, w, rowH, baseHue, span, labelWidth = 20) {
-  const columns = table.columns.length, cellW = (w - labelWidth) / columns;
+  const columns = table.columns.length,
+    cellW = (w - labelWidth) / columns;
   let cursor = y;
   text(prims, x, cursor + 11, table.title, 10, { anchor: "start", weight: 800, fill: hsl(baseHue, 55, 28) });
   cursor += 16;
   rect(prims, x, cursor, w, 15, hsl(baseHue, 45, 40), 6);
-  table.columns.forEach((label, index) => text(prims, x + labelWidth + cellW * index + cellW / 2, cursor + 10.5, label, 8.5, { weight: 700, fill: "#fff" }));
+  table.columns.forEach((label, index) =>
+    text(prims, x + labelWidth + cellW * index + cellW / 2, cursor + 10.5, label, 8.5, { weight: 700, fill: "#fff" }),
+  );
   cursor += 17;
   const last = Math.max(1, table.rows.length - 1);
   table.rows.forEach((row, index) => {
     const hue = baseHue + (span * index) / last;
     rect(prims, x, cursor, w, rowH - 2, hsl(hue, 80, 95.5), 6);
     rect(prims, x, cursor, labelWidth - 2, rowH - 2, hsl(hue, 60, 85), 6);
-    text(prims, x + (labelWidth - 2) / 2, cursor + rowH / 2 + 3, table.rowLabels[index], 8.5, { weight: 800, fill: hsl(hue, 55, 28) });
+    text(prims, x + (labelWidth - 2) / 2, cursor + rowH / 2 + 3, table.rowLabels[index], 8.5, {
+      weight: 800,
+      fill: hsl(hue, 55, 28),
+    });
     row.forEach((item, col) => {
       if (!item) return;
       const cx = x + labelWidth + cellW * col + cellW / 2;
@@ -156,33 +213,46 @@ function drawKana(prims, table, x, y, w, rowH, baseHue, span, labelWidth = 20) {
 }
 
 function drawNote(prims, note, x, y, w, h, hue, size = 8.5) {
-  const contentHeight = (fontSize) => note.lines.reduce((height, line) => height + wrapText(line, fontSize, w - 26).length * (fontSize + 3.5) + 2.5, 0);
-  while (size > 6 && contentHeight(size) > h - 40) size -= .25;
+  const contentHeight = (fontSize) =>
+    note.lines.reduce((height, line) => height + wrapText(line, fontSize, w - 26).length * (fontSize + 3.5) + 2.5, 0);
+  while (size > 6 && contentHeight(size) > h - 40) size -= 0.25;
   rect(prims, x, y, w, h, hsl(hue, 70, 96), 9, hsl(hue, 45, 80));
   rect(prims, x, y + 8, 3.5, 16, hsl(hue, 60, 45), 2);
   text(prims, x + 12, y + 20, note.title, 10.5, { anchor: "start", weight: 800, fill: hsl(hue, 55, 28) });
   let cursor = y + 36;
   for (const line of note.lines) {
     const wrapped = wrapText(line, size, w - 26);
-    wrapped.forEach((part, index) => { text(prims, x + 12 + (index ? 8 : 0), cursor, (index ? "" : "• ") + part, size, { anchor: "start", fill: INK }); cursor += size + 3.5; });
+    wrapped.forEach((part, index) => {
+      text(prims, x + 12 + (index ? 8 : 0), cursor, (index ? "" : "• ") + part, size, { anchor: "start", fill: INK });
+      cursor += size + 3.5;
+    });
     cursor += 2.5;
   }
   return cursor - y + 6;
 }
 
 function layoutKana(sheet, prims, page) {
-  const { margin, w, h } = page, colW = (w - margin * 2 - 26) / 2;
-  let top = header(prims, sheet, page) + 12;
-  const scripts = [{ name: "Hiragana", jp: "ひらがな", hue: 345, span: 40, tables: sheet.tables.slice(0, 3), note: sheet.notes[0] },
-    { name: "Katakana", jp: "カタカナ", hue: 195, span: 70, tables: sheet.tables.slice(3), note: sheet.notes[1] }];
+  const { margin, w, h } = page,
+    colW = (w - margin * 2 - 26) / 2;
+  const top = header(prims, sheet, page) + 12;
+  const scripts = [
+    { name: "Hiragana", jp: "ひらがな", hue: 345, span: 40, tables: sheet.tables.slice(0, 3), note: sheet.notes[0] },
+    { name: "Katakana", jp: "カタカナ", hue: 195, span: 70, tables: sheet.tables.slice(3), note: sheet.notes[1] },
+  ];
   scripts.forEach((script, index) => {
     const x = margin + index * (colW + 26);
     let cursor = top;
     rect(prims, x, cursor, colW, 24, hsl(script.hue, 55, 92), 12);
-    text(prims, x + 14, cursor + 16.5, `${script.jp}  ${script.name}`, 12, { anchor: "start", weight: 800, fill: hsl(script.hue, 55, 26) });
+    text(prims, x + 14, cursor + 16.5, `${script.jp}  ${script.name}`, 12, {
+      anchor: "start",
+      weight: 800,
+      fill: hsl(script.hue, 55, 26),
+    });
     cursor += 30;
     if (w > h) {
-      const gap = 12, gridW = (colW - gap) / 2, rowH = 25;
+      const gap = 12,
+        gridW = (colW - gap) / 2,
+        rowH = 25;
       const basicH = drawKana(prims, script.tables[0], x, cursor, gridW, rowH, script.hue, script.span);
       drawKana(prims, script.tables[2], x + gridW + gap, cursor, gridW, rowH, script.hue, script.span);
       const lower = cursor + basicH + 8;
@@ -201,29 +271,69 @@ function layoutKana(sheet, prims, page) {
 }
 
 function layoutVerb(sheet, prims, page) {
-  const { margin, w, h } = page, width = w - margin * 2;
+  const { margin, w, h } = page,
+    width = w - margin * 2;
   const palette = {
-    accent: hsl(sheet.hue2, 85, 38), dark: hsl(sheet.hue, 55, 24), head: hsl(sheet.hue, 45, 36),
-    tintA: hsl(sheet.hue, 50, 96), tintB: hsl(sheet.hue, 30, 99), ink: INK, subSize: 8
+    accent: hsl(sheet.hue2, 85, 38),
+    dark: hsl(sheet.hue, 55, 24),
+    head: hsl(sheet.hue, 45, 36),
+    tintA: hsl(sheet.hue, 50, 96),
+    tintB: hsl(sheet.hue, 30, 99),
+    ink: INK,
+    subSize: 8,
   };
   let cursor = header(prims, sheet, page) + 12;
-  const compact = h < 1000, widths = (values) => values.map((value) => value * width / 722);
-  cursor += drawTable(prims, sheet.tables[0], margin, cursor, { ...palette, colW: widths([112, 196, 104, 110, 100, 100]), rowH: compact ? 16 : Math.min(29.5, 29.5 - (1123 - h) / 19), mainSize: compact ? 10 : 13.5, wrapCols: [1], inlineForms: w > h }) + 10;
-  cursor += drawTable(prims, sheet.tables[1], margin, cursor, { ...palette, colW: widths([50, 94, 99, 99, 95, 95, 95, 95]), rowH: compact ? 17 : 25, headH: 20, mainSize: compact ? 11 : 12.5 }) + 8;
+  const compact = h < 1000,
+    widths = (values) => values.map((value) => (value * width) / 722);
+  cursor +=
+    drawTable(prims, sheet.tables[0], margin, cursor, {
+      ...palette,
+      colW: widths([112, 196, 104, 110, 100, 100]),
+      rowH: compact ? 16 : Math.min(29.5, 29.5 - (1123 - h) / 19),
+      mainSize: compact ? 10 : 13.5,
+      wrapCols: [1],
+      inlineForms: w > h,
+    }) + 10;
+  cursor +=
+    drawTable(prims, sheet.tables[1], margin, cursor, {
+      ...palette,
+      colW: widths([50, 94, 99, 99, 95, 95, 95, 95]),
+      rowH: compact ? 17 : 25,
+      headH: 20,
+      mainSize: compact ? 11 : 12.5,
+    }) + 8;
   drawNote(prims, sheet.notes[0], margin, cursor, width, 92, sheet.hue2, 9.5);
 }
 
 function layoutAdjective(sheet, prims, page) {
-  const { margin, w, h } = page, width = w - margin * 2;
+  const { margin, w, h } = page,
+    width = w - margin * 2;
   const palette = {
-    accent: hsl(sheet.hue2, 85, 38), dark: hsl(sheet.hue, 60, 24), head: hsl(sheet.hue, 50, 38),
-    tintA: hsl(sheet.hue, 60, 96), tintB: hsl(sheet.hue, 30, 99), ink: INK, subSize: 8
+    accent: hsl(sheet.hue2, 85, 38),
+    dark: hsl(sheet.hue, 60, 24),
+    head: hsl(sheet.hue, 50, 38),
+    tintA: hsl(sheet.hue, 60, 96),
+    tintB: hsl(sheet.hue, 30, 99),
+    ink: INK,
+    subSize: 8,
   };
   let cursor = header(prims, sheet, page) + 12;
-  cursor += drawTable(prims, sheet.tables[0], margin, cursor, { ...palette, colW: [118, 184, 140, 140, 140].map((value) => value * width / 722), rowH: h < 1000 ? 20 : 34, mainSize: h < 1000 ? 11 : 13, wrapCols: [1], inlineForms: w > h }) + 12;
+  cursor +=
+    drawTable(prims, sheet.tables[0], margin, cursor, {
+      ...palette,
+      colW: [118, 184, 140, 140, 140].map((value) => (value * width) / 722),
+      rowH: h < 1000 ? 20 : 34,
+      mainSize: h < 1000 ? 11 : 13,
+      wrapCols: [1],
+      inlineForms: w > h,
+    }) + 12;
   const cardW = (width - 24) / 3;
   const hues = [sheet.hue, 150, sheet.hue2];
-  sheet.notes.filter((note) => !note.wide).forEach((note, index) => drawNote(prims, note, margin + index * (cardW + 12), cursor, cardW, 112, hues[index], 8.5));
+  sheet.notes
+    .filter((note) => !note.wide)
+    .forEach((note, index) =>
+      drawNote(prims, note, margin + index * (cardW + 12), cursor, cardW, 112, hues[index], 8.5),
+    );
   const wide = sheet.notes.find((note) => note.wide);
   if (wide) drawNote(prims, wide, margin, cursor + 124, width, 112, 270, 9.5);
 }
@@ -233,19 +343,24 @@ export function paginateReference(sheet, rowsPerColumn = sheet.id === "radicals"
   const columns = sheet.tables.flatMap((table) => {
     const chunks = [];
     for (let offset = 0; offset < table.rows.length; offset += rowsPerColumn) {
-      chunks.push({ ...table, title: offset ? `${table.title} (continued)` : table.title, rows: table.rows.slice(offset, offset + rowsPerColumn) });
+      chunks.push({
+        ...table,
+        title: offset ? `${table.title} (continued)` : table.title,
+        rows: table.rows.slice(offset, offset + rowsPerColumn),
+      });
     }
     return chunks;
   });
   const pages = [];
-  for (let index = 0; index < columns.length; index += columnCount) pages.push({ ...sheet, tables: columns.slice(index, index + columnCount) });
+  for (let index = 0; index < columns.length; index += columnCount)
+    pages.push({ ...sheet, tables: columns.slice(index, index + columnCount) });
   return pages.length ? pages : [{ ...sheet, tables: [] }];
 }
 
 export function layoutSheet(sheet, page = PAGE) {
   const prims = [];
   rect(prims, 0, 0, page.w, page.h, PAPER);
-  const layout = ({ kana: layoutKana, verb: layoutVerb, adjective: layoutAdjective })[sheet.id] || layoutReference;
+  const layout = { kana: layoutKana, verb: layoutVerb, adjective: layoutAdjective }[sheet.id] || layoutReference;
   layout(sheet, prims, page);
   footer(prims, sheet, page);
   return { width: page.w, height: page.h, prims };
@@ -254,14 +369,26 @@ export function layoutSheet(sheet, page = PAGE) {
 function layoutReference(sheet, prims, page) {
   const top = header(prims, sheet, page) + 12;
   const palette = {
-    accent: hsl(sheet.hue2, 85, 38), dark: hsl(sheet.hue, 55, 24), head: hsl(sheet.hue, 45, 36),
-    tintA: hsl(sheet.hue, 50, 96), tintB: hsl(sheet.hue, 30, 99), ink: INK, subSize: 8
+    accent: hsl(sheet.hue2, 85, 38),
+    dark: hsl(sheet.hue, 55, 24),
+    head: hsl(sheet.hue, 45, 36),
+    tintA: hsl(sheet.hue, 50, 96),
+    tintB: hsl(sheet.hue, 30, 99),
+    ink: INK,
+    subSize: 8,
   };
   const rowH = Math.min(140, (page.h - 223) / Math.max(...sheet.tables.map((table) => table.rows.length)));
   const columnCount = page.w > page.h ? 3 : 2;
   const colW = (page.w - page.margin * 2 - (columnCount - 1) * 19) / columnCount;
-  sheet.tables.forEach((table, index) => drawTable(prims, table, page.margin + index * (colW + 19), top, {
-    ...palette, colW: [68, 120, 166].map((value) => value * colW / 354), rowH, mainSize: 10, wrapCols: [1, 2],
-    stackForms: sheet.id === "lookalikes", breakContrasts: ["ambiguities", "lookalikes", "grammar-contrasts", "grammar-contrasts-2"].includes(sheet.id)
-  }));
+  sheet.tables.forEach((table, index) =>
+    drawTable(prims, table, page.margin + index * (colW + 19), top, {
+      ...palette,
+      colW: [68, 120, 166].map((value) => (value * colW) / 354),
+      rowH,
+      mainSize: 10,
+      wrapCols: [1, 2],
+      stackForms: sheet.id === "lookalikes",
+      breakContrasts: ["ambiguities", "lookalikes", "grammar-contrasts", "grammar-contrasts-2"].includes(sheet.id),
+    }),
+  );
 }

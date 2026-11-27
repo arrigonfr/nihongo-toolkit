@@ -14,14 +14,14 @@ const KANA_ROWS = [
   ["y", "や", "ya", null, null, "ゆ", "yu", null, null, "よ", "yo"],
   ["r", "ら", "ra", "り", "ri", "る", "ru", "れ", "re", "ろ", "ro"],
   ["w", "わ", "wa", "ゐ", "wi*", null, null, "ゑ", "we*", "を", "wo"],
-  ["", "ん", "n", null, null, null, null, null, null, null, null]
+  ["", "ん", "n", null, null, null, null, null, null, null, null],
 ];
 const KANA_VOICED = [
   ["g", "が", "ga", "ぎ", "gi", "ぐ", "gu", "げ", "ge", "ご", "go"],
   ["z", "ざ", "za", "じ", "ji", "ず", "zu", "ぜ", "ze", "ぞ", "zo"],
   ["d", "だ", "da", "ぢ", "ji", "づ", "zu", "で", "de", "ど", "do"],
   ["b", "ば", "ba", "び", "bi", "ぶ", "bu", "べ", "be", "ぼ", "bo"],
-  ["p", "ぱ", "pa", "ぴ", "pi", "ぷ", "pu", "ぺ", "pe", "ぽ", "po"]
+  ["p", "ぱ", "pa", "ぴ", "pi", "ぷ", "pu", "ぺ", "pe", "ぽ", "po"],
 ];
 const KANA_COMBO = [
   ["ky", "きゃ", "kya", "きゅ", "kyu", "きょ", "kyo"],
@@ -34,21 +34,26 @@ const KANA_COMBO = [
   ["gy", "ぎゃ", "gya", "ぎゅ", "gyu", "ぎょ", "gyo"],
   ["j", "じゃ", "ja", "じゅ", "ju", "じょ", "jo"],
   ["by", "びゃ", "bya", "びゅ", "byu", "びょ", "byo"],
-  ["py", "ぴゃ", "pya", "ぴゅ", "pyu", "ぴょ", "pyo"]
+  ["py", "ぴゃ", "pya", "ぴゅ", "pyu", "ぴょ", "pyo"],
 ];
 
-export const toKatakana = (text) => text.replace(/[\u3041-\u3096]/g, (char) => String.fromCharCode(char.charCodeAt(0) + 0x60));
+export const toKatakana = (text) =>
+  text.replace(/[\u3041-\u3096]/g, (char) => String.fromCharCode(char.charCodeAt(0) + 0x60));
 
 function kanaTable(id, title, script, source, columns) {
   const convert = script === "katakana" ? toKatakana : (text) => text;
   return {
-    id, title, columns, rowLabels: source.map((row) => (row[0] || "·")),
+    id,
+    title,
+    columns,
+    rowLabels: source.map((row) => row[0] || "·"),
     rows: source.map((row) => {
       const cells = [];
-      for (let i = 1; i < row.length; i += 2) cells.push(row[i] ? { parts: [[convert(row[i]), false]], sub: row[i + 1] } : null);
+      for (let i = 1; i < row.length; i += 2)
+        cells.push(row[i] ? { parts: [[convert(row[i]), false]], sub: row[i + 1] } : null);
       while (cells.length < columns.length) cells.push(null);
       return cells;
-    })
+    }),
   };
 }
 
@@ -58,9 +63,15 @@ const COMBO_COLUMNS = ["ya", "yu", "yo"];
 export function kanaScript(script) {
   const name = script === "katakana" ? "Katakana" : "Hiragana";
   return [
-    kanaTable(`${script}-basic`, `${name} · ${script === "katakana" ? "カタカナ" : "ひらがな"} gojūon`, script, KANA_ROWS, VOWELS),
+    kanaTable(
+      `${script}-basic`,
+      `${name} · ${script === "katakana" ? "カタカナ" : "ひらがな"} gojūon`,
+      script,
+      KANA_ROWS,
+      VOWELS,
+    ),
     kanaTable(`${script}-voiced`, `${name} dakuten ゛ and handakuten ゜`, script, KANA_VOICED, VOWELS),
-    kanaTable(`${script}-combo`, `${name} combinations (yōon)`, script, KANA_COMBO, COMBO_COLUMNS)
+    kanaTable(`${script}-combo`, `${name} combinations (yōon)`, script, KANA_COMBO, COMBO_COLUMNS),
   ];
 }
 
@@ -74,7 +85,7 @@ export const kanaNotes = {
     "Particle を is pronounced o",
     "ぢ づ are rare; use じ ず",
     "Irregular pronunciations: し shi · ち chi · つ tsu · ふ fu",
-    "Historical kana: ゐ wi and ゑ we are not used in standard modern Japanese."
+    "Historical kana: ゐ wi and ゑ we are not used in standard modern Japanese.",
   ],
   katakana: [
     "ー lengthens a vowel: コーヒー kōhī",
@@ -83,19 +94,23 @@ export const kanaNotes = {
     "Foreign sounds: ティ ti · ディ di · ウィ wi",
     "Foreign sounds: シェ she · チェ che · ジェ je · ヴ vu",
     "Irregular pronunciations: シ shi · チ chi · ツ tsu · フ fu",
-    "Historical kana: ヰ wi and ヱ we are not used in standard modern Japanese."
-  ]
+    "Historical kana: ヰ wi and ヱ we are not used in standard modern Japanese.",
+  ],
 };
 
 export function kanaSheet() {
   return {
-    id: "kana", title: "Hiragana & Katakana", jp: "ひらがな・カタカナ", subtitle: "Kana cheatsheet · gojūon, dakuten, handakuten and combinations",
-    hue: 340, hue2: 215,
+    id: "kana",
+    title: "Hiragana & Katakana",
+    jp: "ひらがな・カタカナ",
+    subtitle: "Kana cheatsheet · gojūon, dakuten, handakuten and combinations",
+    hue: 340,
+    hue2: 215,
     tables: [...kanaScript("hiragana"), ...kanaScript("katakana")],
     notes: [
       { title: "Hiragana", lines: kanaNotes.hiragana },
-      { title: "Katakana", lines: kanaNotes.katakana }
+      { title: "Katakana", lines: kanaNotes.katakana },
     ],
-    footer: ""
+    footer: "",
   };
 }

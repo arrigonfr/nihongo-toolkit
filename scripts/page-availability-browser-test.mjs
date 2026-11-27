@@ -9,8 +9,12 @@ import { chromium } from "playwright";
 const root = fileURLToPath(new URL("../frontend", import.meta.url));
 const outDir = await mkdtemp(join(tmpdir(), "nihon-availability-"));
 const previous = process.env.DISABLED_PAGES;
+const prevGa = process.env.VITE_GA_ID;
+const prevGtm = process.env.VITE_GTM_ID;
 let server, browser;
 try {
+  process.env.VITE_GA_ID = "G-LL2V1JZBER";
+  process.env.VITE_GTM_ID = "GTM-T7N85X93";
   process.env.DISABLED_PAGES = "";
   const enabled = await build({ root, logLevel: "error", build: { outDir } });
   const fullChunk = enabled.output.find((output) => output.type === "chunk" && Object.keys(output.modules).some((id) => id.endsWith("/src/resources.js")));
@@ -27,7 +31,8 @@ try {
   assert.match(restrictedHtml, /Japanese Cheatsheet Previews/);
   assert.match(restrictedHtml, /googletagmanager.com\/gtm.js/);
   assert.match(restrictedHtml, /googletagmanager.com\/gtag\/js/);
-  assert.match(restrictedHtml, /googletagmanager.com\/ns.html/);
+  assert.match(restrictedHtml, /window\.__nihonAnalytics/);
+  assert.doesNotMatch(restrictedHtml, /googletagmanager.com\/ns.html/);
   assert.ok(restricted.output.some((output) => output.type === "chunk" && Object.keys(output.modules).some((id) => id.endsWith("/src/page-views.js"))));
   await assert.rejects(access(join(outDir, "stale-secret.txt")), { code: "ENOENT" });
   await assert.rejects(access(join(outDir, fullChunk.fileName)), { code: "ENOENT" });
@@ -115,7 +120,7 @@ try {
     await page.goto(`${origin}${path}`);
     assert.match(await page.locator("h1").textContent(), /unavailable/);
   }
-  for (const path of ["/src/resources.js", "/src/worksheet.js", "/src/worksheet-kanji.json", "/src/worksheet-strokes.json", "/src/cheatsheet-data.js", "/shiryo.html.map", `/${fullChunk.fileName}`]) {
+  for (const path of ["/src/resources.js", "/src/worksheet.js", "/src/worksheet-kanji.json", "/src/worksheet-strokes.json", "/src/worksheet-strokes/kana.json", "/src/cheatsheet-data.js", "/shiryo.html.map", `/${fullChunk.fileName}`]) {
     const response = await fetch(`${origin}${path}`);
     const text = await response.text();
     // Static hosts may return the homepage fallback instead of a 404.
@@ -127,6 +132,10 @@ try {
 } finally {
   if (previous === undefined) delete process.env.DISABLED_PAGES;
   else process.env.DISABLED_PAGES = previous;
+  if (prevGa === undefined) delete process.env.VITE_GA_ID;
+  else process.env.VITE_GA_ID = prevGa;
+  if (prevGtm === undefined) delete process.env.VITE_GTM_ID;
+  else process.env.VITE_GTM_ID = prevGtm;
   await browser?.close();
   if (server) await new Promise((resolve, reject) => server.httpServer.close((error) => error ? reject(error) : resolve()));
   await rm(outDir, { recursive: true, force: true });

@@ -4,7 +4,7 @@ import { isPracticeKanji, practiceMeanings } from "../src/practice-kanji.js";
 import { createHandler } from "../src/app.js";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { openDatabase } from "../src/database.js";
+import { openTestDatabase } from "./support/fixture-db.js";
 
 test("quiz eligibility rejects radical forms and component-only entries, not real kanji that are also radicals", () => {
   for (const char of ["⼀", "⽊", "⺅", "abc", "あ", "日月"]) {
@@ -22,7 +22,7 @@ test("quiz eligibility rejects radical forms and component-only entries, not rea
 });
 
 test("both quiz modes filter before sampling at every JLPT level", async () => {
-  const db = openDatabase();
+  const db = openTestDatabase();
   const server = createServer(createHandler({ database: db }));
   server.listen(0, "127.0.0.1");
   await once(server, "listening");

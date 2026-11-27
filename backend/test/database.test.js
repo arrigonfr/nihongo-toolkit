@@ -283,9 +283,165 @@ test("API serves SQLite batches, search, relations and strokes with validation a
     assert.equal((await get("/api/words/batch?level=1")).status, 503);
     assert.equal((await get("/api/health", { headers: { Origin: "https://untrusted.example" } })).status, 403);
     assert.equal((await get("/api/health", { method: "OPTIONS", headers: { Origin: "http://localhost:5173" } })).status, 204);
+    const headHealth = await get("/api/health", { method: "HEAD" });
+    assert.equal(headHealth.status, 200);
+    assert.equal(await headHealth.text(), "");
+    const headKanji = await get("/api/kanji/candidates?reading=にち", { method: "HEAD" });
+    assert.equal(headKanji.status, 200);
+    assert.equal(await headKanji.text(), "");
+    const headMissing = await get("/api/missing", { method: "HEAD" });
+    assert.equal(headMissing.status, 404);
+    assert.equal(await headMissing.text(), "");
     assert.equal((await get("/api/health", { method: "POST" })).status, 405);
     assert.equal((await get("/api/missing")).status, 404);
     assert.equal((await (await get("/api/words?keyword=%27%20OR%201%3D1--")).json()).data.length, 0);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    db.close();
+  }
+});
+
+test("short 1-2 character English searches use FTS5 term indexes instead of full-table instr scans", async () => {
+  const db = createDatabase(":memory:");
+  insertKanjis(db, { characters: [
+    {
+      literal: "行", codepoints: [{ type: "ucs", value: "884c" }], radicals: [{ type: "classical", value: 144 }],
+      dictionaryReferences: [], queryCodes: [],
+      misc: { grade: 2, strokeCounts: [6], jlptLevel: 4, frequency: 20, radicalNames: [], variants: [] },
+      readingMeaning: { nanori: [], groups: [{
+        readings: [{ type: "ja_on", value: "コウ" }, { type: "ja_kun", value: "い.く" }],
+        meanings: [{ lang: "en", value: "go" }, { lang: "en", value: "going" }]
+      }] }
+    },
+    {
+      literal: "金", codepoints: [{ type: "ucs", value: "91d1" }], radicals: [{ type: "classical", value: 167 }],
+      dictionaryReferences: [], queryCodes: [],
+      misc: { grade: 1, strokeCounts: [8], jlptLevel: 4, frequency: 53, radicalNames: [], variants: [] },
+      readingMeaning: { nanori: [], groups: [{
+        readings: [{ type: "ja_on", value: "キン" }, { type: "ja_kun", value: "かね" }],
+        meanings: [{ lang: "en", value: "gold" }]
+      }] }
+    },
+    {
+      literal: "上", codepoints: [{ type: "ucs", value: "4e0a" }], radicals: [{ type: "classical", value: 1 }],
+      dictionaryReferences: [], queryCodes: [],
+      misc: { grade: 1, strokeCounts: [3], jlptLevel: 4, frequency: 35, radicalNames: [], variants: [] },
+      readingMeaning: { nanori: [], groups: [{
+        readings: [{ type: "ja_on", value: "ジョウ" }, { type: "ja_kun", value: "うえ" }],
+        meanings: [{ lang: "en", value: "up" }]
+      }] }
+    }
+  ] }, new Map([["行", { level: 5 }], ["金", { level: 5 }], ["上", { level: 5 }]]));
+  insertWords(db, { tags: { v5k: "Godan verb", n: "noun" }, words: [
+    {
+      id: "10", kanji: [{ text: "行く", common: true, tags: [] }],
+      kana: [{ text: "いく", common: true, tags: [], appliesToKanji: ["行く"] }],
+      sense: [{ gloss: [{ lang: "eng", text: "to go" }], partOfSpeech: ["v5k"], misc: [], field: [], dialect: [],
+        appliesToKanji: ["行く"], appliesToKana: ["いく"], related: [], antonym: [], info: [] }]
+    },
+    {
+      id: "11", kanji: [{ text: "碁", common: true, tags: [] }],
+      kana: [{ text: "ご", common: true, tags: [], appliesToKanji: ["碁"] }],
+      sense: [{ gloss: [{ lang: "eng", text: "go" }], partOfSpeech: ["n"], misc: [], field: [], dialect: [],
+        appliesToKanji: ["碁"], appliesToKana: ["ご"], related: [], antonym: [], info: [] }]
+    },
+    {
+      id: "12", kanji: [{ text: "金", common: true, tags: [] }],
+      kana: [{ text: "きん", common: true, tags: [], appliesToKanji: ["金"] }],
+      sense: [{ gloss: [{ lang: "eng", text: "gold" }], partOfSpeech: ["n"], misc: [], field: [], dialect: [],
+        appliesToKanji: ["金"], appliesToKana: ["きん"], related: [], antonym: [], info: [] }]
+    }
+  ] });
+
+  let statements = [];
+  const source = { async batch(jobs) {
+    return jobs.map(({ sql, args }) => {
+      statements.push(sql);
+      const query = db.prepare(sql);
+      return { columns: query.columns().map((column) => column.name), rows: query.all(...args) };
+    });
+  } };
+  const server = createServer(createHandler({ database: source, sentenceFallback: async () => [], translateSentence: async () => "" }));
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const get = async (path) => {
+    statements = [];
+    const response = await fetch(`http://127.0.0.1:${server.address().port}${path}`);
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  try {
+    const wordsGo = await get("/api/words?q=go");
+    assert.deepEqual(wordsGo.data.map((item) => item.slug), ["碁", "行く", "金"]);
+    assert.ok(statements.some((sql) => sql.includes("words_meanings_terms_fts")));
+    assert.ok(!statements.some((sql) => sql.includes("instr(lower(meanings)")));
+
+    const kanjiGo = await get("/api/kanji?q=go");
+    assert.deepEqual(kanjiGo.items.map((item) => item.kanji), ["行", "金"]);
+    assert.equal(kanjiGo.total, 2);
+    assert.ok(statements.some((sql) => sql.includes("kanji_meanings_terms_fts")));
+    assert.ok(!statements.some((sql) => sql.includes("instr(lower(meanings)")));
+
+    const kanjiU = await get("/api/kanji?q=u");
+    assert.deepEqual(kanjiU.items.map((item) => item.kanji), ["上"]);
+    assert.ok(statements.some((sql) => sql.includes("kanji_meanings_terms_fts")));
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    db.close();
+  }
+});
+
+test("practice batch sampling avoids ORDER BY random() while returning varied randomized orderings", async () => {
+  const db = fixture();
+  const original = db.prepare("SELECT * FROM kanjis").get();
+  const columns = Object.keys(original);
+  const insertKanji = db.prepare(`INSERT INTO kanjis (${columns.join(",")}) VALUES (${columns.map(() => "?").join(",")})`);
+  for (const [index, character] of [..."月火水木金土山川田人口大小中上下左右前後"].entries()) {
+    const row = { ...original, id: 100 + index, character, codepoint: character.codePointAt(0), unicode: `U+${character.codePointAt(0).toString(16).toUpperCase()}` };
+    insertKanji.run(...columns.map((column) => row[column]));
+  }
+  const extraVocab = Array.from({ length: 15 }, (_, i) => ({
+    id: `study-extra-${i}`, jmdict_id: 1, word: `日本${i}`, reading: `にほん${i}`, romaji: `nihon${i}`,
+    meanings: [`Japan ${i}`], level: "N5", examples: []
+  }));
+  insertVocabulary(db, extraVocab);
+
+  let statements = [];
+  const source = { async batch(jobs) {
+    return jobs.map(({ sql, args }) => {
+      statements.push(sql);
+      const query = db.prepare(sql);
+      return { columns: query.columns().map((column) => column.name), rows: query.all(...args) };
+    });
+  } };
+  const server = createServer(createHandler({ database: source, sentenceFallback: async () => [], translateSentence: async () => "" }));
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const get = async (path) => {
+    statements = [];
+    const response = await fetch(`http://127.0.0.1:${server.address().port}${path}`);
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  try {
+    const kanjiOrders = new Set();
+    for (let i = 0; i < 6; i++) {
+      const res = await get("/api/kanji/batch?projection=practice&limit=10");
+      assert.equal(res.items.length, 10);
+      assert.equal(new Set(res.items.map((item) => item.id)).size, 10);
+      assert.ok(!statements.some((sql) => /ORDER BY\s+random\(\)/i.test(sql)));
+      kanjiOrders.add(res.items.map((item) => item.id).join(","));
+    }
+    assert.ok(kanjiOrders.size > 1, "Repeated kanji batches should randomize order");
+
+    const wordOrders = new Set();
+    for (let i = 0; i < 6; i++) {
+      const res = await get("/api/words/batch?projection=practice&level=5&limit=10&expand=1");
+      assert.ok(res.items.length >= 10);
+      assert.ok(!statements.some((sql) => /ORDER BY\s+random\(\)/i.test(sql)));
+      wordOrders.add(res.items.slice(0, 10).map((item) => item.id).join(","));
+    }
+    assert.ok(wordOrders.size > 1, "Repeated word batches should randomize order");
   } finally {
     await new Promise((resolve) => server.close(resolve));
     db.close();

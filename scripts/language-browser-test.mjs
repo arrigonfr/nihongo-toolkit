@@ -274,6 +274,7 @@ try {
     assert.equal(directText, expected);
   }
   await page.goto(`${base}/katsuyo-renshuu.html`);
+  await page.locator('#quickSettings .study-pills[aria-label="Modo de prática"]').waitFor();
   assert.equal(await page.locator("#quickSettings .study-pills").getAttribute("aria-label"), "Modo de prática", "Mode group has a localized accessible label");
 
   await page.goto(`${base}/eawase.html`);
@@ -365,7 +366,7 @@ try {
 
   await chooseLanguage("Español");
   await page.goto(`${base}/pazuru.html`);
-  assert.equal(await page.locator("#newPuzzleBtn").textContent(), "Nuevo crucigrama");
+  await page.locator("#newPuzzleBtn").filter({ hasText: "Nuevo crucigrama" }).waitFor();
   await page.locator("#newPuzzleBtn").click();
   await page.locator("#crosswordGrid .cw-cell:not(.block)").first().click();
   await page.locator(".cw-popover-length-label").filter({ hasText: "Longitud:" }).waitFor();
@@ -379,7 +380,7 @@ try {
 
   await chooseLanguage("Español");
   await page.goto(`${base}/shiritori.html`);
-  assert.equal(await page.locator("#newGame").textContent(), "Empezar partida →");
+  await page.locator("#newGame").filter({ hasText: "Empezar partida →" }).waitFor();
   await page.locator("#newGame").click();
   await page.waitForFunction(() => !document.getElementById("wordInput").disabled);
   await page.locator("#newGame").filter({ hasText: "Nueva partida →" }).waitFor({ state: "attached" });

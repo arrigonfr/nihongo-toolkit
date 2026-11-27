@@ -12,6 +12,9 @@ const api = createServer((await import("../backend/src/app.js")).createHandler({
 api.listen(0, "127.0.0.1");
 await once(api, "listening");
 process.env.VITE_API_BASE_URL = `http://127.0.0.1:${api.address().port}`;
+process.env.VITE_GA_ID = "G-LL2V1JZBER";
+process.env.VITE_GTM_ID = "GTM-T7N85X93";
+process.env.VITE_ANALYTICS_DEV = "true";
 let vite, browser;
 try {
   vite = await createVite({ root: fileURLToPath(new URL("../frontend", import.meta.url)), server: { host: "127.0.0.1", port: 0, strictPort: false } });

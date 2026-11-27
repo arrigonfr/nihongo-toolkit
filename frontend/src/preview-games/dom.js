@@ -1,6 +1,7 @@
-import { japaneseHTML, speakJapanese, study } from "../study-controls.js";
-import { cancelLocalSpeech } from "../local-speech.js";
 import { audioIcon } from "../audio-icon.js";
+import { setHTML } from "../html.js";
+import { cancelLocalSpeech } from "../local-speech.js";
+import { japaneseHTML, speakJapanese, study } from "../study-controls.js";
 import "./games.css";
 
 export function el(tag, text, className) {
@@ -11,7 +12,7 @@ export function el(tag, text, className) {
 }
 export function ja(text, reading) {
   const node = el("span");
-  node.innerHTML = japaneseHTML(text, reading);
+  setHTML(node, japaneseHTML(text, reading));
   return node;
 }
 export function button(text, action) {

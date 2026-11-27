@@ -1,16 +1,17 @@
-import { DatabaseSync } from "node:sqlite";
-import { readFileSync, mkdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { fileURLToPath } from "node:url";
 
-export const databasePath = process.env.DATABASE_PATH
-  || fileURLToPath(new URL("../data/nihon.sqlite", import.meta.url));
+export const databasePath =
+  process.env.DATABASE_PATH || fileURLToPath(new URL("../data/nihon.sqlite", import.meta.url));
 
 export function createDatabase(path = databasePath) {
   mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   db.exec(readFileSync(new URL("./schema.sql", import.meta.url), "utf8"));
   db.exec(readFileSync(new URL("./word-search-index.sql", import.meta.url), "utf8"));
+  db.exec(readFileSync(new URL("./search-indexes.sql", import.meta.url), "utf8"));
   return db;
 }
 

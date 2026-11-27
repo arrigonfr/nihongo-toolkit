@@ -67,6 +67,8 @@ try {
     document.body.prepend(button);
   });
   await page.click("#testSpeech");
+  await page.locator('[data-local-speech-optin="accept"]').waitFor();
+  await page.click('[data-local-speech-optin="accept"]');
   await page.click("#audioQuickToggle");
   await page.click("#audioQuickToggle");
   await page.click("#testSpeech");

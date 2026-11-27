@@ -1,23 +1,32 @@
-import { API_BASE } from "./api.js";
+import { fetchJSON } from "./api.js";
 import "./feedback.css";
-import { japaneseHTML, sentenceHTML, audioHTML } from "./study-controls.js";
 import { sentenceTranslationHTML } from "./content-language.js";
+import { escapeHTML as escape, setHTML } from "./html.js";
+import { audioHTML, japaneseHTML, sentenceHTML } from "./study-controls.js";
 
-export const escape = (value) => String(value ?? "").replace(/[&<>"']/g,
-  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+export { escape };
 
 export function sentencesHTML(examples, query = "") {
   const offset = Math.floor(Math.random() * examples.length);
   const ordered = [...examples.slice(offset), ...examples.slice(0, offset)];
-  const content = `<div class="sentence-list">${ordered.slice(0, 3).map((item) => `
+  const content = `<div class="sentence-list">${ordered
+    .slice(0, 3)
+    .map(
+      (item) => `
     <div class="sentence-item" data-sentence-text="${escape(item.japanese)}">
       <div lang="ja" class="sentence-japanese">${sentenceHTML(item.japanese, item.furigana)}</div>
       ${sentenceTranslationHTML(item)}
       ${item.generated ? `<div class="sentence-credit">AI-generated · ${item.reviewed ? "Reviewed" : "Unverified"}</div>` : ""}
-      ${item.id && (!item.source || item.source === "Tatoeba") && !item.generated ? `<a class="sentence-credit" href="https://tatoeba.org/sentences/show/${encodeURIComponent(item.id)}"
-        target="_blank" rel="noopener noreferrer">Tatoeba · ${escape(item.owner || "contributors")} · ${escape(item.license || "CC BY 2.0 FR")}</a>` : ""}
+      ${
+        item.id && (!item.source || item.source === "Tatoeba") && !item.generated
+          ? `<a class="sentence-credit" href="https://tatoeba.org/sentences/show/${encodeURIComponent(item.id)}"
+        target="_blank" rel="noopener noreferrer">Tatoeba · ${escape(item.owner || "contributors")} · ${escape(item.license || "CC BY 2.0 FR")}</a>`
+          : ""
+      }
       ${sentenceTranslationHTML(item, "credit")}
-    </div>`).join("")}</div>`;
+    </div>`,
+    )
+    .join("")}</div>`;
   if (!query) return content;
   return `<div class="sentence-panel" data-sentence-query="${escape(query)}">
     <div class="sentence-results">${examples.length ? content : "No translated examples found for this word."}</div>
@@ -26,25 +35,35 @@ export function sentencesHTML(examples, query = "") {
 }
 
 async function loadSentenceResult(query, signal, { random = false, exclude = [], corpusOnly = false } = {}) {
-  const params = new URLSearchParams({ q: query });
-  if (corpusOnly) params.set("corpus", "1");
+  const params = { q: query };
+  if (corpusOnly) params.corpus = "1";
   if (random) {
-    params.set("random", "1");
-    params.set("exclude", JSON.stringify(exclude.slice(0, 10)));
+    params.random = "1";
+    params.exclude = JSON.stringify(exclude.slice(0, 10));
   }
-  const response = await fetch(`${API_BASE}/api/sentences?${params}`, {
-    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10000)]) : AbortSignal.timeout(10000)
+  const payload = await fetchJSON("/api/sentences", {
+    params,
+    signal,
+    timeoutMs: 10000,
+    fallbackError: "Example sentences are temporarily unavailable. Please try again in a moment.",
   });
-  if (!response.ok) throw new Error("Example sentences are temporarily unavailable. Please try again in a moment.");
-  const payload = await response.json();
   if (!Array.isArray(payload.data)) throw new Error("Example sentences could not be read. Please retry.");
   const examples = payload.data.map((item) => {
     const translation = item.translations?.find((t) => t.lang === "eng");
     return {
-      id: item.id, japanese: item.text, furigana: item.furigana, english: translation?.text ?? "",
-      owner: item.owner, translationOwner: translation?.owner, translationId: translation?.id, license: item.license,
-      source: item.source, generated: item.generated, reviewed: item.reviewed, attribution: item.attribution,
-      translations_by_language: item.translations_by_language
+      id: item.id,
+      japanese: item.text,
+      furigana: item.furigana,
+      english: translation?.text ?? "",
+      owner: item.owner,
+      translationOwner: translation?.owner,
+      translationId: translation?.id,
+      license: item.license,
+      source: item.source,
+      generated: item.generated,
+      reviewed: item.reviewed,
+      attribution: item.attribution,
+      translations_by_language: item.translations_by_language,
     };
   });
   return { examples, warning: payload.warning || "" };
@@ -60,23 +79,28 @@ const mounts = new WeakMap();
 export async function mountSentenceExamples(element, query, initial = []) {
   const token = {};
   mounts.set(element, token);
-  element.innerHTML = sentencesHTML(initial, query);
+  setHTML(element, sentencesHTML(initial, query));
   if (initial.length) return initial;
   element.querySelector(".sentence-results").textContent = "Looking for example sentences…";
   const doneLoading = beginLoading([], element, "Looking for example sentences…", { captureTrigger: false });
   element.querySelector(".sentence-next").disabled = true;
   try {
     if (!cache.has(query) && !requests.has(query)) {
-      requests.set(query, loadSentences(query).then((items) => {
-        if (items.length) {
-          if (cache.size >= 200) cache.delete(cache.keys().next().value);
-          cache.set(query, items);
-        }
-        return items;
-      }).finally(() => requests.delete(query)));
+      requests.set(
+        query,
+        loadSentences(query)
+          .then((items) => {
+            if (items.length) {
+              if (cache.size >= 200) cache.delete(cache.keys().next().value);
+              cache.set(query, items);
+            }
+            return items;
+          })
+          .finally(() => requests.delete(query)),
+      );
     }
-    const items = cache.get(query) || await requests.get(query);
-    if (element.isConnected && mounts.get(element) === token) element.innerHTML = sentencesHTML(items, query);
+    const items = cache.get(query) || (await requests.get(query));
+    if (element.isConnected && mounts.get(element) === token) setHTML(element, sentencesHTML(items, query));
     return items;
   } catch (error) {
     if (element.isConnected && mounts.get(element) === token) {
@@ -102,20 +126,39 @@ document.addEventListener("click", async (event) => {
   button.disabled = true;
   status.textContent = "Finding another example…";
   try {
-    const { examples, warning } = await loadSentenceResult(panel.dataset.sentenceQuery, undefined, { random: true, exclude });
+    const { examples, warning } = await loadSentenceResult(panel.dataset.sentenceQuery, undefined, {
+      random: true,
+      exclude,
+    });
     if (!panel.isConnected) return;
-    if (examples.length) panel.querySelector(".sentence-results").innerHTML = sentencesHTML(examples);
-    status.textContent = warning || (!examples.length ? "No translated examples found."
-      : examples.every((item) => exclude.includes(item.japanese)) ? "No different example is available right now." : "");
+    if (examples.length) setHTML(panel.querySelector(".sentence-results"), sentencesHTML(examples));
+    status.textContent =
+      warning ||
+      (!examples.length
+        ? "No translated examples found."
+        : examples.every((item) => exclude.includes(item.japanese))
+          ? "No different example is available right now."
+          : "");
     button.textContent = "Another example";
   } catch (error) {
-    if (panel.isConnected) { status.textContent = error.message; button.textContent = "Retry examples"; }
-  } finally { await doneLoading(); button.disabled = false; }
+    if (panel.isConnected) {
+      status.textContent = error.message;
+      button.textContent = "Retry examples";
+    }
+  } finally {
+    await doneLoading();
+    button.disabled = false;
+  }
 });
 
 export function wordsHTML(words) {
-  return `<ul class="example-word-list">${words.map((item) =>
-    `<li><span lang="ja" class="example-word">${japaneseHTML(item.word, item.reading)}</span>${audioHTML(item.reading || item.word)}
-      <span class="example-definition">${item.meanings.map(escape).join("; ")}</span></li>`).join("")}</ul>`;
+  return `<ul class="example-word-list">${words
+    .map(
+      (item) =>
+        `<li><span lang="ja" class="example-word">${japaneseHTML(item.word, item.reading)}</span>${audioHTML(item.reading || item.word)}
+      <span class="example-definition">${item.meanings.map(escape).join("; ")}</span></li>`,
+    )
+    .join("")}</ul>`;
 }
+
 import { beginLoading } from "./request-loading.js";

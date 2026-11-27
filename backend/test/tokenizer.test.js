@@ -2,13 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { segmentText } from "../src/tokenizer.js";
 import { analyzeSentence } from "../src/analyze.js";
-import { openDatabase } from "../src/database.js";
+import { openTestDatabase } from "./support/fixture-db.js";
 import { createHandler } from "../src/app.js";
 import { createServer } from "node:http";
 import { once } from "node:events";
 
 test("analysis API includes distinct source kanji and database JLPT ratings", async () => {
-  const db = openDatabase();
+  const db = openTestDatabase();
   const server = createServer(createHandler({
     database: db, translateSentence: async () => "",
     sentenceFallback: async () => [], wordFallback: async () => []
@@ -52,7 +52,7 @@ test("morphological analysis preserves Japanese words, suffixes, particles and c
 });
 
 test("dictionary enrichment keeps inflected surface readings rather than lemma readings", async () => {
-  const db = openDatabase();
+  const db = openTestDatabase();
   try {
     const result = await analyzeSentence(db, "本を読んでいます。", {
       toWord: (row) => ({ japanese: [{ word: row.word, reading: row.reading }] }),

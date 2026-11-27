@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { build } from "esbuild";
 import { Miniflare } from "miniflare";
-import { openDatabase } from "../src/database.js";
+import { openTestDatabase } from "./support/fixture-db.js";
 import { segmentText } from "../src/tokenizer.js";
 import { isPracticeKanji } from "../src/practice-kanji.js";
 
@@ -25,10 +25,10 @@ function libsqlResponse(db, stmt) {
 }
 
 test("Worker + Turso web client: API parity, practice filtering and lossless tokenizer", { timeout: 180000 }, async () => {
-  await access("frontend/dist/_dictionary/base.gz");
+  await access("backend/.worker-assets/_dictionary/base.gz");
   const directory = resolve(`backend/.cache/cloudflare-${randomUUID()}`);
   await mkdir(directory, { recursive: true });
-  const local = openDatabase();
+  const local = openTestDatabase();
   let mf;
   let unavailable = false;
   let statements = [];
@@ -86,7 +86,7 @@ test("Worker + Turso web client: API parity, practice filtering and lossless tok
           throw error;
         }
       },
-      assets: { directory: resolve("frontend/dist"), binding: "ASSETS", workerName: "nihon-test",
+      assets: { directory: resolve("backend/.worker-assets"), binding: "ASSETS", workerName: "nihon-test",
         routerConfig: { invoke_user_worker_ahead_of_assets: true, has_user_worker: true },
         assetConfig: { html_handling: "none", not_found_handling: "404-page" } }
     };
@@ -127,6 +127,18 @@ test("Worker + Turso web client: API parity, practice filtering and lossless tok
       "/api/sentences?q=猫"
     ]) await request(path);
     assert.match((await request("/api/kanji/日/strokes")).text, /<svg/);
+    const cachedWordsFirst = await request("/api/words?q=school");
+    assert.match(cachedWordsFirst.response.headers.get("Cache-Control") || "", /public.*s-maxage=86400/);
+    assert.ok(cachedWordsFirst.json().data.length > 0);
+    assert.ok(statements.length > 0);
+    // Second request for the same dictionary URL hits Cloudflare edge cache with zero Turso queries.
+    const cachedWordsSecond = await request("/api/words?q=school", 200, { headers: { Origin: "https://nihon.test" } });
+    assert.equal(statements.length, 0, "cached dictionary response must not query Turso");
+    assert.equal(cachedWordsSecond.response.headers.get("Access-Control-Allow-Origin"), "https://nihon.test");
+    await request("/api/words?q=school", 403, { headers: { Origin: "https://untrusted.test" } });
+    // Randomized & health endpoints must stay no-store.
+    assert.equal((await request("/api/health")).response.headers.get("Cache-Control"), "no-store");
+    assert.equal((await request("/api/kanji/batch?limit=5&projection=practice")).response.headers.get("Cache-Control"), "no-store");
     assert.ok((await request("/api/words?q=食べました")).json().data.length);
     assert.ok((await request("/api/conjugator?q=食べる")).json().items.length);
     for (const text of ["私は昨日学校に行きました。", "本を読んでいます。", "寿司を食べませんでした。",
@@ -153,9 +165,15 @@ test("Worker + Turso web client: API parity, practice filtering and lossless tok
     for (const path of ["/", "/活用.html", "/_dictionary/tid.gz", "/api/missing"]) await request(path, 404);
     await request("/api/health", 403, { headers: { Origin: "https://untrusted.test" } });
     await request("/api/health", 204, { method: "OPTIONS", headers: { Origin: "https://nihon.test" } });
+    const headHealth = await request("/api/health", 200, { method: "HEAD" });
+    assert.equal(headHealth.text, "");
+    assert.deepEqual(statements, ["SELECT 1"]);
+    const headMissing = await request("/api/missing", 404, { method: "HEAD" });
+    assert.equal(headMissing.text, "");
     await request("/api/health", 405, { method: "POST" });
     unavailable = true;
     await request("/api/health", 503);
+    assert.equal((await request("/api/health", 503, { method: "HEAD" })).text, "");
     unavailable = false;
     assert.equal((await request("/api/health")).json().ready, true);
     await mf.setOptions({ ...options, bindings: {} });
@@ -165,4 +183,60 @@ test("Worker + Turso web client: API parity, practice filtering and lossless tok
     await mf?.dispose();
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test("Worker rate limiting enforces tiered buckets, returns 429 with Retry-After, and skips OPTIONS", async () => {
+  const { default: worker } = await import("../src/worker.js");
+  const calls = [];
+  const deny = (name) => ({
+    limit: async ({ key }) => {
+      calls.push({ name, key });
+      return { success: false };
+    }
+  });
+  const env = {
+    ALLOWED_ORIGINS: "https://nihongotoolkit.pages.dev",
+    API_RATE_LIMITER: deny("api"),
+    EXPENSIVE_RATE_LIMITER: deny("expensive"),
+    WRITE_RATE_LIMITER: deny("write")
+  };
+  const ctx = { waitUntil() {} };
+
+  const writeRes = await worker.fetch(new Request("https://worker.test/api/page-views", {
+    method: "POST",
+    headers: { Origin: "https://nihongotoolkit.pages.dev", "CF-Connecting-IP": "203.0.113.10" }
+  }), env, ctx);
+  assert.equal(writeRes.status, 429);
+  assert.equal(writeRes.headers.get("Retry-After"), "60");
+  assert.equal(writeRes.headers.get("Access-Control-Allow-Origin"), "https://nihongotoolkit.pages.dev");
+
+  const expensiveRes = await worker.fetch(new Request("https://worker.test/api/analyze?text=猫", {
+    headers: { "CF-Connecting-IP": "203.0.113.10" }
+  }), env, ctx);
+  assert.equal(expensiveRes.status, 429);
+
+  const apiRes = await worker.fetch(new Request("https://worker.test/api/words?q=cat", {
+    headers: { "CF-Connecting-IP": "203.0.113.10" }
+  }), env, ctx);
+  assert.equal(apiRes.status, 429);
+
+  const discordRes = await worker.fetch(new Request("https://worker.test/api/discord/contact", {
+    method: "POST",
+    headers: { "CF-Connecting-IP": "203.0.113.10" }
+  }), env, ctx);
+  assert.equal(discordRes.status, 429);
+  assert.equal(discordRes.headers.get("Retry-After"), "60");
+
+  assert.deepEqual(calls, [
+    { name: "write", key: "write:/api/page-views:203.0.113.10" },
+    { name: "expensive", key: "expensive:/api/analyze:203.0.113.10" },
+    { name: "api", key: "api:203.0.113.10" },
+    { name: "api", key: "discord:/api/discord/contact:203.0.113.10" }
+  ]);
+
+  const optionsRes = await worker.fetch(new Request("https://worker.test/api/page-views", {
+    method: "OPTIONS",
+    headers: { Origin: "https://nihongotoolkit.pages.dev" }
+  }), env, ctx);
+  assert.equal(optionsRes.status, 204);
 });

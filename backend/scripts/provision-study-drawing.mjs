@@ -2,11 +2,12 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { loadAllWorksheetStrokes } from "../../frontend/src/worksheet-strokes-node.js";
 
 const worksheet = name => JSON.parse(readFileSync(new URL(`../../frontend/src/worksheet-${name}.json`, import.meta.url)));
 
 export function provision(db) {
-  const diagrams = worksheet("strokes"), levels = Object.entries(worksheet("kanji"));
+  const diagrams = loadAllWorksheetStrokes(), levels = Object.entries(worksheet("kanji"));
   const grades = new Map(db.prepare("SELECT character, grade FROM kanjis WHERE grade BETWEEN 1 AND 6").all().map(r => [r.character,r.grade]));
   if (!grades.size) throw Error("Import KANJIDIC2 school grades before provisioning drawing practice.");
   db.exec("BEGIN IMMEDIATE");

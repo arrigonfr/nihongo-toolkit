@@ -1,4 +1,5 @@
 import { tokenizer } from "#tokenizer-loader";
+
 const hiragana = (text) => text.replace(/[ァ-ヶ]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
 
 export async function segmentText(text, load = tokenizer) {
@@ -31,10 +32,15 @@ export async function segmentText(text, load = tokenizer) {
     }
     tokens.push({
       text: surface,
-      type: /^\s+$/u.test(surface) ? "space" : item.pos === "記号" ? "punctuation"
-        : item.pos === "助詞" ? "particle" : "word",
+      type: /^\s+$/u.test(surface)
+        ? "space"
+        : item.pos === "記号"
+          ? "punctuation"
+          : item.pos === "助詞"
+            ? "particle"
+            : "word",
       base: item.pos === "名詞" ? surface : item.basic_form && item.basic_form !== "*" ? item.basic_form : surface,
-      reading: hiragana(reading)
+      reading: hiragana(reading),
     });
   }
   if (tokens.map((token) => token.text).join("") !== text) {

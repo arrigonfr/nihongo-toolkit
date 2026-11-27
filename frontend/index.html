@@ -5,10 +5,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#171b18">
-  <meta property="og:site_name" content="NihongoToolkit">
+  <meta property="og:site_name" content="Nihongo Toolkit">
   <link rel="icon" type="image/png" href="./favicon.png">
   <link rel="stylesheet" href="./src/homepage.css">
-  <title>NihongoToolkit</title>
+  <title>Nihongo Toolkit | Free Japanese learning tools for kana, kanji, vocabulary, conjugation practice, dictionary lookup, word games, and printable study sheets.</title>
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -16,8 +16,8 @@
         {
           "@type": "WebSite",
           "@id": "https://nihongotoolkit.pages.dev/#website",
-          "name": "NihongoToolkit",
-          "alternateName": "NihongoToolkit",
+          "name": "Nihongo Toolkit | Free Japanese learning tools",
+          "alternateName": "Nihongo Toolkit",
           "description": "Free Japanese learning tools for kana, kanji, vocabulary, conjugation practice, dictionary lookup, word games, and printable study sheets.",
           "url": "https://nihongotoolkit.pages.dev/",
           "inLanguage": "en",
@@ -25,14 +25,16 @@
             "@type": "Organization",
             "@id": "https://nihongotoolkit.pages.dev/#organization",
             "url": "https://nihongotoolkit.pages.dev/",
-            "name": "NihongoToolkit",
+            "name": "Nihongo Toolkit | Free Japanese learning tools",
+            "alternateName": "Nihongo Toolkit",
+            "knowsLanguage": ["en"],
             "logo": {
               "@type": "ImageObject",
               "@id": "https://nihongotoolkit.pages.dev/#logo",
-              "url": "https://nihongotoolkit.pages.dev/logo.png",
-              "contentUrl": "https://nihongotoolkit.pages.dev/logo.png",
-              "encodingFormat": "image/png",
-              "caption": "NihongoToolkit",
+              "url": "https://nihongotoolkit.pages.dev/logo.webp",
+              "contentUrl": "https://nihongotoolkit.pages.dev/logo.webp",
+              "encodingFormat": "image/webp",
+              "caption": "Nihongo Toolkit",
               "width": 1024,
               "height": 1024
             }
@@ -42,7 +44,7 @@
           "@type": "WebPage",
           "@id": "https://nihongotoolkit.pages.dev/#webpage",
           "url": "https://nihongotoolkit.pages.dev/",
-          "name": "Japanese Learning Tools | NihongoToolkit",
+          "name": "Nihongo Toolkit | Free Japanese learning tools",
           "description": "Explore free Japanese learning tools for hiragana, katakana, kanji, vocabulary, reading, grammar, and word games.",
           "isPartOf": {
             "@id": "https://nihongotoolkit.pages.dev/#website"
@@ -52,10 +54,12 @@
         {
           "@type": "SoftwareApplication",
           "@id": "https://nihongotoolkit.pages.dev/#app",
-          "name": "NihongoToolkit",
-          "alternateName": "NihongoToolkit",
+          "name": "Nihongo Toolkit | Free Japanese learning tools",
+          "alternateName": "Nihongo Toolkit",
           "description": "Practice kana, kanji readings and meanings, Japanese vocabulary, and conjugations in your browser. Explore dictionary entries and sentences, play word games, and print study references.",
           "url": "https://nihongotoolkit.pages.dev/",
+          "inLanguage": "en",
+          "availableLanguage": ["en"],
           "applicationCategory": "EducationalApplication",
           "educationalUse": [
             "Self-Study",
@@ -71,15 +75,19 @@
             "priceCurrency": "USD"
           },
           "featureList": [
-            "Hiragana and katakana reading and typing practice",
-            "Kanji reading, meaning, and recognition quizzes",
-            "Vocabulary practice with JLPT level filters",
-            "Japanese verb and adjective conjugation practice and lookup",
-            "Japanese dictionary and sentence breakdown tools",
-            "Kanji components and compounds explorer",
-            "Japanese pronunciation playback",
-            "Vocabulary matching, word search, crossword, and shiritori games",
-            "Printable Japanese reference sheets and worksheets",
+            "Hiragana and katakana reading and typing practice (Kana)",
+            "Kanji reading, meaning, and recognition quizzes (Yomi, Imi, Kanji Kuizu)",
+            "Interactive kanji stroke-order drawing and writing practice (Kanji Kaki)",
+            "JLPT vocabulary practice with level filters and review lists (Goi)",
+            "Japanese verb and adjective conjugation lookup and practice (Katsuyō, Katsuyō Renshuū)",
+            "Japanese particle and counter practice in context (Joshi Renshū, Josūshi Renshū)",
+            "Japanese dictionary and interactive sentence breakdown with furigana and translations (Kotoba, Fumitoki)",
+            "Japanese onomatopoeia and mimetic expressions guide organized by scene (Onomatope Jiten)",
+            "Kanji atlas, browsable static kanji catalogue, and Kanji of the Day widget (Kanji Chizuchō)",
+            "Japanese pronunciation playback with browser voices and optional offline neural speech",
+            "Vocabulary matching, word search, crossword, and shiritori word games (Eawase, Kotoba Sagashi, Pazuru, Shiritori)",
+            "Shared-kanji compound puzzles, railway-direction reading challenges, and listening karuta games (Kanji Anaume, Shūden, Kikitori Karuta)",
+            "Printable Japanese reference cheatsheets and numbered stroke-order handwriting worksheets (Shiryō)",
             "Light and dark modes with selectable color palettes"
           ],
           "screenshot": "https://nihongotoolkit.pages.dev/og-image.png"
@@ -87,273 +95,14 @@
       ]
     }
   </script>
-  <style>
-    :root {
-      color-scheme: light;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      --page: #f6f5f1;
-      --surface: #fff;
-      --ink: #23251f;
-      --muted: #777970;
-      --line: #e7e6df;
-      --accent: #356653;
-      --shadow: 0 12px 30px rgb(42 45 35 / 14%);
-      --selected: #eaf1ec;
-      --selected-ink: #254d3e;
-    }
-    :root[data-theme="dark"] {
-      color-scheme: dark;
-      --page: #171b18;
-      --surface: #222923;
-      --ink: #edf1eb;
-      --muted: #a5afa5;
-      --line: #3a443b;
-      --accent: #9dceab;
-      --shadow: 0 12px 30px rgb(0 0 0 / 35%);
-      --selected: #2e4033;
-      --selected-ink: #bee4c7;
-    }
-    * { box-sizing: border-box; }
-    html, body { width: 100%; min-height: 100%; margin: 0; }
-    body { background: var(--page); color: var(--ink); }
-    button, a { font: inherit; }
-    button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-    .navigation {
-      position: fixed;
-      z-index: 100;
-      top: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-    .menu-button {
-      width: 40px;
-      height: 40px;
-      display: grid;
-      place-items: center;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: var(--surface);
-      color: var(--ink);
-      cursor: pointer;
-    }
-    .menu-button:hover, .helper-link:hover { border-color: var(--accent); }
-    .menu-icon { display: grid; gap: 4px; }
-    .menu-icon span { width: 18px; height: 2px; border-radius: 2px; background: currentColor; }
-    .menu {
-      position: absolute;
-      top: 48px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: min(560px, calc(100vw - 24px));
-      max-height: calc(100vh - 68px);
-      max-height: calc(100dvh - 68px);
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      padding: 6px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--surface);
-      box-shadow: var(--shadow);
-    }
-    .menu[hidden] { display: none; }
-    @media (prefers-reduced-motion: no-preference) {
-      .menu:not([hidden]) { animation: menu-arrive 180ms cubic-bezier(.16, 1, .3, 1) both; transform-origin: top left; }
-      @keyframes menu-arrive {
-        from { opacity: 0; translate: 0 -6px; scale: .985; }
-        to { opacity: 1; translate: 0 0; scale: 1; }
-      }
-    }
-    .menu-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .menu-group + .menu-group { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 6px; }
-    .menu-group h2 { grid-column: 1 / -1; }
-    .menu-group h2 { margin: 8px 12px 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-    .helper-link {
-      display: grid;
-      grid-template-columns: 32px minmax(0, 1fr);
-      grid-template-rows: auto auto;
-      align-content: center;
-      column-gap: 8px;
-      text-align: left;
-      width: 100%;
-      padding: 6px 8px;
-      border: 1px solid transparent;
-      border-radius: 8px;
-      background: transparent;
-      color: var(--ink);
-      cursor: pointer;
-      text-decoration: none;
-    }
-    .helper-link[aria-current="page"] { background: var(--selected); color: var(--selected-ink); }
-    .helper-name { display: block; font-size: 14px; font-weight: 700; }
-    :is(.helper-link, .dashboard-link) > .helper-icon { grid-column: 1; grid-row: 1 / 3; align-self: center; }
-    :is(.helper-link, .dashboard-link) > :is(.helper-name, .helper-description) { grid-column: 2; min-width: 0; overflow-wrap: anywhere; }
-    .helper-description { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.4; }
-    .helper-icon {
-      display: inline-grid;
-      place-items: center;
-      width: 26px;
-      height: 26px;
-      border-radius: 8px;
-      background: var(--accent);
-      color: var(--page);
-      font: 18px/1 "Sawarabi Mincho", serif;
-      vertical-align: middle;
-    }
-    .helper-icon:has(> img) { background: none; border-radius: 0; }
-    .helper-icon > img { display: block; width: 100%; height: 100%; object-fit: contain; }
-    .dashboard-link .helper-icon { width: 30px; height: 30px; }
-    @media (max-width: 600px) {
-      .navigation { left: auto; right: 12px; transform: none; }
-      .menu { left: auto; right: 0; transform: none; }
-    }
-    .helper-frame {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      border: 0;
-      background: #fff;
-    }
-    .dashboard { max-width: 1080px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-    .site-header { max-width: 1032px; margin-inline: auto !important; width: calc(100% - 48px); }
-    .dashboard-intro, .dashboard .menu-group h2 { grid-column: 1 / -1; }
-    .dashboard-intro { display: flex; align-items: center; gap: 18px; margin-bottom: 6px; }
-    .dashboard-logo { flex: none; width: 76px; height: 76px; object-fit: contain; }
-    .dashboard h1 { margin: 0 0 8px; font-size: 30px; }
-    .dashboard-intro p { color: var(--muted); margin: 0; }
-    .dashboard .menu-group { display: contents; }
-    .dashboard .menu-group h2 { margin: 16px 0 2px; font-size: 13px; }
-    .dashboard-link { display: grid; grid-template-columns: 32px minmax(0, 1fr); column-gap: 8px; min-height: 64px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); text-decoration: none; }
-    .dashboard-link:hover { border-color: var(--accent); }
-    @media (prefers-reduced-motion: no-preference) and (hover: hover) {
-      .dashboard-link { transition: border-color 180ms ease, translate 180ms cubic-bezier(.16, 1, .3, 1); }
-      .dashboard-link:hover { translate: 0 -2px; }
-    }
-    /* Slightly translucent tiles let the mascot show through; the blur keeps text contrast steady */
-    @supports (background: color-mix(in srgb, red 50%, transparent)) {
-      .dashboard-link { background: color-mix(in srgb, var(--surface) 78%, transparent); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
-    }
-    .dashboard-link .helper-name { font-size: 16px; }
-    .dashboard-link .helper-description { font-size: 13px; }
-    .dashboard .study-support { grid-column: 1 / -1; justify-self: end; }
-    .dashboard .study-support button { display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 8px; padding: 9px 12px; background: #ffd140; color: #000; font-weight: 700; cursor: pointer; }
-    .dashboard .study-support img { width: 20px; height: 20px; object-fit: contain; }
-    @media (max-width: 650px) {
-      .dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px 12px 12px; gap: 5px; }
-      .site-header { width: calc(100% - 24px); }
-      .dashboard h1 { font-size: 22px; }
-      .dashboard-intro { gap: 12px; }
-      .dashboard-logo { width: 56px; height: 56px; }
-      .dashboard-intro p { font-size: 13px; }
-      .dashboard-link .helper-description { font-size: 13px; line-height: 1.4; }
-      .dashboard-link { min-height: 48px; padding: 6px; }
-      .dashboard-link .helper-name { font-size: 14px; line-height: 1.3; }
-      .dashboard-link .helper-icon { width: 24px; height: 24px; font-size: 15px; }
-    }
-  </style>
+  <link rel="stylesheet" href="./src/index.css">
 </head>
 <body>
   <header class="site-header study-header" data-site-header>
     <a class="brand" href="./"><span class="brand-name">NihongoToolkit</span></a>
     <button id="themeButton" type="button" aria-label="Toggle color mode" title="Toggle color mode"></button>
   </header>
-  <nav class="navigation" aria-label="Helper navigation">
-    <button class="menu-button" id="menuButton" type="button" aria-label="Open helper menu" aria-expanded="false" aria-controls="helperMenu">
-      <span class="menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
-    </button>
-    <div class="menu" id="helperMenu" hidden>
-      <section class="menu-group" aria-label="Practice">
-      <h2>Practice</h2>
-      <button class="helper-link" type="button" data-file="kana.html">
-        <span class="helper-name">Kana · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kana.webp" alt="" width="26" height="26"></span> · 仮名</span>
-        <span class="helper-description">Hiragana and katakana practice</span>
-      </button>
-      <button class="helper-link" type="button" data-file="yomi.html">
-        <span class="helper-name">Yomi · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/yomi.webp" alt="" width="26" height="26"></span> · 読み</span>
-        <span class="helper-description">Kanji reading practice</span>
-      </button>
-      <button class="helper-link" type="button" data-file="imi.html">
-        <span class="helper-name">Imi · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/imi.webp" alt="" width="26" height="26"></span> · 意味</span>
-        <span class="helper-description">Kanji meaning practice</span>
-      </button>
-      <button class="helper-link" type="button" data-file="goi.html">
-        <span class="helper-name">Goi · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/goi.webp" alt="" width="26" height="26"></span> · 語彙</span>
-        <span class="helper-description">JLPT vocabulary practice</span>
-      </button>
-      <button class="helper-link" type="button" data-file="katsuyo-renshuu.html">
-        <span class="helper-name">Katsuyō Renshuū · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/katsuyo-renshuu.webp" alt="" width="26" height="26"></span> · 活用練習</span>
-        <span class="helper-description">Focused Japanese conjugation practice</span>
-      </button>
-      </section>
-      <section class="menu-group" aria-label="Reference">
-      <h2>Reference</h2>
-      <button class="helper-link" type="button" data-file="kotoba.html">
-        <span class="helper-name">Kotoba · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kotoba.webp" alt="" width="26" height="26"></span> · 言葉</span>
-        <span class="helper-description">Japanese dictionary</span>
-      </button>
-      <button class="helper-link" type="button" data-file="kanji-chizucho.html">
-        <span class="helper-name">Kanji Chizuchō · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kanji-chizucho.webp" alt="" width="26" height="26"></span> · 漢字地図帳</span>
-        <span class="helper-description">Explore kanji and compounds</span>
-      </button>
-      <a class="helper-link" data-file="kanji/" href="/kanji/" target="_top">
-        <span class="helper-name">Kanji catalogue</span>
-        <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kanji-catalogue.webp" alt="" width="26" height="26"></span>
-        <span class="helper-description">Browse and look up kanji</span>
-      </a>
-      <a class="helper-link" data-file="kanji-of-the-day.html" href="/kanji-of-the-day" target="_top">
-        <span class="helper-name">Kanji of the Day</span>
-        <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kanji-of-the-day.webp" alt="" width="26" height="26"></span>
-        <span class="helper-description">Learn one common kanji every day</span>
-      </a>
-      <button class="helper-link" type="button" data-file="katsuyo.html">
-        <span class="helper-name">Katsuyō · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/katsuyo.webp" alt="" width="26" height="26"></span> · 活用</span>
-        <span class="helper-description">Japanese verb and adjective conjugator</span>
-      </button>
-      <button class="helper-link" type="button" data-file="fumitoki.html">
-        <span class="helper-name">Fumitoki · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/fumitoki.webp" alt="" width="26" height="26"></span> · 文解き</span>
-        <span class="helper-description">Japanese sentence breakdown</span>
-      </button>
-      <button class="helper-link" type="button" data-file="shiryo.html">
-        <span class="helper-name">Shiryō · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/shiryo.webp" alt="" width="26" height="26"></span> · 資料</span>
-        <span class="helper-description">Printable Japanese cheatsheets</span>
-      </button>
-      </section>
-      <section class="menu-group" aria-label="Games">
-      <h2>Games</h2>
-      <button class="helper-link" type="button" data-file="kanji-kuizu.html">
-        <span class="helper-name">Kanji Kuizu · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kanji-kuizu.webp" alt="" width="26" height="26"></span> · 漢字クイズ</span>
-        <span class="helper-description">Spot the matching kanji</span>
-      </button>
-      <button class="helper-link" type="button" data-file="eawase.html">
-        <span class="helper-name">Eawase · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/eawase.webp" alt="" width="26" height="26"></span> · 絵合わせ</span>
-        <span class="helper-description">Japanese word and kana memory matching</span>
-      </button>
-      <button class="helper-link" type="button" data-file="kotoba-sagashi.html">
-        <span class="helper-name">Kotoba Sagashi · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kotoba-sagashi.webp" alt="" width="26" height="26"></span> · 言葉探し</span>
-        <span class="helper-description">Japanese vocabulary word search</span>
-      </button>
-      <button class="helper-link" type="button" data-file="pazuru.html">
-        <span class="helper-name">Pazuru · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/pazuru.webp" alt="" width="26" height="26"></span> · パズル</span>
-        <span class="helper-description">Japanese vocabulary crossword</span>
-      </button>
-      <button class="helper-link" type="button" data-file="shiritori.html">
-        <span class="helper-name">Shiritori · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/shiritori.webp" alt="" width="26" height="26"></span> · しりとり</span>
-        <span class="helper-description">Japanese word-chain game</span>
-      </button>
-      </section>
-      <section class="menu-group" aria-label="Support">
-      <h2>Support</h2>
-      <button class="helper-link" type="button" data-file="faq.html">
-        <span class="helper-name">FAQ · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/faq.webp" alt="" width="26" height="26"></span></span>
-        <span class="helper-description">Help and common questions</span>
-      </button>
-      <button class="helper-link" type="button" data-file="contact.html">
-        <span class="helper-name">Contact · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/contact.webp" alt="" width="26" height="26"></span></span>
-        <span class="helper-description">Feedback, requests and bug reports</span>
-      </button>
-      </section>
-    </div>
-  </nav>
+  <!-- site-navigation -->
   <main class="home">
     <section class="home-hero">
       <div class="home-wrap home-hero-layout">

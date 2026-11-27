@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "alwaysStrict": true,
+    "noImplicitThis": true,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "paths": {
+      "doublearray": ["./backend/src/vendor.d.ts"],
+      "kuromoji": ["./backend/src/vendor.d.ts"],
+      "kuromoji/*": ["./backend/src/vendor.d.ts"]
+    },
+    "maxNodeModuleJsDepth": 0,
+    "skipLibCheck": true
+  },
+  "include": [
+    "frontend/src/**/*.d.ts",
+    "frontend/src/**/*.js",
+    "backend/src/**/*.js",
+    "shared/**/*.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "frontend/dist"
+  ]
+}
