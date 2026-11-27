@@ -1,7 +1,15 @@
 export function mountSectionLinks(links) {
   for (const link of links) {
     link.addEventListener("click", (event) => {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return;
       const section = document.getElementById(link.hash.slice(1));
       if (!section) return;
       event.preventDefault();

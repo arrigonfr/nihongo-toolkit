@@ -66,6 +66,7 @@ test("sentence fallback validates matches, keeps attribution, caches and coalesc
   const lookup = createSentenceFallback({ enabled: true, fetchImpl: async (url) => {
     calls++;
     assert.equal(url.hostname, "api.tatoeba.org");
+    assert.equal(url.pathname, "/v1/sentences");
     assert.equal(url.searchParams.get("sort"), "random");
     assert.equal(url.searchParams.get("q"), "日本");
     return { ok: true, json: async () => ({ data: [

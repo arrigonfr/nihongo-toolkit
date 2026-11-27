@@ -31,20 +31,22 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(base);
-  const siteName = "NihongoToolkit";
+  const siteName = "Nihongo Toolkit";
+  const fullName = "Nihongo Toolkit | Free Japanese learning tools";
   const siteUrl = "https://nihongotoolkit.pages.dev/";
   assert.equal(await page.locator('meta[property="og:site_name"]').getAttribute("content"), siteName);
   const structuredData = await page.locator('script[type="application/ld+json"]').evaluate((script) => JSON.parse(script.textContent));
   assert.equal(structuredData["@context"], "https://schema.org");
   const [website, webpage, application] = structuredData["@graph"];
   assert.deepEqual([website["@type"], webpage["@type"], application["@type"]], ["WebSite", "WebPage", "SoftwareApplication"]);
-  assert.equal(website.name, siteName);
+  assert.equal(website.name, fullName);
   assert.equal(website.url, siteUrl);
   assert.equal(website["@id"], `${siteUrl}#website`);
+  assert.ok(website.alternateName.includes(siteName));
   assert.ok(website.alternateName.includes("nihongotoolkit.pages.dev"));
   assert.equal(webpage.url, siteUrl);
   assert.equal(webpage.isPartOf["@id"], website["@id"]);
-  assert.equal(application.name, siteName);
+  assert.equal(application.name, fullName);
   assert.equal(application.url, siteUrl);
   const frame = page;
   async function select(file) {

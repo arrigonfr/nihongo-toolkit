@@ -10,9 +10,11 @@ function validValue(control, value) {
     return typeof value === "string" && [...control.options].some((option) => option.value === value);
   }
   if (control.type === "number") {
-    return Number.isInteger(value)
-      && (control.min === "" || value >= Number(control.min))
-      && (control.max === "" || value <= Number(control.max));
+    return (
+      Number.isInteger(value) &&
+      (control.min === "" || value >= Number(control.min)) &&
+      (control.max === "" || value <= Number(control.max))
+    );
   }
   throw new Error(`Unsupported settings control: ${control.id}`);
 }
@@ -47,8 +49,11 @@ export function rememberControls(key, ids, onError) {
       const value = controlValue(control);
       if (validValue(control, value)) values[control.id] = value;
     }
-    try { localStorage.setItem(key, JSON.stringify(values)); }
-    catch (error) { report("Your browser could not save these settings. They may be lost when you leave.", error); }
+    try {
+      localStorage.setItem(key, JSON.stringify(values));
+    } catch (error) {
+      report("Your browser could not save these settings. They may be lost when you leave.", error);
+    }
   }
   for (const control of controls) {
     control.addEventListener("change", () => {
@@ -58,9 +63,10 @@ export function rememberControls(key, ids, onError) {
       }
       save();
     });
-    if (control.type === "number") control.addEventListener("input", () => {
-      if (validValue(control, controlValue(control))) save();
-    });
+    if (control.type === "number")
+      control.addEventListener("input", () => {
+        if (validValue(control, controlValue(control))) save();
+      });
   }
   return { save };
 }

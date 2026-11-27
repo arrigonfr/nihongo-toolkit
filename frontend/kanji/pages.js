@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { enrichRadicals } from "../../backend/src/radicals.js";
 import { catalogueGroupLabel, compareCatalogueGroups } from "./catalogue-groups.js";
 import { kanjiReportPath } from "../src/contact-fields.js";
+import { loadAllWorksheetStrokes } from "../src/worksheet-strokes-node.js";
 
 const escape = (value) => String(value).replace(/[&<>"']/g, (char) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -37,17 +38,37 @@ export function selectDailyKanji(visible) {
   return entries;
 }
 
-function document(shell, { title, description, canonical, body }) {
-  return shell.replace("<!-- catalogue-head -->", () => `<title>${escape(title)} | NihongoToolkit</title>
+function document(shell, { title, description, canonical, body, site, noindex = false }) {
+  const fullTitle = `${title} | NihongoToolkit`;
+  const image = site ? new URL("og-image.png", site).href : "";
+  const socialTags = noindex ? '<meta name="robots" content="noindex">' : [
+    '<meta name="robots" content="max-image-preview:large">',
+    `<meta property="og:title" content="${escape(fullTitle)}">`,
+    `<meta property="og:description" content="${escape(description)}">`,
+    '<meta property="og:type" content="website">',
+    '<meta property="og:site_name" content="Nihongo Toolkit">',
+    '<meta property="og:locale" content="en_US">',
+    canonical ? `<meta property="og:url" content="${escape(canonical)}">` : "",
+    image ? `<meta property="og:image" content="${escape(image)}">` : "",
+    image ? '<meta property="og:image:type" content="image/png">' : "",
+    image ? '<meta property="og:image:width" content="1200">' : "",
+    image ? '<meta property="og:image:height" content="630">' : "",
+    `<meta name="twitter:card" content="${image ? "summary_large_image" : "summary"}">`,
+    `<meta name="twitter:title" content="${escape(fullTitle)}">`,
+    `<meta name="twitter:description" content="${escape(description)}">`,
+    image ? `<meta name="twitter:image" content="${escape(image)}">` : ""
+  ].filter(Boolean).join("\n");
+  return shell.replace("<!-- catalogue-head -->", () => `<title>${escape(fullTitle)}</title>
 <meta name="description" content="${escape(description)}">
-${canonical ? `<link rel="canonical" href="${escape(canonical)}">` : ""}`)
+${canonical ? `<link rel="canonical" href="${escape(canonical)}">` : ""}
+${socialTags}`)
     .replace("<!-- catalogue-body -->", () => body);
 }
 
 function strokeDiagram(character, drawing) {
   if (!drawing) return "";
   const [paths, numbers] = drawing;
-  return `<section aria-labelledby="stroke-order"><h2 id="stroke-order">Stroke order</h2>
+  return `<section aria-labelledby="stroke-order"><h2 id="stroke-order" data-i18n-scope>Stroke order</h2>
 <svg class="stroke-order" viewBox="0 0 109 109" width="218" height="218" role="img" aria-label="Numbered stroke order for ${escape(character)}">
 <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${paths.map((path) => `<path d="${escape(path)}"/>`).join("")}</g>
 ${numbers.map(([x, y, number]) => `<text x="${escape(x)}" y="${escape(y)}">${escape(number)}</text>`).join("")}</svg>
@@ -73,23 +94,24 @@ function detail(shell, entry, drawings, entries, site, disabled) {
     title: `${character} Kanji — ${meanings[0] || `${strokes} strokes`}`,
     description: `${character} kanji: ${meaning ? `${meaning}. ` : ""}${strokes} strokes${on.length || kun.length ? `. Readings: ${[...on, ...kun].slice(0, 4).join(", ")}` : ""}.`,
     canonical: site && new URL(entryPath(kanjiSlug(character)), site).href,
+    site,
     body: `<article><h1><span class="glyph" lang="ja">${escape(character)}</span> <span>Kanji</span></h1>
 <p class="meaning">${escape(meaning || "No English meanings listed.")}</p>
 ${incomplete && !disabled.has("contact.html") ? `<p><a href="${kanjiReportPath(character)}">Suggest a missing Japanese reading or English meaning</a></p>` : ""}
 <dl>
-<div><dt>On'yomi</dt><dd>${readings(on)}</dd></div>
-<div><dt>Kun'yomi</dt><dd>${readings(kun)}</dd></div>
-${names.length ? `<div><dt>Name readings</dt><dd>${readings(names)}</dd></div>` : ""}
-<div><dt>Stroke count</dt><dd>${escape(strokes)}</dd></div>
-${mainRadical ? `<div><dt>Dictionary indexing radical</dt><dd>${japanese(mainRadical)} (${escape(radical)}). Its shape may differ inside the character.</dd></div>` : ""}
-${kind === "kanji-and-radical" ? "<div><dt>Character type</dt><dd>Kanji and radical</dd></div>" : ""}
-${jlpt ? `<div><dt>JLPT study estimate</dt><dd>N${escape(jlpt)}${jlptSource ? ` (${escape(jlptSource)})` : ""}</dd></div>` : ""}
-${frequency ? `<div><dt>Newspaper frequency rank</dt><dd>${escape(frequency)}</dd></div>` : ""}
+<div><dt data-i18n-scope>On'yomi</dt><dd>${readings(on)}</dd></div>
+<div><dt data-i18n-scope>Kun'yomi</dt><dd>${readings(kun)}</dd></div>
+${names.length ? `<div><dt data-i18n-scope>Name readings</dt><dd>${readings(names)}</dd></div>` : ""}
+<div><dt data-i18n-scope>Stroke count</dt><dd>${escape(strokes)}</dd></div>
+${mainRadical ? `<div><dt data-i18n-scope>Dictionary indexing radical</dt><dd>${japanese(mainRadical)} (${escape(radical)}). Its shape may differ inside the character.</dd></div>` : ""}
+${kind === "kanji-and-radical" ? '<div><dt data-i18n-scope>Character type</dt><dd>Kanji and radical</dd></div>' : ""}
+${jlpt ? `<div><dt data-i18n-scope>JLPT study estimate</dt><dd>N${escape(jlpt)}${jlptSource ? ` (${escape(jlptSource)})` : ""}</dd></div>` : ""}
+${frequency ? `<div><dt data-i18n-scope>Newspaper frequency rank</dt><dd>${escape(frequency)}</dd></div>` : ""}
 </dl>
 ${strokeDiagram(character, drawings[character])}
-${compounds?.length ? `<section><h2>Example words</h2><ul class="compounds">${compounds.map(([word, reading, gloss]) =>
+${compounds?.length ? `<section><h2 data-i18n-scope>Example words</h2><ul class="compounds">${compounds.map(([word, reading, gloss]) =>
     `<li><span lang="ja">${related(word)}</span> (${japanese(reading)}) — ${escape(gloss)}</li>`).join("")}</ul></section>` : ""}
-${tools.length ? `<nav class="tool-links" aria-label="Study tools">${tools.map(([page, label]) =>
+${tools.length ? `<nav class="tool-links" aria-label="Study tools" data-i18n-scope>${tools.map(([page, label]) =>
     `<a href="/${page}${page === "kanji-chizucho" ? `?kanji=${encodeURIComponent(character)}` : ""}">${label}</a>`).join("")}</nav>` : ""}
 <p>Character and word data from EDRDG’s <a href="https://www.edrdg.org/wiki/KANJIDIC_Project.html">KANJIDIC2</a> and <a href="https://www.edrdg.org/jmdict/j_jmdict.html">JMdict</a>, adapted by NihongoToolkit under <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.</p>
 </article>`
@@ -109,15 +131,16 @@ function catalogueIndex(shell, entries, site) {
     title: "Japanese Kanji Catalogue",
     description: "Browse Japanese kanji by stroke count, dictionary radical, or estimated JLPT level. Find meanings, readings, and stroke-order diagrams where available.",
     canonical: site && new URL(cataloguePath, site).href,
-    body: `<section class="study-intro tool-intro" aria-labelledby="catalogue-title">
+    site,
+    body: `<section class="study-intro tool-intro" aria-labelledby="catalogue-title" data-i18n-scope>
   <div class="study-intro-content">
     <span class="eyebrow"><span lang="ja">漢字一覧</span> · Kanji catalogue</span>
     <h1 id="catalogue-title">Choose a kanji. <br><span>Explore its readings.</span></h1>
     <p>Browse ${entries.size.toLocaleString("en")} kanji and look up their readings and meanings. JLPT levels are study estimates, not official classifications.</p>
   </div>
 </section>
-<p><a href="${dailyPath}">See today’s kanji</a></p>
-<div class="catalogue-controls" hidden>
+<p data-i18n-scope><a href="${dailyPath}">See today’s kanji</a></p>
+<div class="catalogue-controls" data-i18n-scope hidden>
   <label>Search kanji <input id="catalogue-search" type="search" placeholder="Character, reading or meaning"></label>
   <label>Group by <select id="catalogue-group"><option value="jlpt" selected>JLPT study estimate</option><option value="strokes">Stroke count</option><option value="radical">Dictionary radical</option></select></label>
   <p id="catalogue-results" role="status"></p>
@@ -125,7 +148,7 @@ function catalogueIndex(shell, entries, site) {
 <script type="application/json" id="catalogue-radicals">${JSON.stringify(radicals.map(({ character, meaning }) => `${character} (${meaning})`)).replaceAll("<", "\\u003c")}</script>
 <div id="catalogue-list">
 ${[...groups].sort(([a], [b]) => compareCatalogueGroups("jlpt", a, b)).map(([level, records]) =>
-    `<details><summary>${catalogueGroupLabel("jlpt", level)} (${records.length})</summary><ul class="characters">${records.map(({ character, meanings, on, kun, names, strokes, jlpt, radical }) =>
+    `<details><summary data-i18n-scope>${catalogueGroupLabel("jlpt", level)} (${records.length})</summary><ul class="characters">${records.map(({ character, meanings, on, kun, names, strokes, jlpt, radical }) =>
       `<li><a href="${entryPath(kanjiSlug(character))}" lang="ja" data-strokes="${strokes}" data-jlpt="${jlpt ?? ""}" data-radical="${radical ?? ""}" data-search="${escape([...meanings, ...on, ...kun, ...names].join(" "))}">${escape(character)}</a></li>`).join("")}</ul></details>`).join("\n")}
 </div>`
   });
@@ -134,15 +157,15 @@ ${[...groups].sort(([a], [b]) => compareCatalogueGroups("jlpt", a, b)).map(([lev
 function dailyCard(entries, embed = false) {
   const external = embed ? ' target="_blank" rel="noopener noreferrer"' : "";
   return `<section class="daily-kanji" aria-labelledby="daily-card-title" data-daily-kanji>
-  <h2 id="daily-card-title">${embed ? "Kanji of the day" : "Today’s kanji"}</h2>
+  <h2 id="daily-card-title" data-i18n-scope>${embed ? "Kanji of the day" : "Today’s kanji"}</h2>
   <time></time>
   <div class="daily-kanji-details" hidden>
     <span class="daily-glyph" lang="ja"></span>
     <div><p class="daily-readings" lang="ja"></p><p class="daily-meanings"></p>
-    <a class="daily-entry-link"${external}>View full kanji entry${embed ? " ↗" : ""}</a></div>
+    <a class="daily-entry-link" data-i18n-scope${external}>View full kanji entry${embed ? " ↗" : ""}</a></div>
   </div>
   <noscript><p>Enable JavaScript to see today’s kanji, or <a href="${cataloguePath}"${external}>browse the catalogue</a>.</p></noscript>
-  <p class="daily-credits"><a href="${dailyPath}"${external}>NihongoToolkit</a> ·
+  <p class="daily-credits" data-i18n-scope><a href="${dailyPath}"${external}>NihongoToolkit</a> ·
     Data: <a href="https://www.edrdg.org/wiki/KANJIDIC_Project.html"${external}>EDRDG KANJIDIC2</a>
     (<a href="https://creativecommons.org/licenses/by-sa/4.0/"${external}>CC BY-SA 4.0</a>)</p>
   <script type="application/json">${JSON.stringify(entries).replaceAll("<", "\\u003c")}</script>
@@ -156,7 +179,8 @@ function dailyPage(shell, entries, site) {
     title: "Kanji of the Day",
     description: "Learn one common Japanese kanji each day, with readings, meanings and a free widget for your site.",
     canonical: site && new URL(dailyPath, site).href,
-    body: `<section class="study-intro tool-intro" aria-labelledby="daily-title">
+    site,
+    body: `<section class="study-intro tool-intro" aria-labelledby="daily-title" data-i18n-scope>
   <div class="study-intro-content">
     <span class="eyebrow"><span lang="ja">今日の漢字</span> · Kanji of the Day</span>
     <h1 id="daily-title">A new day. <br><span>Another kanji.</span></h1>
@@ -164,7 +188,7 @@ function dailyPage(shell, entries, site) {
   </div>
 </section>
 ${dailyCard(entries)}
-<section class="daily-embed-controls" id="daily-embed-controls" hidden>
+<section class="daily-embed-controls" id="daily-embed-controls" data-i18n-scope hidden>
   <h2>Embed this widget</h2>
   <p>Paste this code into an HTML block on your site or blog.</p>
   <label for="daily-embed-code">Iframe embed code</label>
@@ -189,10 +213,11 @@ export function kanjiCatalogue(site, disabled) {
   const shellFile = new URL("./catalogue-shell.html", import.meta.url);
   const embedFile = new URL(`..${embedPath}.html`, import.meta.url);
   let drawings;
-  const render = (shell, entry) => detail(shell, entry, drawings ??= JSON.parse(readFileSync(new URL("../src/worksheet-strokes.json", import.meta.url), "utf8")), entries, site, disabled);
+  const render = (shell, entry) => detail(shell, entry, drawings ??= loadAllWorksheetStrokes(), entries, site, disabled);
   const notFound = (shell) => document(shell, {
     title: "Page not found",
     description: "This NihongoToolkit page could not be found.",
+    noindex: true,
     body: '<h1>Page not found</h1><p><a href="/kanji/">Browse the kanji catalogue</a> or <a href="/">return to all tools</a>.</p>'
   });
 

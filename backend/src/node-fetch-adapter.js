@@ -13,11 +13,14 @@ export function toWebRequest(req) {
     }
   }
   const hasBody = req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS";
-  return new Request(url.toString(), {
-    method: req.method,
-    headers,
-    ...(hasBody ? { body: Readable.toWeb(req), duplex: "half" } : {})
-  });
+  return new Request(
+    url.toString(),
+    /** @type {RequestInit} */ ({
+      method: req.method,
+      headers,
+      ...(hasBody ? { body: Readable.toWeb(req), duplex: "half" } : {}),
+    }),
+  );
 }
 
 export async function sendWebResponse(res, response) {

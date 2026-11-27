@@ -1,19 +1,32 @@
+// @ts-check
+
 const configured = import.meta.env.VITE_API_BASE_URL || window.location.origin;
 const base = new URL(configured);
 if (!["http:", "https:"].includes(base.protocol)) throw new Error("Backend URL must use HTTP or HTTPS.");
-if (import.meta.env.PROD && base.protocol !== "https:"
-    && !["localhost", "127.0.0.1", "[::1]"].includes(base.hostname)) {
+if (
+  import.meta.env.PROD &&
+  base.protocol !== "https:" &&
+  !["localhost", "127.0.0.1", "[::1]"].includes(base.hostname)
+) {
   throw new Error("Production backend URLs must use HTTPS.");
 }
 export const API_BASE = configured.replace(/\/+$/, "");
 
 const INTERNAL_DETAIL_RE = /VITE_|backend|database|sqlite|importer|\bHTTP\s+\d+|\bAPI\b/i;
 
+/**
+ * @param {unknown} message
+ * @param {string} fallback
+ */
 function sanitizeErrorMessage(message, fallback) {
   const text = typeof message === "string" ? message.trim() : "";
   return text && !INTERNAL_DETAIL_RE.test(text) ? text : fallback;
 }
 
+/**
+ * @param {string} pathOrUrl
+ * @param {Record<string, unknown> | undefined} params
+ */
 function buildRequestUrl(pathOrUrl, params) {
   const url = /^https?:\/\//i.test(pathOrUrl) ? new URL(pathOrUrl) : new URL(`${API_BASE}${pathOrUrl}`);
   if (params) {
@@ -26,22 +39,28 @@ function buildRequestUrl(pathOrUrl, params) {
   return url;
 }
 
-export async function fetchJSON(pathOrUrl, {
-  params,
-  signal,
-  timeoutMs = 10000,
-  fallbackError = "We couldn’t complete this request right now. Please try again in a moment.",
-  notFoundError,
-  useServerError = true
-} = {}) {
+/**
+ * @param {string} pathOrUrl
+ * @param {{ params?: Record<string, unknown>, signal?: AbortSignal, timeoutMs?: number, fallbackError?: string, notFoundError?: string, useServerError?: boolean }} [options]
+ */
+export async function fetchJSON(
+  pathOrUrl,
+  {
+    params,
+    signal,
+    timeoutMs = 10000,
+    fallbackError = "We couldn’t complete this request right now. Please try again in a moment.",
+    notFoundError,
+    useServerError = true,
+  } = {},
+) {
   const url = buildRequestUrl(pathOrUrl, params);
   const timeout = typeof AbortSignal?.timeout === "function" ? AbortSignal.timeout(timeoutMs) : undefined;
-  const combinedSignal = signal && timeout && typeof AbortSignal.any === "function"
-    ? AbortSignal.any([timeout, signal])
-    : (signal || timeout);
+  const combinedSignal =
+    signal && timeout && typeof AbortSignal.any === "function" ? AbortSignal.any([timeout, signal]) : signal || timeout;
   const response = await fetch(url, {
     signal: combinedSignal,
-    headers: { Accept: "application/json" }
+    headers: { Accept: "application/json" },
   });
   if (!response.ok) {
     let serverError = "";
@@ -51,9 +70,9 @@ export async function fetchJSON(pathOrUrl, {
         serverError = payload?.error || "";
       } catch {}
     }
-    const message = response.status === 404 && notFoundError
-      ? notFoundError
-      : sanitizeErrorMessage(serverError, fallbackError);
+    const message =
+      response.status === 404 && notFoundError ? notFoundError : sanitizeErrorMessage(serverError, fallbackError);
+    /** @type {Error & { status?: number }} */
     const error = new Error(message);
     error.status = response.status;
     throw error;
@@ -61,11 +80,16 @@ export async function fetchJSON(pathOrUrl, {
   return response.json();
 }
 
+/**
+ * @param {string} path
+ * @param {Record<string, unknown>} [params]
+ * @param {{ signal?: AbortSignal }} [options]
+ */
 export async function fetchItems(path, params, { signal } = {}) {
   const payload = await fetchJSON(path, {
     params,
     signal,
-    fallbackError: "We couldn’t load the next set of practice items right now. Please try again in a moment."
+    fallbackError: "We couldn’t load the next set of practice items right now. Please try again in a moment.",
   });
   if (!Array.isArray(payload.items) || !payload.items.length) {
     throw new Error("No practice items were found for this selection.");

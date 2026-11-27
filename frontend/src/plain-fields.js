@@ -2,21 +2,30 @@ import { escapeHTML } from "./html.js";
 
 // Controls without a tooltip. The shared tool-help binds a tooltip to every <label> of a
 // select / checkbox / number input, so these fields use a plain element labelled by aria-labelledby.
-const attrs = (extra) => Object.entries(extra).map(([name, value]) => ` ${name}="${escapeHTML(value)}"`).join("");
+const attrs = (extra) =>
+  Object.entries(extra)
+    .map(([name, value]) => ` ${name}="${escapeHTML(value)}"`)
+    .join("");
 
 export function plainSelect(id, label, entries, extra = {}) {
-  return `<div class="setting plain-field" id="field-${id}"><span class="field-label" id="label-${id}">${escapeHTML(label)}</span>`
-    + `<select id="setting-${id}" data-setting="${id}" aria-labelledby="label-${id}"${attrs(extra)}>${entries.map(([value, name]) => `<option value="${escapeHTML(value)}">${escapeHTML(name)}</option>`).join("")}</select></div>`;
+  return (
+    `<div class="setting plain-field" id="field-${id}"><span class="field-label" id="label-${id}">${escapeHTML(label)}</span>` +
+    `<select id="setting-${id}" data-setting="${id}" aria-labelledby="label-${id}"${attrs(extra)}>${entries.map(([value, name]) => `<option value="${escapeHTML(value)}">${escapeHTML(name)}</option>`).join("")}</select></div>`
+  );
 }
 
 export function plainNumber(id, label, min, max) {
-  return `<div class="setting plain-field" id="field-${id}"><span class="field-label" id="label-${id}">${escapeHTML(label)}</span>`
-    + `<input id="setting-${id}" data-setting="${id}" type="number" min="${min}" max="${max}" step="1" required aria-labelledby="label-${id}"></div>`;
+  return (
+    `<div class="setting plain-field" id="field-${id}"><span class="field-label" id="label-${id}">${escapeHTML(label)}</span>` +
+    `<input id="setting-${id}" data-setting="${id}" type="number" min="${min}" max="${max}" step="1" required aria-labelledby="label-${id}"></div>`
+  );
 }
 
 export function plainCheck(id, label) {
-  return `<div class="setting check check-label plain-check" id="field-${id}"><input id="setting-${id}" type="checkbox" data-setting="${id}" aria-labelledby="label-${id}">`
-    + `<span id="label-${id}">${escapeHTML(label)}</span></div>`;
+  return (
+    `<div class="setting check check-label plain-check" id="field-${id}"><input id="setting-${id}" type="checkbox" data-setting="${id}" aria-labelledby="label-${id}">` +
+    `<span id="label-${id}">${escapeHTML(label)}</span></div>`
+  );
 }
 
 // Clicking the text of a plain checkbox toggles it, like a real label would.

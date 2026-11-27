@@ -62,5 +62,5 @@ export const extraDrawings = {
   backpack: `<rect x="24" y="26" width="48" height="54" rx="12"/><path d="M36 26v-8a12 12 0 0 1 24 0v8M32 54h32v16H32zm-8-14h-6v24h6m48-24h6v24h-6"/>`,
   compass: `<circle cx="48" cy="48" r="32"/><polygon points="48,26 56,48 48,70 40,48"/><circle cx="48" cy="48" r="3"/>`,
   ticket: `<path d="M14 30h68v12a6 6 0 0 0 0 12v12H14V54a6 6 0 0 0 0-12zm42 0v36"/>`,
-  suitcase: `<rect x="22" y="28" width="52" height="50" rx="6"/><path d="M38 28V16h20v12M36 28v50m24-50v50M32 78v6m32-6v6"/>`
+  suitcase: `<rect x="22" y="28" width="52" height="50" rx="6"/><path d="M38 28V16h20v12M36 28v50m24-50v50M32 78v6m32-6v6"/>`,
 };

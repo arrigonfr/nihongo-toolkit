@@ -14,6 +14,7 @@ export function unavailablePage(file) {
   if (file === "shiryo.html") return readFileSync(new URL("./templates/shiryo-preview.html", import.meta.url), "utf8");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
 <title>Page unavailable | NihongoToolkit</title>
 <link rel="icon" href="./favicon.png">
 <style>

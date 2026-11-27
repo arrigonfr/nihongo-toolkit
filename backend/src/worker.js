@@ -1,23 +1,34 @@
-import { createHandler } from "./handler.js";
-import { segmentText } from "./tokenizer.js";
-import { assetTokenizer } from "./tokenizer-worker.js";
-import { createSentenceFallback } from "./examples.js";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createSentenceTranslator } from "./analyze.js";
-import { createWordFallback } from "./shiritori.js";
-import { openTursoDatabase } from "./turso.js";
-import { pageViews } from "./page-views.js";
 import { contactForm, discordContactReply } from "./contact.js";
 import { scheduleContactDelivery } from "./contact-delivery.js";
 import { createD1Cache } from "./d1-cache.js";
+import { createSentenceFallback } from "./examples.js";
+import { createHandler } from "./handler.js";
+import { pageViews } from "./page-views.js";
+import { createWordFallback } from "./shiritori.js";
+import { segmentText } from "./tokenizer.js";
+import { assetTokenizer } from "./tokenizer-worker.js";
+import { openTursoDatabase } from "./turso.js";
 
 const handlers = new WeakMap();
+const requestWaitUntil = new AsyncLocalStorage();
 
 function allowedOriginsFor(url, env) {
-  return [url.origin, ...(env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean)];
+  return [
+    url.origin,
+    ...(env.ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  ];
 }
 
 function selectRateLimiter(pathname, method, env) {
-  if (method === "OPTIONS" || pathname === "/api/discord/contact") return null;
+  if (method === "OPTIONS") return null;
+  if (pathname === "/api/discord/contact") {
+    return { limiter: env.API_RATE_LIMITER, bucket: `discord:${pathname}`, period: 60 };
+  }
   if (method === "POST" && (pathname === "/api/page-views" || pathname === "/api/contact")) {
     return { limiter: env.WRITE_RATE_LIMITER, bucket: `write:${pathname}`, period: 60 };
   }
@@ -39,7 +50,7 @@ async function checkRateLimit(request, url, env) {
   const headers = {
     "Cache-Control": "no-store",
     "Retry-After": String(selection.period),
-    Vary: "Origin"
+    Vary: "Origin",
   };
   const origin = request.headers.get("Origin");
   if (origin && allowedOriginsFor(url, env).includes(origin)) {
@@ -47,7 +58,7 @@ async function checkRateLimit(request, url, env) {
   }
   return Response.json(
     { error: "Too many requests. Please slow down and try again shortly." },
-    { status: 429, headers }
+    { status: 429, headers },
   );
 }
 
@@ -55,18 +66,26 @@ function isEdgeCacheable(method, url) {
   if (method !== "GET") return false;
   const { pathname, searchParams } = url;
   if (!pathname.startsWith("/api/")) return false;
-  if (pathname === "/api/health" || pathname === "/api/page-views"
-      || pathname === "/api/contact" || pathname === "/api/discord/contact"
-      || pathname === "/api/kanji/batch" || pathname === "/api/words/batch") return false;
+  if (
+    pathname === "/api/health" ||
+    pathname === "/api/page-views" ||
+    pathname === "/api/contact" ||
+    pathname === "/api/discord/contact" ||
+    pathname === "/api/kanji/batch" ||
+    pathname === "/api/words/batch"
+  )
+    return false;
   if (pathname === "/api/conjugator" && searchParams.get("random") === "true") return false;
-  if ((pathname === "/api/sentences" || pathname === "/api/shiritori/words") && searchParams.get("random") === "1") return false;
+  if ((pathname === "/api/sentences" || pathname === "/api/shiritori/words") && searchParams.get("random") === "1")
+    return false;
   return true;
 }
 
 function edgeCacheKey(url) {
   const canonical = new URL(url.origin + url.pathname);
   const entries = [...url.searchParams.entries()].sort(([a, av], [b, bv]) =>
-    a === b ? av.localeCompare(bv) : a.localeCompare(b));
+    a === b ? av.localeCompare(bv) : a.localeCompare(b),
+  );
   for (const [k, v] of entries) canonical.searchParams.append(k, v);
   return new Request(canonical.toString(), { method: "GET" });
 }
@@ -89,16 +108,19 @@ export default {
     const origin = request.headers.get("Origin");
     const allowed = allowedOriginsFor(url, env);
     if (origin && !allowed.includes(origin)) {
-      return Response.json({ error: "Origin is not allowed" }, {
-        status: 403,
-        headers: { "Cache-Control": "no-store", Vary: "Origin, Accept-Encoding" }
-      });
+      return Response.json(
+        { error: "Origin is not allowed" },
+        {
+          status: 403,
+          headers: { "Cache-Control": "no-store", Vary: "Origin, Accept-Encoding" },
+        },
+      );
     }
 
     const cache = typeof caches !== "undefined" ? caches.default : null;
     const cacheable = cache && isEdgeCacheable(request.method, url);
     const cacheKey = cacheable ? edgeCacheKey(url) : null;
-    if (cacheKey) {
+    if (cache && cacheKey) {
       const cached = await cache.match(cacheKey);
       if (cached) {
         const hitHeaders = new Headers(cached.headers);
@@ -114,8 +136,12 @@ export default {
     let body;
     const res = {
       setHeader: (name, value) => headers.set(name, value),
-      set statusCode(value) { status = value; },
-      end: (value) => { body = value; }
+      set statusCode(value) {
+        status = value;
+      },
+      end: (value) => {
+        body = value;
+      },
     };
     let state = handlers.get(env);
     if (!state) {
@@ -130,7 +156,14 @@ export default {
     const { database, byOrigin } = state;
     let handler = byOrigin.get(url.origin);
     if (!handler) {
-      const apiCache = createD1Cache(env.PAGE_VIEWS_DB);
+      const apiCache = createD1Cache(env.PAGE_VIEWS_DB, {
+        waitUntil: (promise) => {
+          const schedule = requestWaitUntil.getStore();
+          if (!schedule) return false;
+          schedule(promise);
+          return true;
+        },
+      });
       handler = createHandler({
         database,
         origins: allowed,
@@ -139,7 +172,7 @@ export default {
         sentenceFallback: createSentenceFallback({
           enabled: env.SENTENCE_API_FALLBACK !== "false",
           cache: apiCache,
-          cooldownMs: 300_000
+          cooldownMs: 300_000,
         }),
         translateSentence: createSentenceTranslator({
           enabled: env.TRANSLATION_API_FALLBACK !== "false",
@@ -154,19 +187,29 @@ export default {
           openrouterApiKey: env.OPENROUTER_API_KEY || "",
           openrouterModel: env.OPENROUTER_MODEL || undefined,
           mymemoryEmail: env.MYMEMORY_EMAIL || env.CONTACT_EMAIL_FROM || "",
-          siteUrl: allowed.find((o) => o !== url.origin) || url.origin
+          siteUrl: allowed.find((o) => o !== url.origin) || url.origin,
         }),
-        wordFallback: createWordFallback({ enabled: env.WORD_API_FALLBACK !== "false" })
+        wordFallback: createWordFallback({ enabled: env.WORD_API_FALLBACK !== "false" }),
       });
       if (byOrigin.size >= 8) byOrigin.delete(byOrigin.keys().next().value);
       byOrigin.set(url.origin, handler);
     }
-    await handler({
-      url: request.url, method: request.method,
-      headers: Object.fromEntries(request.headers)
-    }, res);
+    const invokeHandler = () =>
+      handler(
+        {
+          url: request.url,
+          method: request.method,
+          headers: Object.fromEntries(request.headers),
+        },
+        res,
+      );
+    if (ctx?.waitUntil) {
+      await requestWaitUntil.run((promise) => ctx.waitUntil(promise), invokeHandler);
+    } else {
+      await invokeHandler();
+    }
     const response = new Response(status === 204 || request.method === "HEAD" ? null : body, { status, headers });
-    if (cacheKey && status === 200 && /\bpublic\b/i.test(headers.get("Cache-Control") || "")) {
+    if (cache && cacheKey && status === 200 && /\bpublic\b/i.test(headers.get("Cache-Control") || "")) {
       const storeHeaders = new Headers(headers);
       storeHeaders.delete("Access-Control-Allow-Origin");
       storeHeaders.set("Vary", "Accept-Encoding");
@@ -174,5 +217,5 @@ export default {
       ctx?.waitUntil?.(cache.put(cacheKey, toCache).catch(() => {}));
     }
     return response;
-  }
+  },
 };

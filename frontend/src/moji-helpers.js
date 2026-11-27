@@ -12,9 +12,13 @@ export function kanaDirections(value) {
   if (value === "to-romaji") return ["hiragana-romaji", "katakana-romaji"];
   if (value === "to-kana") return ["romaji-hiragana", "romaji-katakana"];
   if (value === "romaji-any") return ["romaji-hiragana", "romaji-katakana"];
-  const list = String(value ?? "").split(",").filter((item) => KANA_DIRECTIONS.includes(item));
+  const list = String(value ?? "")
+    .split(",")
+    .filter((item) => KANA_DIRECTIONS.includes(item));
   const last = list.at(-1);
-  return last ? list.filter((item) => item.startsWith("romaji-") === last.startsWith("romaji-")) : ["hiragana-romaji", "katakana-romaji"];
+  return last
+    ? list.filter((item) => item.startsWith("romaji-") === last.startsWith("romaji-"))
+    : ["hiragana-romaji", "katakana-romaji"];
 }
 
 /** @type {Array<{ type: "hiragana" | "katakana", display: string, answer: string }>} */
@@ -59,7 +63,7 @@ const yoonRows = [
   ["ぎ", "ギ", "gy", ["ゃ", "ゅ", "ょ"], ["ャ", "ュ", "ョ"]],
   ["じ", "ジ", "j", ["ゃ", "ゅ", "ょ"], ["ャ", "ュ", "ョ"]],
   ["び", "ビ", "by", ["ゃ", "ゅ", "ょ"], ["ャ", "ュ", "ョ"]],
-  ["ぴ", "ピ", "py", ["ゃ", "ゅ", "ょ"], ["ャ", "ュ", "ョ"]]
+  ["ぴ", "ピ", "py", ["ゃ", "ゅ", "ょ"], ["ャ", "ュ", "ョ"]],
 ];
 yoonRows.forEach(([hira, kata, consonant, smallH, smallK]) => {
   ["a", "u", "o"].forEach((vowel, index) => {
@@ -70,17 +74,25 @@ yoonRows.forEach(([hira, kata, consonant, smallH, smallK]) => {
 
 /** @param {unknown} text */
 export function normalizeMojiText(text) {
-  return String(text ?? "").normalize("NFKC").toLocaleLowerCase().normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "").replace(/[’']/g, "").replace(/[.,!?;:()[\]{}]/g, " ")
-    .replace(/\s+/g, " ").trim();
+  return String(text ?? "")
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’']/g, "")
+    .replace(/[.,!?;:()[\]{}]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** @param {string} text */
 export function katakanaToHiragana(text) {
-  return [...text].map((char) => {
-    const code = char.codePointAt(0) ?? 0;
-    return code >= 0x30a1 && code <= 0x30f6 ? String.fromCodePoint(code - 0x60) : char;
-  }).join("");
+  return [...text]
+    .map((char) => {
+      const code = char.codePointAt(0) ?? 0;
+      return code >= 0x30a1 && code <= 0x30f6 ? String.fromCodePoint(code - 0x60) : char;
+    })
+    .join("");
 }
 
 const romajiMap = new Map(kanaEntries.map((entry) => [entry.display, entry.answer]));
@@ -88,12 +100,12 @@ const sortedRomajiKeys = [...romajiMap.keys()].sort((a, b) => b.length - a.lengt
 
 /** @param {unknown} reading */
 export function romanizeReading(reading) {
-  let input = katakanaToHiragana(String(reading ?? "")).replace(/[\s・.\-]/g, "");
+  let input = katakanaToHiragana(String(reading ?? "")).replace(/[\s・.-]/g, "");
   let output = "";
   while (input) {
     if (input[0] === "っ") {
       const next = sortedRomajiKeys.find((key) => input.slice(1).startsWith(key));
-      output += next ? (romajiMap.get(next)?.[0] || "") : "";
+      output += next ? romajiMap.get(next)?.[0] || "" : "";
       input = input.slice(1);
       continue;
     }

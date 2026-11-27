@@ -1,25 +1,43 @@
+import { renderAnalysisStats } from "./analysis-stats.js";
 import { API_BASE, fetchJSON } from "./api.js";
+import { mountSentenceExamples } from "./examples.js";
+import { setHTML } from "./html.js";
 import { beginLoading } from "./request-loading.js";
 import { rememberControls } from "./settings-storage.js";
-import { mountStudyControls, japaneseHTML, audioHTML } from "./study-controls.js";
-import { mountSentenceExamples } from "./examples.js";
-import { renderAnalysisStats } from "./analysis-stats.js";
+import { audioHTML, japaneseHTML, mountStudyControls } from "./study-controls.js";
 import "./analysis-stats.css";
+
 (() => {
-  "use strict";
   const API_URL = `${API_BASE}/api/words?keyword=`;
   const ANALYZE_URL = `${API_BASE}/api/analyze?text=`;
   const HISTORY_KEY = "fumitoki-analysis-history-v2";
   const $ = (selector) => document.querySelector(selector);
-  const textInput = $("#sourceText"), parsedText = $("#parsedText"), detailPanel = $("#detailPanel");
-  const detailWord = $("#detailWord"), detailContent = $("#detailContent"), lookupInput = $("#lookupInput");
-  const status = $("#status"), historyList = $("#historyList"), tokenCount = $("#tokenCount");
-  const translationBox = $("#translationBox"), translationLabel = $("#translationLabel"), translationText = $("#translationText");
+  const textInput = $("#sourceText"),
+    parsedText = $("#parsedText"),
+    detailPanel = $("#detailPanel");
+  const detailWord = $("#detailWord"),
+    detailContent = $("#detailContent"),
+    lookupInput = $("#lookupInput");
+  const status = $("#status"),
+    historyList = $("#historyList"),
+    tokenCount = $("#tokenCount");
+  const translationBox = $("#translationBox"),
+    translationLabel = $("#translationLabel"),
+    translationText = $("#translationText");
   const statsPanel = document.createElement("div");
   statsPanel.className = "analysis-stats";
+  statsPanel.dataset.i18nScope = "";
   parsedText.after(statsPanel);
   let analysisKanji = [];
-  let tokens = [], currentTranslation = "", currentTranslationSource = "", currentTranslationIsStudy = false, selectedTokenIndex = -1, requestId = 0, parseRequestId = 0, activeController = null, history = [];
+  let tokens = [],
+    currentTranslation = "",
+    currentTranslationSource = "",
+    currentTranslationIsStudy = false,
+    selectedTokenIndex = -1,
+    requestId = 0,
+    parseRequestId = 0,
+    activeController = null,
+    history = [];
   rememberControls("nihon:fumitoki-settings-v1", ["translationToggle"], (message) => setStatus(message, true));
 
   function readJSON(key, fallback) {
@@ -55,12 +73,12 @@ import "./analysis-stats.css";
         type: token.type,
         reading: token.reading || "",
         base: token.base || token.text,
-        result: token.result || null
+        result: token.result || null,
       })),
       translation: currentTranslation,
       translationSource: currentTranslationSource,
       kanji: analysisKanji,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     });
     history = history.slice(0, 10);
     const saved = saveHistory();
@@ -75,6 +93,7 @@ import "./analysis-stats.css";
     if (!history.length) {
       const empty = document.createElement("span");
       empty.className = "muted";
+      empty.dataset.i18nScope = "";
       empty.textContent = "No saved analyses yet.";
       historyList.append(empty);
       return;
@@ -100,12 +119,18 @@ import "./analysis-stats.css";
     button.type = "button";
     button.className = "token";
     const parts = (token.result?.senses || []).flatMap((sense) => sense.parts_of_speech || []).join(" ");
-    button.dataset.tokenType = token.type === "particle" ? "particle"
-      : /\bverb\b/i.test(parts) ? "verb" : /\badjectiv/i.test(parts) ? "adjective" : token.type;
+    button.dataset.tokenType =
+      token.type === "particle"
+        ? "particle"
+        : /\bverb\b/i.test(parts)
+          ? "verb"
+          : /\badjectiv/i.test(parts)
+            ? "adjective"
+            : token.type;
     button.dataset.tokenIndex = String(index);
     button.setAttribute("aria-pressed", String(index === selectedTokenIndex));
     button.title = token.type === "particle" ? `Particle · ${token.text}` : `Look up ${token.text}`;
-    button.innerHTML = japaneseHTML(token.text, token.reading);
+    setHTML(button, japaneseHTML(token.text, token.reading));
     return button;
   }
   function renderTranslation() {
@@ -136,7 +161,7 @@ import "./analysis-stats.css";
       speech.id = "sentenceSpeech";
       $("#copyButton").after(speech);
     }
-    speech.innerHTML = tokens.length ? audioHTML(tokens.map((token) => token.text).join("")) : "";
+    setHTML(speech, tokens.length ? audioHTML(tokens.map((token) => token.text).join("")) : "");
     if (!tokens.length) {
       const empty = document.createElement("div");
       empty.className = "empty";
@@ -169,7 +194,7 @@ import "./analysis-stats.css";
     try {
       const payload = await fetchJSON(ANALYZE_URL + encodeURIComponent(value), {
         timeoutMs: 20000,
-        fallbackError: "Sentence analysis is unavailable. Please try again."
+        fallbackError: "Sentence analysis is unavailable. Please try again.",
       });
       if (currentParse !== parseRequestId) return;
       analysisKanji = Array.isArray(payload.kanji) ? payload.kanji : [];
@@ -181,7 +206,7 @@ import "./analysis-stats.css";
           reading: typeof token.reading === "string" ? token.reading : "",
           base: typeof token.base === "string" ? token.base : String(token.text ?? ""),
           result: token.result && typeof token.result === "object" ? token.result : null,
-          results: Array.isArray(token.results) ? token.results : (token.result ? [token.result] : [])
+          results: Array.isArray(token.results) ? token.results : token.result ? [token.result] : [],
         }));
       }
       currentTranslation = payload.translation || "Translation unavailable for this sentence.";
@@ -193,8 +218,12 @@ import "./analysis-stats.css";
       }
       const saved = options.skipHistory || saveCurrentAnalysis();
       const count = tokens.filter((token) => token.type === "word" || token.type === "particle").length;
-      setStatus(saved ? `Parsed ${count} words. Click any word or particle to see its definition.`
-        : "Parsed sentence, though recent history could not be saved in this browser.", !saved);
+      setStatus(
+        saved
+          ? `Parsed ${count} words. Click any word or particle to see its definition.`
+          : "Parsed sentence, though recent history could not be saved in this browser.",
+        !saved,
+      );
     } catch (error) {
       if (currentParse !== parseRequestId) return;
       console.warn("Sentence analysis failed:", error);
@@ -215,7 +244,7 @@ import "./analysis-stats.css";
       item.audio_url,
       typeof item.audio === "string" ? item.audio : item.audio?.uri,
       item.audio_file,
-      item.pronunciation?.audio
+      item.pronunciation?.audio,
     ];
     for (const candidate of candidates) {
       if (typeof candidate !== "string") continue;
@@ -236,22 +265,34 @@ import "./analysis-stats.css";
   function renderEntry(query, items) {
     detailContent.replaceChildren();
     if (!items.length) {
-      addText(detailContent, "p", `No results for “${query}”. Try another spelling or enter a different word above.`, "small-note");
+      const note = addText(
+        detailContent,
+        "p",
+        `No results for “${query}”. Try another spelling or enter a different word above.`,
+        "small-note",
+      );
+      note.dataset.i18nScope = "";
       return;
     }
-    const item = items.find((candidate) =>
-      (candidate.japanese || []).some((form) => form.word === query || form.reading === query)
-    ) || items[0];
+    const item =
+      items.find((candidate) =>
+        (candidate.japanese || []).some((form) => form.word === query || form.reading === query),
+      ) || items[0];
     const forms = Array.isArray(item.japanese) ? item.japanese : [];
     const matchedForm = forms.find((form) => form.word === query || form.reading === query) || forms[0] || {};
-    detailWord.innerHTML = japaneseHTML(matchedForm.word || matchedForm.reading || query, matchedForm.reading)
-      + audioHTML(matchedForm.reading || query);
+    setHTML(
+      detailWord,
+      japaneseHTML(matchedForm.word || matchedForm.reading || query, matchedForm.reading) +
+        audioHTML(matchedForm.reading || query),
+    );
 
     const tags = document.createElement("div");
     tags.className = "tags";
     const parts = [...new Set((item.senses || []).flatMap((sense) => sense.parts_of_speech || []))];
     parts.forEach((part) => addText(tags, "span", part, "tag"));
-    (item.jlpt || []).filter(Boolean).forEach((level) => addText(tags, "span", String(level).toUpperCase(), "tag jlpt"));
+    (item.jlpt || [])
+      .filter(Boolean)
+      .forEach((level) => addText(tags, "span", String(level).toUpperCase(), "tag jlpt"));
     if (tags.childElementCount) detailContent.append(tags);
 
     const meanings = [...new Set((item.senses || []).flatMap((sense) => sense.english_definitions || []))];
@@ -261,13 +302,15 @@ import "./analysis-stats.css";
       meanings.slice(0, 12).forEach((meaning) => addText(list, "li", meaning));
       detailContent.append(list);
     } else {
-      addText(detailContent, "p", "No English definitions are listed for this entry.", "small-note");
+      const note = addText(detailContent, "p", "No English definitions are listed for this entry.", "small-note");
+      note.dataset.i18nScope = "";
     }
     const audio = getAudioURL(item);
     if (audio) {
       const section = document.createElement("div");
       section.className = "detail-section study-audio";
       const link = addText(section, "a", "▶ Play pronunciation", "audio-link");
+      link.dataset.i18nScope = "";
       link.href = audio;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
@@ -277,16 +320,21 @@ import "./analysis-stats.css";
     const examples = findExamples(item);
     const exampleSection = document.createElement("section");
     exampleSection.className = "detail-section";
-    addText(exampleSection, "h3", "Example sentences", "section-label");
+    const exHeading = addText(exampleSection, "h3", "Example sentences", "section-label");
+    exHeading.dataset.i18nScope = "";
     const exampleBody = document.createElement("div");
     exampleSection.append(exampleBody);
     detailContent.append(exampleSection);
-    const exampleQuery = forms.find((form) => form.word === query || form.reading === query)?.word
-      || forms[0]?.word || forms[0]?.reading || query;
+    const exampleQuery =
+      forms.find((form) => form.word === query || form.reading === query)?.word ||
+      forms[0]?.word ||
+      forms[0]?.reading ||
+      query;
     mountSentenceExamples(exampleBody, exampleQuery, examples);
 
     const link = document.createElement("a");
     link.className = "jisho-link";
+    link.dataset.i18nScope = "";
     link.href = `https://jisho.org/search/${encodeURIComponent(query)}`;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
@@ -310,7 +358,8 @@ import "./analysis-stats.css";
       label.textContent = "Lookup";
       detailWord.replaceChildren(label);
       detailContent.replaceChildren();
-      addText(detailContent, "p", "Enter a word or particle to search.", "small-note");
+      const note = addText(detailContent, "p", "Enter a word or particle to search.", "small-note");
+      note.dataset.i18nScope = "";
       lookupInput.focus();
       return;
     }
@@ -332,6 +381,7 @@ import "./analysis-stats.css";
     }
     const loading = document.createElement("div");
     loading.className = "loading";
+    loading.dataset.i18nScope = "";
     const spinner = document.createElement("span");
     spinner.className = "spinner";
     spinner.setAttribute("aria-hidden", "true");
@@ -341,22 +391,34 @@ import "./analysis-stats.css";
     const controller = new AbortController();
     activeController = controller;
     const currentRequest = ++requestId;
-    const doneLoading = beginLoading([$("#lookupForm button"), ...document.querySelectorAll(".token[aria-pressed=true]")], detailContent);
+    const doneLoading = beginLoading(
+      [$("#lookupForm button"), ...document.querySelectorAll(".token[aria-pressed=true]")],
+      detailContent,
+    );
     try {
       const payload = await fetchJSON(API_URL + encodeURIComponent(term), {
         signal: controller.signal,
         timeoutMs: 10000,
-        fallbackError: "We couldn’t look up that word right now."
+        fallbackError: "We couldn’t look up that word right now.",
       });
       if (currentRequest !== requestId) return;
       const results = Array.isArray(payload.data) ? payload.data : [];
       renderEntry(term, results);
-      setStatus(results.length ? `Dictionary results for “${term}”.` : `No dictionary results for “${term}”.`, !results.length);
+      setStatus(
+        results.length ? `Dictionary results for “${term}”.` : `No dictionary results for “${term}”.`,
+        !results.length,
+      );
     } catch (error) {
       if (error.name === "AbortError" || currentRequest !== requestId) return;
       console.error("Dictionary lookup failed.", error);
       detailContent.replaceChildren();
-      addText(detailContent, "p", "We couldn’t look up this word right now. Please check your connection and try again.", "small-note");
+      const note = addText(
+        detailContent,
+        "p",
+        "We couldn’t look up this word right now. Please check your connection and try again.",
+        "small-note",
+      );
+      note.dataset.i18nScope = "";
       setStatus(`Couldn’t look up “${term}” right now. Please try again in a moment.`, true);
     } finally {
       await doneLoading();
@@ -364,12 +426,21 @@ import "./analysis-stats.css";
   }
   async function copyAnalysis() {
     if (!tokens.length) return;
-    const text = JSON.stringify({
-      text: textInput.value,
-      translation: currentTranslation || null,
-      parsedAt: new Date().toISOString(),
-      tokens: tokens.map((token) => ({ text: token.text, type: token.type, reading: token.reading || "", dictionary: token.result || null }))
-    }, null, 2);
+    const text = JSON.stringify(
+      {
+        text: textInput.value,
+        translation: currentTranslation || null,
+        parsedAt: new Date().toISOString(),
+        tokens: tokens.map((token) => ({
+          text: token.text,
+          type: token.type,
+          reading: token.reading || "",
+          dictionary: token.result || null,
+        })),
+      },
+      null,
+      2,
+    );
     try {
       await navigator.clipboard.writeText(text);
       setStatus("Analysis copied.");
@@ -384,7 +455,10 @@ import "./analysis-stats.css";
       temporary.select();
       const copied = document.execCommand("copy");
       temporary.remove();
-      setStatus(copied ? "Analysis copied." : "Could not copy automatically; your browser may block clipboard access.", !copied);
+      setStatus(
+        copied ? "Analysis copied." : "Could not copy automatically; your browser may block clipboard access.",
+        !copied,
+      );
     }
   }
 
@@ -423,7 +497,7 @@ import "./analysis-stats.css";
         tokens: entry.tokens,
         translation: entry.translation,
         translationSource: entry.translationSource,
-        skipHistory: true
+        skipHistory: true,
       });
     }
   });
@@ -440,10 +514,16 @@ import "./analysis-stats.css";
 
   history = readJSON(HISTORY_KEY, []);
   if (!Array.isArray(history)) history = [];
-  history = history.filter((entry) =>
-    entry && typeof entry.text === "string" && entry.text.trim() &&
-    Array.isArray(entry.tokens) && entry.tokens.every((token) => token && typeof token.text === "string")
-  ).slice(0, 10);
+  history = history
+    .filter(
+      (entry) =>
+        entry &&
+        typeof entry.text === "string" &&
+        entry.text.trim() &&
+        Array.isArray(entry.tokens) &&
+        entry.tokens.every((token) => token && typeof token.text === "string"),
+    )
+    .slice(0, 10);
   renderHistory();
 })();
 mountStudyControls();

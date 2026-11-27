@@ -1,11 +1,11 @@
 import { initializeAppearance, mountAppearance } from "./appearance.js";
 import "./study-controls.css";
-import { createSupportButton } from "./support.js";
-import { legacyRoutes, navigationPage, pageFile } from "./routes.js";
-import { initializeInterfaceLocalization } from "./interface-i18n.js";
-import { mountHomepageShowcase } from "./homepage.js";
-import { mountAnalyticsConsent } from "./analytics-consent.js";
 import { editorialPage } from "../editorial-tools.js";
+import { mountAnalyticsConsent } from "./analytics-consent.js";
+import { mountHomepageShowcase } from "./homepage.js";
+import { initializeInterfaceLocalization } from "./interface-i18n.js";
+import { legacyRoutes, navigationPage, pageFile } from "./routes.js";
+import { createSupportButton } from "./support.js";
 
 initializeAppearance();
 initializeInterfaceLocalization();
@@ -108,7 +108,16 @@ document.getElementById("homeBrowse")?.addEventListener("click", () => {
 helperMenu.addEventListener("click", (event) => {
   const link = event.target.closest(".helper-link");
   if (!link) return;
-  if (!helperFrame || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  if (
+    !helperFrame ||
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  )
+    return;
   event.preventDefault();
   loadHelper(link.dataset.file);
   setMenuOpen(false);
@@ -153,9 +162,15 @@ try {
 } catch (error) {
   console.warn("Could not read the last helper from local storage.", error);
 }
-loadHelper(helperFrame
-  ? helpers.has(requestedHelper) ? requestedHelper : helpers.has(storedHelper) ? storedHelper : helperLinks[0].dataset.file
-  : navigationPage(location.pathname));
+loadHelper(
+  helperFrame
+    ? helpers.has(requestedHelper)
+      ? requestedHelper
+      : helpers.has(storedHelper)
+        ? storedHelper
+        : helperLinks[0].dataset.file
+    : navigationPage(location.pathname),
+);
 showRecentTool();
 window.addEventListener("storage", (event) => {
   if (event.key === recentToolKey || event.key === lastHelperKey || event.key === null) showRecentTool();

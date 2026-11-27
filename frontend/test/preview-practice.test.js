@@ -1,6 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { provision } from "../../backend/scripts/provision-study-drawing.mjs";
 import { studyDrawing } from "../../backend/src/study-drawing.js";
@@ -9,6 +8,7 @@ import { gradeParticle } from "../src/preview-practice/particle.js";
 import { gradeCounter } from "../src/preview-practice/counter.js";
 import { compareDrawing,compareDrawingDetail,compareStroke,isAccidentalTap,parseList,resample } from "../src/preview-practice/stroke-model.js";
 import { loadDeck } from "./support/study-decks.js";
+import { loadAllWorksheetStrokes } from "../src/worksheet-strokes-node.js";
 
 await Promise.all([particle.prepare(loadDeck), counter.prepare(loadDeck)]);
 
@@ -210,7 +210,7 @@ test("counter matrix explicitly supports each 1–10 cell, never native teens or
 });
 
 test("drawing requests preserve worksheet coverage, ordered models and custom selection",async t=>{
-  const src=JSON.parse(readFileSync(new URL("../src/worksheet-strokes.json",import.meta.url)));
+  const src=loadAllWorksheetStrokes();
   const db=new DatabaseSync(":memory:");
   t.after(()=>db.close());
   db.exec("CREATE TABLE kanjis(character TEXT,grade INTEGER); INSERT INTO kanjis VALUES('日',1)");
@@ -259,7 +259,7 @@ test("known-target comparison preserves grid placement, order, direction and rel
 });
 
 test("kanji kaki returns metadata, shows memory cues, highlights mismatches, supports shortcuts and preserves saved collection", async (t) => {
-  const src = JSON.parse(readFileSync(new URL("../src/worksheet-strokes.json", import.meta.url)));
+  const src = loadAllWorksheetStrokes();
   const db = new DatabaseSync(":memory:");
   t.after(() => db.close());
   db.exec(`CREATE TABLE kanjis(character TEXT, grade INTEGER, meanings TEXT, on_readings TEXT, kun_readings TEXT);

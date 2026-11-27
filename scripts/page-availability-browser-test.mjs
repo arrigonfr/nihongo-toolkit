@@ -31,7 +31,8 @@ try {
   assert.match(restrictedHtml, /Japanese Cheatsheet Previews/);
   assert.match(restrictedHtml, /googletagmanager.com\/gtm.js/);
   assert.match(restrictedHtml, /googletagmanager.com\/gtag\/js/);
-  assert.match(restrictedHtml, /googletagmanager.com\/ns.html/);
+  assert.match(restrictedHtml, /window\.__nihonAnalytics/);
+  assert.doesNotMatch(restrictedHtml, /googletagmanager.com\/ns.html/);
   assert.ok(restricted.output.some((output) => output.type === "chunk" && Object.keys(output.modules).some((id) => id.endsWith("/src/page-views.js"))));
   await assert.rejects(access(join(outDir, "stale-secret.txt")), { code: "ENOENT" });
   await assert.rejects(access(join(outDir, fullChunk.fileName)), { code: "ENOENT" });
@@ -119,7 +120,7 @@ try {
     await page.goto(`${origin}${path}`);
     assert.match(await page.locator("h1").textContent(), /unavailable/);
   }
-  for (const path of ["/src/resources.js", "/src/worksheet.js", "/src/worksheet-kanji.json", "/src/worksheet-strokes.json", "/src/cheatsheet-data.js", "/shiryo.html.map", `/${fullChunk.fileName}`]) {
+  for (const path of ["/src/resources.js", "/src/worksheet.js", "/src/worksheet-kanji.json", "/src/worksheet-strokes.json", "/src/worksheet-strokes/kana.json", "/src/cheatsheet-data.js", "/shiryo.html.map", `/${fullChunk.fileName}`]) {
     const response = await fetch(`${origin}${path}`);
     const text = await response.text();
     // Static hosts may return the homepage fallback instead of a 404.

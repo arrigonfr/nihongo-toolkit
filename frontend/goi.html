@@ -54,8 +54,8 @@
               <div class="font-field"><select class="select" id="fontChoice"><option value="random">Rotate</option><option value="Noto Sans JP" selected>Noto Sans JP</option></select></div>
             </div>
           </details>
-          <div class="banner" id="warning" role="status"></div>
-          <div class="status" id="status" aria-live="polite"></div>
+          <div class="banner" id="warning" role="status" data-i18n-scope></div>
+          <div class="status" id="status" aria-live="polite" data-i18n-scope></div>
           <section class="question" id="question">
             <div class="session-stats" id="sessionStats">
               <div class="stats-heading">
@@ -90,14 +90,14 @@
                 </div>
               </div>
             </div>
-            <label class="switch-option review-option"><input id="showExampleToggle" type="checkbox" checked> Show example and definition</label>
+            <label class="switch-option review-option" data-i18n-scope><input id="showExampleToggle" type="checkbox" checked> Show example and definition</label>
             <div class="example" id="example" hidden>
               <div class="example-definition" id="exampleDefinition"></div>
               <div class="example-ja" id="exampleJa"></div>
               <div class="example-en" id="exampleEn"></div>
             </div>
             <div class="question-top" id="questionTop" hidden>
-                <span class="question-label" id="questionLabel"></span>
+                <span class="question-label" id="questionLabel" data-i18n-scope></span>
                 <span class="badge" id="levelBadge">N3</span>
                 <span class="badge timer-badge" id="sessionTimer" hidden></span>
                 <button class="button stop-session" id="stopSessionButton" type="button" hidden>Stop session</button>
@@ -105,14 +105,14 @@
             <div id="questionContent" hidden>
               <div class="word" id="word"></div>
               <div class="meta" id="meta"></div>
-              <div class="prompt" id="prompt"></div>
+              <div class="prompt" id="prompt" data-i18n-scope></div>
               <div class="answer-options" id="options" role="group" aria-label="Choose the meaning"></div>
-              <label class="sr-only" for="answerInput">Type the Japanese word</label>
+              <label class="sr-only" for="answerInput" data-i18n-scope>Type the Japanese word</label>
               <div class="answer-feedback-slot">
                 <p id="correctCaption" class="correct-caption" role="status" hidden>Correct!</p>
-                <p id="incorrectCaption" class="incorrect-caption" role="status"></p>
+                <p id="incorrectCaption" class="incorrect-caption" role="status" data-i18n-scope></p>
               </div>
-              <input class="answer-input" id="answerInput" type="text" autocorrect="off" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Type the Japanese word" aria-describedby="correctCaption incorrectCaption" hidden>
+              <input class="answer-input" id="answerInput" type="text" autocorrect="off" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Type the Japanese word" aria-describedby="correctCaption incorrectCaption" data-i18n-scope hidden>
               <div class="actions">
                 <button class="button primary" id="checkButton" type="button">Check</button>
                 <button class="button" id="showButton" type="button">Show answer <span class="quiz-shortcut" aria-hidden="true">(S)</span></button>
@@ -122,9 +122,9 @@
               <div class="feedback" id="feedback" role="status" hidden></div>
             </div>
             <div class="results-panel" id="resultsPanel" hidden>
-              <h2>Quiz complete</h2>
-              <p id="resultsSummary"></p>
-              <div class="result-metrics">
+              <h2 data-i18n-scope>Quiz complete</h2>
+              <p id="resultsSummary" data-i18n-scope></p>
+              <div class="result-metrics" data-i18n-scope>
                 <div class="result-metric"><strong id="resultAnswered">0 / 0</strong><span>answered</span></div>
                 <div class="result-metric"><strong id="resultAccuracy">—</strong><span>accuracy</span></div>
                 <div class="result-metric"><strong id="resultAverage">—</strong><span>average answer</span></div>

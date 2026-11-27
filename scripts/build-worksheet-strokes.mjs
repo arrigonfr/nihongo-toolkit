@@ -1,9 +1,12 @@
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { XMLParser } from "fast-xml-parser";
 import { kanjiVgUrl } from "../backend/scripts/sources.js";
+
+const CHUNK_SIZE = 350;
 
 const directory = mkdtempSync(join(tmpdir(), "nihon-strokes-"));
 try {
@@ -32,26 +35,31 @@ try {
     if (paths.length && numbers.length === paths.length) result[character] = [paths, numbers];
   }
   if (!result["あ"] || !result["大"]) throw new Error("Stroke data is incomplete");
-  writeFileSync(new URL("../frontend/src/worksheet-strokes.json", import.meta.url), JSON.stringify(result));
   const kana = [..."あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ"];
   const levels = JSON.parse(readFileSync(new URL("../frontend/src/worksheet-kanji.json", import.meta.url), "utf8"));
   const pick = (chars) => Object.fromEntries(chars.filter((ch) => result[ch]).map((ch) => [ch, result[ch]]));
   const rated = new Set(Object.values(levels).flatMap((chars) => [...chars]));
   const unrated = Object.keys(result).filter((ch) => /^\p{Script=Han}$/u.test(ch) && /^\p{Ideographic}$/u.test(ch) && !rated.has(ch));
-  const chunks = {
-    "worksheet-unrated.json": unrated.join(""),
-    "worksheet-strokes-kana.json": pick(kana),
-    "worksheet-strokes-n5.json": pick([...levels[5]]),
-    "worksheet-strokes-n4.json": pick([...levels[4]]),
-    "worksheet-strokes-n3.json": pick([...levels[3]]),
-    "worksheet-strokes-n2.json": pick([...levels[2]]),
-    "worksheet-strokes-n1.json": pick([...levels[1]]),
-    "worksheet-strokes-unrated.json": pick(unrated)
+  writeFileSync(new URL("../frontend/src/worksheet-unrated.json", import.meta.url), JSON.stringify(unrated.join("")));
+  const outDir = fileURLToPath(new URL("../frontend/src/worksheet-strokes", import.meta.url));
+  rmSync(outDir, { recursive: true, force: true });
+  mkdirSync(outDir, { recursive: true });
+  let chunkCount = 0;
+  const writeGroup = (name, chars) => {
+    if (chars.length <= 400) {
+      writeFileSync(join(outDir, `${name}.json`), JSON.stringify(pick(chars)));
+      chunkCount++;
+      return;
+    }
+    for (let i = 0, part = 0; i < chars.length; i += CHUNK_SIZE, part++) {
+      writeFileSync(join(outDir, `${name}-${part}.json`), JSON.stringify(pick(chars.slice(i, i + CHUNK_SIZE))));
+      chunkCount++;
+    }
   };
-  for (const [name, data] of Object.entries(chunks)) {
-    writeFileSync(new URL(`../frontend/src/${name}`, import.meta.url), JSON.stringify(data));
-  }
-  console.log(`Generated stroke data for ${Object.keys(result).length} characters and ${Object.keys(chunks).length} split chunks.`);
+  writeGroup("kana", kana);
+  for (const level of [5, 4, 3, 2, 1]) writeGroup(`n${level}`, [...levels[level]]);
+  writeGroup("unrated", unrated);
+  console.log(`Generated stroke data for ${Object.keys(result).length} characters across ${chunkCount} split chunks.`);
 } finally {
   rmSync(directory, { recursive: true, force: true });
 }

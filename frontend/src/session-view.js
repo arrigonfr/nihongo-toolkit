@@ -1,6 +1,20 @@
+// @ts-check
+
+/**
+ * @param {{
+ *   settings: Element & { open?: boolean },
+ *   play: Element[],
+ *   results: Element,
+ *   start: Element,
+ *   setup?: Element[],
+ *   keepResults?: Element[],
+ *   footer?: boolean
+ * }} config
+ */
 export function createSessionView({ settings, play, results, start, setup = [], keepResults = [], footer = false }) {
   const startLine = document.createElement("div");
   startLine.className = "start-line";
+  /** @type {Element} */
   let setupPanel = settings;
   if (footer) {
     setupPanel = document.createElement("section");
@@ -10,6 +24,7 @@ export function createSessionView({ settings, play, results, start, setup = [], 
   } else settings.after(startLine);
   startLine.append(start);
   const setupElements = [setupPanel, startLine, ...setup];
+  /** @param {"setup" | "play" | "results"} stage */
   function show(stage) {
     for (const element of setupElements) element.hidden = stage !== "setup";
     for (const element of play) element.hidden = stage !== "play";
@@ -19,8 +34,12 @@ export function createSessionView({ settings, play, results, start, setup = [], 
   }
   show("setup");
   return {
-    start() { show("play"); },
-    setup() { show("setup"); },
+    start() {
+      show("play");
+    },
+    setup() {
+      show("setup");
+    },
     finish() {
       show("results");
       results.querySelector(".replay-actions")?.remove();
@@ -31,9 +50,12 @@ export function createSessionView({ settings, play, results, start, setup = [], 
       again.className = start.className;
       again.dataset.playAgain = "";
       again.textContent = "Practice again";
-      again.addEventListener("click", () => { show("setup"); start.focus(); });
+      again.addEventListener("click", () => {
+        show("setup");
+        start.focus();
+      });
       actions.append(again);
       results.append(actions);
-    }
+    },
   };
 }

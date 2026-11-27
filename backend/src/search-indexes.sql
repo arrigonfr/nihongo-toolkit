@@ -71,3 +71,45 @@ END;
 INSERT INTO kanji_meanings_fts(kanji_meanings_fts)
   SELECT 'rebuild' WHERE NOT EXISTS (SELECT 1 FROM metadata WHERE key = 'kanji_meanings_fts_version' AND value = '2');
 INSERT OR REPLACE INTO metadata(key, value) VALUES ('kanji_meanings_fts_version', '2');
+
+CREATE VIRTUAL TABLE IF NOT EXISTS words_meanings_terms_fts USING fts5(
+  meanings,
+  content='words',
+  content_rowid='id',
+  tokenize='unicode61',
+  prefix='1 2'
+);
+CREATE TRIGGER IF NOT EXISTS words_meanings_terms_fts_insert AFTER INSERT ON words BEGIN
+  INSERT INTO words_meanings_terms_fts(rowid, meanings) VALUES (new.id, new.meanings);
+END;
+CREATE TRIGGER IF NOT EXISTS words_meanings_terms_fts_delete AFTER DELETE ON words BEGIN
+  INSERT INTO words_meanings_terms_fts(words_meanings_terms_fts, rowid, meanings) VALUES ('delete', old.id, old.meanings);
+END;
+CREATE TRIGGER IF NOT EXISTS words_meanings_terms_fts_update AFTER UPDATE OF meanings ON words BEGIN
+  INSERT INTO words_meanings_terms_fts(words_meanings_terms_fts, rowid, meanings) VALUES ('delete', old.id, old.meanings);
+  INSERT INTO words_meanings_terms_fts(rowid, meanings) VALUES (new.id, new.meanings);
+END;
+INSERT INTO words_meanings_terms_fts(words_meanings_terms_fts)
+  SELECT 'rebuild' WHERE NOT EXISTS (SELECT 1 FROM metadata WHERE key = 'words_meanings_terms_fts_version' AND value = '1');
+INSERT OR REPLACE INTO metadata(key, value) VALUES ('words_meanings_terms_fts_version', '1');
+
+CREATE VIRTUAL TABLE IF NOT EXISTS kanji_meanings_terms_fts USING fts5(
+  meanings,
+  content='kanjis',
+  content_rowid='id',
+  tokenize='unicode61',
+  prefix='1 2'
+);
+CREATE TRIGGER IF NOT EXISTS kanji_meanings_terms_fts_insert AFTER INSERT ON kanjis BEGIN
+  INSERT INTO kanji_meanings_terms_fts(rowid, meanings) VALUES (new.id, new.meanings);
+END;
+CREATE TRIGGER IF NOT EXISTS kanji_meanings_terms_fts_delete AFTER DELETE ON kanjis BEGIN
+  INSERT INTO kanji_meanings_terms_fts(kanji_meanings_terms_fts, rowid, meanings) VALUES ('delete', old.id, old.meanings);
+END;
+CREATE TRIGGER IF NOT EXISTS kanji_meanings_terms_fts_update AFTER UPDATE OF meanings ON kanjis BEGIN
+  INSERT INTO kanji_meanings_terms_fts(kanji_meanings_terms_fts, rowid, meanings) VALUES ('delete', old.id, old.meanings);
+  INSERT INTO kanji_meanings_terms_fts(rowid, meanings) VALUES (new.id, new.meanings);
+END;
+INSERT INTO kanji_meanings_terms_fts(kanji_meanings_terms_fts)
+  SELECT 'rebuild' WHERE NOT EXISTS (SELECT 1 FROM metadata WHERE key = 'kanji_meanings_terms_fts_version' AND value = '1');
+INSERT OR REPLACE INTO metadata(key, value) VALUES ('kanji_meanings_terms_fts_version', '1');

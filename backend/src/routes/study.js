@@ -1,7 +1,7 @@
-import { studyDeck } from "../study-decks.js";
-import { studyGuide } from "../study-guide.js";
-import { studyDrawing } from "../study-drawing.js";
 import { CACHE_STATIC } from "../http.js";
+import { studyDeck } from "../study-decks.js";
+import { studyDrawing } from "../study-drawing.js";
+import { studyGuide } from "../study-guide.js";
 
 export async function handleStudyRoutes({ path, url, db, send }) {
   if (path === "/api/study/guide") {

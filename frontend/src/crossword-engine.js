@@ -1,16 +1,16 @@
-import { romanizeKana } from "./romanize.js";
-import { alignFuriganaRuby, formatFurigana } from "./furigana.js";
 import { toHiragana } from "wanakana";
+import { alignFuriganaRuby, formatFurigana } from "./furigana.js";
+import { romanizeKana } from "./romanize.js";
 
 export const PUZZLE_SIZES = {
   small: { label: "Small (8×8 · ~6 words)", gridSize: 8, targetWords: 6 },
   medium: { label: "Medium (11×11 · ~10 words)", gridSize: 11, targetWords: 10 },
   large: { label: "Large (14×14 · ~14 words)", gridSize: 14, targetWords: 14 },
-  custom: { label: "Custom size", gridSize: 11, targetWords: 10 }
+  custom: { label: "Custom size", gridSize: 11, targetWords: 10 },
 };
 
 export function createSeededRandom(seedInput) {
-  let str = String(seedInput ?? Date.now());
+  const str = String(seedInput ?? Date.now());
   let h = 2166136261 >>> 0;
   for (let i = 0; i < str.length; i++) {
     h = Math.imul(h ^ str.charCodeAt(i), 16777619);
@@ -18,7 +18,7 @@ export function createSeededRandom(seedInput) {
   let state = h || 123456789;
   return function next() {
     state |= 0;
-    state = (state + 0x6D2B79F5) | 0;
+    state = (state + 0x6d2b79f5) | 0;
     let t = Math.imul(state ^ (state >>> 15), 1 | state);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -28,7 +28,12 @@ export function createSeededRandom(seedInput) {
 export function cleanEnglishToken(meaning) {
   const parts = String(meaning || "")
     .split(/[;,]/)
-    .map((s) => s.replace(/\([^)]*\)/g, "").replace(/^to\s+/i, "").trim())
+    .map((s) =>
+      s
+        .replace(/\([^)]*\)/g, "")
+        .replace(/^to\s+/i, "")
+        .trim(),
+    )
     .filter(Boolean);
   for (const part of parts) {
     const letters = part.toUpperCase().replace(/[^A-Z]/g, "");
@@ -118,17 +123,15 @@ export function maskTargetInSentence(sentence, word, reading, { isFuriganaMarkup
   return out;
 }
 
-export function buildClue(item, {
-  script = "kana",
-  answerMode = "kana",
-  kanjiFocus = false,
-  rng = Math.random
-} = {}) {
+export function buildClue(item, { script = "kana", answerMode = "kana", kanjiFocus = false, rng = Math.random } = {}) {
   const word = String(item.word || "").trim();
   const reading = String(item.furigana || item.reading || word).trim();
   const romaji = item.romaji || romanizeKana(reading);
   const meaning = String(item.meaning || "").trim();
-  const pos = String(item.partOfSpeech || "").split(",")[0]?.trim() || "";
+  const pos =
+    String(item.partOfSpeech || "")
+      .split(",")[0]
+      ?.trim() || "";
 
   if (answerMode === "reverse") {
     return {
@@ -137,23 +140,25 @@ export function buildClue(item, {
       text: `${word} (${reading})`,
       furiganaHTML: alignFuriganaRuby(word, reading),
       romaji,
-      hint: pos ? `${pos} · Enter the English meaning` : "Enter the English meaning"
+      hint: pos ? `${pos} · Enter the English meaning` : "Enter the English meaning",
     };
   }
 
   if (kanjiFocus && item.kanjiDetails?.length) {
     const kd = item.kanjiDetails;
-    const breakdown = kd.map((k) => {
-      const m = (k.meanings || []).slice(0, 2).join("/") || "kanji";
-      return script === "kanji" ? `(${m})` : `${k.kanji} (${m})`;
-    }).join(" + ");
+    const breakdown = kd
+      .map((k) => {
+        const m = (k.meanings || []).slice(0, 2).join("/") || "kanji";
+        return script === "kanji" ? `(${m})` : `${k.kanji} (${m})`;
+      })
+      .join(" + ");
     return {
       type: "kanji-focus",
       badge: `Kanji Focus · ${script === "kanji" ? "漢字" : "かな"}`,
       text: `${meaning} — Kanji: ${breakdown}`,
       furiganaHTML: "",
       romaji: "",
-      hint: pos || `N${item.level}`
+      hint: pos || `N${item.level}`,
     };
   }
 
@@ -166,7 +171,7 @@ export function buildClue(item, {
     text: meaning,
     furiganaHTML: "",
     romaji: "",
-    hint: pos
+    hint: pos,
   });
 
   // 2. Fill-in-the-blank cloze sentence clue if example contains word or reading
@@ -186,7 +191,7 @@ export function buildClue(item, {
         text: `${blanked}${translation}`,
         furiganaHTML: `${formatFuriganaHTML(blankedFuri)}${translation}`,
         romaji: "",
-        hint: `Meaning: ${meaning}`
+        hint: `Meaning: ${meaning}`,
       });
     }
   }
@@ -199,7 +204,7 @@ export function buildClue(item, {
       text: `${meaning} (Opposite of ${item.antonyms[0]})`,
       furiganaHTML: "",
       romaji: "",
-      hint: pos || "Antonym clue"
+      hint: pos || "Antonym clue",
     });
   } else if (item.synonyms?.length) {
     candidates.push({
@@ -208,7 +213,7 @@ export function buildClue(item, {
       text: `${meaning} (Related: ${item.synonyms[0]})`,
       furiganaHTML: "",
       romaji: "",
-      hint: pos || "Synonym / related clue"
+      hint: pos || "Synonym / related clue",
     });
   }
 
@@ -221,26 +226,28 @@ export function buildClue(item, {
       text: `${meaning} [${note}]`,
       furiganaHTML: "",
       romaji: "",
-      hint: pos
+      hint: pos,
     });
   }
 
   // Pick a varied clue deterministically via rng
-  const pick = candidates.length > 1 && rng() < 0.45
-    ? candidates[1 + Math.floor(rng() * (candidates.length - 1))]
-    : candidates[0];
+  const pick =
+    candidates.length > 1 && rng() < 0.45 ? candidates[1 + Math.floor(rng() * (candidates.length - 1))] : candidates[0];
   return pick;
 }
 
-export function generateCrossword(pool, {
-  gridSize = 11,
-  targetWords = 10,
-  answerMode = "kana",
-  kanjiFocus = false,
-  priorityIds = [],
-  recentIds = [],
-  seed = Date.now()
-} = {}) {
+export function generateCrossword(
+  pool,
+  {
+    gridSize = 11,
+    targetWords = 10,
+    answerMode = "kana",
+    kanjiFocus = false,
+    priorityIds = [],
+    recentIds = [],
+    seed = Date.now(),
+  } = {},
+) {
   const rng = createSeededRandom(seed);
   const prioritySet = new Set(priorityIds);
   const recentSet = new Set(recentIds);
@@ -250,7 +257,7 @@ export function generateCrossword(pool, {
   // Prepare candidate entries
   const prepared = [];
   for (const item of pool || []) {
-    if (!item || !item.word || !item.meaning) continue;
+    if (!item?.word || !item.meaning) continue;
     const resolved = resolveEntryAnswer(item, answerMode, rng);
     if (!resolved) continue;
     const len = resolved.chars.length;
@@ -265,7 +272,7 @@ export function generateCrossword(pool, {
       displayChars: resolved.chars,
       script: resolved.script,
       isPriority: prioritySet.has(item.id) || prioritySet.has(item.word),
-      isRecent: recentSet.has(item.id) || recentSet.has(item.word) || recentSet.has(resolved.answer)
+      isRecent: recentSet.has(item.id) || recentSet.has(item.word) || recentSet.has(resolved.answer),
     });
   }
 
@@ -281,19 +288,21 @@ export function generateCrossword(pool, {
     }
   }
 
-  const scored = prepared.map((entry) => {
-    const intersectScore = entry.chars.reduce((sum, ch) => sum + ((charFreq.get(ch) || 1) - 1), 0);
-    return {
-      ...entry,
-      intersectScore,
-      sortScore:
-        (entry.isPriority ? 1000 : 0) -
-        (entry.isRecent ? 500 : 0) +
-        Math.min(intersectScore, 14) * 1.6 +
-        entry.chars.length * 1.4 +
-        rng() * 48
-    };
-  }).sort((a, b) => b.sortScore - a.sortScore);
+  const scored = prepared
+    .map((entry) => {
+      const intersectScore = entry.chars.reduce((sum, ch) => sum + ((charFreq.get(ch) || 1) - 1), 0);
+      return {
+        ...entry,
+        intersectScore,
+        sortScore:
+          (entry.isPriority ? 1000 : 0) -
+          (entry.isRecent ? 500 : 0) +
+          Math.min(intersectScore, 14) * 1.6 +
+          entry.chars.length * 1.4 +
+          rng() * 48,
+      };
+    })
+    .sort((a, b) => b.sortScore - a.sortScore);
 
   const canPlace = (board, chars, row, col, dir) => {
     const dr = dir === "down" ? 1 : 0;
@@ -387,11 +396,18 @@ export function generateCrossword(pool, {
               const intersections = canPlace(board, cand.chars, row, col, nextDir);
               if (intersections > 0) {
                 // Prefer placements with more intersections, balanced across/down, and closer to center
-                const centerDist = Math.abs(row + (nextDir === "down" ? cand.chars.length / 2 : 0) - gridSize / 2)
-                  + Math.abs(col + (nextDir === "across" ? cand.chars.length / 2 : 0) - gridSize / 2);
+                const centerDist =
+                  Math.abs(row + (nextDir === "down" ? cand.chars.length / 2 : 0) - gridSize / 2) +
+                  Math.abs(col + (nextDir === "across" ? cand.chars.length / 2 : 0) - gridSize / 2);
                 const dirCount = placed.filter((p) => p.dir === nextDir).length;
                 const dirBonus = dirCount === 0 ? 50 : Math.max(0, 15 - dirCount * 2);
-                const moveScore = (cand.isPriority ? 200 : 0) - (cand.isRecent ? 160 : 0) + intersections * 35 + dirBonus - centerDist * 1.5 + rng() * 14;
+                const moveScore =
+                  (cand.isPriority ? 200 : 0) -
+                  (cand.isRecent ? 160 : 0) +
+                  intersections * 35 +
+                  dirBonus -
+                  centerDist * 1.5 +
+                  rng() * 14;
                 if (!bestMove || moveScore > bestMove.moveScore) {
                   bestMove = { idx, cand, row, col, dir: nextDir, moveScore };
                 }
@@ -410,7 +426,8 @@ export function generateCrossword(pool, {
 
     const hasAcross = placed.some((p) => p.dir === "across");
     const hasDown = placed.some((p) => p.dir === "down");
-    const balanceBonus = placed.filter((p) => p.dir === "across").length * placed.filter((p) => p.dir === "down").length;
+    const balanceBonus =
+      placed.filter((p) => p.dir === "across").length * placed.filter((p) => p.dir === "down").length;
     const layoutScore = placed.length * 20 + balanceBonus * 10;
     if (!bestLayout || layoutScore > bestLayout.layoutScore) {
       bestLayout = { board, placed, layoutScore };
@@ -421,7 +438,10 @@ export function generateCrossword(pool, {
   const { board, placed } = bestLayout;
 
   // Crop bounding box to keep grid compact and clean
-  let minR = gridSize, maxR = 0, minC = gridSize, maxC = 0;
+  let minR = gridSize,
+    maxR = 0,
+    minC = gridSize,
+    maxC = 0;
   for (let r = 0; r < gridSize; r++) {
     for (let c = 0; c < gridSize; c++) {
       if (board[r][c]) {
@@ -449,17 +469,17 @@ export function generateCrossword(pool, {
             acrossId: null,
             downId: null,
             status: "empty", // "empty" | "correct" | "incorrect" | "revealed"
-            locked: false
+            locked: false,
           }
         : null;
-    })
+    }),
   );
 
   // Normalize placed coordinates to cropped grid
   const shifted = placed.map((p) => ({
     ...p,
     row: p.row - minR,
-    col: p.col - minC
+    col: p.col - minC,
   }));
 
   // Assign standard crossword clue numbers (top-to-bottom, left-to-right)
@@ -493,7 +513,7 @@ export function generateCrossword(pool, {
         script: p.script,
         answerMode,
         kanjiFocus,
-        rng
+        rng,
       });
       return {
         id,
@@ -510,7 +530,7 @@ export function generateCrossword(pool, {
         clue,
         item: p.item,
         completed: false,
-        revealed: false
+        revealed: false,
       };
     })
     .sort((a, b) => a.number - b.number || (a.dir === "across" ? -1 : 1));
@@ -521,6 +541,6 @@ export function generateCrossword(pool, {
     grid,
     entries,
     across: entries.filter((e) => e.dir === "across"),
-    down: entries.filter((e) => e.dir === "down")
+    down: entries.filter((e) => e.dir === "down"),
   };
 }

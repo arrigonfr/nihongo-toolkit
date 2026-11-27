@@ -1,11 +1,13 @@
-import { escapeHTML } from "./html.js";
 import { mountChips } from "./chips.js";
-import { groupSettings } from "./settings-panel.js";
 import { PUZZLE_SIZES } from "./crossword-engine.js";
 import { GAME_MODES, LEVEL_OPTIONS } from "./crossword-storage.js";
+import { escapeHTML, setHTML } from "./html.js";
+import { groupSettings } from "./settings-panel.js";
 
 export function renderCrosswordShell(root, { gameMode, storageWarning }) {
-  root.innerHTML = `
+  setHTML(
+    root,
+    `
       <div class="cw-shell">
         <header class="cw-header">
           <a class="cw-brand" href="#top" id="brandLink" aria-label="Pazuru Japanese Crossword">
@@ -21,14 +23,18 @@ export function renderCrosswordShell(root, { gameMode, storageWarning }) {
             <p id="modeDescriptionText"></p>
           </section>
 
-          <section class="cw-top-card ui-panel" aria-label="Game mode and puzzle configuration">
+          <section class="cw-top-card ui-panel" aria-label="Game mode and puzzle configuration" data-i18n-scope>
             <p class="study-settings-note">Settings save automatically and apply to your next puzzle. The top reading, audio and appearance controls stay live.</p>
             <div class="cw-mode-pills" id="modePills" role="group" aria-label="Game modes">
-              ${Object.entries(GAME_MODES).map(([key, info]) => `
+              ${Object.entries(GAME_MODES)
+                .map(
+                  ([key, info]) => `
                 <button class="cw-mode-pill" type="button" data-mode="${key}" aria-pressed="${gameMode === key}">
                   ${escapeHTML(info.label)}
                 </button>
-              `).join("")}
+              `,
+                )
+                .join("")}
             </div>
 
             <div class="cw-quick-controls">
@@ -52,7 +58,9 @@ export function renderCrosswordShell(root, { gameMode, storageWarning }) {
                 <label class="cw-field cw-size-field">
                   <span>Puzzle size</span>
                   <select class="cw-select" id="sizeSelect">
-                    ${Object.entries(PUZZLE_SIZES).map(([key, val]) => `<option value="${key}">${escapeHTML(val.label)}</option>`).join("")}
+                    ${Object.entries(PUZZLE_SIZES)
+                      .map(([key, val]) => `<option value="${key}">${escapeHTML(val.label)}</option>`)
+                      .join("")}
                   </select>
                 </label>
 
@@ -131,9 +139,9 @@ export function renderCrosswordShell(root, { gameMode, storageWarning }) {
             <div class="cw-feedback-banner error" id="startError" role="alert" hidden></div>
           </section>
 
-          <section class="cw-empty" id="cwEmpty"><span class="cw-empty-mark" lang="ja" aria-hidden="true">パズル</span><h2>Ready when you are</h2><p>Pick your settings above, then start a game to see your crossword, clues and progress here.</p><button class="cw-btn primary" id="newPuzzleBtn" type="button">New puzzle</button></section>
+          <section class="cw-empty" id="cwEmpty" data-i18n-scope><span class="cw-empty-mark" lang="ja" aria-hidden="true">パズル</span><h2>Ready when you are</h2><p>Pick your settings above, then start a game to see your crossword, clues and progress here.</p><button class="cw-btn primary" id="newPuzzleBtn" type="button">New puzzle</button></section>
 
-          <section class="cw-status-bar" hidden aria-label="Puzzle status and assistance">
+          <section class="cw-status-bar" hidden aria-label="Puzzle status and assistance" data-i18n-scope>
             <div class="cw-metrics">
               <div class="cw-metric"><strong id="progressMetric">0 / 0</strong><span>words solved</span></div>
               <div class="cw-metric" id="timerMetricWrap"><strong id="timerMetric">00:00</strong><span id="timerLabel">elapsed</span></div>
@@ -155,12 +163,12 @@ export function renderCrosswordShell(root, { gameMode, storageWarning }) {
               <div class="cw-active-clue-bar" id="activeClueBar">
                 <div class="cw-active-clue-main">
                   <div>
-                    <span class="cw-active-clue-id" id="activeClueBadge">—</span>
+                    <span class="cw-active-clue-id" id="activeClueBadge" data-i18n-scope>—</span>
                     <span class="cw-active-clue-text" id="activeClueText">Generating crossword…</span>
                   </div>
-                  <div class="cw-active-clue-sub" id="activeClueSub"></div>
+                  <div class="cw-active-clue-sub" id="activeClueSub" data-i18n-scope></div>
                 </div>
-                <button class="cw-btn" id="flipDirBtn" type="button" title="Switch Across / Down direction (Tab or Space)">⇄ Direction</button>
+                <button class="cw-btn" id="flipDirBtn" type="button" title="Switch Across / Down direction (Tab or Space)" data-i18n-scope>⇄ Direction</button>
               </div>
 
               <div class="cw-grid-scroll" id="gridScrollWrap">
@@ -170,17 +178,17 @@ export function renderCrosswordShell(root, { gameMode, storageWarning }) {
                 </div>
               </div>
 
-              <div class="cw-feedback-banner" id="feedbackBanner" role="status" aria-live="polite" hidden></div>
+              <div class="cw-feedback-banner" id="feedbackBanner" role="status" aria-live="polite" data-i18n-scope hidden></div>
             </section>
 
             <section class="cw-clues-panel" aria-label="Crossword clues">
               <div class="cw-clues-columns">
                 <div class="cw-clue-group">
-                  <h2>Across · ヨコ</h2>
+                  <h2 data-i18n-scope>Across · ヨコ</h2>
                   <ol class="cw-clue-list" id="acrossClueList"></ol>
                 </div>
                 <div class="cw-clue-group">
-                  <h2>Down · タテ</h2>
+                  <h2 data-i18n-scope>Down · タテ</h2>
                   <ol class="cw-clue-list" id="downClueList"></ol>
                 </div>
               </div>
@@ -188,7 +196,7 @@ export function renderCrosswordShell(root, { gameMode, storageWarning }) {
           </div>
 
           <section class="cw-study-panel" id="studyInspector" aria-label="Completed word and kanji study details">
-            <div class="cw-study-header">
+            <div class="cw-study-header" data-i18n-scope>
               <h2>Word & Kanji Study Inspector · 学習カード</h2>
               <span class="cw-badge" id="studyHintLabel">Hover, tap, or complete any word to inspect definitions, examples & kanji</span>
             </div>
@@ -201,28 +209,53 @@ export function renderCrosswordShell(root, { gameMode, storageWarning }) {
           <a href="data-sources.html">Data sources and licenses</a>
         </footer>
       </div>
-    `;
+    `,
+  );
   groupSettings(document.querySelector(".cw-settings-grid"), [
     ["Answer checks & reveals", ["checkAvailSelect", "revealAvailSelect", "hintLimitInput", "timedMinutesInput"]],
     ["Input & study", ["inputStyleSelect", "kanjiFocusToggle"]],
-    ["Display & layout", ["fontScaleSelect", "layoutDirSelect"]]
+    ["Display & layout", ["fontScaleSelect", "layoutDirSelect"]],
   ]);
   document.querySelector(".cw-settings-grid").append(document.querySelector(".cw-toggle-group"));
-  const sketch = (body) => `<svg viewBox="0 0 64 38" width="64" height="38" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="30" height="30" rx="3" opacity=".55"/><path d="M12 2v30M22 2v30M2 12h30M2 22h30" opacity=".3"/>${body}</svg>`;
-  document.querySelector(".cw-top-card").addEventListener("change", () => { document.getElementById("startError").hidden = true; });
+  const sketch = (body) =>
+    `<svg viewBox="0 0 64 38" width="64" height="38" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="30" height="30" rx="3" opacity=".55"/><path d="M12 2v30M22 2v30M2 12h30M2 22h30" opacity=".3"/>${body}</svg>`;
+  document.querySelector(".cw-top-card").addEventListener("change", () => {
+    document.getElementById("startError").hidden = true;
+  });
   mountChips(document.getElementById("answerModeSelect"), {
     multiple: true,
     allValue: "both",
-    options: [{ value: "kana", label: "Kana かな" }, { value: "kanji", label: "Kanji 漢字" }],
-    titleDescription: "Choose the answer script. Select both to accept kana or kanji answers."
+    options: [
+      { value: "kana", label: "Kana かな" },
+      { value: "kanji", label: "Kanji 漢字" },
+    ],
+    titleDescription: "Choose the answer script. Select both to accept kana or kanji answers.",
   });
   mountChips(document.getElementById("inputStyleSelect"), {
     variant: "card",
     fieldClass: "cw-input-style-field",
     options: [
-      { value: "popup", label: "Clue popup", preview: sketch('<rect x="16" y="14" width="46" height="20" rx="4" fill="currentColor" fill-opacity=".15"/><path d="M21 24h24" stroke-linecap="round"/>') },
-      { value: "cell", label: "In-square", preview: sketch('<rect x="12" y="12" width="10" height="10" fill="currentColor" fill-opacity=".25"/><path d="M17 14v6" stroke-linecap="round"/>') },
-      { value: "clues", label: "Clue list", preview: sketch('<path d="M38 8h24M38 20h24M38 32h24" stroke-linecap="round"/><rect x="38" y="11" width="24" height="5" rx="2" fill="currentColor" fill-opacity=".25"/>') }
-    ]
+      {
+        value: "popup",
+        label: "Clue popup",
+        preview: sketch(
+          '<rect x="16" y="14" width="46" height="20" rx="4" fill="currentColor" fill-opacity=".15"/><path d="M21 24h24" stroke-linecap="round"/>',
+        ),
+      },
+      {
+        value: "cell",
+        label: "In-square",
+        preview: sketch(
+          '<rect x="12" y="12" width="10" height="10" fill="currentColor" fill-opacity=".25"/><path d="M17 14v6" stroke-linecap="round"/>',
+        ),
+      },
+      {
+        value: "clues",
+        label: "Clue list",
+        preview: sketch(
+          '<path d="M38 8h24M38 20h24M38 32h24" stroke-linecap="round"/><rect x="38" y="11" width="24" height="5" rx="2" fill="currentColor" fill-opacity=".25"/>',
+        ),
+      },
+    ],
   });
 }

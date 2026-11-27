@@ -1,3 +1,4 @@
+import { setHTML } from "../html.js";
 import { extraDrawings } from "./pictures-extra.js";
 
 // Original single-ink drawings. Labels remain visible if inline SVG is unavailable.
@@ -32,20 +33,28 @@ export const drawings = {
   bag: `<rect x="16" y="34" width="64" height="44" rx="7"/><path d="M34 34V24a14 14 0 0 1 28 0v10M16 50h64M44 50v8h8v-8"/>`,
   shirt: `<path d="M32 18 14 30l8 16 10-6v38h32V40l10 6 8-16-18-12-16 10zM48 28v50"/>`,
   watch: `<rect x="30" y="28" width="36" height="40" rx="8"/><path d="M38 28V12h20v16M38 68v16h20V68M48 48V38m0 10 8 5"/>`,
-  ...extraDrawings
+  ...extraDrawings,
 };
 export function picture(card) {
   const id = card.pictureId ?? card.id;
-  if (!Object.hasOwn(drawings,id)) {
+  if (!Object.hasOwn(drawings, id)) {
     const icon = document.createElement("span");
     icon.className = "karuta-icon";
-    icon.setAttribute("aria-hidden","true");
+    icon.setAttribute("aria-hidden", "true");
     icon.style.maskImage = `url("/karuta/tabler/${encodeURIComponent(id)}.svg")`;
     return icon;
   }
-  const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
-  for (const [attr,value] of Object.entries({ viewBox:"0 0 96 96", "aria-hidden":"true",
-    fill:"none", stroke:"currentColor", "stroke-linecap":"round", "stroke-linejoin":"round", "stroke-width":"2.8" })) svg.setAttribute(attr,value);
-  svg.innerHTML = drawings[id];
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  for (const [attr, value] of Object.entries({
+    viewBox: "0 0 96 96",
+    "aria-hidden": "true",
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+    "stroke-width": "2.8",
+  }))
+    svg.setAttribute(attr, value);
+  setHTML(svg, drawings[id]);
   return svg;
 }

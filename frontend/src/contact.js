@@ -3,10 +3,10 @@ import "./study-controls.css";
 import "./ui-kit.css";
 import "./contact.css";
 import "./navigation.js";
-import { mountAppearance } from "./appearance.js";
-import { mountSupport } from "./study-controls.js";
 import { API_BASE } from "./api.js";
+import { mountAppearance } from "./appearance.js";
 import { CONTACT_SUBJECTS, kanjiReportDraft, validateContact } from "./contact-fields.js";
+import { mountSupport } from "./study-controls.js";
 
 mountAppearance(document.querySelector("header"), document.getElementById("themeButton"));
 mountSupport();
@@ -45,7 +45,11 @@ success.addEventListener("click", (event) => {
 });
 success.addEventListener("close", () => button.focus());
 
-let token = "", widget, submitting = false, previousFields, submissionId;
+let token = "",
+  widget,
+  submitting = false,
+  previousFields,
+  submissionId;
 const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 if (!siteKey) {
   status.textContent = "The contact form is not available yet. Please check back soon.";
@@ -59,14 +63,24 @@ if (!siteKey) {
   };
   script.onload = () => {
     widget = window.turnstile.render("#contactVerification", {
-      sitekey: siteKey, action: "contact", size: "flexible",
-      callback(value) { token = value; button.disabled = submitting; },
-      "expired-callback"() { token = ""; button.disabled = true; status.textContent = "Verification expired. Please verify again."; },
+      sitekey: siteKey,
+      action: "contact",
+      size: "flexible",
+      callback(value) {
+        token = value;
+        button.disabled = submitting;
+      },
+      "expired-callback"() {
+        token = "";
+        button.disabled = true;
+        status.textContent = "Verification expired. Please verify again.";
+      },
       "error-callback"() {
-        token = ""; button.disabled = true;
+        token = "";
+        button.disabled = true;
         console.error("Contact verification failed.");
         status.textContent = "Verification failed. Please refresh the page to try again.";
-      }
+      },
     });
   };
   document.head.append(script);
@@ -75,7 +89,9 @@ if (!siteKey) {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (submitting) return;
-  const values = Object.fromEntries(["name", "email", "subject", "message"].map((name) => [name, form.elements.namedItem(name).value]));
+  const values = Object.fromEntries(
+    ["name", "email", "subject", "message"].map((name) => [name, form.elements.namedItem(name).value]),
+  );
   const fingerprint = JSON.stringify(values);
   if (fingerprint !== previousFields) {
     submissionId = crypto.randomUUID();
@@ -87,19 +103,26 @@ form.addEventListener("submit", async (event) => {
     status.textContent = error || "Complete the verification before sending.";
     return;
   }
-  submitting = true; button.disabled = true; fields.disabled = true;
+  submitting = true;
+  button.disabled = true;
+  fields.disabled = true;
   status.textContent = "Sending your message...";
   try {
     const response = await fetch(`${API_BASE}/api/contact`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload), credentials: "omit", referrerPolicy: "no-referrer", signal: AbortSignal.timeout(15000)
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
+      signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) {
       if (response.status === 400) throw new Error("Check your details and complete verification again.");
       throw new Error("We could not accept your message. Please try again in a moment.");
     }
     const result = await response.json();
-    if (result.id !== submissionId || result.status !== "received") throw new Error("We could not confirm receipt. Please try again.");
+    if (result.id !== submissionId || result.status !== "received")
+      throw new Error("We could not confirm receipt. Please try again.");
     status.textContent = `Message received. Reference: ${result.id}`;
     form.reset();
     previousFields = undefined;
@@ -108,11 +131,15 @@ form.addEventListener("submit", async (event) => {
     success.showModal();
   } catch (error) {
     console.error("Contact submission could not be confirmed.");
-    status.textContent = error.name === "TimeoutError" || error.name === "TypeError"
-      ? "We could not confirm receipt. Check your connection and try again; retrying the same message will not create another submission."
-      : error.message;
+    status.textContent =
+      error.name === "TimeoutError" || error.name === "TypeError"
+        ? "We could not confirm receipt. Check your connection and try again; retrying the same message will not create another submission."
+        : error.message;
   } finally {
-    submitting = false; fields.disabled = false; token = ""; button.disabled = true;
+    submitting = false;
+    fields.disabled = false;
+    token = "";
+    button.disabled = true;
     if (widget !== undefined) window.turnstile.reset(widget);
   }
 });

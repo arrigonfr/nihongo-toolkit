@@ -1,0 +1,15 @@
+{
+  "extends": "../jsconfig.json",
+  "compilerOptions": {
+    "strictNullChecks": true,
+    "strictPropertyInitialization": true
+  },
+  "include": [
+    "../frontend/src/env.d.ts",
+    "src/**/*.js",
+    "../shared/**/*.js"
+  ],
+  "exclude": [
+    "../node_modules"
+  ]
+}

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { escapeHTML, escapeXML, html, raw } from "../src/html.js";
+import { escapeHTML, escapeXML, html, raw, setHTML } from "../src/html.js";
 
 test("escapeHTML escapes all HTML meta-characters and handles nullish values", () => {
   assert.equal(escapeHTML(`<img src="x" onerror='alert(1)'> &`), "&lt;img src=&quot;x&quot; onerror=&#39;alert(1)&#39;&gt; &amp;");
@@ -21,4 +21,9 @@ test("html tagged template auto-escapes interpolations, flattens arrays, and res
     rendered,
     `<div data-x="&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;"><span>a &amp; b</span><span>c &lt; d</span><em>ok</em></div>`
   );
+  const el = { innerHTML: "" };
+  setHTML(el, html`<span>${"<ok>"}</span>`);
+  assert.equal(el.innerHTML, "<span>&lt;ok&gt;</span>");
+  setHTML(el, raw("<b>trusted</b>"));
+  assert.equal(el.innerHTML, "<b>trusted</b>");
 });

@@ -5,10 +5,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#171b18">
-  <meta property="og:site_name" content="NihongoToolkit">
+  <meta property="og:site_name" content="Nihongo Toolkit">
   <link rel="icon" type="image/png" href="./favicon.png">
   <link rel="stylesheet" href="./src/homepage.css">
-  <title>NihongoToolkit</title>
+  <title>Nihongo Toolkit | Free Japanese learning tools for kana, kanji, vocabulary, conjugation practice, dictionary lookup, word games, and printable study sheets.</title>
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -16,8 +16,8 @@
         {
           "@type": "WebSite",
           "@id": "https://nihongotoolkit.pages.dev/#website",
-          "name": "NihongoToolkit",
-          "alternateName": "NihongoToolkit",
+          "name": "Nihongo Toolkit | Free Japanese learning tools",
+          "alternateName": "Nihongo Toolkit",
           "description": "Free Japanese learning tools for kana, kanji, vocabulary, conjugation practice, dictionary lookup, word games, and printable study sheets.",
           "url": "https://nihongotoolkit.pages.dev/",
           "inLanguage": "en",
@@ -25,14 +25,16 @@
             "@type": "Organization",
             "@id": "https://nihongotoolkit.pages.dev/#organization",
             "url": "https://nihongotoolkit.pages.dev/",
-            "name": "NihongoToolkit",
+            "name": "Nihongo Toolkit | Free Japanese learning tools",
+            "alternateName": "Nihongo Toolkit",
+            "knowsLanguage": ["en"],
             "logo": {
               "@type": "ImageObject",
               "@id": "https://nihongotoolkit.pages.dev/#logo",
-              "url": "https://nihongotoolkit.pages.dev/logo.png",
-              "contentUrl": "https://nihongotoolkit.pages.dev/logo.png",
-              "encodingFormat": "image/png",
-              "caption": "NihongoToolkit",
+              "url": "https://nihongotoolkit.pages.dev/logo.webp",
+              "contentUrl": "https://nihongotoolkit.pages.dev/logo.webp",
+              "encodingFormat": "image/webp",
+              "caption": "Nihongo Toolkit",
               "width": 1024,
               "height": 1024
             }
@@ -42,7 +44,7 @@
           "@type": "WebPage",
           "@id": "https://nihongotoolkit.pages.dev/#webpage",
           "url": "https://nihongotoolkit.pages.dev/",
-          "name": "Japanese Learning Tools | NihongoToolkit",
+          "name": "Nihongo Toolkit | Free Japanese learning tools",
           "description": "Explore free Japanese learning tools for hiragana, katakana, kanji, vocabulary, reading, grammar, and word games.",
           "isPartOf": {
             "@id": "https://nihongotoolkit.pages.dev/#website"
@@ -52,10 +54,12 @@
         {
           "@type": "SoftwareApplication",
           "@id": "https://nihongotoolkit.pages.dev/#app",
-          "name": "NihongoToolkit",
-          "alternateName": "NihongoToolkit",
+          "name": "Nihongo Toolkit | Free Japanese learning tools",
+          "alternateName": "Nihongo Toolkit",
           "description": "Practice kana, kanji readings and meanings, Japanese vocabulary, and conjugations in your browser. Explore dictionary entries and sentences, play word games, and print study references.",
           "url": "https://nihongotoolkit.pages.dev/",
+          "inLanguage": "en",
+          "availableLanguage": ["en"],
           "applicationCategory": "EducationalApplication",
           "educationalUse": [
             "Self-Study",
@@ -71,15 +75,19 @@
             "priceCurrency": "USD"
           },
           "featureList": [
-            "Hiragana and katakana reading and typing practice",
-            "Kanji reading, meaning, and recognition quizzes",
-            "Vocabulary practice with JLPT level filters",
-            "Japanese verb and adjective conjugation practice and lookup",
-            "Japanese dictionary and sentence breakdown tools",
-            "Kanji components and compounds explorer",
-            "Japanese pronunciation playback",
-            "Vocabulary matching, word search, crossword, and shiritori games",
-            "Printable Japanese reference sheets and worksheets",
+            "Hiragana and katakana reading and typing practice (Kana)",
+            "Kanji reading, meaning, and recognition quizzes (Yomi, Imi, Kanji Kuizu)",
+            "Interactive kanji stroke-order drawing and writing practice (Kanji Kaki)",
+            "JLPT vocabulary practice with level filters and review lists (Goi)",
+            "Japanese verb and adjective conjugation lookup and practice (Katsuyō, Katsuyō Renshuū)",
+            "Japanese particle and counter practice in context (Joshi Renshū, Josūshi Renshū)",
+            "Japanese dictionary and interactive sentence breakdown with furigana and translations (Kotoba, Fumitoki)",
+            "Japanese onomatopoeia and mimetic expressions guide organized by scene (Onomatope Jiten)",
+            "Kanji atlas, browsable static kanji catalogue, and Kanji of the Day widget (Kanji Chizuchō)",
+            "Japanese pronunciation playback with browser voices and optional offline neural speech",
+            "Vocabulary matching, word search, crossword, and shiritori word games (Eawase, Kotoba Sagashi, Pazuru, Shiritori)",
+            "Shared-kanji compound puzzles, railway-direction reading challenges, and listening karuta games (Kanji Anaume, Shūden, Kikitori Karuta)",
+            "Printable Japanese reference cheatsheets and numbered stroke-order handwriting worksheets (Shiryō)",
             "Light and dark modes with selectable color palettes"
           ],
           "screenshot": "https://nihongotoolkit.pages.dev/og-image.png"
@@ -94,103 +102,7 @@
     <a class="brand" href="./"><span class="brand-name">NihongoToolkit</span></a>
     <button id="themeButton" type="button" aria-label="Toggle color mode" title="Toggle color mode"></button>
   </header>
-  <nav class="navigation" aria-label="Helper navigation">
-    <button class="menu-button" id="menuButton" type="button" aria-label="Open helper menu" aria-expanded="false" aria-controls="helperMenu">
-      <span class="menu-icon" aria-hidden="true"><span></span><span></span><span></span></span>
-    </button>
-    <div class="menu" id="helperMenu" hidden>
-      <section class="menu-group" aria-label="Practice">
-      <h2>Practice</h2>
-      <button class="helper-link" type="button" data-file="kana.html">
-        <span class="helper-name">Kana · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kana.webp" alt="" width="26" height="26"></span> · 仮名</span>
-        <span class="helper-description">Hiragana and katakana practice</span>
-      </button>
-      <button class="helper-link" type="button" data-file="yomi.html">
-        <span class="helper-name">Yomi · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/yomi.webp" alt="" width="26" height="26"></span> · 読み</span>
-        <span class="helper-description">Kanji reading practice</span>
-      </button>
-      <button class="helper-link" type="button" data-file="imi.html">
-        <span class="helper-name">Imi · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/imi.webp" alt="" width="26" height="26"></span> · 意味</span>
-        <span class="helper-description">Kanji meaning practice</span>
-      </button>
-      <button class="helper-link" type="button" data-file="goi.html">
-        <span class="helper-name">Goi · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/goi.webp" alt="" width="26" height="26"></span> · 語彙</span>
-        <span class="helper-description">JLPT vocabulary practice</span>
-      </button>
-      <button class="helper-link" type="button" data-file="katsuyo-renshuu.html">
-        <span class="helper-name">Katsuyō Renshuū · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/katsuyo-renshuu.webp" alt="" width="26" height="26"></span> · 活用練習</span>
-        <span class="helper-description">Focused Japanese conjugation practice</span>
-      </button>
-      </section>
-      <section class="menu-group" aria-label="Reference">
-      <h2>Reference</h2>
-      <button class="helper-link" type="button" data-file="kotoba.html">
-        <span class="helper-name">Kotoba · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kotoba.webp" alt="" width="26" height="26"></span> · 言葉</span>
-        <span class="helper-description">Japanese dictionary</span>
-      </button>
-      <button class="helper-link" type="button" data-file="kanji-chizucho.html">
-        <span class="helper-name">Kanji Chizuchō · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kanji-chizucho.webp" alt="" width="26" height="26"></span> · 漢字地図帳</span>
-        <span class="helper-description">Explore kanji and compounds</span>
-      </button>
-      <a class="helper-link" data-file="kanji/" href="/kanji/" target="_top">
-        <span class="helper-name">Kanji catalogue</span>
-        <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kanji-catalogue.webp" alt="" width="26" height="26"></span>
-        <span class="helper-description">Browse and look up kanji</span>
-      </a>
-      <a class="helper-link" data-file="kanji-of-the-day.html" href="/kanji-of-the-day" target="_top">
-        <span class="helper-name">Kanji of the Day</span>
-        <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kanji-of-the-day.webp" alt="" width="26" height="26"></span>
-        <span class="helper-description">Learn one common kanji every day</span>
-      </a>
-      <button class="helper-link" type="button" data-file="katsuyo.html">
-        <span class="helper-name">Katsuyō · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/katsuyo.webp" alt="" width="26" height="26"></span> · 活用</span>
-        <span class="helper-description">Japanese verb and adjective conjugator</span>
-      </button>
-      <button class="helper-link" type="button" data-file="fumitoki.html">
-        <span class="helper-name">Fumitoki · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/fumitoki.webp" alt="" width="26" height="26"></span> · 文解き</span>
-        <span class="helper-description">Japanese sentence breakdown</span>
-      </button>
-      <button class="helper-link" type="button" data-file="shiryo.html">
-        <span class="helper-name">Shiryō · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/shiryo.webp" alt="" width="26" height="26"></span> · 資料</span>
-        <span class="helper-description">Printable Japanese cheatsheets</span>
-      </button>
-      </section>
-      <section class="menu-group" aria-label="Games">
-      <h2>Games</h2>
-      <button class="helper-link" type="button" data-file="kanji-kuizu.html">
-        <span class="helper-name">Kanji Kuizu · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kanji-kuizu.webp" alt="" width="26" height="26"></span> · 漢字クイズ</span>
-        <span class="helper-description">Spot the matching kanji</span>
-      </button>
-      <button class="helper-link" type="button" data-file="eawase.html">
-        <span class="helper-name">Eawase · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/eawase.webp" alt="" width="26" height="26"></span> · 絵合わせ</span>
-        <span class="helper-description">Japanese word and kana memory matching</span>
-      </button>
-      <button class="helper-link" type="button" data-file="kotoba-sagashi.html">
-        <span class="helper-name">Kotoba Sagashi · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/kotoba-sagashi.webp" alt="" width="26" height="26"></span> · 言葉探し</span>
-        <span class="helper-description">Japanese vocabulary word search</span>
-      </button>
-      <button class="helper-link" type="button" data-file="pazuru.html">
-        <span class="helper-name">Pazuru · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/pazuru.webp" alt="" width="26" height="26"></span> · パズル</span>
-        <span class="helper-description">Japanese vocabulary crossword</span>
-      </button>
-      <button class="helper-link" type="button" data-file="shiritori.html">
-        <span class="helper-name">Shiritori · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/shiritori.webp" alt="" width="26" height="26"></span> · しりとり</span>
-        <span class="helper-description">Japanese word-chain game</span>
-      </button>
-      </section>
-      <section class="menu-group" aria-label="Support">
-      <h2>Support</h2>
-      <button class="helper-link" type="button" data-file="faq.html">
-        <span class="helper-name">FAQ · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/faq.webp" alt="" width="26" height="26"></span></span>
-        <span class="helper-description">Help and common questions</span>
-      </button>
-      <button class="helper-link" type="button" data-file="contact.html">
-        <span class="helper-name">Contact · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/contact.webp" alt="" width="26" height="26"></span></span>
-        <span class="helper-description">Feedback, requests and bug reports</span>
-      </button>
-      </section>
-    </div>
-  </nav>
+  <!-- site-navigation -->
   <main class="home">
     <section class="home-hero">
       <div class="home-wrap home-hero-layout">

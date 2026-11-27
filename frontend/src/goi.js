@@ -1,34 +1,33 @@
-import { createSessionView } from "./session-view.js";
-import { escapeHTML } from "./html.js";
 import { fetchItems } from "./api.js";
-import { beginLoading } from "./request-loading.js";
-import { setSettingAvailability } from "./settings-panel.js";
 import { BatchQueue } from "./batch-queue.js";
-import { mountSentenceExamples, loadSentences } from "./examples.js";
+import { mountSentenceExamples } from "./examples.js";
+import { escapeHTML, html, raw, setHTML } from "./html.js";
+import { beginLoading } from "./request-loading.js";
+import { createSessionView } from "./session-view.js";
+import { setSettingAvailability } from "./settings-panel.js";
 import "./answer-feedback.css";
-import { romanizeKana } from "./romanize.js";
-import { meaningAnswers } from "./vocabulary-answers.js";
-import { meaningChoices } from "./quiz-choices.js";
-import { rememberControls } from "./settings-storage.js";
-import { mountFontControls, fontList, isFontSetting } from "./japanese-fonts.js";
-import { mountStudyControls, japaneseHTML, speakJapanese } from "./study-controls.js";
 import { mountChips } from "./chips.js";
-import { mountLevelControls } from "./jlpt-levels.js";
-import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
 import {
-  STORAGE,
+  acceptedAnswers,
+  formatClock,
+  formatDuration,
   MODES,
+  normalizedAnswer,
+  normalizeWord,
   parseMode,
   readBoolean,
   readString,
-  normalizeWord,
-  normalizedAnswer,
-  acceptedAnswers,
-  formatClock,
-  formatDuration
+  STORAGE,
 } from "./goi-helpers.js";
+import { fontList, isFontSetting, mountFontControls } from "./japanese-fonts.js";
+import { mountLevelControls } from "./jlpt-levels.js";
+import { mountPracticeMode, showSuddenCountdown } from "./practice-mode.js";
+import { meaningChoices } from "./quiz-choices.js";
+import { romanizeKana } from "./romanize.js";
+import { rememberControls } from "./settings-storage.js";
+import { japaneseHTML, mountStudyControls, speakJapanese } from "./study-controls.js";
+
 (() => {
-  "use strict";
   const batches = new BatchQueue(
     async (level, limit, exclude) => {
       const items = await fetchItems("/api/words/batch", { level, limit, exclude, projection: "practice" });
@@ -38,18 +37,53 @@ import {
       if (state.words.length > 300) state.words.splice(0, state.words.length - 300);
       return normalized;
     },
-    { batchSize: 100, lowWater: 30, onError: () => setWarning("We’re having trouble loading more words right now. You can keep practicing with the words already loaded while we retry.") }
+    {
+      batchSize: 100,
+      lowWater: 30,
+      onError: () =>
+        setWarning(
+          "We’re having trouble loading more words right now. You can keep practicing with the words already loaded while we retry.",
+        ),
+    },
   );
-  const answerKey = (item) => currentSettings().dir === "ej" ? item.word : item.meaning;
+  const answerKey = (item) => (currentSettings().dir === "ej" ? item.word : item.meaning);
   const $ = (selector) => document.querySelector(selector);
   const state = {
-    current: null, words: [], previousDistractors: [], selectedOption: null, checked: false, wrongAnswerPending: false, inputActivated: false,
-    answered: 0, correct: 0, totalAnswerMs: 0, timedAnswers: 0, questionStartedAt: 0,
-    showExample: readBoolean(STORAGE.showExample, true), showStats: readBoolean(STORAGE.showStats, true),
-    kanaDirection: readString(STORAGE.kanaDirection, "to-romaji"), questionDirection: "to-romaji",
-    font: readString(STORAGE.font, "Noto Sans JP"), failedTerms: [], suddenPending: false,
-    advanceTimer: null, stats: {}, loading: false,
-    session: { type: "free", questionLimit: 10, timeLimitMs: 600000, startedAt: 0, endedAt: 0, pausedAt: 0, pausedMs: 0, presented: 0, skipped: 0, finished: false, clockTimer: null }
+    current: null,
+    words: [],
+    previousDistractors: [],
+    selectedOption: null,
+    checked: false,
+    wrongAnswerPending: false,
+    inputActivated: false,
+    answered: 0,
+    correct: 0,
+    totalAnswerMs: 0,
+    timedAnswers: 0,
+    questionStartedAt: 0,
+    showExample: readBoolean(STORAGE.showExample, true),
+    showStats: readBoolean(STORAGE.showStats, true),
+    kanaDirection: readString(STORAGE.kanaDirection, "to-romaji"),
+    questionDirection: "to-romaji",
+    font: readString(STORAGE.font, "Noto Sans JP"),
+    failedTerms: [],
+    suddenPending: false,
+    advanceTimer: null,
+    stats: {},
+    loading: false,
+    session: {
+      type: "free",
+      questionLimit: 10,
+      timeLimitMs: 600000,
+      startedAt: 0,
+      endedAt: 0,
+      pausedAt: 0,
+      pausedMs: 0,
+      presented: 0,
+      skipped: 0,
+      finished: false,
+      clockTimer: null,
+    },
   };
 
   function setStatus(message, error = false) {
@@ -67,15 +101,23 @@ import {
     el.textContent = message;
     el.hidden = !message;
   }
-  function randomItem(items) { return items[Math.floor(Math.random() * items.length)]; }
+  function randomItem(items) {
+    return items[Math.floor(Math.random() * items.length)];
+  }
   function readSettings() {
     return {
-      level: $("#levelSelect").value, ...parseMode($("#modeSelect").value), modeKey: $("#modeSelect").value,
-      kanaDirection: state.kanaDirection, font: state.font,
-      showStats: state.showStats, showExample: state.showExample
+      level: $("#levelSelect").value,
+      ...parseMode($("#modeSelect").value),
+      modeKey: $("#modeSelect").value,
+      kanaDirection: state.kanaDirection,
+      font: state.font,
+      showStats: state.showStats,
+      showExample: state.showExample,
     };
   }
-  function currentSettings() { return { ...(state.session.settings || readSettings()), showExample: state.showExample }; }
+  function currentSettings() {
+    return { ...(state.session.settings || readSettings()), showExample: state.showExample };
+  }
   function useFont() {
     const font = currentSettings().font;
     const selected = randomItem(fontList(font));
@@ -93,8 +135,12 @@ import {
     return item;
   }
   function markQuestionNumber() {
-    const count = state.session.type === "questions" ? ` / ${state.session.questionLimit}`
-      : state.session.type === "sudden" ? ` · streak ${state.correct}` : "";
+    const count =
+      state.session.type === "questions"
+        ? ` / ${state.session.questionLimit}`
+        : state.session.type === "sudden"
+          ? ` · streak ${state.correct}`
+          : "";
     $("#questionLabel").textContent = `Question ${state.session.presented}${count}`;
     $("#sessionTimer").hidden = state.session.type !== "time";
   }
@@ -136,10 +182,13 @@ import {
     $("#questionContent").hidden = false;
     $("#questionTop").hidden = false;
     $("#resultsPanel").hidden = true;
-    $("#word").innerHTML = japaneseHTML(item.word, item.furigana);
+    setHTML($("#word"), japaneseHTML(item.word, item.furigana));
     $("#example").hidden = true;
     $("#levelBadge").textContent = item.level;
-    $("#meta").innerHTML = `${item.pos ? `<span>${escapeHTML(item.pos)}</span>` : ""}<span>${escapeHTML(item.level)} vocabulary</span>`;
+    setHTML(
+      $("#meta"),
+      html`${item.pos ? raw(html`<span>${item.pos}</span>`) : ""}<span>${item.level} vocabulary</span>`,
+    );
     $("#feedback").hidden = true;
     $("#nextButton").hidden = true;
     $("#checkButton").hidden = false;
@@ -149,41 +198,53 @@ import {
     $("#answerInput").readOnly = false;
     const { mode, dir } = currentSettings();
     const selectedDirection = currentSettings().kanaDirection;
-    state.questionDirection = selectedDirection === "random"
-      ? randomItem(["to-romaji", "to-kana"])
-      : selectedDirection;
+    state.questionDirection = selectedDirection === "random" ? randomItem(["to-romaji", "to-kana"]) : selectedDirection;
     useFont();
-    $("#options").innerHTML = "";
+    $("#options").replaceChildren();
     $("#options").hidden = mode !== "multiple";
     $("#answerInput").hidden = mode === "multiple";
     if (mode === "multiple") {
       const choices = dir === "ej" ? wordChoicesFor(item) : meaningsFor(item);
       $("#prompt").textContent = dir === "ej" ? "Choose the Japanese word" : "Choose the English meaning";
-      if (dir === "ej") $("#word").innerHTML = `<span class="english-prompt">${escapeHTML(item.meaning)}</span>`;
-      $("#options").innerHTML = choices.map((choice, index) =>
-        `<button class="option${dir === "ej" ? " japanese" : ""}" type="button" data-meaning="${escapeHTML(choice)}" data-choice-index="${index + 1}"><span class="option-key" aria-hidden="true">${index + 1}</span><span>${escapeHTML(choice)}</span></button>`
-      ).join("");
+      if (dir === "ej") setHTML($("#word"), html`<span class="english-prompt">${item.meaning}</span>`);
+      setHTML(
+        $("#options"),
+        html`${choices.map((choice, index) =>
+          raw(
+            html`<button class="option${dir === "ej" ? " japanese" : ""}" type="button" data-meaning="${choice}" data-choice-index="${index + 1}"><span class="option-key" aria-hidden="true">${index + 1}</span><span>${choice}</span></button>`,
+          ),
+        )}`,
+      );
       $("#checkButton").hidden = true;
     } else if (mode === "typing" && dir === "je") {
       $("#prompt").textContent = "Type the English meaning";
-      $("#word").innerHTML = wordPrompt(item);
+      setHTML($("#word"), wordPrompt(item));
       $("#answerInput").hidden = false;
       $("#answerInput").placeholder = "Type the English meaning";
     } else if (mode === "typing") {
-      $("#prompt").innerHTML = `Type the Japanese vocabulary word for:<strong>${escapeHTML(item.meaning)}</strong>`;
-      $("#word").innerHTML = state.questionDirection === "to-romaji" ? wordPrompt(item)
-        : `<span class="english-prompt">${escapeHTML(item.romaji || romanizeKana(item.furigana || item.word))}</span>`;
+      setHTML($("#prompt"), html`Type the Japanese vocabulary word for:<strong>${item.meaning}</strong>`);
+      setHTML(
+        $("#word"),
+        state.questionDirection === "to-romaji"
+          ? wordPrompt(item)
+          : html`<span class="english-prompt">${item.romaji || romanizeKana(item.furigana || item.word)}</span>`,
+      );
       $("#answerInput").hidden = false;
       $("#answerInput").placeholder = kanaPlaceholder("Type the Japanese word");
     }
     markQuestionNumber();
     setStatus("");
-    if (!$("#answerInput").hidden && (inputWasActive || state.session.presented === 1)) $("#answerInput").focus({ preventScroll: true });
-    if (state.session.presented === 1 && matchMedia("(max-width: 760px)").matches) (mode === "multiple" ? $("#options") : $("#answerInput")).scrollIntoView({ block: "nearest" });
+    if (!$("#answerInput").hidden && (inputWasActive || state.session.presented === 1))
+      $("#answerInput").focus({ preventScroll: true });
+    if (state.session.presented === 1 && matchMedia("(max-width: 760px)").matches)
+      (mode === "multiple" ? $("#options") : $("#answerInput")).scrollIntoView({ block: "nearest" });
   }
   async function nextQuestion() {
     if (state.loading || state.session.finished) return;
-    if (state.suddenPending) { finishQuiz("sudden"); return; }
+    if (state.suddenPending) {
+      finishQuiz("sudden");
+      return;
+    }
     resumeSessionClock();
     clearTimeout(state.advanceTimer);
     state.advanceTimer = null;
@@ -198,16 +259,18 @@ import {
     $("#skipButton").disabled = true;
     setStatus("Finding a word…");
     try {
-      let item = await acquireWord();
+      const item = await acquireWord();
       if (state.session.finished) return;
       renderQuestion(item);
     } catch (error) {
       if (state.session.finished) return;
       state.current = null;
       $("#questionContent").hidden = true;
-      setWarning(error.message && !/fetch|network|VITE_|backend|database|HTTP/i.test(error.message)
-        ? `We couldn’t load vocabulary words right now (${error.message}). Please try again in a moment.`
-        : "We couldn’t load vocabulary words right now. Please check your connection and try again.");
+      setWarning(
+        error.message && !/fetch|network|VITE_|backend|database|HTTP/i.test(error.message)
+          ? `We couldn’t load vocabulary words right now (${error.message}). Please try again in a moment.`
+          : "We couldn’t load vocabulary words right now. Please check your connection and try again.",
+      );
       finishQuiz("error");
       setStatus("Could not load a word. Use Start quiz to retry.", true);
     } finally {
@@ -220,7 +283,10 @@ import {
   }
   function skipQuestion() {
     if (!state.current || state.session.finished || state.loading) return;
-    if (state.session.type === "sudden") { checkAnswer(true); return; }
+    if (state.session.type === "sudden") {
+      checkAnswer(true);
+      return;
+    }
     state.session.skipped += 1;
     nextQuestion();
   }
@@ -229,18 +295,27 @@ import {
     const item = state.current;
     const modeName = MODES[currentSettings().mode];
     state.answered += 1;
-    for (const [key, label] of [[`level:${item.level}`, item.level], [`mode:${modeName}`, modeName]]) {
+    for (const [key, label] of [
+      [`level:${item.level}`, item.level],
+      [`mode:${modeName}`, modeName],
+    ]) {
       state.stats[key] ||= { label, answered: 0, correct: 0 };
       state.stats[key].answered += 1;
     }
-    state.failedTerms.push({ word: item.word, furigana: item.furigana, romaji: item.romaji, meaning: item.meaning, level: item.level });
+    state.failedTerms.push({
+      word: item.word,
+      furigana: item.furigana,
+      romaji: item.romaji,
+      meaning: item.meaning,
+      level: item.level,
+    });
     renderStats();
   }
   // Shows the correct answer for about two seconds (or until Continue / Enter) before the results.
   function beginSuddenFinish() {
     state.suddenPending = true;
     pauseSessionClock();
-    $("#nextButton").innerHTML = 'Continue <span class="quiz-shortcut" aria-hidden="true">(Enter / N)</span>';
+    setHTML($("#nextButton"), html`Continue <span class="quiz-shortcut" aria-hidden="true">(Enter / N)</span>`);
     setStatus("Sudden Death over. Here is the answer; your results follow in a moment.");
     clearTimeout(state.advanceTimer);
     showSuddenCountdown($(".answer-feedback-slot"), 2000);
@@ -294,20 +369,31 @@ import {
     $("#answerInput").blur();
     updateLiveStats();
     updateSessionControls();
-    const totalAccuracy = state.answered ? `${Math.round(state.correct / state.answered * 100)}%` : "—";
-    $("#resultsSummary").textContent = reason === "sudden"
-      ? `Sudden Death over. Your streak: ${state.correct} correct in a row. ${state.session.presented} ${state.session.presented === 1 ? "question" : "questions"} seen.`
-      : reason === "time"
-      ? `Time is up. You saw ${state.session.presented} ${state.session.presented === 1 ? "question" : "questions"}, answered ${state.answered}, and skipped ${state.session.skipped}.`
-      : reason === "questions" ? `You completed all ${state.session.questionLimit} questions. ${state.session.skipped} skipped.`
-      : `${reason === "error" ? "Session ended because a word could not be loaded." : "Session stopped."} You answered ${state.answered} of ${state.session.presented} presented questions; ${state.session.skipped} skipped.`;
+    const totalAccuracy = state.answered ? `${Math.round((state.correct / state.answered) * 100)}%` : "—";
+    $("#resultsSummary").textContent =
+      reason === "sudden"
+        ? `Sudden Death over. Your streak: ${state.correct} correct in a row. ${state.session.presented} ${state.session.presented === 1 ? "question" : "questions"} seen.`
+        : reason === "time"
+          ? `Time is up. You saw ${state.session.presented} ${state.session.presented === 1 ? "question" : "questions"}, answered ${state.answered}, and skipped ${state.session.skipped}.`
+          : reason === "questions"
+            ? `You completed all ${state.session.questionLimit} questions. ${state.session.skipped} skipped.`
+            : `${reason === "error" ? "Session ended because a word could not be loaded." : "Session stopped."} You answered ${state.answered} of ${state.session.presented} presented questions; ${state.session.skipped} skipped.`;
     $("#resultAnswered").textContent = `${state.answered} / ${state.session.presented}`;
     $("#resultAccuracy").textContent = totalAccuracy;
-    $("#resultAverage").textContent = state.timedAnswers ? formatDuration(state.totalAnswerMs / state.timedAnswers) : "—";
+    $("#resultAverage").textContent = state.timedAnswers
+      ? formatDuration(state.totalAnswerMs / state.timedAnswers)
+      : "—";
     $("#resultTotal").textContent = formatClock(elapsedSessionTime());
-    $("#failedTerms").innerHTML = `<h3>Failed terms</h3>${state.failedTerms.length
-      ? `<ul>${state.failedTerms.map((item) => `<li><strong lang="ja">${escapeHTML(item.word)}</strong>${item.furigana ? ` <span lang="ja">［${escapeHTML(item.furigana)}］</span>` : ""}${item.romaji ? ` <span>(${escapeHTML(item.romaji)})</span>` : ""} — ${escapeHTML(item.meaning)} <span>(${escapeHTML(item.level)})</span></li>`).join("")}</ul>`
-      : "<p>No failed terms. Great work!</p>"}`;
+    setHTML(
+      $("#failedTerms"),
+      html`<h3 data-i18n-scope>Failed terms</h3>${
+        state.failedTerms.length
+          ? raw(
+              html`<ul>${state.failedTerms.map((item) => raw(html`<li><strong lang="ja">${item.word}</strong>${item.furigana ? raw(html` <span lang="ja">［${item.furigana}］</span>`) : ""}${item.romaji ? raw(html` <span>(${item.romaji})</span>`) : ""} — ${item.meaning} <span>(${item.level})</span></li>`))}</ul>`,
+            )
+          : raw("<p data-i18n-scope>No failed terms. Great work!</p>")
+      }`,
+    );
     setStatus("Quiz complete. Start another quiz whenever you're ready.");
     sessionView.finish();
   }
@@ -316,7 +402,8 @@ import {
       return `<ruby class="word-spelling-hint" lang="ja">${escapeHTML(item.word)}<rt>${item.writtenForms.map(escapeHTML).join(" / ")}</rt></ruby>`;
     }
     return state.questionDirection === "to-romaji" && currentSettings().dir === "ej"
-      ? `<span lang="ja">${escapeHTML(item.word)}</span>` : japaneseHTML(item.word, item.furigana);
+      ? `<span lang="ja">${escapeHTML(item.word)}</span>`
+      : japaneseHTML(item.word, item.furigana);
   }
   function expectedAnswers(item) {
     const { mode, dir } = currentSettings();
@@ -335,9 +422,11 @@ import {
       setStatus(mode === "multiple" ? "Choose a meaning first." : "Type an answer first.", true);
       return;
     }
-    const isCorrect = !revealed && (mode === "multiple"
-      ? given === answerKey(state.current)
-      : expectedAnswers(state.current).some((answer) => normalizedAnswer(answer) === normalizedAnswer(given)));
+    const isCorrect =
+      !revealed &&
+      (mode === "multiple"
+        ? given === answerKey(state.current)
+        : expectedAnswers(state.current).some((answer) => normalizedAnswer(answer) === normalizedAnswer(given)));
     state.checked = true;
     state.wrongAnswerPending = !revealed && !isCorrect && mode !== "multiple";
     if (!revealed) {
@@ -347,15 +436,22 @@ import {
       if (isCorrect) state.correct += 1;
       const level = state.current.level;
       const modeName = MODES[currentSettings().modeKey];
-      for (const [key, label] of [[`level:${level}`, level], [`mode:${modeName}`, modeName]]) {
+      for (const [key, label] of [
+        [`level:${level}`, level],
+        [`mode:${modeName}`, modeName],
+      ]) {
         state.stats[key] ||= { label, answered: 0, correct: 0 };
         state.stats[key].answered += 1;
         if (isCorrect) state.stats[key].correct += 1;
       }
-      if (!isCorrect) state.failedTerms.push({
-        word: state.current.word, furigana: state.current.furigana, romaji: state.current.romaji,
-        meaning: state.current.meaning, level: state.current.level
-      });
+      if (!isCorrect)
+        state.failedTerms.push({
+          word: state.current.word,
+          furigana: state.current.furigana,
+          romaji: state.current.romaji,
+          meaning: state.current.meaning,
+          level: state.current.level,
+        });
       renderStats();
     } else if (state.session.type === "sudden") recordSuddenMiss();
     const feedback = $("#feedback");
@@ -363,39 +459,56 @@ import {
     feedback.className = `feedback ${isCorrect ? "correct" : revealed ? "" : "incorrect"}`;
     const title = revealed ? "Answer revealed" : isCorrect ? "Correct!" : "Not quite";
     const accepted = expectedAnswers(state.current);
-    const acceptedText = accepted.length ? `<br>Accepted answers: ${accepted.map(escapeHTML).join(", ")}` : "";
-    feedback.innerHTML = `<strong>${title}</strong>Answer: ${japaneseHTML(state.current.word, state.current.furigana)} — ${escapeHTML(state.current.meaning)}${acceptedText}`;
+    const acceptedText = accepted.length ? raw(html`<br>Accepted answers: ${accepted.join(", ")}`) : "";
+    setHTML(
+      feedback,
+      html`<strong>${title}</strong>Answer: ${raw(japaneseHTML(state.current.word, state.current.furigana))} — ${state.current.meaning}${acceptedText}`,
+    );
     state.answerGrade = revealed ? "revealed" : isCorrect ? "correct" : "incorrect";
     $("#correctCaption").hidden = !isCorrect;
-    $("#incorrectCaption").textContent = isCorrect ? "" : `${revealed ? "Answer" : "Not quite"}: ${accepted.length ? accepted.join(" / ") : `${state.current.word} — ${state.current.meaning}`} · Enter to continue`;
+    $("#incorrectCaption").textContent = isCorrect
+      ? ""
+      : `${revealed ? "Answer" : "Not quite"}: ${accepted.length ? accepted.join(" / ") : `${state.current.word} — ${state.current.meaning}`} · Enter to continue`;
     $("#answerInput").dataset.grade = revealed ? "" : state.answerGrade;
     $("#answerInput").setAttribute("aria-invalid", String(!revealed && !isCorrect));
     const section = document.createElement("section");
     section.className = "feedback-section";
-    section.innerHTML = `<h3>Example sentences</h3><div class="feedback-examples"></div>`;
+    setHTML(section, html`<h3>Example sentences</h3><div class="feedback-examples"></div>`);
     feedback.append(section);
     if (state.wrongAnswerPending && !$("#answerInput").hidden) {
       $("#answerInput").value = "";
-      feedback.insertAdjacentHTML("beforeend", "<p>Your answer is counted as incorrect. Review it, then use Next question to continue.</p>");
+      feedback.insertAdjacentHTML(
+        "beforeend",
+        "<p>Your answer is counted as incorrect. Review it, then use Next question to continue.</p>",
+      );
     }
     $("#answerInput").readOnly = !state.wrongAnswerPending;
-    if (mode === "multiple") $("#word").innerHTML = japaneseHTML(state.current.word, state.current.furigana);
+    if (mode === "multiple") setHTML($("#word"), japaneseHTML(state.current.word, state.current.furigana));
     speakJapanese(state.current.furigana || state.current.word);
     $("#example").hidden = true;
-    $("#options").querySelectorAll(".option").forEach((button) => {
-      button.disabled = true;
-      button.classList.remove("selected");
-      if (button.dataset.meaning === answerKey(state.current)) button.classList.add("correct-answer");
-      if (!isCorrect && button.dataset.meaning === given) button.classList.add("incorrect-answer");
-    });
+    $("#options")
+      .querySelectorAll(".option")
+      .forEach((button) => {
+        button.disabled = true;
+        button.classList.remove("selected");
+        if (button.dataset.meaning === answerKey(state.current)) button.classList.add("correct-answer");
+        if (!isCorrect && button.dataset.meaning === given) button.classList.add("incorrect-answer");
+      });
     $("#checkButton").hidden = true;
     $("#showButton").hidden = true;
     $("#skipButton").hidden = true;
     $("#nextButton").hidden = false;
-    $("#nextButton").innerHTML = (state.session.type === "questions" && state.session.presented >= state.session.questionLimit
-      ? "See results" : "Next question") + ' <span class="quiz-shortcut" aria-hidden="true">(Enter / N)</span>';
+    setHTML(
+      $("#nextButton"),
+      html`${
+        state.session.type === "questions" && state.session.presented >= state.session.questionLimit
+          ? "See results"
+          : "Next question"
+      } <span class="quiz-shortcut" aria-hidden="true">(Enter / N)</span>`,
+    );
     if (revealed) setStatus("Answer shown; this question is not included in your stats.");
-    else if (state.wrongAnswerPending) setStatus("Incorrect answer recorded. Review it, then use Next question to continue.");
+    else if (state.wrongAnswerPending)
+      setStatus("Incorrect answer recorded. Review it, then use Next question to continue.");
     else if (!isCorrect) setStatus("Incorrect answer recorded. Review the correct answer, then continue.");
     else setStatus("");
     syncAnswerReview();
@@ -421,7 +534,8 @@ import {
         const question = state.current;
         state.advanceTimer = setTimeout(() => {
           state.advanceTimer = null;
-          if (state.current === question && state.checked && !state.showExample && !state.session.finished) nextQuestion();
+          if (state.current === question && state.checked && !state.showExample && !state.session.finished)
+            nextQuestion();
         }, 750);
       }
     }
@@ -429,24 +543,41 @@ import {
   function renderBreakdown(container, records) {
     const entries = Object.values(records).filter((item) => item.answered);
     if (!entries.length) {
-      container.innerHTML = '<span class="head">No answers yet</span>';
+      setHTML(container, html`<span class="head">No answers yet</span>`);
       return;
     }
-    container.innerHTML = '<span class="head">Group</span><span class="head value">Done</span><span class="head value">Right</span>' +
-      entries.map((item) => `<span>${escapeHTML(item.label)}</span><span class="value">${item.answered}</span><span class="value">${Math.round(item.correct / item.answered * 100)}%</span>`).join("");
+    setHTML(
+      container,
+      html`<span class="head">Group</span><span class="head value">Done</span><span class="head value">Right</span>${entries.map(
+        (item) =>
+          raw(
+            html`<span>${item.label}</span><span class="value">${item.answered}</span><span class="value">${Math.round((item.correct / item.answered) * 100)}%</span>`,
+          ),
+      )}`,
+    );
   }
   function renderStats() {
     $("#answeredStat").textContent = state.answered;
-    $("#accuracyStat").textContent = state.answered ? `${Math.round(state.correct / state.answered * 100)}%` : "—";
-    $("#averageTimeStat").textContent = state.timedAnswers ? formatDuration(state.totalAnswerMs / state.timedAnswers) : "—";
+    $("#accuracyStat").textContent = state.answered ? `${Math.round((state.correct / state.answered) * 100)}%` : "—";
+    $("#averageTimeStat").textContent = state.timedAnswers
+      ? formatDuration(state.totalAnswerMs / state.timedAnswers)
+      : "—";
     $("#sessionStatsContent").hidden = !currentSettings().showStats;
-    renderBreakdown($("#levelBreakdown"), Object.fromEntries(Object.entries(state.stats).filter(([key]) => key.startsWith("level:"))));
-    renderBreakdown($("#modeBreakdown"), Object.fromEntries(Object.entries(state.stats).filter(([key]) => key.startsWith("mode:"))));
+    renderBreakdown(
+      $("#levelBreakdown"),
+      Object.fromEntries(Object.entries(state.stats).filter(([key]) => key.startsWith("level:"))),
+    );
+    renderBreakdown(
+      $("#modeBreakdown"),
+      Object.fromEntries(Object.entries(state.stats).filter(([key]) => key.startsWith("mode:"))),
+    );
   }
   function selectOption(button) {
     if (!button || state.checked || state.loading) return;
     state.selectedOption = button.dataset.meaning;
-    $("#options").querySelectorAll(".option").forEach((option) => option.classList.toggle("selected", option === button));
+    $("#options")
+      .querySelectorAll(".option")
+      .forEach((option) => option.classList.toggle("selected", option === button));
     setStatus("");
     checkAnswer(false);
   }
@@ -461,7 +592,10 @@ import {
   function updateKanaDirection() {
     const { mode, dir } = parseMode($("#modeSelect").value);
     const applies = mode !== "multiple" && dir === "ej";
-    setSettingAvailability($("#kanaDirection"), applies ? "" : "Kana direction applies to typing questions that ask for Japanese (E→J).");
+    setSettingAvailability(
+      $("#kanaDirection"),
+      applies ? "" : "Kana direction applies to typing questions that ask for Japanese (E→J).",
+    );
     $("#keyboardNote").hidden = !applies || $("#kanaDirection").value === "to-romaji";
   }
   function updateSessionControls() {
@@ -499,8 +633,18 @@ import {
     state.current = null;
     state.inputActivated = false;
     state.session = {
-      type, questionLimit, timeLimitMs, settings: readSettings(), startedAt: Date.now(), endedAt: 0,
-      pausedAt: 0, pausedMs: 0, presented: 0, skipped: 0, finished: false, clockTimer: null
+      type,
+      questionLimit,
+      timeLimitMs,
+      settings: readSettings(),
+      startedAt: Date.now(),
+      endedAt: 0,
+      pausedAt: 0,
+      pausedMs: 0,
+      presented: 0,
+      skipped: 0,
+      finished: false,
+      clockTimer: null,
     };
     $("#settingsPanel").open = false;
     sessionView.start();
@@ -515,34 +659,51 @@ import {
     state.session.clockTimer = setInterval(updateLiveStats, 10);
     updateLiveStats();
     $("#startButton").textContent = "Loading…";
-    nextQuestion().finally(() => { $("#startButton").textContent = "Start quiz"; });
+    nextQuestion().finally(() => {
+      $("#startButton").textContent = "Start quiz";
+    });
   }
-  const selectedLevelCount = () => $("#levelSelect").value === "none" ? 0 : 1;
+  const selectedLevelCount = () => ($("#levelSelect").value === "none" ? 0 : 1);
   mountLevelControls();
   mountChips($("#modeSelect"), {
-    presentation: "button", fieldClass: "goi-field", groupClass: "mode-chips",
-    titleDescription: "E→J: answer in Japanese. J→E: answer in English. Choose multiple choice or typing."
+    presentation: "button",
+    fieldClass: "goi-field",
+    groupClass: "mode-chips",
+    titleDescription: "E→J: answer in Japanese. J→E: answer in English. Choose multiple choice or typing.",
   });
   mountChips($("#kanaDirection"), {
-    presentation: "button", fieldClass: "goi-field", groupClass: "mode-chips",
-    titleDescription: "Choose whether Japanese typing answers use romaji or Japanese script."
+    presentation: "button",
+    fieldClass: "goi-field",
+    groupClass: "mode-chips",
+    titleDescription: "Choose whether Japanese typing answers use romaji or Japanese script.",
   });
   mountPracticeMode($("#sessionType"), { values: { timed: "time" } });
-  const quizSettings = rememberControls("nihon:goi-settings-v1",
-    ["levelSelect", "modeSelect", "sessionType", "questionLimit", "timeLimit"], setWarning);
+  const quizSettings = rememberControls(
+    "nihon:goi-settings-v1",
+    ["levelSelect", "modeSelect", "sessionType", "questionLimit", "timeLimit"],
+    setWarning,
+  );
   $("#showExampleToggle").checked = state.showExample;
   $("#showExampleToggle").addEventListener("change", (event) => {
     state.showExample = event.target.checked;
     syncAnswerReview();
-    try { localStorage.setItem(STORAGE.showExample, String(state.showExample)); }
-    catch (error) { console.warn("Could not save example preference.", error); setStatus("Could not save example preference.", true); }
+    try {
+      localStorage.setItem(STORAGE.showExample, String(state.showExample));
+    } catch (error) {
+      console.warn("Could not save example preference.", error);
+      setStatus("Could not save example preference.", true);
+    }
   });
   $("#showStatsToggle").checked = state.showStats;
   $("#showStatsToggle").addEventListener("change", (event) => {
     state.showStats = event.target.checked;
     $("#sessionStatsContent").hidden = !currentSettings().showStats;
-    try { localStorage.setItem(STORAGE.showStats, String(state.showStats)); }
-    catch (error) { console.warn("Could not save stats preference.", error); setStatus("Could not save stats preference.", true); }
+    try {
+      localStorage.setItem(STORAGE.showStats, String(state.showStats));
+    } catch (error) {
+      console.warn("Could not save stats preference.", error);
+      setStatus("Could not save stats preference.", true);
+    }
   });
   mountFontControls();
   $("#fontChoice").value = isFontSetting(state.font) ? state.font : "random";
@@ -550,28 +711,45 @@ import {
   $("#fontChoice").addEventListener("change", (event) => {
     state.font = event.target.value;
     if (!state.session.settings) useFont();
-    try { localStorage.setItem(STORAGE.font, state.font); }
-    catch (error) { console.warn("Could not save font preference.", error); setStatus("Could not save font preference.", true); }
+    try {
+      localStorage.setItem(STORAGE.font, state.font);
+    } catch (error) {
+      console.warn("Could not save font preference.", error);
+      setStatus("Could not save font preference.", true);
+    }
   });
-  $("#kanaDirection").value = ["to-romaji", "to-kana", "random"].includes(state.kanaDirection) ? state.kanaDirection : "to-romaji";
+  $("#kanaDirection").value = ["to-romaji", "to-kana", "random"].includes(state.kanaDirection)
+    ? state.kanaDirection
+    : "to-romaji";
   state.kanaDirection = $("#kanaDirection").value;
   $("#kanaDirection").chipsApi.sync();
   $("#kanaDirection").addEventListener("change", (event) => {
     state.kanaDirection = event.target.value;
-      updateKanaDirection();
-    try { localStorage.setItem(STORAGE.kanaDirection, state.kanaDirection); }
-    catch (error) { console.warn("Could not save kana direction preference.", error); setStatus("Could not save kana direction preference.", true); }
+    updateKanaDirection();
+    try {
+      localStorage.setItem(STORAGE.kanaDirection, state.kanaDirection);
+    } catch (error) {
+      console.warn("Could not save kana direction preference.", error);
+      setStatus("Could not save kana direction preference.", true);
+    }
   });
   $("#sessionType").addEventListener("change", updateSessionTypeFields);
-  for (const id of ["levelSelect", "sessionType", "questionLimit", "timeLimit"]) $(`#${id}`).addEventListener("change", () => setStartError(""));
-  $("#modeSelect").addEventListener("change", () => { updateShortcutHint(); updateKanaDirection(); });
+  for (const id of ["levelSelect", "sessionType", "questionLimit", "timeLimit"])
+    $(`#${id}`).addEventListener("change", () => setStartError(""));
+  $("#modeSelect").addEventListener("change", () => {
+    updateShortcutHint();
+    updateKanaDirection();
+  });
   $(".goi-settings").prepend($(".session-controls"));
   $("#sessionType").closest(".practice-mode-field").after($("#levelSelect").closest(".chips-field"));
-    $("#levelSelect").closest(".chips-field").append($(".level-note"));
+  $("#levelSelect").closest(".chips-field").append($(".level-note"));
   $("#settingsPanel").after($("#startError"));
   const sessionView = createSessionView({
-    settings: $("#settingsPanel"), start: $("#startButton"), results: $("#resultsPanel"), footer: true,
-    play: [$("#sessionStats"), $("#questionTop"), $("#questionContent"), $(".review-option"), $("#example")]
+    settings: $("#settingsPanel"),
+    start: $("#startButton"),
+    results: $("#resultsPanel"),
+    footer: true,
+    play: [$("#sessionStats"), $("#questionTop"), $("#questionContent"), $(".review-option"), $("#example")],
   });
   $("#startButton").addEventListener("click", startQuiz);
   $("#stopSessionButton").addEventListener("click", () => finishQuiz("stopped"));
@@ -590,25 +768,60 @@ import {
       else checkAnswer(false);
     }
   });
-  $("#answerInput").addEventListener("focus", () => { state.inputActivated = true; });
+  $("#answerInput").addEventListener("focus", () => {
+    state.inputActivated = true;
+  });
   document.addEventListener("keydown", (event) => {
-    if (event.altKey || event.ctrlKey || event.metaKey || event.repeat || event.isComposing || document.querySelector("dialog[open]")) return;
+    if (
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.repeat ||
+      event.isComposing ||
+      document.querySelector("dialog[open]")
+    )
+      return;
     const target = event.target;
     if (target.closest(".study-setting-name")) return;
-    const typing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target.isContentEditable;
-    if (!typing && /^[1-4]$/.test(event.key) && currentSettings().mode === "multiple" && !state.checked && !state.loading) {
-      const option = [...$("#options").querySelectorAll(".option")].find((button) => button.dataset.choiceIndex === event.key);
-      if (option) { event.preventDefault(); selectOption(option); }
+    const typing =
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      target.isContentEditable;
+    if (
+      !typing &&
+      /^[1-4]$/.test(event.key) &&
+      currentSettings().mode === "multiple" &&
+      !state.checked &&
+      !state.loading
+    ) {
+      const option = [...$("#options").querySelectorAll(".option")].find(
+        (button) => button.dataset.choiceIndex === event.key,
+      );
+      if (option) {
+        event.preventDefault();
+        selectOption(option);
+      }
     } else if (event.key === " " && !typing && state.current && !$("#skipButton").hidden) {
-      event.preventDefault(); skipQuestion();
+      event.preventDefault();
+      skipQuestion();
     } else if ((event.key === "s" || event.key === "S") && !typing && state.current && !state.checked) {
-      event.preventDefault(); checkAnswer(true);
-    } else if ((event.key === "Enter" || event.key.toLowerCase() === "n") && !typing && state.checked && !$("#nextButton").hidden) {
-      event.preventDefault(); nextQuestion();
+      event.preventDefault();
+      checkAnswer(true);
+    } else if (
+      (event.key === "Enter" || event.key.toLowerCase() === "n") &&
+      !typing &&
+      state.checked &&
+      !$("#nextButton").hidden
+    ) {
+      event.preventDefault();
+      nextQuestion();
     } else if (event.key === "Enter" && !typing && state.wrongAnswerPending) {
-      event.preventDefault(); nextQuestion();
+      event.preventDefault();
+      nextQuestion();
     } else if (event.key === "Enter" && !typing && state.current && !state.checked) {
-      event.preventDefault(); checkAnswer(false);
+      event.preventDefault();
+      checkAnswer(false);
     }
   });
   updateSessionTypeFields();

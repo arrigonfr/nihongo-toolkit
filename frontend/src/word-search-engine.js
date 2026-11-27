@@ -1,36 +1,95 @@
 import { createSeededRandom } from "./crossword-engine.js";
 import { isFontSetting } from "./japanese-fonts.js";
-import { selectedLevels, matchesLevel } from "./jlpt-levels.js";
+import { matchesLevel, selectedLevels } from "./jlpt-levels.js";
 
 export const MODES = {
-  classic: "Classic", timed: "Timed", quick: "Quick Puzzle",
-  marathon: "Marathon", sudden: "Sudden Death", clue: "Clue Mode", kanji: "Kanji Challenge",
-  kana: "Kana Challenge", reverse: "Reverse Challenge", memory: "No List Challenge", review: "Mixed Review"
+  classic: "Classic",
+  timed: "Timed",
+  quick: "Quick Puzzle",
+  marathon: "Marathon",
+  sudden: "Sudden Death",
+  clue: "Clue Mode",
+  kanji: "Kanji Challenge",
+  kana: "Kana Challenge",
+  reverse: "Reverse Challenge",
+  memory: "No List Challenge",
+  review: "Mixed Review",
 };
 export const DIRECTIONS = {
-  forward: [[0, 1], [1, 0]],
-  vertical: [[0, 1], [1, 0], [-1, 0]],
-  all: [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]],
-  reverse: [[0, -1], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]]
+  forward: [
+    [0, 1],
+    [1, 0],
+  ],
+  vertical: [
+    [0, 1],
+    [1, 0],
+    [-1, 0],
+  ],
+  all: [
+    [0, 1],
+    [1, 0],
+    [0, -1],
+    [-1, 0],
+    [1, 1],
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+  ],
+  reverse: [
+    [0, -1],
+    [-1, 0],
+    [1, 1],
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+  ],
 };
 export const DEFAULTS = {
-  mode: "classic", script: "kana", level: "5", size: 10, count: 8,
-  directions: "all", overlap: true, list: "japanese", meanings: true,
-  hints: "limited", hintLimit: 5, reveals: "limited", revealLimit: 2,
-  timer: false, seconds: 300, mistakes: 3, rounds: 3, fontSize: 26, font: "Noto Sans JP", contrast: false, animation: true
+  mode: "classic",
+  script: "kana",
+  level: "5",
+  size: 10,
+  count: 8,
+  directions: "all",
+  overlap: true,
+  list: "japanese",
+  meanings: true,
+  hints: "limited",
+  hintLimit: 5,
+  reveals: "limited",
+  revealLimit: 2,
+  timer: false,
+  seconds: 300,
+  mistakes: 3,
+  rounds: 3,
+  fontSize: 26,
+  font: "Noto Sans JP",
+  contrast: false,
+  animation: true,
 };
 export const LISTS = {
-  japanese: "Japanese word", english: "English word",
-  clue: "English clue", japaneseClue: "Japanese clue",
-  first: "First kana only", hidden: "Hidden"
+  japanese: "Japanese word",
+  english: "English word",
+  clue: "English clue",
+  japaneseClue: "Japanese clue",
+  first: "First kana only",
+  hidden: "Hidden",
 };
-export const JAPANESE_CLUE_UNAVAILABLE = "Japanese descriptions are unavailable: the dictionary has no Japanese definitions. Choose another clue style.";
+export const JAPANESE_CLUE_UNAVAILABLE =
+  "Japanese descriptions are unavailable: the dictionary has no Japanese definitions. Choose another clue style.";
 // A clue list is one or more comma-joined styles; "hidden" (no list) can only stand alone.
 export function listStyles(value) {
   if (typeof value !== "string" || !value) throw new Error("Invalid list setting.");
   if (value === "hidden") return ["hidden"];
   // "furigana" is the legacy name of the merged Japanese clue style.
-  const styles = [...new Set(value.split(",").filter((style) => style !== "icon").map((style) => style === "furigana" ? "japanese" : style))];
+  const styles = [
+    ...new Set(
+      value
+        .split(",")
+        .filter((style) => style !== "icon")
+        .map((style) => (style === "furigana" ? "japanese" : style)),
+    ),
+  ];
   if (!styles.length) return ["japanese"];
   if (styles.some((style) => style === "hidden" || !(style in LISTS))) throw new Error("Invalid list setting.");
   return Object.keys(LISTS).filter((style) => styles.includes(style));
@@ -50,18 +109,30 @@ export function validateSettings(settings) {
   settings = { ...current, mode: current.mode === "daily" ? DEFAULTS.mode : current.mode };
   const font = settings.font ?? DEFAULTS.font;
   if (!isFontSetting(font)) throw new Error("Choose an available Japanese font.");
-  const enums = { mode: Object.keys(MODES), script: ["kana", "kanji", "both"],
+  const enums = {
+    mode: Object.keys(MODES),
+    script: ["kana", "kanji", "both"],
     directions: ["forward", "vertical", "all"],
-    hints: ["limited", "unlimited", "disabled"], reveals: ["limited", "unlimited", "disabled"] };
-  for (const [key, values] of Object.entries(enums)) if (!values.includes(settings[key])) throw new Error(`Invalid ${key} setting.`);
+    hints: ["limited", "unlimited", "disabled"],
+    reveals: ["limited", "unlimited", "disabled"],
+  };
+  for (const [key, values] of Object.entries(enums))
+    if (!values.includes(settings[key])) throw new Error(`Invalid ${key} setting.`);
   const list = listStyles(settings.list).join(",");
   selectedLevels(settings.level);
   for (const [key, min, max] of [
-    ["size", 5, 20], ["count", 1, 20], ["hintLimit", 0, 100], ["revealLimit", 0, 20],
-    ["seconds", 10, 3600], ["mistakes", 1, 20], ["rounds", 2, 10], ["fontSize", 20, 40]
-  ]) if (!Number.isInteger(settings[key]) || settings[key] < min || settings[key] > max) {
-    throw new Error(`${key} must be a whole number from ${min} to ${max}.`);
-  }
+    ["size", 5, 20],
+    ["count", 1, 20],
+    ["hintLimit", 0, 100],
+    ["revealLimit", 0, 20],
+    ["seconds", 10, 3600],
+    ["mistakes", 1, 20],
+    ["rounds", 2, 10],
+    ["fontSize", 20, 40],
+  ])
+    if (!Number.isInteger(settings[key]) || settings[key] < min || settings[key] > max) {
+      throw new Error(`${key} must be a whole number from ${min} to ${max}.`);
+    }
   for (const key of ["overlap", "meanings", "timer", "contrast", "animation"]) {
     if (typeof settings[key] !== "boolean") throw new Error(`Invalid ${key} setting.`);
   }
@@ -79,18 +150,23 @@ export function effectiveSettings(settings, round = 1) {
   if (result.mode === "memory") result.list = "hidden";
   if (listStyles(result.list).includes("japaneseClue")) throw new Error(JAPANESE_CLUE_UNAVAILABLE);
   if (result.mode === "reverse") result.directions = "reverse";
-  if (result.mode === "marathon") Object.assign(result, {
-    size: Math.min(20, result.size + round - 1),
-    count: Math.min(20, result.count + (round - 1) * 2),
-    directions: round === 1 || result.directions === "all" ? result.directions : round === 2 ? "vertical" : "all"
-  });
+  if (result.mode === "marathon")
+    Object.assign(result, {
+      size: Math.min(20, result.size + round - 1),
+      count: Math.min(20, result.count + (round - 1) * 2),
+      directions: round === 1 || result.directions === "all" ? result.directions : round === 2 ? "vertical" : "all",
+    });
   return result;
 }
 
 export function filterVocabulary(items, settings) {
-  return items.filter((item) => matchesLevel(item.level, settings.level)
-    && kanaOnly(readingOf(item)) && japaneseOnly(item.word)
-    && (settings.script !== "kanji" || hasKanji(item.word)));
+  return items.filter(
+    (item) =>
+      matchesLevel(item.level, settings.level) &&
+      kanaOnly(readingOf(item)) &&
+      japaneseOnly(item.word) &&
+      (settings.script !== "kanji" || hasKanji(item.word)),
+  );
 }
 function shuffle(items, random) {
   const copy = [...items];
@@ -102,11 +178,15 @@ function shuffle(items, random) {
 }
 export function straightPath(start, end, size) {
   if (![start, end].every((index) => Number.isInteger(index) && index >= 0 && index < size * size)) return [];
-  const row = Math.floor(start / size), col = start % size;
-  const dr = Math.floor(end / size) - row, dc = end % size - col;
+  const row = Math.floor(start / size),
+    col = start % size;
+  const dr = Math.floor(end / size) - row,
+    dc = (end % size) - col;
   if (dr !== 0 && dc !== 0 && Math.abs(dr) !== Math.abs(dc)) return [];
-  return Array.from({ length: Math.max(Math.abs(dr), Math.abs(dc)) + 1 },
-    (_, i) => (row + Math.sign(dr) * i) * size + col + Math.sign(dc) * i);
+  return Array.from(
+    { length: Math.max(Math.abs(dr), Math.abs(dc)) + 1 },
+    (_, i) => (row + Math.sign(dr) * i) * size + col + Math.sign(dc) * i,
+  );
 }
 export function generateWordSearch(items, settings, { seed = `${Date.now()}-${Math.random()}`, recent = [] } = {}) {
   if (listStyles(settings.list).includes("japaneseClue")) throw new Error(JAPANESE_CLUE_UNAVAILABLE);
@@ -114,19 +194,33 @@ export function generateWordSearch(items, settings, { seed = `${Date.now()}-${Ma
   const directions = DIRECTIONS[settings.directions];
   if (!directions) throw new Error("Unknown word directions.");
   const size = settings.size;
-  if (!Number.isInteger(size) || size < 5 || size > 20 || !Number.isInteger(settings.count) || settings.count < 1 || settings.count > 20) {
+  if (
+    !Number.isInteger(size) ||
+    size < 5 ||
+    size > 20 ||
+    !Number.isInteger(settings.count) ||
+    settings.count < 1 ||
+    settings.count > 20
+  ) {
     throw new Error("Choose a grid from 5–20 and 1–20 words.");
   }
-  const candidates = filterVocabulary(items, settings).map((item) => {
-    const kana = /^[ァ-ヺー]+$/u.test(item.word) ? item.word : readingOf(item);
-    const kanjiFits = hasKanji(item.word) && [...item.word].length >= 2 && [...item.word].length <= size;
-    const kanaFits = [...kana].length >= 2 && [...kana].length <= size;
-    const answer = settings.script === "kanji" || (settings.script === "both" && kanjiFits && (!kanaFits || random() < 0.5))
-      ? item.word : kana;
-    return { ...item, answer, key: wordKey(item) };
-  }).filter((item) => [...item.answer].length >= 2 && [...item.answer].length <= size);
+  const candidates = filterVocabulary(items, settings)
+    .map((item) => {
+      const kana = /^[ァ-ヺー]+$/u.test(item.word) ? item.word : readingOf(item);
+      const kanjiFits = hasKanji(item.word) && [...item.word].length >= 2 && [...item.word].length <= size;
+      const kanaFits = [...kana].length >= 2 && [...kana].length <= size;
+      const answer =
+        settings.script === "kanji" || (settings.script === "both" && kanjiFits && (!kanaFits || random() < 0.5))
+          ? item.word
+          : kana;
+      return { ...item, answer, key: wordKey(item) };
+    })
+    .filter((item) => [...item.answer].length >= 2 && [...item.answer].length <= size);
   const unique = [...new Map(candidates.map((item) => [item.answer, item])).values()];
-  if (unique.length < settings.count) throw new Error(`Only ${unique.length} distinct words fit these filters. Choose fewer words, a larger grid, or a wider JLPT range.`);
+  if (unique.length < settings.count)
+    throw new Error(
+      `Only ${unique.length} distinct words fit these filters. Choose fewer words, a larger grid, or a wider JLPT range.`,
+    );
   const recentSet = new Set(recent);
   for (let attempt = 0; attempt < 32; attempt++) {
     const grid = Array(size * size).fill("");
@@ -135,14 +229,21 @@ export function generateWordSearch(items, settings, { seed = `${Date.now()}-${Ma
     for (const item of ordered) {
       const chars = [...item.answer];
       let placed = false;
-      for (const start of shuffle(Array.from({ length: size * size }, (_, i) => i), random)) {
-        const row = Math.floor(start / size), col = start % size;
+      for (const start of shuffle(
+        Array.from({ length: size * size }, (_, i) => i),
+        random,
+      )) {
+        const row = Math.floor(start / size),
+          col = start % size;
         for (const [dr, dc] of shuffle(directions, random)) {
-          const endRow = row + dr * (chars.length - 1), endCol = col + dc * (chars.length - 1);
+          const endRow = row + dr * (chars.length - 1),
+            endCol = col + dc * (chars.length - 1);
           if (endRow < 0 || endRow >= size || endCol < 0 || endCol >= size) continue;
           const cells = chars.map((_, i) => (row + dr * i) * size + col + dc * i);
           if (!cells.every((cell, i) => !grid[cell] || (settings.overlap && grid[cell] === chars[i]))) continue;
-          cells.forEach((cell, i) => { grid[cell] = chars[i]; });
+          cells.forEach((cell, i) => {
+            grid[cell] = chars[i];
+          });
           entries.push({ ...item, cells, direction: [dr, dc] });
           placed = true;
           break;
@@ -156,14 +257,19 @@ export function generateWordSearch(items, settings, { seed = `${Date.now()}-${Ma
       }
     }
   }
-  throw new Error("These words cannot fit with the selected overlap and grid rules. Increase the grid size or reduce the word count.");
+  throw new Error(
+    "These words cannot fit with the selected overlap and grid rules. Increase the grid size or reduce the word count.",
+  );
 }
 
 export function matchSelection(puzzle, start, end, found = []) {
   const path = straightPath(start, end, puzzle.size);
   if (!path.length) return { error: "Choose a straight horizontal, vertical, or diagonal line." };
   if (path.length > 1) {
-    const direction = [Math.sign(Math.floor(end / puzzle.size) - Math.floor(start / puzzle.size)), Math.sign(end % puzzle.size - start % puzzle.size)];
+    const direction = [
+      Math.sign(Math.floor(end / puzzle.size) - Math.floor(start / puzzle.size)),
+      Math.sign((end % puzzle.size) - (start % puzzle.size)),
+    ];
     if (!DIRECTIONS[puzzle.directions].some(([dr, dc]) => dr === direction[0] && dc === direction[1])) {
       return { error: "That direction is not enabled for this puzzle." };
     }
@@ -179,13 +285,33 @@ export function localDay(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 export function reviewImport(value) {
-  if (value?.version !== 1 || value?.tool !== "nihon-word-search" || !Array.isArray(value.words) || value.words.length > 5000) {
+  if (
+    value?.version !== 1 ||
+    value?.tool !== "nihon-word-search" ||
+    !Array.isArray(value.words) ||
+    value.words.length > 5000
+  ) {
     throw new Error("Choose a Word Search review export (up to 5,000 words).");
   }
   return value.words.map((item) => {
-    if (!item || !["word", "reading", "meaning", "partOfSpeech"].every((key) => typeof item[key] === "string" && item[key].length <= 2000)
-      || !japaneseOnly(item.word) || !kanaOnly(item.reading)
-      || !Number.isInteger(item.level) || item.level < 1 || item.level > 5) throw new Error("The review file contains an invalid word.");
-    return { word: item.word, reading: item.reading, meaning: item.meaning, partOfSpeech: item.partOfSpeech, level: item.level };
+    if (
+      !item ||
+      !["word", "reading", "meaning", "partOfSpeech"].every(
+        (key) => typeof item[key] === "string" && item[key].length <= 2000,
+      ) ||
+      !japaneseOnly(item.word) ||
+      !kanaOnly(item.reading) ||
+      !Number.isInteger(item.level) ||
+      item.level < 1 ||
+      item.level > 5
+    )
+      throw new Error("The review file contains an invalid word.");
+    return {
+      word: item.word,
+      reading: item.reading,
+      meaning: item.meaning,
+      partOfSpeech: item.partOfSpeech,
+      level: item.level,
+    };
   });
 }

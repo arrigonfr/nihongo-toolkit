@@ -7,7 +7,7 @@ export const STORAGE = {
   showStats: "goi-show-stats-v1",
   showExample: "goi-show-example-v1",
   kanaDirection: "goi-kana-direction-v1",
-  font: "goi-font-v1"
+  font: "goi-font-v1",
 };
 
 export const LEVELS = ["N5", "N4", "N3", "N2", "N1"];
@@ -16,7 +16,7 @@ export const MODES = {
   "multiple-ej": "Multiple choice (E→J)",
   "typing-ej": "Typing (E→J)",
   "multiple-je": "Multiple choice (J→E)",
-  "typing-je": "Typing (J→E)"
+  "typing-je": "Typing (J→E)",
 };
 
 /** @param {unknown} value */
@@ -54,18 +54,35 @@ export function readString(key, fallback) {
 
 /** @param {any} item */
 export function normalizeWord(item) {
-  if (!item || typeof item.word !== "string" || !item.word.trim() || typeof item.meaning !== "string" || !item.meaning.trim()) return null;
+  if (
+    !item ||
+    typeof item.word !== "string" ||
+    !item.word.trim() ||
+    typeof item.meaning !== "string" ||
+    !item.meaning.trim()
+  )
+    return null;
   const levelNum = Number(item.level);
   return {
     id: item.id,
     word: item.word.trim(),
-    furigana: typeof item.furigana === "string" ? item.furigana.trim() : (typeof item.reading === "string" ? item.reading.trim() : ""),
+    furigana:
+      typeof item.furigana === "string"
+        ? item.furigana.trim()
+        : typeof item.reading === "string"
+          ? item.reading.trim()
+          : "",
     meaning: item.meaning.trim(),
     acceptedMeanings: [...new Set([item.meaning, ...(item.meanings || []), ...(item.acceptedMeanings || [])])],
-    writtenForms: (item.writtenForms || []).filter((/** @type {unknown} */ word) => typeof word === "string" && /\p{Script=Han}/u.test(word)),
-    level: Number.isInteger(levelNum) && levelNum >= 1 && levelNum <= 5
-      ? `N${levelNum}`
-      : (LEVELS.includes(item.level) ? item.level : "Unrated"),
+    writtenForms: (item.writtenForms || []).filter(
+      (/** @type {unknown} */ word) => typeof word === "string" && /\p{Script=Han}/u.test(word),
+    ),
+    level:
+      Number.isInteger(levelNum) && levelNum >= 1 && levelNum <= 5
+        ? `N${levelNum}`
+        : LEVELS.includes(item.level)
+          ? item.level
+          : "Unrated",
     romaji: typeof item.romaji === "string" ? item.romaji.trim() : "",
     exampleSourceId: item.exampleSourceId,
     examples: (item.examples || []).map((/** @type {any} */ example) => ({
@@ -74,21 +91,33 @@ export function normalizeWord(item) {
       japanese: example.ja,
       furigana: example.furigana,
       english: example.en,
-      license: example.license || "CC BY 2.0 FR"
+      license: example.license || "CC BY 2.0 FR",
     })),
     pos: item.partOfSpeech || item.part_of_speech || item.pos || "",
-    example: typeof item.example === "string"
-      ? item.example
-      : (typeof item.sentence === "string" ? item.sentence : (typeof item.examples?.[0] === "string" ? item.examples[0] : "")),
-    exampleMeaning: typeof item.exampleMeaning === "string"
-      ? item.exampleMeaning
-      : (typeof item.sentenceMeaning === "string" ? item.sentenceMeaning : "")
+    example:
+      typeof item.example === "string"
+        ? item.example
+        : typeof item.sentence === "string"
+          ? item.sentence
+          : typeof item.examples?.[0] === "string"
+            ? item.examples[0]
+            : "",
+    exampleMeaning:
+      typeof item.exampleMeaning === "string"
+        ? item.exampleMeaning
+        : typeof item.sentenceMeaning === "string"
+          ? item.sentenceMeaning
+          : "",
   };
 }
 
 /** @param {unknown} value */
 export function normalizedAnswer(value) {
-  return String(value).normalize("NFKD").toLowerCase().replace(/\p{M}/gu, "").replace(/[\s。、，,.!?！？・「」『』'’\-]/g, "");
+  return String(value)
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/\p{M}/gu, "")
+    .replace(/[\s。、，,.!?！？・「」『』'’-]/g, "");
 }
 
 /** @param {string} value */
@@ -96,11 +125,18 @@ export function romajiVariants(value) {
   if (!value) return [];
   /** @type {Record<string, string[]>} */
   const alternatives = {
-    "ā": ["ā", "aa", "a"], "aa": ["ā", "aa", "a"],
-    "ē": ["ē", "ei", "ee", "e"], "ei": ["ē", "ei", "ee", "e"], "ee": ["ē", "ei", "ee", "e"],
-    "ī": ["ī", "ii", "i"], "ii": ["ī", "ii", "i"],
-    "ō": ["ō", "ou", "oo", "o"], "ou": ["ō", "ou", "oo", "o"], "oo": ["ō", "ou", "oo", "o"],
-    "ū": ["ū", "uu", "u"], "uu": ["ū", "uu", "u"]
+    ā: ["ā", "aa", "a"],
+    aa: ["ā", "aa", "a"],
+    ē: ["ē", "ei", "ee", "e"],
+    ei: ["ē", "ei", "ee", "e"],
+    ee: ["ē", "ei", "ee", "e"],
+    ī: ["ī", "ii", "i"],
+    ii: ["ī", "ii", "i"],
+    ō: ["ō", "ou", "oo", "o"],
+    ou: ["ō", "ou", "oo", "o"],
+    oo: ["ō", "ou", "oo", "o"],
+    ū: ["ū", "uu", "u"],
+    uu: ["ū", "uu", "u"],
   };
   const tokens = value.toLowerCase().match(/ō|ou|oo|ā|aa|ē|ei|ee|ī|ii|ū|uu|[^ōouāaēeiīūu]+|[ōouāaēeiīūu]/gu) || [];
   let variants = [""];
@@ -132,7 +168,7 @@ export function acceptedAnswers(item, direction = null) {
 export function formatClock(milliseconds) {
   const total = Math.max(0, Math.floor(milliseconds));
   const minutes = Math.floor(total / 60000);
-  const seconds = Math.floor(total % 60000 / 1000);
+  const seconds = Math.floor((total % 60000) / 1000);
   const millis = total % 1000;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
 }

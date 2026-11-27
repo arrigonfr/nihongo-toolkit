@@ -18,7 +18,7 @@ export async function loadVocabularyPool(state, level) {
         limit: existing.length < 100 ? 200 : 100,
         projection: "practice",
         expand: 1,
-        ...(exclude.length ? { exclude } : {})
+        ...(exclude.length ? { exclude } : {}),
       });
       const seen = new Set(existing.map((i) => i.id));
       const freshItems = [];
@@ -51,7 +51,9 @@ export async function ensureKanjiDetail(state, char) {
     const data = await fetchJSON(`/api/kanji/${encodeURIComponent(char)}`);
     state.kanjiCache.set(char, data);
     return data;
-  } catch {}
-  finally { await doneLoading(); }
+  } catch {
+  } finally {
+    await doneLoading();
+  }
   return null;
 }

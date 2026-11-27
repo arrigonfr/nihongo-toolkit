@@ -9,8 +9,15 @@ const MIGRATIONS_DIR = join(here, "..", "migrations", "page-views");
 
 function applyMigrations(sqlite) {
   sqlite.exec("CREATE TABLE IF NOT EXISTS _local_migrations (name TEXT PRIMARY KEY)");
-  const applied = new Set(sqlite.prepare("SELECT name FROM _local_migrations").all().map((row) => row.name));
-  const files = readdirSync(MIGRATIONS_DIR).filter((name) => name.endsWith(".sql")).sort();
+  const applied = new Set(
+    sqlite
+      .prepare("SELECT name FROM _local_migrations")
+      .all()
+      .map((row) => row.name),
+  );
+  const files = readdirSync(MIGRATIONS_DIR)
+    .filter((name) => name.endsWith(".sql"))
+    .sort();
   for (const name of files) {
     if (applied.has(name)) continue;
     sqlite.exec("BEGIN");
@@ -40,7 +47,7 @@ export function createLocalD1(sqlite) {
       async run() {
         const result = sqlite.prepare(sql).run(...args);
         return { success: true, meta: { changes: Number(result.changes ?? 0) } };
-      }
+      },
     });
     return makeBound([]);
   }
@@ -60,7 +67,7 @@ export function createLocalD1(sqlite) {
         throw error;
       }
     },
-    close: () => sqlite.close()
+    close: () => sqlite.close(),
   };
 }
 

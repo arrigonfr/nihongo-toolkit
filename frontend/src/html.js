@@ -5,14 +5,14 @@ const HTML_ENTITIES = {
   "<": "&lt;",
   ">": "&gt;",
   '"': "&quot;",
-  "'": "&#39;"
+  "'": "&#39;",
 };
 
 const XML_ENTITIES = {
   "&": "&amp;",
   "<": "&lt;",
   ">": "&gt;",
-  '"': "&quot;"
+  '"': "&quot;",
 };
 
 const RAW_HTML = Symbol("raw-html");
@@ -23,7 +23,10 @@ const RAW_HTML = Symbol("raw-html");
  * @returns {string}
  */
 export function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (char) => HTML_ENTITIES[/** @type {keyof typeof HTML_ENTITIES} */ (char)]);
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (char) => HTML_ENTITIES[/** @type {keyof typeof HTML_ENTITIES} */ (char)],
+  );
 }
 
 /**
@@ -32,7 +35,10 @@ export function escapeHTML(value) {
  * @returns {string}
  */
 export function escapeXML(value) {
-  return String(value ?? "").replace(/[&<>"]/g, (char) => XML_ENTITIES[/** @type {keyof typeof XML_ENTITIES} */ (char)]);
+  return String(value ?? "").replace(
+    /[&<>"]/g,
+    (char) => XML_ENTITIES[/** @type {keyof typeof XML_ENTITIES} */ (char)],
+  );
 }
 
 /**
@@ -70,4 +76,17 @@ export function html(strings, ...values) {
     out += renderValue(values[i]) + (strings[i + 1] || "");
   }
   return out;
+}
+
+/**
+ * Sets an element's HTML content from a string or `raw(...)` fragment.
+ * @template {Element} T
+ * @param {T | null | undefined} element
+ * @param {string | { [RAW_HTML]: true, value: string } | null | undefined} markup
+ * @returns {T | null | undefined}
+ */
+export function setHTML(element, markup) {
+  if (!element) return element;
+  element.innerHTML = markup && typeof markup === "object" && RAW_HTML in markup ? markup.value : String(markup ?? "");
+  return element;
 }

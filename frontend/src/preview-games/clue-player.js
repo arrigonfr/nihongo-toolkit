@@ -3,7 +3,9 @@ import { japaneseVoice } from "../japanese-voice.js";
 // Scoring needs the start/end/error events that the shared fire-and-forget
 // pronunciation button doesn't expose. Non-scored review uses that button.
 export function createCluePlayer({ synth, Utterance, silence, enabled, onState, fallback, timeout = 15000 }) {
-  let generation = 0, timer, pending;
+  let generation = 0,
+    timer,
+    pending;
   function stop() {
     generation++;
     clearTimeout(timer);
@@ -13,7 +15,10 @@ export function createCluePlayer({ synth, Utterance, silence, enabled, onState, 
   }
   function play(text, { rate = 0.9 } = {}) {
     stop();
-    if (!enabled()) { onState("unavailable"); return; }
+    if (!enabled()) {
+      onState("unavailable");
+      return;
+    }
     const id = generation;
     let usedFallback = false;
     function finish(state) {
@@ -23,21 +28,28 @@ export function createCluePlayer({ synth, Utterance, silence, enabled, onState, 
     }
     function runFallback() {
       if (id !== generation) return;
-      if (!fallback || usedFallback || !enabled()) { finish("unavailable"); return; }
+      if (!fallback || usedFallback || !enabled()) {
+        finish("unavailable");
+        return;
+      }
       usedFallback = true;
       clearTimeout(timer);
       pending?.();
       pending = null;
       fallback(text, {
         rate,
-        onStart: () => { if (id === generation && enabled()) onState("playing"); },
+        onStart: () => {
+          if (id === generation && enabled()) onState("playing");
+        },
         onEnd: () => finish(enabled() ? "heard" : "unavailable"),
-        onError: () => finish("unavailable")
+        onError: () => finish("unavailable"),
       });
     }
     if (!synth || !Utterance) {
-      if (fallback) { onState("loading"); runFallback(); }
-      else onState("unavailable");
+      if (fallback) {
+        onState("loading");
+        runFallback();
+      } else onState("unavailable");
       return;
     }
     onState("loading");
@@ -60,11 +72,15 @@ export function createCluePlayer({ synth, Utterance, silence, enabled, onState, 
         u.voice = voice;
         u.lang = "ja-JP";
         u.rate = rate;
-        u.onstart = () => { if (id === generation && enabled()) onState("playing"); };
+        u.onstart = () => {
+          if (id === generation && enabled()) onState("playing");
+        };
         u.onend = () => finish(enabled() ? "heard" : "unavailable");
         u.onerror = () => runFallback();
         synth.speak(u);
-      } catch { runFallback(); }
+      } catch {
+        runFallback();
+      }
     }
     synth.addEventListener("voiceschanged", start);
     pending = () => synth.removeEventListener("voiceschanged", start);

@@ -12,14 +12,20 @@ const pending = new Map();
 
 function hasLocalSpeechOptIn() {
   if (typeof localStorage === "undefined") return true;
-  try { return localStorage.getItem(OPTIN_KEY) === "granted"; }
-  catch { return false; }
+  try {
+    return localStorage.getItem(OPTIN_KEY) === "granted";
+  } catch {
+    return false;
+  }
 }
 
 function saveLocalSpeechOptIn() {
   if (typeof localStorage === "undefined") return;
-  try { localStorage.setItem(OPTIN_KEY, "granted"); }
-  catch { /* allow for current session */ }
+  try {
+    localStorage.setItem(OPTIN_KEY, "granted");
+  } catch {
+    /* allow for current session */
+  }
 }
 
 function ensureStatus() {
@@ -44,14 +50,14 @@ function requestLocalSpeechOptIn() {
     text.textContent = "No Japanese browser voice found. Download offline Japanese voice (~90 MB, cached locally)? ";
     const accept = document.createElement("button");
     accept.type = "button";
+    accept.className = "study-speech-action study-speech-action-primary";
     accept.dataset.localSpeechOptin = "accept";
     accept.textContent = "Download (~90 MB)";
-    accept.style.cssText = "margin:0 6px;padding:4px 10px;border-radius:6px;border:1px solid currentColor;background:var(--accent,#254d3e);color:#fff;font:600 12px/1.3 system-ui,sans-serif;cursor:pointer;";
     const dismiss = document.createElement("button");
     dismiss.type = "button";
+    dismiss.className = "study-speech-action";
     dismiss.dataset.localSpeechOptin = "dismiss";
     dismiss.textContent = "Not now";
-    dismiss.style.cssText = "padding:4px 10px;border-radius:6px;border:1px solid currentColor;background:transparent;color:inherit;font:600 12px/1.3 system-ui,sans-serif;cursor:pointer;";
     const finish = (granted) => {
       optInPromise = null;
       if (granted) saveLocalSpeechOptIn();
@@ -128,13 +134,19 @@ export function cancelLocalSpeech() {
   if (status) showStatus("");
 }
 
-export async function speakLocalJapanese(text, { rate = 1, onStart, onEnd, onError } = {}) {
+export async function speakLocalJapanese(
+  text,
+  { rate = 1, onStart = undefined, onEnd = undefined, onError = undefined } = {},
+) {
   const id = requestId;
   try {
     const allowed = await requestLocalSpeechOptIn();
     if (!allowed || id !== requestId) return;
     context ||= new AudioContext();
-    const resumed = context.resume().then(() => null, (error) => error);
+    const resumed = context.resume().then(
+      () => null,
+      (error) => error,
+    );
     showStatus("Preparing Japanese audio (~90 MB first download)...");
     await loadEngine();
     if (id !== requestId) return;

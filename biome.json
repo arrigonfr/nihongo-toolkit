@@ -10,40 +10,26 @@
     ]
   },
   "formatter": {
-    "enabled": false
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120
   },
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "none",
+      "preset": "recommended",
       "correctness": {
-        "noConstAssign": "error",
-        "noGlobalObjectCalls": "error",
-        "noInvalidConstructorSuper": "error",
-        "noSelfAssign": "error",
-        "noSetterReturn": "error",
-        "noUnreachable": "error",
-        "noUnreachableSuper": "error",
-        "noUnsafeFinally": "error",
-        "noUnsafeOptionalChaining": "error",
-        "noUnusedVariables": "warn",
-        "useIsNan": "error",
-        "useValidTypeof": "error"
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error"
+      },
+      "style": {
+        "useTemplate": "off"
       },
       "suspicious": {
-        "noAsyncPromiseExecutor": "error",
-        "noCatchAssign": "error",
-        "noClassAssign": "error",
-        "noCompareNegZero": "error",
-        "noDuplicateCase": "error",
-        "noDuplicateClassMembers": "error",
-        "noDuplicateObjectKeys": "error",
-        "noDuplicateParameters": "error",
-        "noFunctionAssign": "error",
-        "noImportAssign": "error",
-        "noRedeclare": "error",
+        "noControlCharactersInRegex": "off",
         "noShadowRestrictedNames": "off",
-        "noUnsafeNegation": "error"
+        "useIterableCallbackReturn": "off"
       }
     }
   }

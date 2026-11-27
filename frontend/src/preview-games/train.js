@@ -1,15 +1,26 @@
-import { studyPool } from "../study-pool.js";
-import { study } from "../study-controls.js";
 import { audioIcon } from "../audio-icon.js";
-import { el, ja, root, button, setupNote, playButton, silence, status } from "./dom.js";
+import { study } from "../study-controls.js";
+import { studyPool } from "../study-pool.js";
 import { createCluePlayer } from "./clue-player.js";
-import { validateJourney, routeFor, clueFor } from "./train-data.js";
+import { button, el, ja, playButton, root, setupNote, silence, status } from "./dom.js";
+import { clueFor, routeFor, validateJourney } from "./train-data.js";
 
 const lineTone = {
-  L: "blue", F: "blue", P: "plum", H: "blue", M: "warm",
-  R: "accent", S: "plum", V: "warm", K: "accent",
-  C: "blue", N: "warm", T: "plum", B: "accent",
-  E: "blue", U: "warm"
+  L: "blue",
+  F: "blue",
+  P: "plum",
+  H: "blue",
+  M: "warm",
+  R: "accent",
+  S: "plum",
+  V: "warm",
+  K: "accent",
+  C: "blue",
+  N: "warm",
+  T: "plum",
+  B: "accent",
+  E: "blue",
+  U: "warm",
 };
 const countingRules = new Set(["ordinal", "stationsAhead", "nextNext"]);
 const relativeRules = new Set(["before", "after"]);
@@ -33,10 +44,10 @@ function matchesFilter(item, { network, rule, legs }) {
   if (network !== "all" && item.network !== network) return false;
   if (legs === "single" && item.legs.length !== 1) return false;
   if (legs === "multi" && item.legs.length < 2) return false;
-  if (rule === "counting" && !item.legs.some(l => countingRules.has(l.rule))) return false;
-  if (rule === "relative" && !item.legs.some(l => relativeRules.has(l.rule))) return false;
-  if (rule === "transfer" && !item.legs.some(l => l.rule === "transfer")) return false;
-  if (rule === "terminal" && !item.legs.some(l => l.rule === "terminal")) return false;
+  if (rule === "counting" && !item.legs.some((l) => countingRules.has(l.rule))) return false;
+  if (rule === "relative" && !item.legs.some((l) => relativeRules.has(l.rule))) return false;
+  if (rule === "transfer" && !item.legs.some((l) => l.rule === "transfer")) return false;
+  if (rule === "terminal" && !item.legs.some((l) => l.rule === "terminal")) return false;
   return true;
 }
 
@@ -63,14 +74,17 @@ function syncViewPreference(isMap) {
 
 function connectedServices(net, stationId, currentCode) {
   return Object.values(net.services)
-    .filter(svc => svc.code !== currentCode && svc.stops.includes(stationId))
-    .map(svc => svc.code);
+    .filter((svc) => svc.code !== currentCode && svc.stops.includes(stationId))
+    .map((svc) => svc.code);
 }
 
 export const train = {
   ...studyPool("train", validateJourney),
   setup(container) {
-    setupNote(container, `Count stops ahead, not your starting station. A transfer changes lines without moving. Explore ${train.items.length.toLocaleString()} journeys across 8 railway networks.`);
+    setupNote(
+      container,
+      `Count stops ahead, not your starting station. A transfer changes lines without moving. Explore ${train.items.length.toLocaleString()} journeys across 8 railway networks.`,
+    );
     container.append(
       makeSelect("train-network", "Railway network", [
         ["all", "All networks"],
@@ -81,62 +95,71 @@ export const train = {
         ["valley", "Sakura Valley Line (scenic transfer)"],
         ["capital", "Capital Cross (city interchange)"],
         ["oldtown", "Old Town Tramway (historic transfer)"],
-        ["peninsula", "Peninsula Express (coastal transfer)"]
+        ["peninsula", "Peninsula Express (coastal transfer)"],
       ]),
       makeSelect("train-rule", "Instruction focus", [
         ["all", "All instructions"],
         ["counting", "Counting stops"],
         ["relative", "Before & after"],
         ["transfer", "Transfers"],
-        ["terminal", "Terminal stops"]
+        ["terminal", "Terminal stops"],
       ]),
       makeSelect("train-legs", "Journey length", [
         ["all", "All"],
         ["single", "Single-leg"],
-        ["multi", "Multi-leg"]
+        ["multi", "Multi-leg"],
       ]),
       makeSelect("train-view", "Route display", [
         ["map", "Route map"],
-        ["list", "Ordered list"]
-      ])
+        ["list", "Ordered list"],
+      ]),
     );
   },
   pool(filters) {
     const network = filters.querySelector("#train-network")?.value || "all";
     const legs = filters.querySelector("#train-legs")?.value || "all";
     const rule = filters.querySelector("#train-rule")?.value || "all";
-    return train.items.filter(item => matchesFilter(item, { network, rule, legs }));
+    return train.items.filter((item) => matchesFilter(item, { network, rule, legs }));
   },
   onSettingsChange(filters) {
     const active = {
       network: filters.querySelector("#train-network")?.value || "all",
       rule: filters.querySelector("#train-rule")?.value || "all",
-      legs: filters.querySelector("#train-legs")?.value || "all"
+      legs: filters.querySelector("#train-legs")?.value || "all",
     };
     const controls = [
       ["#train-network", "network"],
       ["#train-rule", "rule"],
-      ["#train-legs", "legs"]
+      ["#train-legs", "legs"],
     ];
     for (const [selector, field] of controls) {
       const select = filters.querySelector(selector);
       if (!select) continue;
       for (const option of select.options) {
         const base = option.dataset.baseLabel || option.textContent;
-        const count = train.items.filter(item => matchesFilter(item, { ...active, [field]: option.value })).length;
+        const count = train.items.filter((item) => matchesFilter(item, { ...active, [field]: option.value })).length;
         const nextLabel = field === "legs" && option.value === "all" ? base : `${base} (${count})`;
         option.textContent = nextLabel;
-        const chipLabel = select.chipsApi?.group?.querySelector(`.chip-option[data-value="${CSS.escape(option.value)}"] .chip-label`);
+        const chipLabel = select.chipsApi?.group?.querySelector(
+          `.chip-option[data-value="${CSS.escape(option.value)}"] .chip-label`,
+        );
         if (chipLabel) chipLabel.textContent = nextLabel;
       }
     }
   },
   render(container, item, finish) {
-    const net = item.net, board = root(container), results = [];
-    const station = id => net.stations[id];
-    let index = 0, locked = false, ended = false, selected = null;
+    const net = item.net,
+      board = root(container),
+      results = [];
+    const station = (id) => net.stations[id];
+    let index = 0,
+      locked = false,
+      ended = false,
+      selected = null;
     let map = (document.getElementById("train-view")?.value || "map") !== "list";
-    let activePlayer = null, audioObserver = null, keyHandler = null;
+    let activePlayer = null,
+      audioObserver = null,
+      keyHandler = null;
 
     function detachLegListeners() {
       activePlayer?.stop();
@@ -152,17 +175,18 @@ export const train = {
     function summary() {
       if (!results.length) return null;
       return {
-        correct: results.every(r => r.correct),
-        points: results.filter(r => r.correct).length,
+        correct: results.every((r) => r.correct),
+        points: results.filter((r) => r.correct).length,
         legs: results.slice(),
-        prompt: net.title
+        prompt: net.title,
       };
     }
 
     function draw(focus = false) {
       detachLegListeners();
       selected = null;
-      const leg = item.legs[index], line = net.services[leg.service];
+      const leg = item.legs[index],
+        line = net.services[leg.service];
       const terminal = line.stops.at(leg.dir === 1 ? -1 : 0);
       const { clue, reading, translation } = clueFor(net, leg);
       const heading = el("h3", `${net.title} · Leg ${index + 1} of ${item.legs.length}`);
@@ -196,13 +220,15 @@ export const train = {
         synth: window.speechSynthesis,
         Utterance: window.SpeechSynthesisUtterance,
         silence,
+        fallback: undefined,
         enabled: () => study.audio,
         onState(state) {
           if (ended) return;
           if (state === "loading") feedback.textContent = "Preparing Japanese audio…";
-          else if (state === "unavailable") feedback.textContent = "Audio unavailable. Turn on Audio or read the instruction above.";
+          else if (state === "unavailable")
+            feedback.textContent = "Audio unavailable. Turn on Audio or read the instruction above.";
           else if (state === "heard" && !locked) feedback.textContent = "";
-        }
+        },
       });
 
       const syncAudio = () => {
@@ -261,7 +287,7 @@ export const train = {
           translation,
           startName: station(leg.start)[0],
           lineCode: line.code,
-          terminalName: station(terminal)[0]
+          terminalName: station(terminal)[0],
         });
 
         if (index + 1 === item.legs.length) {
@@ -276,9 +302,10 @@ export const train = {
         confirm.disabled = true;
 
         btn.classList.add(correct ? "is-correct" : "is-wrong");
-        const correctBtn = leg.action === "transfer"
-          ? routes.querySelector(`[data-transfer="${leg.endService}"]`)
-          : routes.querySelector(`[data-station="${leg.end}"][data-service="${leg.endService}"]`);
+        const correctBtn =
+          leg.action === "transfer"
+            ? routes.querySelector(`[data-transfer="${leg.endService}"]`)
+            : routes.querySelector(`[data-station="${leg.end}"][data-service="${leg.endService}"]`);
         if (correctBtn) correctBtn.classList.add("is-correct");
 
         if (leg.action === "ride") {
@@ -286,8 +313,10 @@ export const train = {
           const fromIdx = orderedStops.indexOf(leg.start);
           const toIdx = orderedStops.indexOf(leg.end);
           for (let i = fromIdx + 1; i < toIdx; i++) {
-            routes.querySelector(`[data-station="${orderedStops[i]}"][data-service="${leg.service}"]`)
-              ?.closest("li")?.classList.add("is-path");
+            routes
+              .querySelector(`[data-station="${orderedStops[i]}"][data-service="${leg.service}"]`)
+              ?.closest("li")
+              ?.classList.add("is-path");
           }
         }
 
@@ -314,7 +343,11 @@ export const train = {
 
       for (const svc of services) {
         const active = svc === line;
-        const card = el("section", undefined, `pg-service${active ? " is-active" : " is-inactive"} pg-tone-${lineTone[svc.code] || "blue"}`);
+        const card = el(
+          "section",
+          undefined,
+          `pg-service${active ? " is-active" : " is-inactive"} pg-tone-${lineTone[svc.code] || "blue"}`,
+        );
         const title = el("h4");
         const svcBadge = el("span", svc.code, `pg-line-badge pg-tone-${lineTone[svc.code] || "blue"}`);
         title.append(svcBadge, " ", ja(svc.name, svc.kana));
@@ -339,7 +372,10 @@ export const train = {
           const others = connectedServices(net, id, svc.code);
           if (others.length) li.classList.add("is-interchange");
 
-          const stop = active && !here ? button("", () => selectChoice({ action: "ride", end: id, endService: svc.code }, stop)) : el("span");
+          const stop =
+            active && !here
+              ? button("", () => selectChoice({ action: "ride", end: id, endService: svc.code }, stop))
+              : el("span");
           if (active && !here) {
             stop.dataset.station = id;
             stop.dataset.service = svc.code;
@@ -387,15 +423,25 @@ export const train = {
         routes.append(card);
       }
 
-      keyHandler = event => {
-        if (!matchMedia("(min-width: 761px) and (hover: hover)").matches || event.repeat || event.isComposing ||
-          event.ctrlKey || event.altKey || event.metaKey ||
+      keyHandler = (event) => {
+        if (
+          !matchMedia("(min-width: 761px) and (hover: hover)").matches ||
+          event.repeat ||
+          event.isComposing ||
+          event.ctrlKey ||
+          event.altKey ||
+          event.metaKey ||
           event.target.closest("input, textarea, select, [contenteditable=true]") ||
-          document.querySelector("dialog[open]")) return;
+          document.querySelector("dialog[open]")
+        )
+          return;
         const k = event.key.toLowerCase();
         if (/^[1-9]$/.test(event.key)) {
           const option = choiceButtons[Number(event.key) - 1];
-          if (option && !option.disabled) { event.preventDefault(); option.click(); }
+          if (option && !option.disabled) {
+            event.preventDefault();
+            option.click();
+          }
         } else if (k === "c" && !confirm.disabled) {
           event.preventDefault();
           confirm.click();
@@ -422,7 +468,7 @@ export const train = {
     cleanup.partial = summary;
     return cleanup;
   },
-  review(container, item, result) {
+  review(container, _item, result) {
     const sections = container.querySelectorAll(".journey-leg");
     (result.legs || []).forEach((leg, i) => {
       const section = sections[i];
@@ -431,7 +477,7 @@ export const train = {
       if (promptField) {
         promptField.replaceChildren(
           `${leg.startName} (${leg.lineCode} → ${leg.terminalName}): `,
-          ja(leg.clue, leg.reading)
+          ja(leg.clue, leg.reading),
         );
       }
       const notice = status();
@@ -440,6 +486,5 @@ export const train = {
       bar.append(replay, notice);
       section.append(bar);
     });
-  }
+  },
 };
-

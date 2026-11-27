@@ -76,24 +76,49 @@ test("createSentenceTranslator tries configured free providers in priority order
   assert.deepEqual(attempts, ["workers-ai:@cf/meta/m2m100-1.2b", "openrouter"]);
 });
 
-test("createSentenceTranslator passes de=<email> to MyMemory and falls back to Google Translate", async () => {
+test("createSentenceTranslator passes de=<email> to MyMemory and returns empty on quota warning without unofficial fallbacks", async () => {
   const urls = [];
   const translate = createSentenceTranslator({
     enabled: true,
+    cooldownMs: 60_000,
     mymemoryEmail: "NihongoToolkit <owner@example.com>",
     fetchImpl: async (url) => {
       const parsed = new URL(url);
       urls.push(parsed);
-      if (parsed.hostname === "api.mymemory.translated.net") {
-        assert.equal(parsed.searchParams.get("de"), "owner@example.com");
-        return { ok: true, json: async () => ({ responseData: { translatedText: "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS" } }) };
-      }
-      return { ok: true, json: async () => [[["Thank you.", "ありがとう。"]]] };
+      assert.equal(parsed.hostname, "api.mymemory.translated.net");
+      assert.equal(parsed.searchParams.get("de"), "owner@example.com");
+      return { ok: true, json: async () => ({ responseData: { translatedText: "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS" } }) };
     }
   });
 
-  assert.equal(await translate("ありがとう。"), "Thank you.");
-  assert.equal(urls.length, 2);
+  assert.equal(await translate("ありがとう。"), "");
+  assert.equal(urls.length, 1);
+  // Cooldown prevents repeated calls to MyMemory
+  assert.equal(await translate("こんにちは。"), "");
+  assert.equal(urls.length, 1);
+});
+
+test("createD1Cache schedules non-blocking writes via waitUntil and awaits when waitUntil declines", async () => {
+  let resolveWrite;
+  const pendingWrite = new Promise((resolve) => { resolveWrite = resolve; });
+  const fakeDb = {
+    prepare: () => ({ bind: () => ({ run: () => pendingWrite }) })
+  };
+  const scheduled = [];
+  const backgroundCache = createD1Cache(fakeDb, {
+    waitUntil: (promise) => { scheduled.push(promise); return true; }
+  });
+  await backgroundCache.set("k", "v", 60_000);
+  assert.equal(scheduled.length, 1, "write was scheduled on waitUntil without blocking set()");
+
+  let awaited = false;
+  const fallbackCache = createD1Cache({
+    prepare: () => ({ bind: () => ({ run: async () => { awaited = true; } }) })
+  }, { waitUntil: () => false });
+  await fallbackCache.set("k2", "v2", 60_000);
+  assert.equal(awaited, true, "falls back to awaiting when waitUntil returns false");
+  resolveWrite();
+  await scheduled[0];
 });
 
 test("createD1Cache persists translations across translator instances and degrades safely if unmigrated", async () => {

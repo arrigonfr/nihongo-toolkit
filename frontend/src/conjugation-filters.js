@@ -2,9 +2,18 @@ import { mountChips } from "./chips.js";
 import { removeChipsTooltip } from "./plain-fields.js";
 
 const LABELS = {
-  politeness: [["plain", "Plain"], ["polite", "Polite"]],
-  polarity: [["affirmative", "Affirmative"], ["negative", "Negative"]],
-  tense: [["non-past", "Non-past"], ["past", "Past"]]
+  politeness: [
+    ["plain", "Plain"],
+    ["polite", "Polite"],
+  ],
+  polarity: [
+    ["affirmative", "Affirmative"],
+    ["negative", "Negative"],
+  ],
+  tense: [
+    ["non-past", "Non-past"],
+    ["past", "Past"],
+  ],
 };
 
 // Politeness / polarity / tense as vertical checkbox chips over the existing hidden selects.
@@ -19,7 +28,7 @@ export function mountConjugationFilters() {
       allValue: "both",
       orientation: "vertical",
       presentation: "checkbox",
-      fieldClass: "conjugation-filter-field"
+      fieldClass: "conjugation-filter-field",
     });
     removeChipsTooltip(select);
   }

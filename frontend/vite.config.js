@@ -5,6 +5,7 @@ import { legacyRoutes, publicPath } from "./src/routes.js";
 import { disabledPages, pageAvailability } from "./page-availability.js";
 import { kanjiCatalogue } from "./kanji/pages.js";
 import { editorialIdentity, editorialPage, editorialTools } from "./editorial-tools.js";
+import { findNavigationName, renderNavigationMenu } from "./navigation-menu.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const toolFiles = readdirSync(root).filter((file) => file.endsWith(".html") && !["index.html", "data-sources.html", "文字.html"].includes(file));
@@ -20,7 +21,7 @@ const seoPages = {
     description: "Send feedback, feature requests, data corrections and bug reports to NihongoToolkit."
   },
   "index.html": {
-    title: "NihongoToolkit",
+    title: "Nihongo Toolkit | Free Japanese learning tools for kana, kanji, vocabulary, conjugation practice, dictionary lookup, word games, and printable study sheets.",
     description: "Free Japanese learning tools for kana, kanji, vocabulary, conjugation practice, dictionary lookup, word games, and printable study sheets.",
     image: { path: "og-image.png", type: "image/png", width: "1200", height: "630", alt: "NihongoToolkit homepage with Japanese learning tools and its student mascot." }
   },
@@ -92,19 +93,13 @@ const seoPages = {
 
 const THEME_PREINIT_SCRIPT = `(function(){var r=document.documentElement,p="sumi",m="dark",t={matcha:1,sakura:1,ocean:1,wisteria:1,amber:1,sumi:1};try{var s=JSON.parse(localStorage.getItem("nihon:appearance-v1")||"{}");if(s.palette&&t[s.palette])p=s.palette;if(s.mode==="light"||s.mode==="dark"||s.mode==="system")m=s.mode;}catch(e){}r.dataset.colorTheme=p;r.dataset.theme=m==="system"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):m;})();`;
 
-function toolNavigation(site, disabled = new Set(), editorial = false, { gaId = "", gtmId = "", isDev = false } = {}) {
+function toolNavigation(site, disabled = new Set(), editorial = false, { gaId = "", gtmId = "", isDev = false, multilingual = false } = {}) {
   function addTagManager(html) {
     if (!gaId && !gtmId) return html;
-    const headTags = [
-      `<script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} var __nihonConsent = "denied"; try { if (localStorage.getItem("nihon:analytics-consent-v1") === "granted") __nihonConsent = "granted"; } catch (e) {} gtag('set', 'cookie_domain', 'none'); gtag('consent', 'default', { analytics_storage: __nihonConsent, ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', wait_for_update: 500 }); gtag('js', new Date());${gaId ? ` gtag('config', '${gaId}', { cookie_domain: 'none' });` : ""}</script>`
-    ];
-    if (gaId) headTags.push(`<script async src="https://www.googletagmanager.com/gtag/js?id=${gaId}"></script>`);
-    if (gtmId) headTags.push(`<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${gtmId}');</script>`);
-    html = html.replace(/<head\b[^>]*>/i, (head) => `${head}\n${headTags.join("\n")}`);
-    if (gtmId) {
-      html = html.replace(/<body\b[^>]*>/i, (body) => `${body}\n<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=${gtmId}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>`);
-    }
-    return html;
+    const gaLiteral = JSON.stringify(gaId);
+    const gtmLiteral = JSON.stringify(gtmId);
+    const bootstrap = `<script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} var __nihonConsent = "denied"; try { if (localStorage.getItem("nihon:analytics-consent-v1") === "granted") __nihonConsent = "granted"; } catch (e) {} gtag('set', 'cookie_domain', 'none'); gtag('consent', 'default', { analytics_storage: __nihonConsent, ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', wait_for_update: 500 }); gtag('js', new Date());${gaId ? ` gtag('config', ${gaLiteral}, { cookie_domain: 'none' });` : ""} (function(gaId, gtmId){ var loaded = false; function load(){ if (loaded) return; loaded = true; if (gaId) { var s = document.createElement('script'); s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId; document.head.appendChild(s); } if (gtmId) { window.dataLayer.push({'gtm.start': new Date().getTime(), event: 'gtm.js'}); var g = document.createElement('script'); g.async = true; g.src = 'https://www.googletagmanager.com/gtm.js?id=' + gtmId; document.head.appendChild(g); } } window.__nihonAnalytics = { gaId: gaId, gtmId: gtmId, load: load }; if (__nihonConsent === "granted") load(); })(${gaLiteral}, ${gtmLiteral});</script>`;
+    return html.replace(/<head\b[^>]*>/i, (head) => `${head}\n${bootstrap}`);
   }
   return {
     name: "tool-navigation",
@@ -121,8 +116,12 @@ function toolNavigation(site, disabled = new Set(), editorial = false, { gaId = 
             const data = JSON.parse(content);
             const website = data["@graph"].find((node) => node["@type"] === "WebSite");
             const source = new URL(website.url);
+            const supportedLanguages = multilingual ? ["en", "es", "pt"] : ["en"];
             for (const node of data["@graph"]) {
               if (node.alternateName) node.alternateName = [...[node.alternateName].flat().filter((name) => name !== source.hostname), new URL(site).hostname];
+              if (node.inLanguage) node.inLanguage = multilingual ? supportedLanguages : "en";
+              if (node.availableLanguage) node.availableLanguage = supportedLanguages;
+              if (node.publisher?.knowsLanguage) node.publisher.knowsLanguage = supportedLanguages;
             }
             const normalized = JSON.stringify(data, (key, value) => {
               if (typeof value !== "string" || !(value === source.origin || value.startsWith(`${source.origin}/`))) return value;
@@ -132,31 +131,27 @@ function toolNavigation(site, disabled = new Set(), editorial = false, { gaId = 
             return `${open}${normalized.replaceAll("<", "\\u003c")}${close}`;
           });
         }
-        const tags = [{ tag: "link", attrs: { rel: "apple-touch-icon", sizes: "180x180", href: reference ? "/apple-touch-icon.png?v=6" : "./apple-touch-icon.png?v=6" }, injectTo: "head" }];
+        const tags = [
+          { tag: "link", attrs: { rel: "apple-touch-icon", sizes: "180x180", href: reference ? "/apple-touch-icon.png?v=6" : "./apple-touch-icon.png?v=6" }, injectTo: "head" },
+          { tag: "link", attrs: { rel: "manifest", href: reference ? "/manifest.webmanifest" : "./manifest.webmanifest" }, injectTo: "head" },
+          { tag: "meta", attrs: { name: "apple-mobile-web-app-title", content: "Nihongo Toolkit" }, injectTo: "head" },
+          { tag: "meta", attrs: { name: "color-scheme", content: "dark light" }, injectTo: "head" },
+          { tag: "meta", attrs: { name: "referrer", content: "strict-origin-when-cross-origin" }, injectTo: "head" },
+          { tag: "meta", attrs: { name: "theme-color", content: "#171b18", media: "(prefers-color-scheme: dark)" }, injectTo: "head" },
+          { tag: "meta", attrs: { name: "theme-color", content: "#f5f4ef", media: "(prefers-color-scheme: light)" }, injectTo: "head" }
+        ];
+        if (!reference && !disabled.has(file)) {
+          tags.push({ tag: "meta", attrs: { name: "robots", content: "max-image-preview:large" }, injectTo: "head" });
+        }
         if (!reference) tags.push({ tag: "script", attrs: { type: "module", src: "./src/page-views.js" }, injectTo: "body" });
         if (canonical) tags.push({ tag: "link", attrs: { rel: "canonical", href: canonical }, injectTo: "head" });
         if (reference || file === "index.html" || file === "data-sources.html" || toolFiles.includes(file)) {
-          const launcher = readFileSync(new URL("./index.html", import.meta.url), "utf8");
-          const originalMenu = launcher.match(/<nav class="navigation"[\s\S]*?<\/nav>/)[0];
-          let menu = originalMenu;
-          if (editorial) {
-            for (const [slug, [name, group, purpose, description, example]] of Object.entries(editorialTools)) {
-              const [japanese] = editorialIdentity[slug];
-              const link = `<a class="helper-link" data-file="${slug}.html" href="./${slug}.html" target="_top" data-purpose="${purpose}" data-description="${description}" data-example="${example}"><span class="helper-name">${name} · <span class="helper-icon" aria-hidden="true"><img src="/tool-icons/${slug}.webp" alt="" width="26" height="26"></span> · <span lang="ja">${japanese}</span></span><span class="helper-description">${purpose}</span></a>`;
-              menu = menu.replace(new RegExp(`(<section class="menu-group" aria-label="${group}">[\\s\\S]*?)(</section>)`), `$1${link}$2`);
-            }
-          }
-          menu = menu.replace(/<button class="helper-link" type="button" data-file="([^"]+)">([\s\S]*?)<\/button>/g,
-            (_, filename, content) => `<a class="helper-link" data-file="${filename}" href="./${filename}" target="_top">${content}</a>`);
-          for (const disabledFile of disabled) {
-            menu = menu.replace(`data-file="${disabledFile}"`, `data-file="${disabledFile}" data-unavailable`);
-          }
-          menu = menu.replace('<div class="menu" id="helperMenu" hidden>', '<div class="menu" id="helperMenu" hidden><a class="helper-link home-link" href="./" target="_top"><span class="helper-icon" aria-hidden="true"><img src="/logo-mark.webp" alt="" width="26" height="26"></span><span class="helper-name">Home</span></a>');
+          const menu = renderNavigationMenu({ editorial, disabled });
           if (file === "index.html") {
-            html = html.replace(originalMenu, menu);
+            html = html.replace("<!-- site-navigation -->", () => menu);
             tags.push({ tag: "script", injectTo: "head-prepend", children: THEME_PREINIT_SCRIPT });
           } else {
-            const name = menu.match(new RegExp(`data-file="${file}"[^>]*>\\s*<span class="helper-name">([^<]+)`))?.[1].replace(/\s*·\s*$/, "");
+            const name = findNavigationName(file, { editorial });
             if (name && !seoPages[file]) html = html.replace(/<title>[^<]*<\/title>/, `<title>${name} · NihongoToolkit</title>`);
             const menuCSS = readFileSync(new URL("./src/navigation.css", import.meta.url), "utf8");
             tags.push(
@@ -192,12 +187,17 @@ function toolNavigation(site, disabled = new Set(), editorial = false, { gaId = 
             { tag: "meta", attrs: { property: "og:title", content: seo.title }, injectTo: "head" },
             { tag: "meta", attrs: { property: "og:description", content: seo.description }, injectTo: "head" },
             { tag: "meta", attrs: { property: "og:type", content: "website" }, injectTo: "head" },
+            { tag: "meta", attrs: { property: "og:locale", content: "en_US" }, injectTo: "head" },
+            ...(multilingual ? [
+              { tag: "meta", attrs: { property: "og:locale:alternate", content: "es_ES" }, injectTo: "head" },
+              { tag: "meta", attrs: { property: "og:locale:alternate", content: "pt_BR" }, injectTo: "head" }
+            ] : []),
             { tag: "meta", attrs: { name: "twitter:card", content: site ? "summary_large_image" : "summary" }, injectTo: "head" },
             { tag: "meta", attrs: { name: "twitter:title", content: seo.title }, injectTo: "head" },
             { tag: "meta", attrs: { name: "twitter:description", content: seo.description }, injectTo: "head" }
           );
           if (file !== "index.html") {
-            tags.push({ tag: "meta", attrs: { property: "og:site_name", content: "NihongoToolkit" }, injectTo: "head" });
+            tags.push({ tag: "meta", attrs: { property: "og:site_name", content: "Nihongo Toolkit" }, injectTo: "head" });
           }
           if (canonical) {
             const image = new URL("og-image.png", site).href;
@@ -232,6 +232,7 @@ export default defineConfig(({ mode, command, isPreview }) => {
   const gaId = analyticsAllowed ? sanitizeAnalyticsId((env.VITE_GA_ID || "").trim()) : "";
   const gtmId = analyticsAllowed ? sanitizeAnalyticsId((env.VITE_GTM_ID || "").trim()) : "";
   const editorial = env.EDITORIAL_PREVIEWS !== "0" && env.EDITORIAL_PREVIEWS !== "false";
+  const multilingual = env.VITE_LANGUAGE_SELECTION === "true";
   const site = env.VITE_SITE_URL ? new URL("/", env.VITE_SITE_URL).href : undefined;
   if (site && !site.startsWith("https://")) {
     throw new Error("VITE_SITE_URL must be the public HTTPS site URL.");
@@ -249,7 +250,7 @@ export default defineConfig(({ mode, command, isPreview }) => {
     "import.meta.env.EDITORIAL_PREVIEWS_ENABLED": JSON.stringify(editorial)
   },
   worker: { format: "es" },
-  plugins: [pageAvailability(disabled), toolNavigation(site, disabled, editorial, { gaId, gtmId, isDev }), catalogue.plugin, {
+  plugins: [pageAvailability(disabled), toolNavigation(site, disabled, editorial, { gaId, gtmId, isDev, multilingual }), catalogue.plugin, {
     name: "deployment-seo",
     configureServer(server) {
       server.middlewares.use((request, response, next) => {

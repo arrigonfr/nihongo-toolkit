@@ -2,17 +2,23 @@
 
 export const STORAGE_KEYS = {
   settings: "nihon:crossword-settings-v1",
-  stats: "nihon:crossword-stats-v1"
+  stats: "nihon:crossword-stats-v1",
 };
 
 export const GAME_MODES = {
   classic: { label: "Classic Mode", desc: "Standard crossword with clues and a timer." },
   relaxed: { label: "Relaxed Mode", desc: "No timer, unlimited hints, and no pressure." },
   timed: { label: "Timed Challenge", desc: "Complete the puzzle before the countdown runs out." },
-  suddenDeath: { label: "Sudden Death", desc: "Any incorrect character or submitted answer ends the round immediately." },
-  kanjiChallenge: { label: "Kanji Challenge", desc: "Use words containing kanji, including their kana endings, rather than kana-only answers." },
+  suddenDeath: {
+    label: "Sudden Death",
+    desc: "Any incorrect character or submitted answer ends the round immediately.",
+  },
+  kanjiChallenge: {
+    label: "Kanji Challenge",
+    desc: "Use words containing kanji, including their kana endings, rather than kana-only answers.",
+  },
   kanaChallenge: { label: "Kana Challenge", desc: "Answers are entered in kana, one character per square." },
-  reverse: { label: "Reverse Mode", desc: "Clues show Japanese words; enter English meanings in the grid." }
+  reverse: { label: "Reverse Mode", desc: "Clues show Japanese words; enter English meanings in the grid." },
 };
 
 export const LEVEL_OPTIONS = [
@@ -25,7 +31,7 @@ export const LEVEL_OPTIONS = [
   { value: "4-3", label: "N4–N3 Range" },
   { value: "3-2", label: "N3–N2 Range" },
   { value: "3-1", label: "N3–N1 Range" },
-  { value: "all", label: "All JLPT (N5–N1)" }
+  { value: "all", label: "All JLPT (N5–N1)" },
 ];
 
 export const defaultSettings = () => ({
@@ -45,7 +51,7 @@ export const defaultSettings = () => ({
   hintLimit: 5,
   timedLimitMinutes: 5,
   layoutDirection: "ltr", // "ltr" | "rtl"
-  inputStyle: "popup" // "popup" | "cell" | "clues"
+  inputStyle: "popup", // "popup" | "cell" | "clues"
 });
 
 export const defaultStats = () => ({
@@ -53,7 +59,7 @@ export const defaultStats = () => ({
   wordsCorrect: 0,
   wordsRevealed: 0,
   /** @type {string[]} */
-  recentWordIds: []
+  recentWordIds: [],
 });
 
 /**

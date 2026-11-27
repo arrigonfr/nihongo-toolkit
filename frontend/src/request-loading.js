@@ -26,7 +26,10 @@ export function beginLoading(buttons, panel, message = "Preparing your resultsâ€
         Object.defineProperty(element, "disabled", {
           configurable: true,
           get: () => native.get.call(element),
-          set: (value) => { owner.disabled = Boolean(value); native.set.call(element, true); }
+          set: (value) => {
+            owner.disabled = Boolean(value);
+            native.set.call(element, true);
+          },
         });
         native.set.call(element, true);
       }

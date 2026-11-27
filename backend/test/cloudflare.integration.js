@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { build } from "esbuild";
 import { Miniflare } from "miniflare";
-import { openDatabase } from "../src/database.js";
+import { openTestDatabase } from "./support/fixture-db.js";
 import { segmentText } from "../src/tokenizer.js";
 import { isPracticeKanji } from "../src/practice-kanji.js";
 
@@ -28,7 +28,7 @@ test("Worker + Turso web client: API parity, practice filtering and lossless tok
   await access("backend/.worker-assets/_dictionary/base.gz");
   const directory = resolve(`backend/.cache/cloudflare-${randomUUID()}`);
   await mkdir(directory, { recursive: true });
-  const local = openDatabase();
+  const local = openTestDatabase();
   let mf;
   let unavailable = false;
   let statements = [];
@@ -220,10 +220,18 @@ test("Worker rate limiting enforces tiered buckets, returns 429 with Retry-After
   }), env, ctx);
   assert.equal(apiRes.status, 429);
 
+  const discordRes = await worker.fetch(new Request("https://worker.test/api/discord/contact", {
+    method: "POST",
+    headers: { "CF-Connecting-IP": "203.0.113.10" }
+  }), env, ctx);
+  assert.equal(discordRes.status, 429);
+  assert.equal(discordRes.headers.get("Retry-After"), "60");
+
   assert.deepEqual(calls, [
     { name: "write", key: "write:/api/page-views:203.0.113.10" },
     { name: "expensive", key: "expensive:/api/analyze:203.0.113.10" },
-    { name: "api", key: "api:203.0.113.10" }
+    { name: "api", key: "api:203.0.113.10" },
+    { name: "api", key: "discord:/api/discord/contact:203.0.113.10" }
   ]);
 
   const optionsRes = await worker.fetch(new Request("https://worker.test/api/page-views", {

@@ -25,7 +25,7 @@
       </section>
       <div class="layout">
         <section class="main-column" aria-label="Kanji search and details">
-          <form class="panel search-panel" id="searchForm">
+          <form class="panel search-panel" id="searchForm" data-i18n-scope>
             <label class="search-label" for="query">What would you like to explore?</label>
             <div class="search-row">
               <input class="search-input" id="query" name="query" type="search" autocomplete="off" placeholder="Try 水, N3, or water" aria-describedby="searchHint">
@@ -38,13 +38,13 @@
             <p class="shortcuts"><kbd>Enter</kbd> search · <kbd>R</kbd> random · <kbd>Backspace</kbd> clear</p>
             <div class="notice" id="notice" role="status" aria-live="polite"></div>
           </form>
-          <div class="status" id="loading" role="status" aria-live="polite" hidden><span class="spinner" aria-hidden="true"></span><span id="loadingText">Looking up kanji…</span></div>
+          <div class="status" id="loading" role="status" aria-live="polite" data-i18n-scope hidden><span class="spinner" aria-hidden="true"></span><span id="loadingText">Looking up kanji…</span></div>
           <section class="results" id="results" aria-live="polite"></section>
           <article class="panel detail" id="detail" aria-live="polite"></article>
         </section>
         <aside class="side-column">
           <section class="panel side-panel" aria-labelledby="historyTitle">
-            <h2 class="side-title" id="historyTitle">Recent kanji <button class="clear-history" id="clearHistory" type="button">Clear</button></h2>
+            <h2 class="side-title" id="historyTitle" data-i18n-scope>Recent kanji <button class="clear-history" id="clearHistory" type="button">Clear</button></h2>
             <div class="history-list" id="historyList"></div>
           </section>
         </aside>

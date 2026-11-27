@@ -1,1 +1,1 @@
-export { PAGE_PATHS, canonicalPage } from "@nihon/shared/page-paths";
+export { canonicalPage, PAGE_PATHS } from "@nihon/shared/page-paths";
